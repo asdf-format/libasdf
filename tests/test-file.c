@@ -122,12 +122,29 @@ MU_TEST(test_asdf_get_sequence) {
 }
 
 
+MU_TEST(test_asdf_block_count) {
+    const char *filename = get_reference_file_path("1.6.0/basic.asdf");
+    asdf_file_t *file = asdf_open_file(filename, "r");
+    assert_not_null(file);
+    assert_int(asdf_block_count(file), ==, 1);
+    asdf_close(file);
+
+    filename = get_reference_file_path("1.6.0/complex.asdf");
+    file = asdf_open_file(filename, "r");
+    assert_not_null(file);
+    assert_int(asdf_block_count(file), ==, 4);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
 MU_TEST_SUITE(
     test_asdf_file,
     MU_RUN_TEST(test_asdf_open_file),
     MU_RUN_TEST(test_asdf_scalar_getters),
     MU_RUN_TEST(test_asdf_get_mapping),
-    MU_RUN_TEST(test_asdf_get_sequence)
+    MU_RUN_TEST(test_asdf_get_sequence),
+    MU_RUN_TEST(test_asdf_block_count)
 );
 
 

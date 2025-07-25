@@ -23,6 +23,7 @@ $(asdf_standard_submodule) $(munit_submodule):
 @VALGRIND_CHECK_RULES@
 
 check_PROGRAMS = \
+    test-block.unit \
     test-event.unit \
     test-file.unit \
     test-parse.unit \
@@ -52,6 +53,13 @@ check_LIBRARIES = libmunit.a
 libmunit_a_SOURCES = util.c munit/munit.c
 libmunit_a_CPPFLAGS = $(unit_test_cppflags)
 libmunit_a_CFLAGS = $(unit_test_cflags) -w
+
+# test-block.unit
+test_block_unit_SOURCES = test-block.c
+test_block_unit_CPPFLAGS = $(unit_test_cppflags)
+test_block_unit_CFLAGS = $(unit_test_cflags)
+test_block_unit_LDFLAGS = $(unit_test_ldflags)
+test_block_unit_LDADD = $(unit_test_ldadd)
 
 # test-event.unit
 test_event_unit_SOURCES = test-event.c
@@ -131,6 +139,7 @@ EXTRA_DIST += \
     munit.h \
     shell-test.sh \
     util.h \
+    fixtures/255.asdf \
     fixtures/events/basic.events.txt \
     fixtures/events/complex.events.txt \
     fixtures/events/compressed.events.txt \

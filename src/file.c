@@ -321,3 +321,100 @@ __ASDF_GET_INT_TYPE(uint32)
 __ASDF_GET_INT_TYPE(uint64)
 __ASDF_GET_TYPE(float)
 __ASDF_GET_TYPE(double)
+
+
+/* User-facing block-related methods */
+size_t asdf_block_count(asdf_file_t *file) {
+    if (!file)
+        return 0;
+
+    /* Because blocks are the last things we expect to find in a file (modulo the optional block
+     * index) we cannot return the block count accurately without parsing the full file.  Relying
+     * on the block index alone for the count is also not guaranteed to be accurate since it is
+     * only a hint (a hint that nonetheless allows the parser to complete much faster when
+     * possible).  So here we ensure the file is parsed to completion then return the block count.
+     */
+    asdf_parser_t *parser = file->parser;
+
+    while (!parser->done) {
+        asdf_event_iterate(parser);
+    }
+
+    return parser->blocks.n_blocks;
+}
+
+asdf_block_t *asdf_block_open(asdf_file_t *file, size_t index) {
+    if (!file)
+        return NULL;
+
+    size_t n_blocks = asdf_block_count(file);
+
+    if (index >= n_blocks) {
+        ASDF_LOG(
+            file,
+            ASDF_LOG_WARN,
+            "block index %zu does not exist (the file contains %zu blocks)",
+            index,
+            n_blocks);
+        return NULL;
+    }
+
+    asdf_block_t *block = calloc(1, sizeof(asdf_block_t));
+
+    if (!block) {
+        ASDF_ERROR_OOM(file);
+        return NULL;
+    }
+
+    asdf_parser_t *parser = file->parser;
+    asdf_block_info_t *info = parser->blocks.block_infos[index];
+    block->file = file;
+    block->info = *info;
+    return block;
+}
+
+
+void asdf_block_close(asdf_block_t *block) {
+    if (!block)
+        return;
+
+    // If the block has an open data handle, close it
+    if (block->data) {
+        asdf_stream_t *stream = block->file->parser->stream;
+        stream->close_mem(stream, block->data);
+    }
+
+    ZERO_MEMORY(block, sizeof(asdf_block_t));
+    free(block);
+}
+
+
+size_t asdf_block_data_size(asdf_block_t *block) {
+    return block->info.header.data_size;
+}
+
+
+void *asdf_block_data(asdf_block_t *block, size_t *size) {
+    if (!block)
+        return NULL;
+
+    if (block->data) {
+        if (size)
+            *size = block->data_size;
+
+        return block->data;
+    }
+
+    asdf_parser_t *parser = block->file->parser;
+    asdf_stream_t *stream = parser->stream;
+    size_t avail = 0;
+    void *data =
+        stream->open_mem(stream, block->info.data_pos, block->info.header.used_size, &avail);
+    block->data = data;
+    block->data_size = avail;
+
+    if (size)
+        *size = avail;
+
+    return data;
+}

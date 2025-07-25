@@ -150,11 +150,17 @@ void asdf_parse_event_recycle(asdf_parser_t *parser, asdf_event_t *event) {
 
 
 void asdf_parse_event_freelist_free(asdf_parser_t *parser) {
+    struct asdf_event_p *current = parser->current_event_p;
+    free(current);
+
     struct asdf_event_p *freelist = parser->event_freelist;
 
     while (freelist) {
         struct asdf_event_p *next = freelist->next;
-        free(freelist);
+        // Avoid double-free in case the current head is also on the freelist
+        if (freelist != current)
+            free(freelist);
+
         freelist = next;
     }
 }

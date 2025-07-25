@@ -2,11 +2,15 @@
  * ASDF block functions
  */
 
+#include <stddef.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "block.h"
 #include "compat/endian.h"
 #include "error.h"
+#include "file.h"
+#include "log.h"
 #include "parse.h"
 #include "parse_util.h"
 #include "stream.h"

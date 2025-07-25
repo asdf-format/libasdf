@@ -40,6 +40,8 @@ typedef struct asdf_stream {
         size_t *match_token_idx);
     int (*seek)(struct asdf_stream *stream, off_t offset, int whence);
     off_t (*tell)(struct asdf_stream *stream);
+    void *(*open_mem)(struct asdf_stream *stream, off_t offset, size_t size, size_t *avail);
+    int (*close_mem)(struct asdf_stream *stream, void *addr);
     void (*close)(struct asdf_stream *stream);
     int (*fy_parser_set_input)(struct asdf_stream *stream, struct fy_parser *fyp);
 

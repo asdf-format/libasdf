@@ -1,6 +1,7 @@
 #include "munit.h"
 #include "util.h"
 
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -132,12 +133,58 @@ MU_TEST(test_file_scan_token_spans_buffers) {
 }
 
 
+MU_TEST(test_stream_file_open_mem) {
+    const char *filename = get_fixture_file_path("255.asdf");
+    asdf_stream_t *stream = asdf_stream_from_file(NULL, filename);
+    assert_not_null(stream);
+    off_t offset = 0x3bb;  // Known offset of the first block data in this file
+    size_t size = 256;  // Known size of the block data in this file
+    size_t avail = 0;
+    uint8_t *addr = (uint8_t *)stream->open_mem(stream, offset, size, &avail);
+    assert_not_null(addr);
+    assert_int(avail, ==, size);
+    // Test file contains the integers 0 to 255
+    for (int idx = 0; idx <= 255; idx++) {
+        assert_int(addr[idx], ==, idx);
+    }
+    assert_int(stream->close_mem(stream, (void *)addr), ==, 0);
+    asdf_stream_close(stream);
+    return MUNIT_OK;
+}
+
+
+MU_TEST(test_stream_mem_open_mem) {
+    const char *filename = get_fixture_file_path("255.asdf");
+    size_t filesize = 0;
+    char *data = tail_file(filename, 0, &filesize);
+    assert_not_null(data);
+    asdf_stream_t *stream = asdf_stream_from_memory(NULL, (const void *)data, filesize);
+    assert_not_null(stream);
+    off_t offset = 0x3bb;  // Known offset of the first block data in this file
+    size_t size = 256;  // Known size of the block data in this file
+    size_t avail = 0;
+    uint8_t *addr = (uint8_t *)stream->open_mem(stream, offset, size, &avail);
+    assert_not_null(addr);
+    assert_int(avail, ==, size);
+    // Test file contains the integers 0 to 255
+    for (int idx = 0; idx <= 255; idx++) {
+        assert_int(addr[idx], ==, idx);
+    }
+    assert_int(stream->close_mem(stream, (void *)addr), ==, 0);
+    asdf_stream_close(stream);
+    free(data);
+    return MUNIT_OK;
+}
+
+
 MU_TEST_SUITE(
     test_asdf_stream,
     MU_RUN_TEST(test_file_scan_token_at_beginning),
     MU_RUN_TEST(test_file_scan_token_at_end),
     MU_RUN_TEST(test_file_scan_token_in_middle),
-    MU_RUN_TEST(test_file_scan_token_spans_buffers)
+    MU_RUN_TEST(test_file_scan_token_spans_buffers),
+    MU_RUN_TEST(test_stream_file_open_mem),
+    MU_RUN_TEST(test_stream_mem_open_mem)
 );
 
 

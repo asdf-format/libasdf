@@ -95,8 +95,10 @@ asdf_event_t *asdf_event_iterate(asdf_parser_t *parser) {
 
     asdf_event_t *event = asdf_parser_parse(parser);
 
-    if (!event)
+    if (!event) {
         free(parser->current_event_p);
+        parser->current_event_p = NULL;
+    }
 
     return event;
 }

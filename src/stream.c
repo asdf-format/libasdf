@@ -3,9 +3,12 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
 
 #include "context.h"
 #include "error.h"
+#include "log.h"
 #include "stream.h"
 #include "stream_intern.h"
 #include "util.h"
@@ -334,6 +337,157 @@ static off_t file_tell(asdf_stream_t *stream) {
 }
 
 
+static void *file_open_mem(asdf_stream_t *stream, off_t offset, size_t size, size_t *avail) {
+    /* TODO: open_mem not supported yet for non-seekable streams (which are not fully supported
+     * yet in general).  Idea would be when reading from a stream there will be option flags
+     * whether or not to buffer block data, and thresholds controlling whether blocks should be
+     * buffered in-memory or to a temp file
+     */
+    assert(stream->is_seekable && "open_mem not supported yet on non-seekable streams");
+    file_userdata_t *data = stream->userdata;
+    int fd = fileno(data->file);
+
+    if (fd < 0) {
+        ASDF_ERROR_ERRNO(stream, errno);
+        return NULL;
+    }
+
+    struct stat st;
+
+    if (fstat(fd, &st) != 0) {
+        ASDF_ERROR_ERRNO(stream, errno);
+        return NULL;
+    }
+
+    size_t file_size = st.st_size;
+
+    if ((size_t)offset > file_size) {
+        ASDF_ERROR_ERRNO(stream, EINVAL);
+        return NULL;
+    }
+
+    // Ensure availability in the mmap_info array
+    if (!data->mmaps) {
+        file_mmap_info_t *mmaps = calloc(ASDF_FILE_STREAM_INITIAL_MMAPS, sizeof(file_mmap_info_t));
+
+        if (!mmaps) {
+            ASDF_ERROR_OOM(stream);
+            return NULL;
+        }
+
+        data->mmaps = mmaps;
+        data->mmaps_size = ASDF_FILE_STREAM_INITIAL_MMAPS;
+    }
+
+    // Find free mmap info or allocate more
+    file_mmap_info_t *mmap_info = NULL;
+
+    for (size_t idx = 0; idx < data->mmaps_size; idx++) {
+        file_mmap_info_t *tmp = &data->mmaps[idx];
+        if (NULL == tmp->addr) {
+            mmap_info = tmp;
+            break;
+        }
+    }
+
+    if (!mmap_info) {
+        size_t new_size = data->mmaps_size * 2;
+        file_mmap_info_t *mmaps = realloc(data->mmaps, new_size);
+
+        if (!mmaps) {
+            ASDF_ERROR_OOM(stream);
+            return NULL;
+        }
+
+        data->mmaps = mmaps;
+        mmap_info = &mmaps[data->mmaps_size];
+        data->mmaps_size = new_size;
+    }
+
+    size_t max_avail = file_size - offset;
+    size_t map_size = size < max_avail ? size : max_avail;
+    size_t page_size = (size_t)sysconf(_SC_PAGESIZE);
+
+    // Align size and offset to page boundary
+    size_t offset_aligned = offset & ~(page_size - 1);
+    size_t offset_delta = offset - offset_aligned;
+    size_t map_size_aligned = map_size + offset_delta;
+
+    // TODO: Read-only for now; obviously when writing is introduced this will be passed the
+    // appropriate flags, also need options for copy-on-write behavior etc.
+    void *addr = mmap(NULL, map_size_aligned, PROT_READ, MAP_PRIVATE, fd, offset_aligned);
+
+    if (MAP_FAILED == addr) {
+        ASDF_ERROR_ERRNO(stream, errno);
+        return NULL;
+    }
+
+    // TODO: The ability to pass madvise flags would also be useful esp. for random vs seq access
+
+    addr += offset_delta;
+    mmap_info->addr = addr;
+    mmap_info->size = map_size_aligned;
+    mmap_info->offset = offset;
+
+    if (avail)
+        *avail = map_size;
+
+    return addr;
+}
+
+
+static int file_close_mem_impl(asdf_stream_t *stream, file_mmap_info_t *mmap_info) {
+    int ret = 0;
+
+    size_t page_size = (size_t)sysconf(_SC_PAGESIZE);
+
+    // Align size and offset to page boundary
+    off_t offset = mmap_info->offset;
+    size_t offset_aligned = offset & ~(page_size - 1);
+    size_t offset_delta = offset - offset_aligned;
+    void *aligned_addr = mmap_info->addr - offset_delta;
+
+    if (0 != munmap(aligned_addr, mmap_info->size)) {
+        ASDF_ERROR_ERRNO(stream, errno);
+        ret = -1;
+    }
+
+    mmap_info->addr = NULL;
+    mmap_info->size = 0;
+    mmap_info->offset = 0;
+    return ret;
+}
+
+
+static int file_close_mem(asdf_stream_t *stream, void *addr) {
+    file_userdata_t *data = stream->userdata;
+    file_mmap_info_t *mmap_info = NULL;
+
+    if (data->mmaps) {
+        for (size_t idx = 0; idx < data->mmaps_size; idx++) {
+            file_mmap_info_t *tmp = &data->mmaps[idx];
+            if (addr == tmp->addr) {
+                mmap_info = tmp;
+                break;
+            }
+        }
+    }
+
+    if (!mmap_info) {
+        ASDF_LOG(
+            stream,
+            ASDF_LOG_WARN,
+            "address %p is not for a memory buffer managed by the libasdf stream and cannot "
+            "be closed",
+            addr);
+        ASDF_ERROR_ERRNO(stream, EINVAL);
+        return -1;
+    }
+
+    return file_close_mem_impl(stream, mmap_info);
+}
+
+
 static void file_close(asdf_stream_t *stream) {
     file_userdata_t *data = stream->userdata;
 
@@ -341,6 +495,17 @@ static void file_close(asdf_stream_t *stream) {
         fclose(data->file);
 
     free(data->buf);
+
+    // If there are open mmaps close them too
+    if (data->mmaps) {
+        for (size_t idx = 0; idx < data->mmaps_size; idx++) {
+            file_mmap_info_t mmap_info = data->mmaps[idx];
+            if (mmap_info.addr)
+                file_close_mem_impl(stream, &mmap_info);
+        }
+        free(data->mmaps);
+    }
+
     free(data);
     asdf_context_release(stream->base.ctx);
     free(stream);
@@ -426,6 +591,8 @@ asdf_stream_t *asdf_stream_from_fp(asdf_context_t *ctx, FILE *file, const char *
     stream->scan = file_scan;
     stream->seek = file_seek;
     stream->tell = file_tell;
+    stream->open_mem = file_open_mem;
+    stream->close_mem = file_close_mem;
     stream->close = file_close;
     stream->fy_parser_set_input = file_fy_parser_set_input;
     asdf_stream_set_capture(stream, NULL, NULL, 0);
@@ -566,6 +733,55 @@ static off_t mem_tell(asdf_stream_t *stream) {
 }
 
 
+/* Memory access interfaces
+ *
+ * When the stream is from a memory buffer this is trivial; just returns pointer
+ * to the relevant offset
+ *
+ * mem_close_mem thus is a no-op
+ */
+static void *mem_open_mem(asdf_stream_t *stream, off_t offset, size_t size, size_t *avail) {
+    mem_userdata_t *data = stream->userdata;
+    // Basic bound checks
+    if ((size_t)offset > data->size) {
+        if (avail)
+            *avail = 0;
+
+        return NULL;
+    }
+
+    if (size > SIZE_MAX - (size_t)offset) {
+        if (avail)
+            *avail = 0;
+
+        return NULL;
+    }
+
+    // Clamp to available size
+    if (avail) {
+        size_t remaining = data->size - (size_t)offset;
+        *avail = (size <= remaining) ? size : remaining;
+    }
+
+    return (void *)(data->buf + offset);
+}
+
+
+static int mem_close_mem(asdf_stream_t *stream, void *addr) {
+    mem_userdata_t *data = stream->userdata;
+    if (addr < (void *)data->buf || addr > (void *)data->buf + data->size) {
+        ASDF_LOG(
+            stream,
+            ASDF_LOG_WARN,
+            "stream->close_mem on memory address not belonging to this stream's buffer (%p)",
+            addr);
+        ASDF_ERROR_ERRNO(stream, EINVAL);
+        return -1;
+    }
+    return 0;
+}
+
+
 static void mem_close(asdf_stream_t *stream) {
     free(stream->userdata);
     asdf_context_release(stream->base.ctx);
@@ -620,6 +836,8 @@ asdf_stream_t *asdf_stream_from_memory(asdf_context_t *ctx, const void *buf, siz
     stream->scan = mem_scan;
     stream->seek = mem_seek;
     stream->tell = mem_tell;
+    stream->open_mem = mem_open_mem;
+    stream->close_mem = mem_close_mem;
     stream->close = mem_close;
     stream->fy_parser_set_input = mem_fy_parser_set_input;
     asdf_stream_set_capture(stream, NULL, NULL, 0);

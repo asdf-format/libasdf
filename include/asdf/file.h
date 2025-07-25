@@ -65,4 +65,14 @@ ASDF_EXPORT asdf_value_err_t asdf_get_float(asdf_file_t *file, const char *path,
 ASDF_EXPORT bool asdf_is_double(asdf_file_t *file, const char *path);
 ASDF_EXPORT asdf_value_err_t asdf_get_double(asdf_file_t *file, const char *path, double *out);
 
+/* Block-related methods */
+ASDF_EXPORT size_t asdf_block_count(asdf_file_t *file);
+
+typedef struct asdf_block asdf_block_t;
+
+ASDF_EXPORT asdf_block_t *asdf_block_open(asdf_file_t *file, size_t index);
+ASDF_EXPORT void asdf_block_close(asdf_block_t *block);
+ASDF_EXPORT size_t asdf_block_data_size(asdf_block_t *block);
+ASDF_EXPORT void *asdf_block_data(asdf_block_t *block, size_t *size);
+
 #endif /* ASDF_FILE_H */
