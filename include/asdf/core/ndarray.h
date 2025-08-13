@@ -39,6 +39,8 @@
 #include <asdf/extension.h>
 #include <asdf/util.h>
 
+ASDF_BEGIN_DECLS
+
 /*
  * Enum for basic ndarray datatypes
  *
@@ -116,5 +118,6 @@ ASDF_EXPORT asdf_ndarray_err_t asdf_ndarray_read_tile_2d(
     asdf_ndarray_t *ndarray, uint64_t x, uint64_t y, uint64_t width, uint64_t height,
     const uint64_t *plane_origin, void **out);
 
+ASDF_END_DECLS
 
 #endif /* ASDF_CORE_NDARRAY_H */

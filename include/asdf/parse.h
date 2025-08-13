@@ -8,6 +8,8 @@
 #include <asdf/util.h>
 
 
+ASDF_BEGIN_DECLS
+
 // NOLINTNEXTLINE(readability-identifier-naming)
 #define _ASDF_PARSER_OPTS(X) \
     X(ASDF_PARSER_OPT_EMIT_YAML_EVENTS, 0) \
@@ -24,7 +26,7 @@ typedef enum {
 
 
 // NOLINTNEXTLINE(readability-magic-numbers)
-_Static_assert(ASDF_PARSER_OPT_BUFFER_TREE < (1UL << 63), "too many flags for 64-bit int");
+ASDF_STATIC_ASSERT(ASDF_PARSER_OPT_BUFFER_TREE < (1UL << 63), "too many flags for 64-bit int");
 
 
 typedef uint64_t asdf_parser_optflags_t;
@@ -51,5 +53,7 @@ ASDF_EXPORT asdf_event_t *asdf_parser_parse(asdf_parser_t *parser);
 ASDF_EXPORT void asdf_parser_destroy(asdf_parser_t *parser);
 ASDF_EXPORT bool asdf_parser_has_error(const asdf_parser_t *parser);
 ASDF_EXPORT const char *asdf_parser_get_error(const asdf_parser_t *parser);
+
+ASDF_END_DECLS
 
 #endif /* ASDF_PARSE_H */

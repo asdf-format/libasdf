@@ -1,0 +1,15 @@
+nobase_include_HEADERS = \
+    asdf.h \
+    asdf/core/asdf.h \
+    asdf/core/extension_metadata.h \
+    asdf/core/history_entry.h \
+    asdf/core/ndarray.h \
+    asdf/core/software.h \
+    asdf/event.h \
+    asdf/extension.h \
+    asdf/file.h \
+    asdf/log.h \
+    asdf/parse.h \
+    asdf/util.h \
+    asdf/value.h \
+    asdf/yaml.h

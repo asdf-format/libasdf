@@ -8,6 +8,8 @@
 #include <asdf/core/software.h>
 
 
+ASDF_BEGIN_DECLS
+
 typedef struct {
     const char *description;
     struct timespec time;
@@ -17,5 +19,6 @@ typedef struct {
 
 ASDF_DECLARE_EXTENSION(history_entry, asdf_history_entry_t);
 
+ASDF_END_DECLS
 
 #endif /* ASDF_CORE_HISTORY_ENTRY_H */

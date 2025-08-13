@@ -10,6 +10,17 @@
 #endif
 
 
+#ifdef __cplusplus
+    #define ASDF_BEGIN_DECLS extern "C" {
+    #define ASDF_END_DECLS   }
+    #define ASDF_STATIC_ASSERT(cond, msg) static_assert(cond, msg)
+#else
+    #define ASDF_BEGIN_DECLS
+    #define ASDF_END_DECLS
+    #define ASDF_STATIC_ASSERT(cond, msg) _Static_assert(cond, msg)
+#endif
+
+
 /* AFAIK this should be supported on virtually any target/compiler */
 #define ASDF_CONSTRUCTOR __attribute__((constructor))
 #define ASDF_DESTRUCTOR __attribute__((destructor))

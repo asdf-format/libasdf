@@ -4,7 +4,12 @@
 
 #include <asdf/extension.h>
 
+
+ASDF_BEGIN_DECLS
+
 /* NOTE: asdf_software_t is defined in asdf/extension.h due to the circularity between them */
 ASDF_DECLARE_EXTENSION(software, asdf_software_t);
+
+ASDF_END_DECLS
 
 #endif /* ASDF_CORE_SOFTWARE_H */

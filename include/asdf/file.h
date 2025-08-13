@@ -7,6 +7,8 @@
 #include <asdf/util.h>
 #include <asdf/value.h>
 
+ASDF_BEGIN_DECLS
+
 /* Forward declaration */
 typedef struct asdf_file asdf_file_t;
 
@@ -77,5 +79,7 @@ ASDF_EXPORT asdf_block_t *asdf_block_open(asdf_file_t *file, size_t index);
 ASDF_EXPORT void asdf_block_close(asdf_block_t *block);
 ASDF_EXPORT size_t asdf_block_data_size(asdf_block_t *block);
 ASDF_EXPORT void *asdf_block_data(asdf_block_t *block, size_t *size);
+
+ASDF_END_DECLS
 
 #endif /* ASDF_FILE_H */

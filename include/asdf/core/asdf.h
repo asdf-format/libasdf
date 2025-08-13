@@ -7,6 +7,9 @@
 #include <asdf/extension.h>
 #include <asdf/util.h>
 
+
+ASDF_BEGIN_DECLS
+
 ASDF_EXPORT extern asdf_software_t libasdf_software;
 
 
@@ -37,5 +40,6 @@ typedef struct {
 
 ASDF_DECLARE_EXTENSION(meta, asdf_meta_t);
 
+ASDF_END_DECLS
 
 #endif /* ASDF_CORE_ASDF_H */

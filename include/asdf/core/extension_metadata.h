@@ -7,6 +7,8 @@
 #include <asdf/value.h>
 
 
+ASDF_BEGIN_DECLS
+
 typedef struct {
     const char *extension_class;
     const asdf_software_t *package;
@@ -16,5 +18,6 @@ typedef struct {
 
 ASDF_DECLARE_EXTENSION(extension_metadata, asdf_extension_metadata_t);
 
+ASDF_END_DECLS
 
 #endif /* ASDF_CORE_EXTENSION_METADATA_H */

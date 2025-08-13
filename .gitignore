@@ -36,6 +36,7 @@ third_party/*.la
 tests/*.log
 tests/*.trs
 tests/*.unit
+tests/test_cpp_headers.cpp
 tests/tmp
 
 # coverage outputs

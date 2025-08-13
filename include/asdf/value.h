@@ -9,6 +9,8 @@
 
 #include <asdf/util.h>
 
+ASDF_BEGIN_DECLS
+
 
 typedef enum {
     ASDF_VALUE_UNKNOWN,
@@ -137,5 +139,6 @@ ASDF_EXPORT asdf_value_err_t asdf_value_as_float(asdf_value_t *value, float *out
 ASDF_EXPORT bool asdf_value_is_double(asdf_value_t *value);
 ASDF_EXPORT asdf_value_err_t asdf_value_as_double(asdf_value_t *value, double *out);
 
+ASDF_END_DECLS
 
 #endif /* ASDF_VALUE_H */

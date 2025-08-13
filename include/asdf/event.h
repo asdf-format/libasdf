@@ -6,6 +6,8 @@
 
 #include <asdf/util.h>
 
+ASDF_BEGIN_DECLS
+
 
 #define ASDF_EVENT_TYPES(X) \
     X(ASDF_NONE_EVENT) \
@@ -53,5 +55,7 @@ ASDF_EXPORT asdf_event_t *asdf_event_iterate(asdf_parser_t *parser);
 ASDF_EXPORT const char *asdf_event_type_name(asdf_event_type_t event_type);
 ASDF_EXPORT void asdf_event_print(const asdf_event_t *event, FILE *file, bool verbose);
 ASDF_EXPORT void asdf_event_free(asdf_parser_t *parser, asdf_event_t *event);
+
+ASDF_END_DECLS
 
 #endif  /* ASDF_EVENT_H */

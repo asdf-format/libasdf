@@ -155,6 +155,28 @@ else
 $(warning Skipping running asdf command-line tests; make sure to run ./configure --enable-tool; make to build the tool)
 endif
 
+# Test headers on C++
+asdf_public_headers = $(wildcard $(top_srcdir)/include/asdf/*.h)
+cpp_header_test = $(builddir)/test_cpp_headers.cpp
+
+# Generate the C++ header test file
+$(cpp_header_test): $(asdf_public_headers) $(srcdir)/scripts/generate_test_cpp_headers.sh
+	$(srcdir)/scripts/generate_test_cpp_headers.sh $(top_srcdir)/include $@
+
+
+CLEANFILES = test_cpp_headers.cpp
+
+
+check-cpp-headers: $(cpp_header_test) $(top_builddir)/libasdf.la
+	$(LIBTOOL) --mode=link $(CXX) -std=c++17 -I$(top_srcdir)/include \
+	    $(cpp_header_test) $(top_builddir)/libasdf.la \
+	    -o test_cpp_headers
+	./test_cpp_headers
+	@rm -f test_cpp_headers
+
+
+check-local: check-cpp-headers
+
 
 AUTOMAKE_OPTIONS = parallel-tests
 
@@ -194,7 +216,8 @@ EXTRA_DIST += \
     fixtures/value-types.asdf \
     munit/COPYING \
     munit/munit.c \
-    munit/munit.h
+    munit/munit.h \
+    scripts/generate_test_cpp_headers.sh
 
 
 # Bit of a hack to make syncing the submodule a prerequisite to make check

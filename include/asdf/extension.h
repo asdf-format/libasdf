@@ -9,6 +9,8 @@
 #include <asdf/value.h>
 
 
+ASDF_BEGIN_DECLS
+
 typedef struct {
     const char *name;
     const char *author;
@@ -109,5 +111,7 @@ ASDF_EXPORT const asdf_extension_t *asdf_extension_get(asdf_file_t *file, const 
     ASDF_EXPORT bool asdf_is_##extname(asdf_file_t *file, const char *path); \
     ASDF_EXPORT asdf_value_err_t asdf_get_##extname(asdf_file_t *file, const char *path, type **out); \
     ASDF_EXPORT void asdf_##extname##_destroy(type *object)
+
+ASDF_END_DECLS
 
 #endif /* ASDF_EXTENSION_H */
