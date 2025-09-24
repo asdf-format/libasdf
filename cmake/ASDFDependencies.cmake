@@ -1,0 +1,57 @@
+option(FYAML_NO_PKGCONFIG NO)
+if(FYAML_NO_PKGCONFIG)
+    set(FYAML_LIBRARIES "fyaml")
+    set(FYAML_LIBDIR "" CACHE STRING "Directory containing libfyaml library")
+    set(FYAML_INCLUDEDIR "" CACHE STRING "Directory containing libfyaml headers")
+    set(FYAML_CFLAGS "" CACHE STRING "Compiler options for libfyaml")
+    set(FYAML_LDFLAGS "" CACHE STRING "Linker options for libfyaml")
+    link_directories(${FYAML_LIBDIR})
+    include_directories(${FYAML_INCLUDEDIR})
+    add_link_options(${FYAML_LDFLAGS})
+    add_compile_options(${FYAML_CFLAGS})
+else()
+    if(PKG_CONFIG_FOUND)
+        pkg_check_modules(FYAML libfyaml REQUIRED)
+    else()
+        message("pkg-config not found. Install pkg-config, or use FYAML_NO_PKGCONFIG=YES.")
+    endif()
+endif()
+
+if(APPLE)
+    option(ARGP_NO_PKGCONFIG NO)
+    if(ARGP_NO_PKGCONFIG)
+        set(ARGP_LIBRARIES "argp")
+        set(ARGP_LIBDIR "" CACHE STRING "Directory containing libargp library")
+        set(ARGP_INCLUDEDIR "" CACHE STRING "Directory containing libargp headers")
+        set(ARGP_CFLAGS "" CACHE STRING "Compiler options for libargp")
+        set(ARGP_LDFLAGS "" CACHE STRING "Linker options for libargp")
+        link_directories(${ARGP_LIBDIR})
+        include_directories(${ARGP_INCLUDEDIR})
+        add_link_options(${ARGP_LDFLAGS})
+        add_compile_options(${ARGP_CFLAGS})
+    else()
+        if(PKG_CONFIG_FOUND)
+            pkg_check_modules(ARGP libargp REQUIRED)
+        else()
+            message("pkg-config not found. Install pkg-config, or use ARGP_NO_PKGCONFIG=YES.")
+        endif()
+    endif()
+endif()
+
+if(ENABLE_DOCS)
+    find_package(Python3 REQUIRED)
+    if (PYTHON3_FOUND)
+        get_filename_component(python_prefix "${Python3_EXECUTABLE}" DIRECTORY)
+        set(python_bindirs
+            "${python_prefix}/bin"
+            "${python_prefix}/Scripts" # windows
+        )
+    endif()
+
+    find_program(SPHINX_BUILD_PROG
+        NAMES sphinx-build sphinx-build.exe
+        HINTS ${python_bindirs}
+        REQUIRED
+    )
+    find_package_handle_standard_args(Sphinx DEFAULT_MSG SPHINX_BUILD_PROG)
+endif()

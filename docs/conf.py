@@ -107,7 +107,7 @@ hawkmoth_root = Path(__file__).parent.parent
 #
 # Should see if we can glean what we need here from configure/automake output
 # For now see what we can get away with by simply hard-coding...
-hawkmoth_clang = ['-Iinclude']
+hawkmoth_clang = [f'-I{hawkmoth_root}/include', '-Iinclude']
 
 
 # -- Options for theme and HTML output -----------------------------------------
