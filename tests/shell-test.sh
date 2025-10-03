@@ -60,8 +60,11 @@ for input in $@; do
 
   mkdir -p tmp
 
-  # Generate actual output
-  "${top_builddir}"/asdf ${SUBCOMMAND} ${EXTRA_ARGS} "$input" 2>&1 > "$actual" || true
+  asdfprog="${top_builddir}/asdf"
+  if [ "x${WITH_CMAKE}" != "x" ]; then
+      asdfprog="${top_builddir}/src/asdf"
+  fi
+  ${asdfprog} ${SUBCOMMAND} ${EXTRA_ARGS} "$input" 2>&1 > "$actual" || true
 
   if [ "$UPDATE" -eq 1 ]; then
     cp "$actual" "$expected"

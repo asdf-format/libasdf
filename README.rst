@@ -190,7 +190,7 @@ First we'd have to have some.
 Building from git
 -----------------
 
-libasdf's build system is built with the GNU autotools suite. To build this project
+libasdf's build system is built with CMake. To build this project
 from source, you'll need the following software installed on your system:
 
 Requirements
@@ -199,12 +199,7 @@ Requirements
 To build this project from source, you'll need the following software installed
 on your system:
 
-- **GNU Autotools** (for generating the build system)
-  
-  - ``autoconf``
-  - ``automake``
-  - ``libtool`` (if your project uses it — remove if not)
-
+- **CMake** (for generating the build system)
 - **C compiler** (e.g., ``gcc`` or ``clang``)
 - **Make** (e.g., ``GNU make``)
 - **pkg-config**
@@ -214,15 +209,15 @@ on your system:
 
 On **Debian/Ubuntu**::
 
-    sudo apt install build-essential autoconf automake libtool pkg-config libfyaml-dev
+    sudo apt install build-essential pkg-config libfyaml-dev
 
 On **Fedora**::
 
-    sudo dnf install gcc make autoconf automake libtool pkgconf libfyaml-devel
+    sudo dnf install gcc make pkgconf libfyaml-devel
 
 On **macOS** (with Homebrew)::
 
-    brew install autoconf automake libtool pkg-config libfyaml argp-standalone
+    brew install pkg-config libfyaml argp-standalone
 
 Building
 ^^^^^^^^
@@ -231,17 +226,30 @@ Clone the repository and build the project as follows::
 
     git clone https://github.com/asdf-format/libasdf.git
     cd libasdf
-    ./autogen.sh
-    ./configure
+    mkdir build
+    cd build
+    cmake .. \
+        -D ENABLE_TESTING=[YES/NO] \
+        -D ENABLE_TESTING_SHELL=[YES/NO] \
+        -D ENABLE_ASAN=[YES/NO] \
+        -D FYAML_NO_PKGCONFIG=[YES/NO] \
+            # If YES \
+            -D FYAML_LIBDIR=[path/lib] \
+            -D FYAML_INCLUDEDIR=[path/include] \
+        -D ARGP_NO_PKGCONFIG=[YES/NO] \
+            # If YES \
+            -D ARGP_LIBDIR=[path/lib] \
+            -D ARGP_INCLUDEDIR=[path/include]
     make
     sudo make install   # Optional, installs the binary system-wide
 
 If doing a system install, as usual it's recommended to install to ``/usr/local``
-by providing ``--prefix=/usr/local`` when running ``./configure``.  Or, if you
+by providing ``-DCMAKE_INSTALL_PREFIX=/usr/local`` when running ``cmake``.  Or, if you
 have a ``${HOME}/.local`` you can set the prefix there, etc.
 
 Notes
 ^^^^^
 
 - Run ``make clean`` to clean build artifacts.
-- Run ``./configure --help`` to see available configuration options.
+- Run ``make project_source`` to generate a source archive with CPack
+- Run ``ctest --output-on-failure`` to execute unit tests
