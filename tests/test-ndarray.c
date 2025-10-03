@@ -551,6 +551,54 @@ MU_TEST(test_asdf_ndarray_record_datatype) {
 }
 
 
+MU_TEST(test_heap_use_after_free_issue_63) {
+    const char *path = get_fixture_file_path("multiple_hdu.asdf");
+    asdf_file_t *file = asdf_open_file(path, "r");
+    assert_not_null(file);
+    asdf_ndarray_t *ndarray = NULL;
+    asdf_value_err_t err = asdf_get_ndarray(file, "TABLE", &ndarray);
+    assert_int(err, ==, ASDF_VALUE_OK);
+    assert_not_null(ndarray);
+
+    asdf_datatype_t *datatype = &ndarray->datatype;
+    assert_int(datatype->type, ==, ASDF_DATATYPE_RECORD);
+    // sizeof(S21) + sizeof(S21)
+    assert_int(datatype->size, ==, 42);
+    assert_null(datatype->name);
+    assert_int(datatype->byteorder, ==, ASDF_BYTEORDER_BIG);
+    assert_int(datatype->ndim, ==, 0);
+    assert_null(datatype->shape);
+    assert_int(datatype->nfields, ==, 2);
+
+    const asdf_datatype_t *field = &datatype->fields[0];
+    assert_int(field->type, ==, ASDF_DATATYPE_ASCII);
+    assert_int(field->size, ==, 21);
+    assert_not_null(field->name);
+    assert_string_equal(field->name, "ID");
+    assert_int(field->byteorder, ==, ASDF_BYTEORDER_BIG);
+    assert_int(field->ndim, ==, 0);
+    assert_null(field->shape);
+    assert_int(field->nfields, ==, 0);
+    assert_null(field->fields);
+
+    field = &datatype->fields[1];
+    assert_int(field->type, ==, ASDF_DATATYPE_ASCII);
+    assert_int(field->size, ==, 21);
+    assert_not_null(field->name);
+    assert_string_equal(field->name, "X");
+    assert_int(field->byteorder, ==, ASDF_BYTEORDER_BIG);
+    assert_int(field->ndim, ==, 0);
+    assert_null(field->shape);
+    assert_int(field->nfields, ==, 0);
+    assert_null(field->fields);
+
+    assert_not_null(datatype->fields);
+    asdf_ndarray_destroy(ndarray);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
 MU_TEST_SUITE(
     test_asdf_ndarray,
     MU_RUN_TEST(test_asdf_ndarray_read_1d_tile_contiguous),
@@ -558,7 +606,8 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_ndarray_read_3d_tile),
     MU_RUN_TEST(test_asdf_ndarray_read_tile_byteswap),
     MU_RUN_TEST(test_asdf_ndarray_numeric_conversion, test_numeric_conversion_params),
-    MU_RUN_TEST(test_asdf_ndarray_record_datatype)
+    MU_RUN_TEST(test_asdf_ndarray_record_datatype),
+    MU_RUN_TEST(test_heap_use_after_free_issue_63)
 );
 
 

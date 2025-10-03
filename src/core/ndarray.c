@@ -497,15 +497,20 @@ static asdf_value_err_t asdf_ndarray_parse_datatype(
     if (asdf_value_is_sequence(value)) {
         // A length 2 array where the second element is an integer value should be a string
         // datatype.  Any other array is a record datatype
+        bool is_string_datatype = false;
+
         if (asdf_sequence_size(value) == 2) {
             asdf_value_t *stringlen = asdf_sequence_get(value, 1);
             if (stringlen && asdf_value_is_uint64(stringlen)) {
-                err = asdf_ndarray_parse_string_datatype(value, byteorder, datatype);
+                is_string_datatype = true;
                 asdf_value_destroy(stringlen);
             }
-        } else {
-            err = asdf_ndarray_parse_record_datatype(value, byteorder, datatype);
         }
+
+        if (is_string_datatype)
+            err = asdf_ndarray_parse_string_datatype(value, byteorder, datatype);
+        else
+            err = asdf_ndarray_parse_record_datatype(value, byteorder, datatype);
 
         return err;
     }
@@ -643,11 +648,11 @@ static asdf_value_err_t asdf_ndarray_deserialize(
         goto failure;
 
     err = asdf_ndarray_parse_datatype(prop, byteorder, &ndarray->datatype);
-    asdf_value_destroy(prop);
 
-    if (UNLIKELY(err != ASDF_VALUE_OK)) {
+    if (UNLIKELY(err != ASDF_VALUE_OK))
         goto failure;
-    }
+
+    asdf_value_destroy(prop);
 
     /* Parse offset */
     if ((prop = asdf_mapping_get(value, "offset"))) {
