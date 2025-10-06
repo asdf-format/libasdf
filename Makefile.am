@@ -10,6 +10,7 @@ src_files = \
     src/error.c \
     src/event.c \
     src/extension_registry.c \
+    src/extension_util.c \
     src/file.c \
     src/info.c \
     src/log.c \
@@ -27,6 +28,7 @@ src_headers = \
     src/core/ndarray_convert.h \
     src/error.h \
     src/extension_registry.h \
+    src/extension_util.h \
     src/event.h \
     src/file.h \
     src/info.h \
