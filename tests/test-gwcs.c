@@ -16,6 +16,7 @@ MU_TEST(test_asdf_get_gwcs) {
     assert_not_null(gwcs);
 
     assert_string_equal(gwcs->name, "270p65x48y69");
+    assert_int(gwcs->n_steps, ==, 2);
 
     asdf_gwcs_destroy(gwcs);
     asdf_close(file);

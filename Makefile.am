@@ -46,6 +46,7 @@ src_headers = \
 
 if HAVE_GWCS
     src_files += \
+        src/gwcs/step.c \
         src/gwcs/wcs.c
 endif
 

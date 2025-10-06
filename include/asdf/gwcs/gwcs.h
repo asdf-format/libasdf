@@ -4,6 +4,7 @@
 #ifndef ASDF_GWCS_GWCS_H
 #define ASDF_GWCS_GWCS_H
 
+#include <asdf/gwcs/step.h>
 #include <asdf/gwcs/wcs.h>
 #include <asdf/util.h>
 
