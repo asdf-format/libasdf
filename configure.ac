@@ -187,14 +187,14 @@ AS_IF([test "x$asdf_build_tool" = "xyes"], [
 AC_ARG_WITH([gwcs],
   [AS_HELP_STRING([--with-gwcs],
                   [Build with gwcs extension support--will later be moved to an external plugin])],
-  [with_gwcs=yes],
+  [with_gwcs=$withval],
   [with_gwcs=no])
 
 # fits-wcs option (implies gwcs)
 AC_ARG_WITH([fits-wcs],
   [AS_HELP_STRING([--with-fits-wcs],
                   [Include support for FITS WCS via WCSLIB; implies --with-gwcs])],
-  [with_fits_wcs=yes],
+  [with_fits_wcs=$withval],
   [with_fits_wcs=no])
 
 # if fits-wcs requested, force gwcs to yes
@@ -209,6 +209,7 @@ AS_IF([test "x$with_gwcs" = "xyes"], [
   AC_DEFINE([WITH_GWCS], [1], [Defined if building with gwcs enabled])
   ASDF_OPTIONAL="${ASDF_OPTIONAL}gwcs "
 ])
+AM_CONDITIONAL([HAVE_GWCS], [test "x$with_gwcs" = "xyes"])
 
 AS_IF([test "x$with_fits_wcs" = "xyes"], [
   # Check for wcslib now

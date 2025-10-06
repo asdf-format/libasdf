@@ -13,3 +13,11 @@ nobase_include_HEADERS = \
     asdf/util.h \
     asdf/value.h \
     asdf/yaml.h
+
+
+if HAVE_GWCS
+    nobase_include_HEADERS += \
+        asdf/gwcs/gwcs.h \
+        asdf/gwcs/step.h \
+        asdf/gwcs/wcs.h
+endif

@@ -42,6 +42,11 @@ src_headers = \
     src/value_util.h \
     src/yaml.h
 
+if HAVE_GWCS
+    src_files += \
+        src/gwcs/wcs.c
+endif
+
 include_dir = $(top_srcdir)/include
 
 AM_CFLAGS = $(ASDF_CFLAGS) -fvisibility=hidden

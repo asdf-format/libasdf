@@ -78,4 +78,5 @@ docs/_build
 libasdf-*/
 
 # misc
+.cache
 .gdb_history
