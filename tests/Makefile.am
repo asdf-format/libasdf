@@ -146,6 +146,19 @@ test_value_util_unit_CFLAGS = $(unit_test_cflags)
 test_value_util_unit_LDFLAGS = $(unit_test_ldflags)
 test_value_util_unit_LDADD = libmunit.a
 
+if HAVE_GWCS
+    check_PROGRAMS += \
+        test-gwcs.unit
+
+    # test-gwcs.unit
+    test_gwcs_unit_SOURCES = test-gwcs.c
+    test_gwcs_unit_CPPFLAGS = $(unit_test_cppflags)
+    test_gwcs_unit_CFLAGS = $(unit_test_cflags)
+    test_gwcs_unit_LDFLAGS = $(unit_test_ldflags)
+    test_gwcs_unit_LDADD = $(unit_test_ldadd)
+endif
+
+
 # Shell tests
 TOOL_TESTS = test-events.sh test-info.sh
 
@@ -228,6 +241,7 @@ EXTRA_DIST += \
     fixtures/numeric.asdf \
     fixtures/parse-minimal.asdf \
     fixtures/parse-minimal-extra-comment.asdf \
+    fixtures/roman_wcs.asdf \
     fixtures/scalars.asdf \
     fixtures/tagged-scalars.asdf \
     fixtures/tiles.asdf \

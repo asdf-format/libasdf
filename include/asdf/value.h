@@ -169,6 +169,12 @@ ASDF_EXPORT asdf_value_type_t asdf_value_get_type(asdf_value_t *value);
 
 ASDF_EXPORT const char *asdf_value_path(asdf_value_t *value);
 
+/**
+ * Returns a human-readable string representation of an `asdf_value_type_t`;
+ * useful for error-reporting
+ */
+ASDF_EXPORT const char *asdf_value_type_string(asdf_value_type_t type);
+
 /* Return the value's tag if it has an *explicit* tag (implict tags are not returned) */
 ASDF_EXPORT const char *asdf_value_tag(asdf_value_t *value);
 

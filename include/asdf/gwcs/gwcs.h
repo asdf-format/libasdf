@@ -5,7 +5,9 @@
 #define ASDF_GWCS_GWCS_H
 
 #include <asdf/gwcs/wcs.h>
+#include <asdf/util.h>
 
+ASDF_BEGIN_DECLS
 
 /**
  * Prefix for all GWCS schema tags
@@ -20,4 +22,5 @@ typedef enum {
 } asdf_gwcs_err_t;
 
 
+ASDF_END_DECLS
 #endif /* ASDF_GWCS_GWCS_H */

@@ -6,7 +6,11 @@
 
 #include <stdint.h>
 
+#include <asdf/extension.h>
 #include <asdf/gwcs/step.h>
+#include <asdf/util.h>
+
+ASDF_BEGIN_DECLS
 
 
 /**
@@ -27,5 +31,9 @@ typedef struct {
     const asdf_gwcs_step_t *steps;
 } asdf_gwcs_t;
 
+
+ASDF_DECLARE_EXTENSION(gwcs, asdf_gwcs_t);
+
+ASDF_END_DECLS
 
 #endif /* ASDF_GWCS_WCS_H */

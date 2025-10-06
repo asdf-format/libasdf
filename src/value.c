@@ -7,6 +7,7 @@
 
 #include <libfyaml.h>
 
+#include "asdf/value.h"
 #include "error.h"
 #include "extension_registry.h"
 #include "log.h"
@@ -840,6 +841,49 @@ asdf_value_type_t asdf_value_get_type(asdf_value_t *value) {
 
     asdf_value_infer_scalar_type(value);
     return value->type;
+}
+
+
+const char *asdf_value_type_string(asdf_value_type_t type) {
+    switch (type) {
+    default:
+    case ASDF_VALUE_UNKNOWN:
+        return "<unknown>";
+    case ASDF_VALUE_SEQUENCE:
+        return "sequence";
+    case ASDF_VALUE_MAPPING:
+        return "mapping";
+    case ASDF_VALUE_SCALAR:
+        return "scalar";
+    case ASDF_VALUE_STRING:
+        return "string";
+    case ASDF_VALUE_BOOL:
+        return "bool";
+    case ASDF_VALUE_NULL:
+        return "null";
+    case ASDF_VALUE_INT8:
+        return "int8";
+    case ASDF_VALUE_INT16:
+        return "int16";
+    case ASDF_VALUE_INT32:
+        return "int32";
+    case ASDF_VALUE_INT64:
+        return "int64";
+    case ASDF_VALUE_UINT8:
+        return "uint8";
+    case ASDF_VALUE_UINT16:
+        return "uint16";
+    case ASDF_VALUE_UINT32:
+        return "uint32";
+    case ASDF_VALUE_UINT64:
+        return "uint64";
+    case ASDF_VALUE_FLOAT:
+        return "float";
+    case ASDF_VALUE_DOUBLE:
+        return "double";
+    case ASDF_VALUE_EXTENSION:
+        return "<extension>";
+    }
 }
 
 
