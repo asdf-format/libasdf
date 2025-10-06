@@ -39,6 +39,9 @@ add_subdirectory(include)
 if(ENABLE_DOCS)
 	add_subdirectory(docs)
 endif()
+if(BUILD_EXAMPLES)
+    add_subdirectory(examples)
+endif()
 if(ENABLE_TESTING)
 	enable_testing()
 	add_subdirectory(tests)
@@ -50,5 +53,3 @@ install(
 	CHANGES.rst
 	DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}
 )
-
-
