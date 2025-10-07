@@ -106,7 +106,6 @@ static asdf_value_err_t asdf_gwcs_frame2d_deserialize(
     asdf_value_t *value, UNUSED(const void *userdata), void **out) {
     asdf_gwcs_frame2d_t *frame2d = NULL;
     asdf_value_err_t err = ASDF_VALUE_ERR_PARSE_FAILURE;
-    asdf_value_t *prop = NULL;
 
     frame2d = calloc(1, sizeof(asdf_gwcs_frame2d_t));
 
@@ -133,7 +132,6 @@ static asdf_value_err_t asdf_gwcs_frame2d_deserialize(
     *out = frame2d;
     return ASDF_VALUE_OK;
 failure:
-    asdf_value_destroy(prop);
     asdf_gwcs_frame2d_destroy(frame2d);
     return err;
 }
@@ -143,8 +141,8 @@ static void asdf_gwcs_frame2d_dealloc(void *value) {
     if (!value)
         return;
 
-    asdf_gwcs_frame2d_t *frame2d = (asdf_gwcs_frame2d_t *)value;
-    free(frame2d);
+    asdf_gwcs_base_frame_t *frame = (asdf_gwcs_base_frame_t *)value;
+    asdf_gwcs_base_frame_destroy(frame);
 }
 
 

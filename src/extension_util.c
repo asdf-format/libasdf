@@ -1,5 +1,6 @@
 #include <stdbool.h>
 
+#include "asdf/value.h"
 #include "extension_util.h"
 #include "log.h"
 #include "value.h"
@@ -145,6 +146,7 @@ asdf_value_t *asdf_get_optional_property(
             path,
             typestr);
 #endif
+        asdf_value_destroy(prop);
         return NULL;
     }
 
@@ -164,6 +166,7 @@ asdf_value_t *asdf_get_optional_property(
                 path,
                 tag);
 #endif
+            asdf_value_destroy(prop);
             return NULL;
         }
     }

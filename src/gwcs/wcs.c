@@ -2,11 +2,14 @@
 
 #include <asdf/core/asdf.h>
 #include <asdf/extension.h>
+#define ASDF_GWCS_INTERNAL
 #include <asdf/gwcs/gwcs.h>
+#undef ASDF_GWCS_INTERNAL
 #include <asdf/value.h>
 
 #include "../extension_util.h"
 #include "../value.h"
+#include "step.h"
 
 
 static asdf_value_err_t asdf_gwcs_deserialize(
@@ -88,6 +91,7 @@ static void asdf_gwcs_dealloc(void *value) {
             asdf_gwcs_step_t *step = (asdf_gwcs_step_t *)&gwcs->steps[idx];
             asdf_gwcs_step_destroy(step);
         }
+        free((asdf_gwcs_step_t *)gwcs->steps);
     }
 
     free(gwcs);

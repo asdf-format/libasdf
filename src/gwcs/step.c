@@ -15,34 +15,7 @@
 #include "../log.h"
 #include "../util.h"
 #include "../value.h"
-
-
-typedef struct _asdf_gwcs_step {
-    asdf_gwcs_frame_t *frame;
-    // TODO
-    const void *transform;
-    bool free;
-} asdf_gwcs_step_t;
-
-
-static asdf_gwcs_frame_t *value_as_any_frame(asdf_value_t *value) {
-    // TODO: It will be useful in the future to have some registery of known frame
-    // extension types.  Because there are only two currently it's hard-coded for now,
-    // but this is a bit ugly...
-    asdf_gwcs_frame_t *frame = NULL;
-    asdf_gwcs_frame2d_t *frame2d = NULL;
-
-    if (ASDF_VALUE_OK == asdf_value_as_gwcs_frame2d(value, &frame2d)) {
-        frame = (asdf_gwcs_frame_t *)frame2d;
-        assert(frame);
-    } else if (ASDF_VALUE_OK == asdf_value_as_gwcs_frame_celestial(value, &frame)) {
-        assert(frame);
-    } else if (ASDF_VALUE_OK != asdf_value_as_gwcs_frame(value, &frame)) {
-        frame = NULL;
-    }
-
-    return frame;
-}
+#include "step.h"
 
 
 static asdf_value_err_t asdf_gwcs_step_deserialize(
@@ -60,6 +33,7 @@ static asdf_value_err_t asdf_gwcs_step_deserialize(
     // If *out is non-null then don't allocate
     if (*out) {
         step = (asdf_gwcs_step_t *)*out;
+        step->free = false;
     } else {
         step = calloc(1, sizeof(asdf_gwcs_step_t));
         step->free = true;
@@ -71,8 +45,8 @@ static asdf_value_err_t asdf_gwcs_step_deserialize(
     }
 
     if ((prop = asdf_get_required_property(value, "frame", ASDF_VALUE_UNKNOWN, NULL))) {
-        // Can be any frame type
-        frame = value_as_any_frame(prop);
+        asdf_value_as_gwcs_frame(prop, &frame);
+        asdf_value_destroy(prop);
     }
 
     if (!frame) {
@@ -100,6 +74,9 @@ static void asdf_gwcs_step_dealloc(void *value) {
         return;
 
     asdf_gwcs_step_t *step = (asdf_gwcs_step_t *)value;
+
+    if (step->frame)
+        asdf_gwcs_frame_destroy(step->frame);
 
     if (step->free)
         free(step);
