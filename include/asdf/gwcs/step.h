@@ -14,8 +14,8 @@ ASDF_BEGIN_DECLS
 
 #ifndef ASDF_GWCS_INTERNAL
 typedef struct _asdf_gwcs_step {
+    asdf_gwcs_frame_t *frame;
     // TODO
-    const void *frame;
     const void *transform;
 } asdf_gwcs_step_t;
 #else

@@ -17,6 +17,8 @@ nobase_include_HEADERS = \
 
 if HAVE_GWCS
     nobase_include_HEADERS += \
+        asdf/gwcs/frame.h \
+        asdf/gwcs/frame2d.h \
         asdf/gwcs/gwcs.h \
         asdf/gwcs/step.h \
         asdf/gwcs/wcs.h

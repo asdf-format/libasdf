@@ -102,7 +102,7 @@ static bool is_equivalent_type(asdf_value_type_t type, asdf_value_type_t expecte
 
 asdf_value_t *asdf_get_required_property(
     asdf_value_t *mapping, const char *name, asdf_value_type_t type, const char *tag) {
-    asdf_value_t *prop = asdf_mapping_get(mapping, name);
+    asdf_value_t *prop = asdf_get_optional_property(mapping, name, type, tag);
     if (!prop) {
 #ifdef ASDF_LOG_ENABLED
         const char *mapping_tag = asdf_value_tag(mapping);
@@ -117,6 +117,16 @@ asdf_value_t *asdf_get_required_property(
 #endif
         return NULL;
     }
+    return prop;
+}
+
+
+asdf_value_t *asdf_get_optional_property(
+    asdf_value_t *mapping, const char *name, asdf_value_type_t type, const char *tag) {
+    asdf_value_t *prop = asdf_mapping_get(mapping, name);
+
+    if (!prop)
+        return NULL;
 
     asdf_value_type_t prop_type = asdf_value_get_type(prop);
 

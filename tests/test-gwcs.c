@@ -17,6 +17,17 @@ MU_TEST(test_asdf_get_gwcs) {
 
     assert_string_equal(gwcs->name, "270p65x48y69");
     assert_int(gwcs->n_steps, ==, 2);
+    assert_not_null(gwcs->steps);
+
+    const asdf_gwcs_step_t *step = &gwcs->steps[0];
+    assert_not_null(step->frame);
+    assert_int(step->frame->type, ==, ASDF_GWCS_FRAME_2D);
+    assert_string_equal(step->frame->name, "detector");
+
+    step = &gwcs->steps[1];
+    assert_not_null(step->frame);
+    // TODO: frame->type == ASDF_GWCS_FRAME_CELESTIAL
+    assert_string_equal(step->frame->name, "icrs");
 
     asdf_gwcs_destroy(gwcs);
     asdf_close(file);
