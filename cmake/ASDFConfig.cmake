@@ -48,6 +48,20 @@ check_source_runs(C "
 
 check_function_exists(strptime HAVE_STRPTIME)
 
+if(BZip2_FOUND OR BZIP2_FOUND OR NOT BZIP2_INCLUDE_DIR STREQUAL "")
+    set(HAVE_BZIP2 1)
+    add_compile_definitions(HAVE_BZIP2)
+endif()
+
+if(LZ4_FOUND OR NOT LZ4_INCLUDE_DIR STREQUAL "")
+    set(HAVE_LZ4 1)
+    add_compile_definitions(HAVE_LZ4)
+endif()
+
+if(ZLIB_FOUND OR NOT ZLIB_INCLUDE_DIR STREQUAL "")
+    set(HAVE_ZLIB 1)
+    add_compile_definitions(HAVE_ZLIB)
+endif()
 
 # Write out the header
 include_directories(${CMAKE_SOURCE_DIR}/include)
