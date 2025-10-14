@@ -57,7 +57,10 @@ jobs:
         sudo apt update
         sudo apt install -y \
             build-essential \
-            libfyaml-dev
+            libfyaml-dev \
+            libbz2-dev \
+            liblz4-dev \
+            zlib1g-dev
 
     - name: MacOS dependencies
       if: startsWith(matrix.os, 'macos')
