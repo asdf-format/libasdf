@@ -182,6 +182,54 @@ AS_IF([test "x$asdf_build_tool" = "xyes"], [
   ])
 ])
 
+# ------ Optional features ---------------------------------------------------
+
+AC_ARG_WITH([gwcs],
+  [AS_HELP_STRING([--with-gwcs],
+                  [Build with gwcs extension support--will later be moved to an external plugin])],
+  [with_gwcs=$withval],
+  [with_gwcs=no])
+
+# fits-wcs option (implies gwcs)
+AC_ARG_WITH([fits-wcs],
+  [AS_HELP_STRING([--with-fits-wcs],
+                  [Include support for FITS WCS via WCSLIB; implies --with-gwcs])],
+  [with_fits_wcs=$withval],
+  [with_fits_wcs=no])
+
+# if fits-wcs requested, force gwcs to yes
+AS_IF([test "x$with_fits_wcs" = "xyes"], [
+  AS_IF([test "x$with_gwcs" != "xyes"], [
+    with_gwcs=yes
+    AC_MSG_NOTICE([--with-fits-wcs implies --with-gwcs, enabling gwcs support])
+  ])
+])
+
+AS_IF([test "x$with_gwcs" = "xyes"], [
+  AC_DEFINE([WITH_GWCS], [1], [Defined if building with gwcs enabled])
+  ASDF_OPTIONAL="${ASDF_OPTIONAL}gwcs "
+])
+AM_CONDITIONAL([WITH_GWCS], [test "x$with_gwcs" = "xyes"])
+
+AS_IF([test "x$with_fits_wcs" = "xyes"], [
+  # Check for wcslib now
+  AC_MSG_CHECKING([for WCSLIB header wcslib/wcs.h])
+  AC_CHECK_HEADERS([wcslib/wcs.h], [have_wcslib=yes], [have_wcslib=no])
+  AC_MSG_RESULT([$have_wcslib])
+
+  AC_MSG_CHECKING([for WCSLIB library])
+  AC_CHECK_LIB([wcs], [wcsini], [have_wcslib_lib=yes], [have_wcslib_lib=no])
+  AC_MSG_RESULT([$have_wcslib_lib])
+
+  AS_IF([test "x$have_wcslib" != "xyes" || test "x$have_wcslib_lib" != "xyes"], [
+    AC_MSG_ERROR([--with-fits-wcs requested but WCSLIB not found])
+  ])
+
+  AC_DEFINE([WITH_FITS_WCS], [1], [Defined if building with FITS WCS enabled])
+  ASDF_OPTIONAL="${ASDF_OPTIONAL}fits-wcs "
+])
+
+
 # Enable/check doc build requirements
 ASDF_CHECK_SPHINX
 
@@ -206,5 +254,8 @@ printf "  %18s %s\n" "compiler version:" "$CC_VERSION"
 printf "  %18s %s\n" "libfyaml version:" "$FYAML_VERSION"
 AS_IF([test "x$ASDF_BUILD_MODE" != "x"], [
   printf "  %18s %s\n" "build:" "$ASDF_BUILD_MODE"
+])
+AS_IF([test "x$ASDF_OPTIONAL" != "x"], [
+  printf "  %18s %s\n" "optional:" "$ASDF_OPTIONAL"
 ])
 printf "=================================================================\n\n"

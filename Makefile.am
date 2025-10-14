@@ -10,6 +10,7 @@ src_files = \
     src/error.c \
     src/event.c \
     src/extension_registry.c \
+    src/extension_util.c \
     src/file.c \
     src/info.c \
     src/log.c \
@@ -27,6 +28,7 @@ src_headers = \
     src/core/ndarray_convert.h \
     src/error.h \
     src/extension_registry.h \
+    src/extension_util.h \
     src/event.h \
     src/file.h \
     src/info.h \
@@ -41,6 +43,24 @@ src_headers = \
     src/value.h \
     src/value_util.h \
     src/yaml.h
+
+if WITH_GWCS
+    src_files += \
+        src/gwcs/fitswcs_imaging.c \
+        src/gwcs/frame.c \
+        src/gwcs/frame_celestial.c \
+        src/gwcs/frame2d.c \
+        src/gwcs/step.c \
+        src/gwcs/transform.c \
+        src/gwcs/transforms/property/bounding_box.c \
+        src/gwcs/wcs.c
+
+    src_headers += \
+        src/gwcs/frame.h \
+        src/gwcs/step.h \
+        src/gwcs/transform.h \
+        src/gwcs/types/asdf_gwcs_transform_map.h
+endif
 
 include_dir = $(top_srcdir)/include
 

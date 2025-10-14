@@ -6,6 +6,7 @@
 #include <libfyaml.h>
 
 #include <asdf/extension.h>
+#include <asdf/util.h>
 #include <asdf/value.h>
 
 #include "file.h"
@@ -22,7 +23,7 @@ typedef struct asdf_value {
     asdf_value_type_t type;
     asdf_value_err_t err;
     struct fy_node *node;
-    char *tag;
+    const char *tag;
     bool explicit_tag_checked;
     bool extension_checked;
     union {
@@ -32,7 +33,7 @@ typedef struct asdf_value {
         double d;
         asdf_extension_value_t *ext;
     } scalar;
-    char *path;
+    const char *path;
 } asdf_value_t;
 
 

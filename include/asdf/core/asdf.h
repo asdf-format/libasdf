@@ -13,7 +13,7 @@ ASDF_BEGIN_DECLS
 ASDF_EXPORT extern asdf_software_t libasdf_software;
 
 
-#define ASDF_STANDARD_TAG_PREFIX "stsci.edu:asdf/"
+#define ASDF_STANDARD_TAG_PREFIX "tag:stsci.edu:asdf/"
 #define ASDF_CORE_TAG_PREFIX ASDF_STANDARD_TAG_PREFIX "core/"
 
 

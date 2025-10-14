@@ -41,6 +41,8 @@
 
 ASDF_BEGIN_DECLS
 
+#define ASDF_CORE_NDARRAY_TAG ASDF_CORE_TAG_PREFIX "ndarray-1.1.0"
+
 /*
  * Enum for basic ndarray datatypes
  *
@@ -181,16 +183,25 @@ ASDF_EXPORT size_t asdf_ndarray_size(asdf_ndarray_t *ndarray);
  *   that a buffer should be allocated.  In the latter case the caller is
  *   responsible for freeing the allocated buffer.
  */
-ASDF_EXPORT asdf_ndarray_err_t asdf_ndarray_read_all(
-    asdf_ndarray_t *ndarray, asdf_scalar_datatype_t dst_t, void **dst);
+ASDF_EXPORT asdf_ndarray_err_t
+asdf_ndarray_read_all(asdf_ndarray_t *ndarray, asdf_scalar_datatype_t dst_t, void **dst);
 
 ASDF_EXPORT asdf_ndarray_err_t asdf_ndarray_read_tile_ndim(
-    asdf_ndarray_t *ndarray, const uint64_t *origin, const uint64_t *shape,
-    asdf_scalar_datatype_t dst_t, void **dst);
+    asdf_ndarray_t *ndarray,
+    const uint64_t *origin,
+    const uint64_t *shape,
+    asdf_scalar_datatype_t dst_t,
+    void **dst);
 
 ASDF_EXPORT asdf_ndarray_err_t asdf_ndarray_read_tile_2d(
-    asdf_ndarray_t *ndarray, uint64_t x, uint64_t y, uint64_t width, uint64_t height,
-    const uint64_t *plane_origin, asdf_scalar_datatype_t dst_t, void **dst);
+    asdf_ndarray_t *ndarray,
+    uint64_t x,
+    uint64_t y,
+    uint64_t width,
+    uint64_t height,
+    const uint64_t *plane_origin,
+    asdf_scalar_datatype_t dst_t,
+    void **dst);
 
 
 /**
