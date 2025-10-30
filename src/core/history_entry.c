@@ -15,91 +15,7 @@
 #include "../log.h"
 #include "../util.h"
 #include "../value.h"
-
-
-/*
- * Parse a YAML-serialized timestamp
- *
- * Generally in ISO8601 but can be "relaxed" having a space between the date and the time (the
- * Python asdf actually appears to output in this format though maybe it depends on the Python
- * yaml version--we should specify this more strictly maybe...
- */
-#ifdef HAVE_STRPTIME
-static int asdf_parse_datetime(const char *s, struct timespec *out) {
-    if (!s || !out)
-        return -1;
-
-    struct tm tm = {0};
-    char tz_sign = 0;
-    int tz_hour = 0;
-    int tz_min = 0;
-    long nsec = 0;
-    bool has_time = false;
-    char *rest = NULL;
-    char *buf = strdup(s);
-
-    if (!buf)
-        return -1;
-
-    // Normalize separators (replace 'T' or 't' with space)
-    for (char *c = buf; *c; ++c)
-        if (*c == 'T' || *c == 't')
-            *c = ' ';
-
-    // Try to parse date and time (without optional fractional seconds and timezone)
-    rest = strptime(buf, "%Y-%m-%d %H:%M:%S", &tm);
-
-    if (!rest)
-        rest = strptime(buf, "%Y-%m-%d", &tm);
-    else
-        has_time = true;
-
-    if (!rest) {
-        free(buf);
-        return -1;
-    }
-
-    // Handle optional fractional seconds
-    if (has_time) {
-        const char *dot = strchr(rest, '.');
-        if (dot) {
-            double frac = 0;
-            sscanf(dot, "%lf", &frac);
-            nsec = (long)((frac - (int)frac) * 1e9);
-        }
-
-        // Handle timezone offsets (Z/z = Zulu is ignored, just don't add any offset)
-        const char *tz = strpbrk(rest, "+-");
-        if (tz && (*tz == '+' || *tz == '-')) {
-            tz_sign = (*tz == '-') ? -1 : 1;
-            if (sscanf(tz + 1, "%2d:%2d", &tz_hour, &tz_min) < 1)
-                sscanf(tz + 1, "%2d", &tz_hour);
-        }
-    }
-
-    // Convert to time_t and adjust for time zone
-    time_t t = timegm(&tm);
-    if (t == (time_t)-1) {
-        free(buf);
-        return -1;
-    }
-
-    t -= tz_sign * (tz_hour * 3600 + tz_min * 60);
-    out->tv_sec = t;
-    out->tv_nsec = nsec;
-    free(buf);
-    return 0;
-}
-#else
-#warning "strptime() not available, times will not be parsed"
-static int asdf_parse_datetime(UNUSED(const char *s), struct timespec *out) {
-    if (out) {
-        out->tv_sec = 0;
-        out->tv_nsec = 0;
-    }
-    return 0;
-}
-#endif
+#include "asdf/core/time.h"
 
 
 static asdf_software_t **asdf_history_entry_deserialize_software(asdf_value_t *value) {
@@ -146,14 +62,13 @@ static asdf_software_t **asdf_history_entry_deserialize_software(asdf_value_t *v
     return software;
 }
 
-
 static asdf_value_err_t asdf_history_entry_deserialize(
     asdf_value_t *value, UNUSED(const void *userdata), void **out) {
     asdf_value_err_t err = ASDF_VALUE_ERR_PARSE_FAILURE;
     asdf_value_t *prop = NULL;
     const char *description = NULL;
     const char *time_str = NULL;
-    struct timespec time = {0};
+    asdf_time_t *time = NULL;
     asdf_software_t **software = NULL;
 
     if (!asdf_value_is_mapping(value))
@@ -170,26 +85,31 @@ static asdf_value_err_t asdf_history_entry_deserialize(
     asdf_value_destroy(prop);
 
     prop = asdf_mapping_get(value, "time");
-
     if (prop) {
-        bool valid_time = false;
-        if (ASDF_VALUE_OK == asdf_value_as_string0(prop, &time_str)) {
-            if (0 == asdf_parse_datetime(time_str, &time))
-                valid_time = true;
-        }
 
-#ifdef ASDF_LOG_ENABLED
-        if (!valid_time) {
-            if (ASDF_VALUE_OK != asdf_value_as_scalar0(prop, &time_str)) {
-                time_str = "<unreadable>";
+        // cast the value of "time" to an asdf_time_t
+        const asdf_extension_t *time_ext = asdf_extension_get(value->file, "tag:stsci.edu:asdf/time/time-1.4.0");
+        if (time_ext) {
+            bool valid_time = false;
+            time_ext->deserialize(prop, NULL, (void *) &time);
+
+            if (time) {
+                valid_time = true;
             }
-            ASDF_LOG(
-                value->file, ASDF_LOG_WARN, "ignoring invalid time %s in history_entry", time_str);
+
+            #ifdef ASDF_LOG_ENABLED
+            if (!valid_time) {
+                if (ASDF_VALUE_OK != asdf_value_as_scalar0(prop, &time_str)) {
+                    time_str = "<unreadable>";
+                }
+                ASDF_LOG(
+                    value->file, ASDF_LOG_WARN, "ignoring invalid time %s in history_entry", time_str);
+            }
+            #endif
         }
-#endif
+        asdf_value_destroy(prop);
     }
 
-    asdf_value_destroy(prop);
 
     /* Software can be either an array of software or a single entry, but here it is always
      * returned as a NULL-terminated array of asdf_software_t *
@@ -208,9 +128,12 @@ static asdf_value_err_t asdf_history_entry_deserialize(
         return ASDF_VALUE_ERR_OOM;
 
     entry->description = description;
-    entry->time = time;
     entry->software = (const asdf_software_t **)software;
+    if (time) {
+        entry->time = time;
+    }
     *out = entry;
+
     return ASDF_VALUE_OK;
 failure:
     asdf_value_destroy(prop);
@@ -223,6 +146,10 @@ static void asdf_history_entry_dealloc(void *value) {
         return;
 
     asdf_history_entry_t *entry = value;
+
+    if (entry->time) {
+        asdf_time_destroy((asdf_time_t *) entry->time);
+    }
 
     if (entry->software) {
         for (asdf_software_t **sp = (asdf_software_t **)entry->software; *sp; ++sp) {
