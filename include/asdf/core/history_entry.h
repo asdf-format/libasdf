@@ -7,12 +7,14 @@
 #include <asdf/extension.h>
 #include <asdf/core/software.h>
 
+#include "time.h"
+
 
 ASDF_BEGIN_DECLS
 
 typedef struct {
     const char *description;
-    struct timespec time;
+    const asdf_time_t *time;
     const asdf_software_t **software;
 } asdf_history_entry_t;
 
