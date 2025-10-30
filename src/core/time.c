@@ -61,29 +61,34 @@ const int    SECONDS_PER_HOUR = 3600;
 const int    SECONDS_PER_MINUTE = 60;
 
 void show_timespec(const struct timespec *t) {
-    printf("seconds = %lu\n", t->tv_sec);
-    printf("nanoseconds = %lu\n", t->tv_nsec);
+    fprintf(stderr, "seconds = %lu\n", t->tv_sec);
+    fprintf(stderr, "nanoseconds = %lu\n", t->tv_nsec);
 }
 
+
 void show_tm(const struct tm *t) {
-    printf("year = %d\n", t->tm_year + 1900);
-    printf("month = %d\n", t->tm_mon + 1);
-    printf("day = %d\n", t->tm_mday);
-    printf("hour = %d\n", t->tm_hour);
-    printf("minute = %d\n", t->tm_min);
-    printf("second = %d\n", t->tm_sec);
-    printf("weekday = %d\n", t->tm_wday);
-    printf("year day = %d\n", t->tm_yday);
-    printf("dst = %d\n", t->tm_isdst);
-    printf("gmt offset = %lu\n", t->tm_gmtoff);
-    printf("timezone: %s\n", t->tm_zone);
+    fprintf(stderr, "year = %d\n", t->tm_year + 1900);
+    fprintf(stderr, "month = %d\n", t->tm_mon + 1);
+    fprintf(stderr, "day = %d\n", t->tm_mday);
+    fprintf(stderr, "hour = %d\n", t->tm_hour);
+    fprintf(stderr, "minute = %d\n", t->tm_min);
+    fprintf(stderr, "second = %d\n", t->tm_sec);
+    fprintf(stderr, "weekday = %d\n", t->tm_wday);
+    fprintf(stderr, "year day = %d\n", t->tm_yday);
+    fprintf(stderr, "dst = %d\n", t->tm_isdst);
+    fprintf(stderr, "gmt offset = %lu\n", t->tm_gmtoff);
+    fprintf(stderr, "timezone: %s\n", t->tm_zone);
 }
 
 void show_asdf_time_info(const struct asdf_time_info_t *t) {
+    #if !defined(NDEBUG)
     show_tm(&t->tm);
     printf("\n");
     show_timespec(&t->ts);
     printf("\n");
+    #else
+    (void *) t;
+    #endif
 }
 
 double jd_to_unix(const double jd) {
