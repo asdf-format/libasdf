@@ -8,6 +8,7 @@ target_sources(libasdf PUBLIC
     core/ndarray.c
     core/ndarray_convert.c
     core/software.c
+    core/time.c
     block.c
     compression.c
     context.c

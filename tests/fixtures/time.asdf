@@ -1,0 +1,22 @@
+#ASDF 1.0.0
+#ASDF_STANDARD 1.6.0
+%YAML 1.1
+%TAG ! tag:stsci.edu:asdf/
+--- !core/asdf-1.1.0
+asdf_library: !core/software-1.0.0 {author: The ASDF Developers, homepage: 'http://github.com/asdf-format/asdf',
+  name: asdf, version: 5.0.0}
+history:
+  extensions:
+  - !core/extension_metadata-1.0.0
+    extension_class: asdf.extension._manifest.ManifestExtension
+    extension_uri: asdf://asdf-format.org/core/extensions/core-1.6.0
+    manifest_software: !core/software-1.0.0 {name: asdf_standard, version: 1.4.0}
+    software: !core/software-1.0.0 {name: asdf, version: 5.0.0}
+t_byear: !time/time-1.4.0 {format: byear, value: '2025.78707178'}
+t_datetime: !time/time-1.4.0 {format: datetime, value: '2025-10-14 13:26:41.0000+00:00'}
+t_iso_time: !time/time-1.4.0 {format: iso_time, value: '2025-10-14T13:26:41.0000'}
+t_jd: !time/time-1.4.0 {format: jd, value: '2460963.060197'}
+t_mjd: !time/time-1.4.0 {format: mjd, value: '60962.560196'}
+t_unix: !time/time-1.4.0 {format: unix, value: '1760462801.00'}
+t_yday: !time/time-1.4.0 {format: yday, value: '2025:287:13:26:41.0000'}
+...
