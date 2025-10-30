@@ -6,7 +6,7 @@
 
 #include <asdf/core/asdf.h>
 #include <asdf/core/extension_metadata.h>
-#include <asdf/core/time.h>"
+#include <asdf/core/time.h>
 #include <asdf/core/history_entry.h>
 #include <asdf/core/ndarray.h>
 #include <asdf/core/software.h>
@@ -80,8 +80,8 @@ MU_TEST(test_asdf_history_entry) {
     assert_not_null(entry);
     assert_string_equal(entry->description, "test file containing integers from 0 to 255 in the "
                         "block data, for simple tests against known data");
-    assert_int(entry->time.tv_sec, ==, 1753271775);
-    assert_int(entry->time.tv_nsec, ==, 0);
+    assert_int(entry->time->info.ts.tv_sec, ==, 1753271775);
+    assert_int(entry->time->info.ts.tv_nsec, ==, 0);
     // TODO: Oops, current test case does not include software used to write the history entry
     // A little strange that Python asdf excludes it...maybe no one cares because it's the only
     // code writing asdf history entries?  Need more test cases...
@@ -184,7 +184,6 @@ MU_TEST(test_asdf_software) {
     asdf_close(file);
     return MUNIT_OK;
 }
-
 
 MU_TEST_SUITE(
     test_asdf_core_extensions,
