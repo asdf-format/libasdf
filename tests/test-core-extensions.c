@@ -6,6 +6,7 @@
 
 #include <asdf/core/asdf.h>
 #include <asdf/core/extension_metadata.h>
+#include <asdf/core/time.h>"
 #include <asdf/core/history_entry.h>
 #include <asdf/core/ndarray.h>
 #include <asdf/core/software.h>
