@@ -22,6 +22,9 @@ if (ENABLE_DOCS)
     set(SPHINX_FLAGS "-W" CACHE STRING "Flags to pass to sphinx-build")
 endif ()
 
+# Example binaries
+option(BUILD_EXAMPLES OFF)
+
 # Testing
 option(ENABLE_TESTING "Enable unit tests" OFF)
 option(ENABLE_TESTING_SHELL "Enable additional shell command tests" OFF)
