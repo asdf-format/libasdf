@@ -47,9 +47,3 @@ Misc
 
   This will later be moved to a separate libasdf extension plugin, but for this
   release it is included in the main library for ease of evaluation.
-
-
-libasdf 0.0.0 (unreleased)
-==========================
-
-* Placeholder
