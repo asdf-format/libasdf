@@ -48,6 +48,17 @@ check_source_runs(C "
 
 check_function_exists(strptime HAVE_STRPTIME)
 
+if(BZIP2_FOUND)
+    set(HAVE_BZIP2 1)
+endif()
+
+if(LZ4_FOUND)
+    set(HAVE_LZ4 1)
+endif()
+
+if(ZLIB_FOUND)
+    set(HAVE_ZLIB 1)
+endif()
 
 # Write out the header
 include_directories(${CMAKE_SOURCE_DIR}/include)
