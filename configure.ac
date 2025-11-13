@@ -171,6 +171,26 @@ PKG_CHECK_MODULES([FYAML], [libfyaml], [], [
   AC_MSG_ERROR([libfyaml is required but was not found])
 ])
 
+PKG_CHECK_MODULES([ZLIB], [zlib], [], [
+  AC_MSG_ERROR([zlib is required but was not found])
+])
+
+# Annoyingly my system does not provide a pc file for bzip2, so fall back on
+# checking without pkg-config (should probably do same for the other deps)
+PKG_CHECK_MODULES([BZIP2], [bzip2], [], [
+  AC_CHECK_HEADER([bzlib.h], [have_bzip2_h=yes], [have_bzip2_h=no])
+  AC_CHECK_LIB([bz2], [BZ2_bzCompressInit],
+    [have_bzip2_lib=yes; BZIP2_LIBS="-lbz2"],
+    [have_bzip2_lib=no])
+
+  if test "x$have_bzip2_h" = xyes && test "x$have_bzip2_lib" = xyes; then
+    AC_DEFINE([HAVE_BZIP2], [1], [Define if bzip2 is available])
+    BZIP2_CFLAGS=""
+  else
+    AC_MSG_ERROR([bz2 is required but was not found])
+  fi
+])
+
 # Check for homebrew packages in macOS
 AS_IF([test "x$asdf_build_tool" = "xyes"], [
   ASDF_CHECK_HOMEBREW_PKG([argp-standalone])
