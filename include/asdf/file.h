@@ -18,6 +18,7 @@
 #include <stddef.h>
 #include <stdio.h>
 
+#include <asdf/parse.h>
 #include <asdf/util.h>
 #include <asdf/value.h>
 
@@ -32,8 +33,11 @@ ASDF_BEGIN_DECLS
  */
 typedef struct asdf_file asdf_file_t;
 
-// Forward-declaration for asdf_open
-asdf_file_t *asdf_open_file(const char *filename, const char *mode);
+// Forward-declarations for asdf_open_ex and so on
+typedef struct _asdf_config_t asdf_config_t;
+asdf_file_t *asdf_open_file_ex(const char *filename, const char *mode, asdf_config_t *config);
+asdf_file_t *asdf_open_fp_ex(FILE *fp, const char *filename, asdf_config_t *config);
+asdf_file_t *asdf_open_mem_ex(const void *buf, size_t size, asdf_config_t *config);
 
 /**
  * Opens an ASDF file for reading
@@ -47,7 +51,7 @@ asdf_file_t *asdf_open_file(const char *filename, const char *mode);
  * :return: An `asdf_file_t *`
  */
 static inline asdf_file_t *asdf_open(const char *filename, const char *mode) {
-    return asdf_open_file(filename, mode);
+    return asdf_open_file_ex(filename, mode, NULL);
 }
 
 /**
@@ -55,7 +59,9 @@ static inline asdf_file_t *asdf_open(const char *filename, const char *mode) {
  *
  * Equivalent to `asdf_open`.
  */
-ASDF_EXPORT asdf_file_t *asdf_open_file(const char *filename, const char *mode);
+static inline asdf_file_t *asdf_open_file(const char *filename, const char *mode) {
+    return asdf_open_file_ex(filename, mode, NULL);
+}
 
 /**
  * Opens an ASDF file from an already open `FILE *`
@@ -68,7 +74,9 @@ ASDF_EXPORT asdf_file_t *asdf_open_file(const char *filename, const char *mode);
  *   the file; used mainly in error messages.
  * :return: An `asdf_file_t *`
  */
-ASDF_EXPORT asdf_file_t *asdf_open_fp(FILE *fp, const char *filename);
+static inline asdf_file_t *asdf_open_fp(FILE *fp, const char *filename) {
+    return asdf_open_fp_ex(fp, filename, NULL);
+}
 
 /**
  * Opens an ASDF file from an memory buffer
@@ -77,7 +85,9 @@ ASDF_EXPORT asdf_file_t *asdf_open_fp(FILE *fp, const char *filename);
  * :param size: The size of the memory buffer
  * :return: An `asdf_file_t *`
  */
-ASDF_EXPORT asdf_file_t *asdf_open_mem(const void *buf, size_t size);
+static inline asdf_file_t *asdf_open_mem(const void *buf, size_t size) {
+    return asdf_open_mem_ex(buf, size, NULL);
+}
 
 /**
  * Closes an open `asdf_file_t *`, freeing associated resources where possible
@@ -89,6 +99,83 @@ ASDF_EXPORT asdf_file_t *asdf_open_mem(const void *buf, size_t size);
  * :param file: The `asdf_file_t *` to close
  */
 ASDF_EXPORT void asdf_close(asdf_file_t *file);
+
+
+/**
+ * Struct containing extended options to use when opening and reading files
+ *
+ * For use with `asdf_open_ex` and relatives.
+ */
+typedef struct _asdf_config_t {
+    /** Low-level parser configuration; see `asdf_parser_cfg_t` */
+    asdf_parser_cfg_t parser;
+    /** Decompression options */
+    struct {
+    } decomp;
+} asdf_config_t;
+
+
+/**
+ * Opens an ASDF file for reading
+ *
+ * Extended version of `asdf_open` taking an optional pointer to
+ * `asdf_config_t` configuration options, or `NULL` to use the default
+ * options (equivalent to `asdf_open`).
+ *
+ * When passing in an `asdf_config_t *`, the config struct is *copied*:
+ *
+ * * This allows passing in the options from a local variable
+ * * Prevents modifications of the options while the file is open
+ * * In many cases you can leave options set to zero, and they will be filled
+ *   in with defaults.
+ *
+ * This is an alias for `asdf_open_file_ex`.
+ *
+ * :param filename: A null-terminated string containing the local filesystem
+ *   path to open
+ * :param mode: Currently must always be just ``"r"``.  This will support other
+ *   opening modes in the future (e.g. for writes, updates).
+ * :param config: A pointer to an `asdf_config_t` (may be partially initialized)
+ * :return: An `asdf_file_t *`
+ */
+static inline asdf_file_t *asdf_open_ex(
+    const char *filename, const char *mode, asdf_config_t *config) {
+    return asdf_open_file_ex(filename, mode, config);
+}
+
+/**
+ * Opens an ASDF file for reading, with optional extended options
+ *
+ * Equivalent to `asdf_open`.
+ */
+ASDF_EXPORT asdf_file_t *asdf_open_file_ex(
+    const char *filename, const char *mode, asdf_config_t *config);
+
+/**
+ * Opens an ASDF file from an already open `FILE *`, with optional extended
+ * options
+ *
+ * This assumes the file is open for reading.
+ *
+ * :param fp: An open `FILE *`
+ * :param filename: An optional filename for the open file.
+ *   This need not be a real filesystem path, and can be any display name for
+ *   the file; used mainly in error messages.
+ * :param config: A pointer to an `asdf_config_t` (may be partially initialized)
+ * :return: An `asdf_file_t *`
+ */
+ASDF_EXPORT asdf_file_t *asdf_open_fp_ex(FILE *fp, const char *filename, asdf_config_t *config);
+
+/**
+ * Opens an ASDF file from an memory buffer, with optional extended options
+ *
+ * :param buf: An arbitrary block of memory from a `void *`
+ * :param size: The size of the memory buffer
+ * :param config: A pointer to an `asdf_config_t` (may be partially initialized)
+ * :return: An `asdf_file_t *`
+ */
+ASDF_EXPORT asdf_file_t *asdf_open_mem_ex(const void *buf, size_t size, asdf_config_t *config);
+
 
 /**
  * Retrieve an error on a file

@@ -6,11 +6,11 @@
 
 #include "context.h"
 #include "parse.h"
-#include "util.h"
 
 
 typedef struct asdf_file {
     asdf_base_t base;
+    asdf_config_t *config;
     asdf_parser_t *parser;
     struct fy_document *tree;
 } asdf_file_t;

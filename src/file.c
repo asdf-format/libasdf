@@ -15,18 +15,47 @@
 #include "value.h"
 
 
+static const asdf_config_t default_asdf_config = {
+    /* Basic parser settings for high-level file interface: ignore individual YAML events and
+     * just store the tree in memory to parse into a fy_document later */
+    .parser = {.flags = ASDF_PARSER_OPT_BUFFER_TREE}};
+
+
+static asdf_config_t *asdf_config_build(asdf_config_t *user_config) {
+    asdf_config_t *config = malloc(sizeof(asdf_config_t));
+
+    if (!config) {
+        // TODO: Should have more convenient macros for setting/logging global errors
+        asdf_global_context_t *ctx = asdf_global_context_get();
+        ASDF_LOG(ctx, ASDF_LOG_FATAL, "failed to allocate memory for libasdf config");
+        asdf_context_error_set_oom(ctx->base.ctx);
+        return NULL;
+    }
+
+    memcpy(config, &default_asdf_config, sizeof(asdf_config_t));
+
+    if (user_config) {
+        if (user_config->parser.flags != 0)
+            config->parser.flags = user_config->parser.flags;
+    }
+
+    return config;
+}
+
+
 /* Internal helper to allocate and set up a new asdf_file_t */
-static asdf_file_t *asdf_file_create() {
+static asdf_file_t *asdf_file_create(asdf_config_t *user_config) {
     /* Try to allocate asdf_file_t object, returns NULL on memory allocation failure*/
     asdf_file_t *file = calloc(1, sizeof(asdf_file_t));
+    asdf_config_t *config = asdf_config_build(user_config);
 
     if (UNLIKELY(!file))
         return NULL;
 
-    /* Basic parser settings for high-level file interface: ignore individual YAML events and
-     * just store the tree in memory to parse into a fy_document later */
-    asdf_parser_cfg_t parser_cfg = {.flags = ASDF_PARSER_OPT_BUFFER_TREE};
-    asdf_parser_t *parser = asdf_parser_create(&parser_cfg);
+    if (UNLIKELY(!config))
+        return NULL;
+
+    asdf_parser_t *parser = asdf_parser_create(&config->parser);
 
     if (!parser)
         return NULL;
@@ -39,8 +68,8 @@ static asdf_file_t *asdf_file_create() {
 }
 
 
-asdf_file_t *asdf_open_file(const char *filename, const char *mode) {
-    asdf_file_t *file = asdf_file_create();
+asdf_file_t *asdf_open_file_ex(const char *filename, const char *mode, asdf_config_t *config) {
+    asdf_file_t *file = asdf_file_create(config);
 
     if (!file)
         return NULL;
@@ -56,8 +85,8 @@ asdf_file_t *asdf_open_file(const char *filename, const char *mode) {
 }
 
 
-asdf_file_t *asdf_open_fp(FILE *fp, const char *filename) {
-    asdf_file_t *file = asdf_file_create();
+asdf_file_t *asdf_open_fp_ex(FILE *fp, const char *filename, asdf_config_t *config) {
+    asdf_file_t *file = asdf_file_create(config);
 
     if (!file)
         return NULL;
@@ -67,8 +96,8 @@ asdf_file_t *asdf_open_fp(FILE *fp, const char *filename) {
 }
 
 
-asdf_file_t *asdf_open_mem(const void *buf, size_t size) {
-    asdf_file_t *file = asdf_file_create();
+asdf_file_t *asdf_open_mem_ex(const void *buf, size_t size, asdf_config_t *config) {
+    asdf_file_t *file = asdf_file_create(config);
 
     if (!file)
         return NULL;
@@ -85,6 +114,7 @@ void asdf_close(asdf_file_t *file) {
     asdf_context_release(file->base.ctx);
     fy_document_destroy(file->tree);
     asdf_parser_destroy(file->parser);
+    free(file->config);
     /* Clean up */
     ZERO_MEMORY(file, sizeof(asdf_file_t));
     free(file);
