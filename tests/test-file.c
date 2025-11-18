@@ -1,3 +1,6 @@
+#include <stdint.h>
+
+#include <asdf/core/ndarray.h>
 #include <asdf/file.h>
 #include <asdf/value.h>
 
@@ -138,13 +141,55 @@ MU_TEST(test_asdf_block_count) {
 }
 
 
+/**
+ * Parameterize compression tests
+ *
+ * The reference file ``compressed.asdf`` contains two compressed arrays one under the name "zlib"
+ * and one under the name "bzp2" so the test is parameterized on that basis.
+ *
+ * Will have to add a new test file and test case for lz4 compression.
+ */
+static char *comp_params[] = {"zlib", "bzp2", NULL};
+static MunitParameterEnum test_params[] = {
+    {"comp", comp_params},
+    {NULL, NULL}
+};
+
+
+MU_TEST(test_asdf_read_compressed_block) {
+    const char *comp = munit_parameters_get(params, "comp");
+    const char *filename = get_reference_file_path("1.6.0/compressed.asdf");
+    asdf_file_t *file = asdf_open_file(filename, "r");
+    assert_not_null(file);
+    asdf_ndarray_t *ndarray = NULL;
+    asdf_value_err_t err = asdf_get_ndarray(file, comp, &ndarray);
+    assert_int(err, ==, ASDF_VALUE_OK);
+    assert_not_null(ndarray);
+
+    // The arrays in the test files just contain the values 0 to 127
+    int64_t expected[128] = {0};
+
+    for (int idx = 0; idx < 128; idx++)
+        expected[idx] = idx;
+
+    size_t size = 0;
+    int64_t *dst = asdf_ndarray_data_raw(ndarray, &size);
+    assert_int(size, ==, sizeof(int64_t) * 128);
+    assert_memory_equal(size, dst, expected);
+    asdf_ndarray_destroy(ndarray);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
 MU_TEST_SUITE(
     test_asdf_file,
     MU_RUN_TEST(test_asdf_open_file),
     MU_RUN_TEST(test_asdf_scalar_getters),
     MU_RUN_TEST(test_asdf_get_mapping),
     MU_RUN_TEST(test_asdf_get_sequence),
-    MU_RUN_TEST(test_asdf_block_count)
+    MU_RUN_TEST(test_asdf_block_count),
+    MU_RUN_TEST(test_asdf_read_compressed_block, test_params)
 );
 
 

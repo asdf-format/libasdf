@@ -102,6 +102,27 @@ ASDF_EXPORT void asdf_close(asdf_file_t *file);
 
 
 /**
+ * Options for decompression mode, for use with `asdf_config_t`
+ *
+ * .. todo::
+ *
+ *   Document modes
+ *
+ * .. todo::
+ *
+ *   When lazy is implemented there may likely be multiple implementations
+ *   (userfaultfd, sigsegv, etc.).  Add options to specify exactly which
+ *   implementation to use, where ASDF_DECOMP_MODE_LAZY by itself will
+ *   choose the most appropriate choice (generally userfaultfd if available)
+ */
+typedef enum {
+    ASDF_DECOMP_MODE_AUTO = 0,
+    ASDF_DECOMP_MODE_EAGER,
+    ASDF_DECOMP_MODE_LAZY,
+} asdf_decomp_mode_t;
+
+
+/**
  * Struct containing extended options to use when opening and reading files
  *
  * For use with `asdf_open_ex` and relatives.
@@ -111,6 +132,11 @@ typedef struct _asdf_config_t {
     asdf_parser_cfg_t parser;
     /** Decompression options */
     struct {
+        asdf_decomp_mode_t mode;
+        size_t max_memory_bytes;
+        double max_memory_threshold;
+        size_t chunk_size;
+        const char *tmp_dir;
     } decomp;
 } asdf_config_t;
 

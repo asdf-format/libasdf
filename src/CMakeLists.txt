@@ -9,6 +9,7 @@ target_sources(libasdf PUBLIC
     core/ndarray_convert.c
     core/software.c
     block.c
+    compression.c
     context.c
     error.c
     event.c
