@@ -13,17 +13,55 @@
 #include <bzlib.h>
 #include <zlib.h>
 
+#include "asdf/file.h"
 #include "config.h"
 
 #include "block.h"
 #include "compression.h"
-#include "context.h"
+#include "error.h"
 #include "file.h"
 #include "log.h"
 #include "util.h"
 
 
-asdf_block_comp_t asdf_block_comp_parse(asdf_context_t *ctx, const char *compression) {
+void asdf_block_comp_close(asdf_block_t *block) {
+    assert(block);
+    asdf_block_comp_state_t *cs = block->comp_state;
+
+    if (!cs)
+        return;
+
+    switch (cs->comp) {
+    case ASDF_BLOCK_COMP_UNKNOWN:
+    case ASDF_BLOCK_COMP_NONE:
+        /* Nothing to do */
+        break;
+    case ASDF_BLOCK_COMP_ZLIB:
+        if (cs->z) {
+            inflateEnd(cs->z);
+            free(cs->z);
+        }
+        break;
+    case ASDF_BLOCK_COMP_BZP2:
+        if (cs->bz) {
+            BZ2_bzDecompressEnd(cs->bz);
+            free(cs->bz);
+        }
+        break;
+    }
+
+    if (cs->dest)
+        munmap(cs->dest, cs->dest_size);
+
+    if (cs->own_fd)
+        close(cs->fd);
+
+    ZERO_MEMORY(cs, sizeof(asdf_block_comp_state_t));
+    free(cs);
+}
+
+
+asdf_block_comp_t asdf_block_comp_parse(asdf_file_t *file, const char *compression) {
     assert(compression);
 
     if (strncmp(compression, "zlib", ASDF_BLOCK_COMPRESSION_FIELD_SIZE) == 0)
@@ -35,8 +73,8 @@ asdf_block_comp_t asdf_block_comp_parse(asdf_context_t *ctx, const char *compres
     if (compression[0] == '\0')
         return ASDF_BLOCK_COMP_NONE;
 
-    ASDF_LOG_CTX(
-        ctx,
+    ASDF_LOG(
+        file,
         ASDF_LOG_WARN,
         "unsupported block compression option %s; block data will simply be copied verbatim",
         compression);
@@ -74,62 +112,49 @@ static int asdf_create_temp_file(size_t data_size, const char *tmp_dir, int *out
 }
 
 
-#define ASDF_ZLIB_FORMAT 15
-#define ASDF_ZLIB_AUTODETECT 32
+static int asdf_block_decomp_until(asdf_block_comp_state_t *cs, size_t offset) {
+    if (offset <= cs->produced)
+        return 0; // already decompressed enough
 
+    // size_t need = offset - cs->produced;
+    size_t new_produced = cs->dest_size;
 
-// TODO: Stupid test implementation, should be refactored
-static int asdf_block_decomp_eager(asdf_block_t *block) {
-    assert(block);
-
-    int ret = 0;
-
-    asdf_block_header_t *header = &block->info.header;
-
-    switch (block->comp) {
+    // TODO: Probably offload this as well as per-compression-type
+    // initialization to a separate, extensible interface
+    switch (cs->comp) {
+    case ASDF_BLOCK_COMP_UNKNOWN:
+    case ASDF_BLOCK_COMP_NONE:
+        return -1;
     case ASDF_BLOCK_COMP_ZLIB: {
-        z_stream strm = {0};
-        strm.next_in = (Bytef *)block->raw_data;
-        strm.avail_in = block->avail_size;
-        strm.next_out = (Bytef *)block->data;
-        strm.avail_out = header->data_size;
-
-        ret = inflateInit2(&strm, ASDF_ZLIB_FORMAT + ASDF_ZLIB_AUTODETECT);
-
-        if (ret != Z_OK)
+        int ret = inflate(cs->z, Z_NO_FLUSH);
+        if (ret != Z_OK && ret != Z_STREAM_END)
             return ret;
 
-        ret = inflate(&strm, Z_FINISH);
-        inflateEnd(&strm);
-        if (ret != Z_STREAM_END)
-            return ret;
-        return 0;
-    }
-    case ASDF_BLOCK_COMP_BZP2: {
-        bz_stream strm = {0};
-        strm.next_in = (char *)block->raw_data;
-        strm.avail_in = block->avail_size;
-        strm.next_out = (char *)block->data;
-        strm.avail_out = header->data_size;
-
-        ret = BZ2_bzDecompressInit(&strm, 0, 0);
-        if (ret != BZ_OK)
-            return ret;
-
-        ret = BZ2_bzDecompress(&strm);
-        BZ2_bzDecompressEnd(&strm);
-
-        if (ret != BZ_STREAM_END)
-            return ret;
-
-        return 0;
-    }
-    default:
+        new_produced -= cs->z->avail_out;
         break;
     }
+    case ASDF_BLOCK_COMP_BZP2: {
+        int ret = BZ2_bzDecompress(cs->bz);
+        if (ret != BZ_OK && ret != BZ_STREAM_END)
+            return ret;
 
-    return -1;
+        new_produced -= cs->bz->avail_out;
+        break;
+    }
+    }
+
+    cs->produced = new_produced;
+    return 0;
 }
+
+
+static int asdf_block_decomp_eager(asdf_block_comp_state_t *cs) {
+    return asdf_block_decomp_until(cs, cs->dest_size);
+}
+
+
+#define ASDF_ZLIB_FORMAT 15
+#define ASDF_ZLIB_AUTODETECT 32
 
 
 /**
@@ -137,8 +162,22 @@ static int asdf_block_decomp_eager(asdf_block_t *block) {
  *
  * TODO: Improve error handling here
  */
-int asdf_block_open_compressed(asdf_block_t *block, size_t *size) {
+int asdf_block_comp_open(asdf_block_t *block) {
     assert(block);
+
+    int ret = -1;
+
+    if (block->comp == ASDF_BLOCK_COMP_UNKNOWN || block->comp == ASDF_BLOCK_COMP_NONE) {
+        // Actually nothing to do, just return 0
+        return 0;
+    }
+
+    asdf_block_comp_state_t *state = calloc(1, sizeof(asdf_block_comp_state_t));
+
+    if (!state) {
+        ASDF_ERROR_OOM(block->file);
+        goto failure;
+    }
 
     asdf_config_t *config = block->file->config;
     asdf_block_header_t *header = &block->info.header;
@@ -158,9 +197,9 @@ int asdf_block_open_compressed(asdf_block_t *block, size_t *size) {
     if (max_memory_bytes > 0)
         max_memory = (max_memory_bytes < max_memory) ? max_memory_bytes : max_memory;
 
-    size_t data_size = header->data_size;
+    size_t dest_size = header->data_size;
 
-    bool use_file_backing = data_size > max_memory;
+    bool use_file_backing = dest_size > max_memory;
 
     if (use_file_backing) {
         ASDF_LOG(
@@ -169,49 +208,96 @@ int asdf_block_open_compressed(asdf_block_t *block, size_t *size) {
             "compressed data in block %d is %d bytes, exceeding the memory threshold %d; "
             "using temp file",
             block->info.index,
-            data_size,
+            dest_size,
             max_memory);
 
-        if (asdf_create_temp_file(data_size, config->decomp.tmp_dir, &block->comp_fd) != 0) {
-            return -1;
+        if (asdf_create_temp_file(dest_size, config->decomp.tmp_dir, &state->fd) != 0) {
+            goto failure;
         }
-        block->comp_own_fd = true;
         // Read-only for now
-        block->data = mmap(NULL, data_size, PROT_READ | PROT_WRITE, MAP_SHARED, block->comp_fd, 0);
-        if (block->data == MAP_FAILED) {
-            close(block->comp_fd);
-            return -1;
+        state->dest = mmap(NULL, dest_size, PROT_READ | PROT_WRITE, MAP_SHARED, state->fd, 0);
+        if (state->dest == MAP_FAILED) {
+            close(state->fd);
+            goto failure;
+        } else {
+            state->own_fd = true;
         }
     } else {
         // anonymous mmap
         // Read-only for now
-        block->data = mmap(
-            NULL, data_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        state->dest = mmap(
+            NULL, dest_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
-        if (block->data == MAP_FAILED) {
-            return -1;
+        if (state->dest == MAP_FAILED) {
+            goto failure;
         }
 
-        block->comp_fd = -1;
-        block->comp_own_fd = false;
+        state->fd = -1;
+        state->own_fd = false;
+    }
+
+    state->comp = block->comp;
+    state->dest_size = dest_size;
+
+    // Initialize compression lib-specific structures
+    switch (state->comp) {
+    case ASDF_BLOCK_COMP_UNKNOWN:
+    case ASDF_BLOCK_COMP_NONE:
+        /* shouldn't even be here */
+        UNREACHABLE();
+    case ASDF_BLOCK_COMP_ZLIB: {
+        z_stream *z = calloc(1, sizeof(z_stream));
+        if (!z) {
+            ASDF_ERROR_OOM(block->file);
+            goto failure;
+        }
+        z->next_in = (Bytef *)block->data;
+        z->avail_in = block->avail_size;
+        z->next_out = (Bytef *)state->dest;
+        z->avail_out = state->dest_size;
+        state->z = z;
+
+        ret = inflateInit2(z, ASDF_ZLIB_FORMAT + ASDF_ZLIB_AUTODETECT);
+
+        if (ret != Z_OK)
+            goto failure;
+
+        break;
+    }
+    case ASDF_BLOCK_COMP_BZP2: {
+        bz_stream *bz = calloc(1, sizeof(bz_stream));
+
+        if (!bz) {
+            ASDF_ERROR_OOM(block->file);
+            goto failure;
+        }
+
+        bz->next_in = (char *)block->data;
+        bz->avail_in = block->avail_size;
+        bz->next_out = (char *)state->dest;
+        bz->avail_out = state->dest_size;
+        state->bz = bz;
+
+        ret = BZ2_bzDecompressInit(bz, 0, 0);
+        if (ret != BZ_OK)
+            goto failure;
+
+        break;
+    }
     }
 
     // Eager decompress
-    if (asdf_block_decomp_eager(block) != 0) {
-        munmap(block->data, data_size);
-
-        if (block->comp_own_fd)
-            close(block->comp_own_fd);
-
+    if (asdf_block_decomp_eager(state) != 0) {
+        asdf_block_comp_close(block);
         return -1;
     }
 
     // After decompression set PROT_READ for now (later this should depend on the mode flag the
     // file was opened with)
-    mprotect(block->data, data_size, PROT_READ);
-
-    if (size)
-        *size = data_size;
-
+    mprotect(state->dest, dest_size, PROT_READ);
+    block->comp_state = state;
     return 0;
+failure:
+    asdf_block_comp_close(block);
+    return ret;
 }

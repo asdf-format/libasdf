@@ -28,15 +28,10 @@ typedef struct asdf_block {
     asdf_file_t *file;
     asdf_block_info_t info;
     void *data;
-    // Same as data if the data is not compressed, otherwise data points to
-    // the decompressed data
-    void *raw_data;
     // Should be the same as used_size in the header but may be truncated in exceptional
     // cases (we should probably log a warning when it is)
     size_t avail_size;
 
-    // Fields for handling compressed data
     asdf_block_comp_t comp;
-    int comp_fd;
-    bool comp_own_fd;
+    asdf_block_comp_state_t *comp_state;
 } asdf_block_t;

@@ -492,7 +492,8 @@ asdf_block_t *asdf_block_open(asdf_file_t *file, size_t index) {
     asdf_block_info_t *info = parser->blocks.block_infos[index];
     block->file = file;
     block->info = *info;
-    block->comp = asdf_block_comp_parse(file->base.ctx, info->header.compression);
+    block->comp = asdf_block_comp_parse(file, info->header.compression);
+    block->comp_state = NULL;
     return block;
 }
 
@@ -502,18 +503,13 @@ void asdf_block_close(asdf_block_t *block) {
         return;
 
     // If the block has an open data handle, close it
-    if (block->raw_data) {
+    if (block->data) {
         asdf_stream_t *stream = block->file->parser->stream;
-        stream->close_mem(stream, block->raw_data);
+        stream->close_mem(stream, block->data);
     }
 
-    if (block->data != block->raw_data) {
-        size_t data_size = block->info.header.data_size;
-        munmap(block->data, data_size);
-
-        if (block->comp_own_fd)
-            close(block->comp_fd);
-    }
+    if (block->comp_state)
+        asdf_block_comp_close(block);
 
     ZERO_MEMORY(block, sizeof(asdf_block_t));
     free(block);
@@ -539,25 +535,36 @@ void *asdf_block_data(asdf_block_t *block, size_t *size) {
     asdf_parser_t *parser = block->file->parser;
     asdf_stream_t *stream = parser->stream;
     size_t avail = 0;
-    void *raw_data = stream->open_mem(
+    void *data = stream->open_mem(
         stream, block->info.data_pos, block->info.header.used_size, &avail);
-    block->raw_data = raw_data;
-    block->data = block->raw_data;
+    block->data = data;
     block->avail_size = avail;
 
-    switch (block->comp) {
-    case ASDF_BLOCK_COMP_UNKNOWN:
-    case ASDF_BLOCK_COMP_NONE:
-        if (size)
-            *size = avail;
-        break;
-    default:
-        // For any supported compression types, try to open the compressed data now
-        if (asdf_block_open_compressed(block, size) != 0) {
-            ASDF_LOG(block->file, ASDF_LOG_ERROR, "failed to open compressed block data");
-            return NULL;
-        }
+    // Open compressed data if applicable
+    if (asdf_block_comp_open(block) != 0) {
+        ASDF_LOG(block->file, ASDF_LOG_ERROR, "failed to open compressed block data");
+        return NULL;
     }
 
+    if (block->comp_state) {
+        // Return the destination of the compressed data
+        if (size)
+            *size = block->comp_state->dest_size;
+
+        return block->comp_state->dest;
+    }
+
+    if (size)
+        *size = avail;
+
+    // Just the raw data
     return block->data;
+}
+
+
+asdf_block_comp_t asdf_block_compression(asdf_block_t *block) {
+    if (!block)
+        return ASDF_BLOCK_COMP_UNKNOWN;
+
+    return block->comp;
 }

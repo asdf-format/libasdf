@@ -183,8 +183,9 @@ MU_TEST(test_asdf_read_compressed_block) {
 
     const asdf_block_t *block = asdf_ndarray_block(ndarray);
     assert_not_null(block);
-    assert_false(block->comp_own_fd);
-    int fd = block->comp_fd;
+    assert_not_null(block->comp_state);
+    assert_false(block->comp_state->own_fd);
+    int fd = block->comp_state->fd;
     assert_int(fd, ==, -1);
 
     asdf_ndarray_destroy(ndarray);
@@ -226,8 +227,9 @@ MU_TEST(test_asdf_read_compressed_block_to_file) {
     // Test the file descriptor
     const asdf_block_t *block = asdf_ndarray_block(ndarray);
     assert_not_null(block);
-    assert_true(block->comp_own_fd);
-    int fd = block->comp_fd;
+    assert_not_null(block->comp_state);
+    assert_true(block->comp_state->own_fd);
+    int fd = block->comp_state->fd;
     assert_int(fd, >, 2);
     struct stat st;
     assert_int(fstat(fd, &st), ==, 0);
@@ -292,8 +294,9 @@ MU_TEST(test_asdf_read_compressed_block_to_file_on_threshold) {
     // Test the file descriptor
     const asdf_block_t *block = asdf_ndarray_block(ndarray);
     assert_not_null(block);
-    assert_true(block->comp_own_fd);
-    int fd = block->comp_fd;
+    assert_not_null(block->comp_state);
+    assert_true(block->comp_state->own_fd);
+    int fd = block->comp_state->fd;
     assert_int(fd, >, 2);
     struct stat st;
     assert_int(fstat(fd, &st), ==, 0);
