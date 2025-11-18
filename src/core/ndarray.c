@@ -317,8 +317,8 @@ failure:
 static asdf_value_err_t asdf_ndarray_parse_byteorder(
     asdf_value_t *parent, const char *path, asdf_byteorder_t *out) {
     const char *byteorder_str = NULL;
-    asdf_value_err_t err =
-        asdf_get_optional_property(parent, path, ASDF_VALUE_STRING, NULL, (void *)&byteorder_str);
+    asdf_value_err_t err = asdf_get_optional_property(
+        parent, path, ASDF_VALUE_STRING, NULL, (void *)&byteorder_str);
 
     if (!ASDF_IS_OK(err))
         return err;
@@ -932,8 +932,8 @@ asdf_ndarray_err_t asdf_ndarray_read_all(
     if (!origin)
         return ASDF_NDARRAY_ERR_OOM;
 
-    asdf_ndarray_err_t err =
-        asdf_ndarray_read_tile_ndim(ndarray, origin, ndarray->shape, dst_t, dst);
+    asdf_ndarray_err_t err = asdf_ndarray_read_tile_ndim(
+        ndarray, origin, ndarray->shape, dst_t, dst);
 
     free((void *)origin);
     return err;

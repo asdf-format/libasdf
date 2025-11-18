@@ -315,8 +315,8 @@ void asdf_event_free(asdf_parser_t *parser, asdf_event_t *event) {
     if (!event)
         return;
 
-    struct asdf_event_p *event_p =
-        (struct asdf_event_p *)((char *)event - offsetof(struct asdf_event_p, event));
+    struct asdf_event_p
+        *event_p = (struct asdf_event_p *)((char *)event - offsetof(struct asdf_event_p, event));
     asdf_event_cleanup(parser, &event_p->event);
     free(event_p);
     parser->current_event_p = NULL;

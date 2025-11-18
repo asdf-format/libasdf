@@ -651,8 +651,9 @@ static parse_result_t parse_block_index(asdf_parser_t *parser, asdf_event_t *eve
         return ASDF_PARSE_ERROR;
     }
 
-    off_t aligned_offset =
-        (file_size > page_size) ? (file_size - page_size - (file_size % page_size)) : 0;
+    off_t aligned_offset = (file_size > page_size)
+                               ? (file_size - page_size - (file_size % page_size))
+                               : 0;
     struct fy_document *doc = NULL;
 
 

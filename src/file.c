@@ -493,8 +493,8 @@ void *asdf_block_data(asdf_block_t *block, size_t *size) {
     asdf_parser_t *parser = block->file->parser;
     asdf_stream_t *stream = parser->stream;
     size_t avail = 0;
-    void *raw_data =
-        stream->open_mem(stream, block->info.data_pos, block->info.header.used_size, &avail);
+    void *raw_data = stream->open_mem(
+        stream, block->info.data_pos, block->info.header.used_size, &avail);
     block->raw_data = raw_data;
     block->data = block->raw_data;
     block->avail_size = avail;

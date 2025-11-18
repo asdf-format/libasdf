@@ -157,8 +157,8 @@ int asdf_block_open_compressed(asdf_block_t *block, size_t *size) {
     } else {
         // anonymous mmap
         // Read-only for now
-        block->data =
-            mmap(NULL, data_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        block->data = mmap(
+            NULL, data_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
         if (block->data == MAP_FAILED) {
             return -1;
