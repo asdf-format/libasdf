@@ -25,9 +25,11 @@ asdf_block_comp_t asdf_block_comp_parse(asdf_context_t *ctx, const char *compres
 
     if (strncmp(compression, "zlib", ASDF_BLOCK_COMPRESSION_FIELD_SIZE) == 0)
         return ASDF_BLOCK_COMP_ZLIB;
-    else if (strncmp(compression, "bzp2", ASDF_BLOCK_COMPRESSION_FIELD_SIZE) == 0)
+
+    if (strncmp(compression, "bzp2", ASDF_BLOCK_COMPRESSION_FIELD_SIZE) == 0)
         return ASDF_BLOCK_COMP_BZP2;
-    else if (compression[0] == '\0')
+
+    if (compression[0] == '\0')
         return ASDF_BLOCK_COMP_NONE;
 
     ASDF_LOG_CTX(
@@ -43,10 +45,13 @@ static int asdf_create_temp_file(size_t data_size, const char *tmp_dir, int *out
     char path[PATH_MAX];
     int fd;
 
-    if (!tmp_dir)
-        tmp_dir = "/tmp";
+    if (!tmp_dir) {
+        const char *tmp = getenv("ASDF_TMPDIR");
+        tmp = (tmp && tmp[0]) ? tmp : getenv("TMPDIR");
+        tmp_dir = (tmp && tmp[0]) ? tmp : "/tmp";
+    }
 
-    snprintf(path, sizeof(path), "%s/asdf_block_XXXXXX", tmp_dir);
+    snprintf(path, sizeof(path), "%s/libasdf-block-XXXXXX", tmp_dir);
 
     fd = mkstemp(path);
 

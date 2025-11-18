@@ -252,6 +252,20 @@ ASDF_EXPORT size_t asdf_ndarray_size(asdf_ndarray_t *ndarray);
 
 
 /**
+ * Get the pointer to the open `asdf_block_t` associated with the ndarray
+ *
+ * This is mostly for debugging/low-level inspection and is not needed for
+ * typical use cases.
+ *
+ * :param ndarray: An `asdf_ndarray_t *`
+ * :return: A constant pointer to the `asdf_block_t` structure representing
+ *   the binary block underlying the array, if any.  This will be `NULL`, for
+ *   example, if the ndarray used inline data.
+ */
+ASDF_EXPORT const asdf_block_t *asdf_ndarray_block(asdf_ndarray_t *ndarray);
+
+
+/**
  * Read the full ndarray, copying into the provided buffer (or allocating a
  * destination buffer if ``dst = NULL``)
  *

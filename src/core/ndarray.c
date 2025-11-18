@@ -51,6 +51,11 @@ static void warn_unsupported_datatype(asdf_value_t *value) {
 #endif
 
 
+const asdf_block_t *asdf_ndarray_block(asdf_ndarray_t *ndarray) {
+    return ndarray->block;
+}
+
+
 asdf_scalar_datatype_t asdf_ndarray_datatype_from_string(const char *s) {
     if (strncmp(s, "int", 3) == 0) {
         const char *p = s + 3;

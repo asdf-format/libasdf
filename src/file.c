@@ -23,6 +23,21 @@ static const asdf_config_t default_asdf_config = {
     .parser = {.flags = ASDF_PARSER_OPT_BUFFER_TREE}};
 
 
+/**
+ * Override the default config value (which should always be some form of 0) if the
+ * user-provided value is non-zero.
+ *
+ * This might not be sustainable if any config options ever have 0 as a valid value
+ * that the user might want to override though, in which case we'll have to probably
+ * change the configuration API, but this is OK for now.
+ */
+#define ASDF_CONFIG_OVERRIDE(config, user_config, option, default) \
+    do { \
+        if (user_config->option != default) \
+            config->option = user_config->option; \
+    } while (0)
+
+
 static asdf_config_t *asdf_config_build(asdf_config_t *user_config) {
     asdf_config_t *config = malloc(sizeof(asdf_config_t));
 
@@ -37,8 +52,12 @@ static asdf_config_t *asdf_config_build(asdf_config_t *user_config) {
     memcpy(config, &default_asdf_config, sizeof(asdf_config_t));
 
     if (user_config) {
-        if (user_config->parser.flags != 0)
-            config->parser.flags = user_config->parser.flags;
+        ASDF_CONFIG_OVERRIDE(config, user_config, parser.flags, 0);
+        ASDF_CONFIG_OVERRIDE(config, user_config, decomp.mode, ASDF_DECOMP_MODE_AUTO);
+        ASDF_CONFIG_OVERRIDE(config, user_config, decomp.max_memory_bytes, 0);
+        ASDF_CONFIG_OVERRIDE(config, user_config, decomp.max_memory_threshold, 0.0);
+        ASDF_CONFIG_OVERRIDE(config, user_config, decomp.chunk_size, 0);
+        ASDF_CONFIG_OVERRIDE(config, user_config, decomp.tmp_dir, NULL);
     }
 
     return config;
@@ -466,7 +485,7 @@ void asdf_block_close(asdf_block_t *block) {
         munmap(block->data, data_size);
 
         if (block->comp_own_fd)
-            close(block->comp_own_fd);
+            close(block->comp_fd);
     }
 
     ZERO_MEMORY(block, sizeof(asdf_block_t));

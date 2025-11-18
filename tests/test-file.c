@@ -1,9 +1,12 @@
+#include <errno.h>
 #include <stdint.h>
+#include <sys/stat.h>
 
-#include <asdf/core/ndarray.h>
 #include <asdf/file.h>
+#include <asdf/core/ndarray.h>
 #include <asdf/value.h>
 
+#include "file.h"
 #include "munit.h"
 #include "util.h"
 
@@ -182,6 +185,58 @@ MU_TEST(test_asdf_read_compressed_block) {
 }
 
 
+/**
+ * Test decompression to a temp file (set memory threshold very low to force it)
+ */
+MU_TEST(test_asdf_read_compressed_block_to_file) {
+    const char *comp = munit_parameters_get(params, "comp");
+    const char *filename = get_reference_file_path("1.6.0/compressed.asdf");
+    asdf_config_t config = {
+        .decomp = {
+            .max_memory_bytes = 1
+        }
+    };
+    asdf_file_t *file = asdf_open_ex(filename, "r", &config);
+    assert_not_null(file);
+    assert_int(file->config->decomp.max_memory_bytes, ==, 1);
+    asdf_ndarray_t *ndarray = NULL;
+    asdf_value_err_t err = asdf_get_ndarray(file, comp, &ndarray);
+    assert_int(err, ==, ASDF_VALUE_OK);
+    assert_not_null(ndarray);
+
+    // The arrays in the test files just contain the values 0 to 127
+    int64_t expected[128] = {0};
+
+    for (int idx = 0; idx < 128; idx++)
+        expected[idx] = idx;
+
+    size_t size = 0;
+    int64_t *dst = asdf_ndarray_data_raw(ndarray, &size);
+    assert_int(size, ==, sizeof(int64_t) * 128);
+    assert_memory_equal(size, dst, expected);
+
+    // Test the file descriptor
+    const asdf_block_t *block = asdf_ndarray_block(ndarray);
+    assert_not_null(block);
+    assert_true(block->comp_own_fd);
+    int fd = block->comp_fd;
+    assert_int(fd, >, 2);
+    struct stat st;
+    assert_int(fstat(fd, &st), ==, 0);
+    assert_true(S_ISREG(st.st_mode));
+
+    asdf_ndarray_destroy(ndarray);
+
+    // The file descriptor for the temp file was closed
+    errno = 0;
+    assert_int(close(fd), ==, -1);
+    assert_int(errno, ==, EBADF);
+
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
 MU_TEST_SUITE(
     test_asdf_file,
     MU_RUN_TEST(test_asdf_open_file),
@@ -189,7 +244,8 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_get_mapping),
     MU_RUN_TEST(test_asdf_get_sequence),
     MU_RUN_TEST(test_asdf_block_count),
-    MU_RUN_TEST(test_asdf_read_compressed_block, test_params)
+    MU_RUN_TEST(test_asdf_read_compressed_block, test_params),
+    MU_RUN_TEST(test_asdf_read_compressed_block_to_file, test_params)
 );
 
 
