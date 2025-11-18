@@ -60,6 +60,10 @@ if(ZLIB_FOUND)
     set(HAVE_ZLIB 1)
 endif()
 
+if(STATGRAB_FOUND)
+    set(HAVE_STATGRAB 1)
+endif()
+
 # Write out the header
 include_directories(${CMAKE_SOURCE_DIR}/include)
 configure_file(config.h.cmake include/config.h @ONLY)

@@ -21,6 +21,7 @@ target_sources(libasdf PUBLIC
     parse.c
     parse_util.c
     stream.c
+    util.c
     value.c
     value_util.c
     yaml.c

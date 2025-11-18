@@ -171,6 +171,25 @@ PKG_CHECK_MODULES([FYAML], [libfyaml], [], [
   AC_MSG_ERROR([libfyaml is required but was not found])
 ])
 
+
+# Check for libstatgrab
+AC_ARG_WITH([libstatgrab],
+    [AS_HELP_STRING([--with-libstatgrab],
+        [Use libstatgrab for system memory info (default: yes)])],
+    [with_libstatgrab=$withval],
+    [with_libstatgrab=yes])
+
+AS_IF([test "x$with_libstatgrab" = "xyes"], [
+  PKG_CHECK_MODULES([STATGRAB], [libstatgrab], [
+    AC_DEFINE([HAVE_STATGRAB], [1], [Define if libstatgrab is available])
+  ], [
+    AC_MSG_ERROR([libstatgrab is required but was not found])
+  ])
+], [
+    AC_MSG_NOTICE([libstatgrab disabled])
+])
+
+# Compression libraries
 PKG_CHECK_MODULES([ZLIB], [zlib], [], [
   AC_MSG_ERROR([zlib is required but was not found])
 ])
@@ -183,12 +202,12 @@ PKG_CHECK_MODULES([BZIP2], [bzip2], [], [
     [have_bzip2_lib=yes; BZIP2_LIBS="-lbz2"],
     [have_bzip2_lib=no])
 
-  if test "x$have_bzip2_h" = xyes && test "x$have_bzip2_lib" = xyes; then
+  AS_IF([test "x$have_bzip2_h" = xyes && test "x$have_bzip2_lib" = xyes], [
     AC_DEFINE([HAVE_BZIP2], [1], [Define if bzip2 is available])
     BZIP2_CFLAGS=""
-  else
+  ], [
     AC_MSG_ERROR([bz2 is required but was not found])
-  fi
+  ])
 ])
 
 # Check for homebrew packages in macOS

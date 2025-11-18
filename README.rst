@@ -192,20 +192,25 @@ on your system:
 - **Make** (e.g., ``GNU make``)
 - **pkg-config**
 - **libfyaml**
+- **zlib** and **bzip2** (for compression support)
+- **libstatgrab** (optional, for system resource heuristics)
 - **argp** (this is a feature of glibc, but if compiling with a different libc you need a
   standalone version of this; also it is only needed if building the command-line tool)
 
 On **Debian/Ubuntu**::
 
-    sudo apt install build-essential pkg-config libfyaml-dev
+    sudo apt install build-essential pkg-config libfyaml-dev \
+      zlib1g-dev libbz2-dev libstatgrab-dev
 
 On **Fedora**::
 
-    sudo dnf install gcc make pkgconf libfyaml-devel
+    sudo dnf install gcc make pkgconf libfyaml-devel \
+      zlib-devel bzip2-devel libstatgrab-devel
 
 On **macOS** (with Homebrew)::
 
-    brew install pkg-config libfyaml argp-standalone
+    brew install pkg-config libfyaml argp-standalone \
+      zlib bzip2 libstatgrab
 
 Building
 ^^^^^^^^

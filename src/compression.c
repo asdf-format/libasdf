@@ -13,11 +13,14 @@
 #include <bzlib.h>
 #include <zlib.h>
 
+#include "config.h"
+
 #include "block.h"
 #include "compression.h"
 #include "context.h"
 #include "file.h"
 #include "log.h"
+#include "util.h"
 
 
 asdf_block_comp_t asdf_block_comp_parse(asdf_context_t *ctx, const char *compression) {
@@ -140,15 +143,35 @@ int asdf_block_open_compressed(asdf_block_t *block, size_t *size) {
     asdf_config_t *config = block->file->config;
     asdf_block_header_t *header = &block->info.header;
     // Decide whether to use temp file or anonymous mmap
-    size_t mem_threshold = config->decomp.max_memory_bytes;
+    size_t max_memory_bytes = config->decomp.max_memory_bytes;
+    double max_memory_threshold = config->decomp.max_memory_threshold;
+
+    size_t max_memory = SIZE_MAX;
+
+    if (max_memory_threshold > 0.0) {
+        size_t total_memory = asdf_util_get_total_memory();
+
+        if (total_memory > 0)
+            max_memory = (size_t)(total_memory * max_memory_threshold);
+    }
+
+    if (max_memory_bytes > 0)
+        max_memory = (max_memory_bytes < max_memory) ? max_memory_bytes : max_memory;
+
     size_t data_size = header->data_size;
 
-    if (mem_threshold == 0)
-        mem_threshold = SIZE_MAX;
-
-    bool use_file_backing = data_size > mem_threshold;
+    bool use_file_backing = data_size > max_memory;
 
     if (use_file_backing) {
+        ASDF_LOG(
+            block->file,
+            ASDF_LOG_INFO,
+            "compressed data in block %d is %d bytes, exceeding the memory threshold %d; "
+            "using temp file",
+            block->info.index,
+            data_size,
+            max_memory);
+
         if (asdf_create_temp_file(data_size, config->decomp.tmp_dir, &block->comp_fd) != 0) {
             return -1;
         }

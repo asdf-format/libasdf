@@ -2,10 +2,16 @@
  * Utilities for unit tests
  */
 
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "config.h"
+#ifdef HAVE_STATGRAB
+#include <statgrab.h>
+#endif
 
 #ifndef REFERENCE_FILES_DIR
 #error "REFERENCE_FILES_DIR not defined"
@@ -14,6 +20,23 @@
 #ifndef FIXTURES_DIR
 #error "FIXTURES_DIR not defined"
 #endif
+
+
+size_t get_total_memory(void) {
+#ifndef HAVE_STATGRAB
+    return 0;
+#else
+    sg_init(1); // TODO: Maybe move this to somewhere else like during library init
+    size_t entries = 0;
+    sg_mem_stats *mem_stats = sg_get_mem_stats(&entries);
+    sg_shutdown();
+
+    if (!mem_stats || entries < 1)
+        return 0;
+
+    return mem_stats->total;
+#endif
+}
 
 
 const char* get_fixture_file_path(const char* relative_path) {

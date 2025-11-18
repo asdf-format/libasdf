@@ -6,6 +6,7 @@
 #include <asdf/core/ndarray.h>
 #include <asdf/value.h>
 
+#include "config.h"
 #include "file.h"
 #include "munit.h"
 #include "util.h"
@@ -179,6 +180,13 @@ MU_TEST(test_asdf_read_compressed_block) {
     int64_t *dst = asdf_ndarray_data_raw(ndarray, &size);
     assert_int(size, ==, sizeof(int64_t) * 128);
     assert_memory_equal(size, dst, expected);
+
+    const asdf_block_t *block = asdf_ndarray_block(ndarray);
+    assert_not_null(block);
+    assert_false(block->comp_own_fd);
+    int fd = block->comp_fd;
+    assert_int(fd, ==, -1);
+
     asdf_ndarray_destroy(ndarray);
     asdf_close(file);
     return MUNIT_OK;
@@ -237,6 +245,72 @@ MU_TEST(test_asdf_read_compressed_block_to_file) {
 }
 
 
+/**
+ * Test decompression to a temp file based on memory threshold
+ */
+MU_TEST(test_asdf_read_compressed_block_to_file_on_threshold) {
+    const char *comp = munit_parameters_get(params, "comp");
+    const char *filename = get_reference_file_path("1.6.0/compressed.asdf");
+
+    // Determine the threshold parameter to used based on the actual system memory
+    size_t total_memory = get_total_memory();
+
+    if (total_memory == 0) {
+        munit_log(MUNIT_LOG_INFO, "memory information not available; skipping test...");
+        return MUNIT_SKIP;
+    }
+
+    // Choose a smallish value (less then the array size in the test file) to determine a
+    // memory threshold that should trigger file use
+    double max_memory_threshold = (100.0 / (double)total_memory);
+
+    asdf_config_t config = {
+        .decomp = {
+            .max_memory_threshold = max_memory_threshold
+        }
+    };
+    asdf_file_t *file = asdf_open_ex(filename, "r", &config);
+    assert_not_null(file);
+    assert_int(file->config->decomp.max_memory_bytes, ==, 0);
+    assert_double_equal(file->config->decomp.max_memory_threshold, max_memory_threshold, 9);
+    asdf_ndarray_t *ndarray = NULL;
+    asdf_value_err_t err = asdf_get_ndarray(file, comp, &ndarray);
+    assert_int(err, ==, ASDF_VALUE_OK);
+    assert_not_null(ndarray);
+
+    // The arrays in the test files just contain the values 0 to 127
+    int64_t expected[128] = {0};
+
+    for (int idx = 0; idx < 128; idx++)
+        expected[idx] = idx;
+
+    size_t size = 0;
+    int64_t *dst = asdf_ndarray_data_raw(ndarray, &size);
+    assert_int(size, ==, sizeof(int64_t) * 128);
+    assert_memory_equal(size, dst, expected);
+
+    // Test the file descriptor
+    const asdf_block_t *block = asdf_ndarray_block(ndarray);
+    assert_not_null(block);
+    assert_true(block->comp_own_fd);
+    int fd = block->comp_fd;
+    assert_int(fd, >, 2);
+    struct stat st;
+    assert_int(fstat(fd, &st), ==, 0);
+    assert_true(S_ISREG(st.st_mode));
+
+    asdf_ndarray_destroy(ndarray);
+
+    // The file descriptor for the temp file was closed
+    errno = 0;
+    assert_int(close(fd), ==, -1);
+    assert_int(errno, ==, EBADF);
+
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
 MU_TEST_SUITE(
     test_asdf_file,
     MU_RUN_TEST(test_asdf_open_file),
@@ -245,7 +319,8 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_get_sequence),
     MU_RUN_TEST(test_asdf_block_count),
     MU_RUN_TEST(test_asdf_read_compressed_block, test_params),
-    MU_RUN_TEST(test_asdf_read_compressed_block_to_file, test_params)
+    MU_RUN_TEST(test_asdf_read_compressed_block_to_file, test_params),
+    MU_RUN_TEST(test_asdf_read_compressed_block_to_file_on_threshold, test_params)
 );
 
 

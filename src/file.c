@@ -1,3 +1,4 @@
+#include <math.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -64,6 +65,31 @@ static asdf_config_t *asdf_config_build(asdf_config_t *user_config) {
 }
 
 
+static void asdf_config_validate(asdf_file_t *file) {
+    double max_memory_threshold = file->config->decomp.max_memory_threshold;
+    if (max_memory_threshold < 0.0 || max_memory_threshold > 1.0 || isnan(max_memory_threshold)) {
+        ASDF_LOG(
+            file,
+            ASDF_LOG_WARN,
+            "invalid config value for decomp.max_memory_threshold; the setting will be disabled "
+            "(expected >=0.0 and <= 1.0, got %g)",
+            max_memory_threshold);
+        file->config->decomp.max_memory_threshold = 0.0;
+    }
+#ifndef HAVE_STATGRAB
+    if (max_memory_threshold > 0.0) {
+        ASDF_LOG(
+            file,
+            ASDF_LOG_WARN,
+            "decomp.max_memory_threshold set to %g, but libasdf was compiled without libstatgrab "
+            "support to detect available memory; the setting will be disabled",
+            max_memory_threshold);
+        file->config->decomp.max_memory_threshold = 0.0;
+    }
+#endif
+}
+
+
 /* Internal helper to allocate and set up a new asdf_file_t */
 static asdf_file_t *asdf_file_create(asdf_config_t *user_config) {
     /* Try to allocate asdf_file_t object, returns NULL on memory allocation failure*/
@@ -85,6 +111,7 @@ static asdf_file_t *asdf_file_create(asdf_config_t *user_config) {
     asdf_context_retain(file->base.ctx);
     file->parser = parser;
     file->config = config;
+    asdf_config_validate(file);
     /* Now we can start cooking */
     return file;
 }
