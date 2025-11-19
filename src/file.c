@@ -54,7 +54,7 @@ static asdf_config_t *asdf_config_build(asdf_config_t *user_config) {
 
     if (user_config) {
         ASDF_CONFIG_OVERRIDE(config, user_config, parser.flags, 0);
-        ASDF_CONFIG_OVERRIDE(config, user_config, decomp.mode, ASDF_DECOMP_MODE_AUTO);
+        ASDF_CONFIG_OVERRIDE(config, user_config, decomp.mode, ASDF_BLOCK_DECOMP_MODE_AUTO);
         ASDF_CONFIG_OVERRIDE(config, user_config, decomp.max_memory_bytes, 0);
         ASDF_CONFIG_OVERRIDE(config, user_config, decomp.max_memory_threshold, 0.0);
         ASDF_CONFIG_OVERRIDE(config, user_config, decomp.chunk_size, 0);
@@ -85,6 +85,24 @@ static void asdf_config_validate(asdf_file_t *file) {
             "support to detect available memory; the setting will be disabled",
             max_memory_threshold);
         file->config->decomp.max_memory_threshold = 0.0;
+    }
+#endif
+#if !ASDF_BLOCK_DECOMP_LAZY_AVAILABLE
+    asdf_block_decomp_mode_t mode = file->config->decomp.mode;
+    switch (mode) {
+    case ASDF_BLOCK_DECOMP_MODE_AUTO:
+        // Lazy mode not a available, just set to eager
+        file->config->decomp.mode = ASDF_BLOCK_DECOMP_MODE_EAGER;
+        break;
+    case ASDF_BLOCK_DECOMP_MODE_EAGER:
+        break;
+    case ASDF_BLOCK_DECOMP_MODE_LAZY:
+        ASDF_LOG(
+            file,
+            ASDF_LOG_WARN,
+            "decomp.mode is set to lazy but this is only available currently on Linux; eager "
+            "decompression will be used instead");
+        file->config->decomp.mode = ASDF_BLOCK_DECOMP_MODE_EAGER;
     }
 #endif
 }

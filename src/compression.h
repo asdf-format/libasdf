@@ -12,6 +12,15 @@
 
 
 /**
+ * Whether lazy decompression is available
+ *
+ * Currently only works when built on new-enough Linux versions that have
+ * userfaultfd support, though can provide other implementations later.
+ */
+#define ASDF_BLOCK_DECOMP_LAZY_AVAILABLE HAVE_USERFAULTFD
+
+
+/**
  * Stores state and info for block decompression
  */
 typedef struct {

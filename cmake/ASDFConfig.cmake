@@ -1,4 +1,5 @@
 # Configure config.h
+include(CheckCSourceCompiles)
 include(CheckSourceRuns)
 include(CheckSymbolExists)
 include(CheckFunctionExists)
@@ -43,10 +44,29 @@ check_source_runs(C "
         return 1;
     #endif
     }
-    "
-        HAVE_DECL_BE64TOH)
+" HAVE_DECL_BE64TOH)
 
 check_function_exists(strptime HAVE_STRPTIME)
+
+
+# Check for userfaultfd (for lazy decompression support, Linux only currently)
+check_include_file("linux/userfaultfd.h" HAVE_LINUX_USERFAULTFD_H)
+check_c_source_compiles("
+    #include <linux/userfaultfd.h>
+    int main() {
+        struct uffdio_api api;
+        api.api = UFFD_API;
+        return 0;
+    }
+" HAVE_USERFAULTFD_API)
+check_c_source_compiles("
+    #include <sys/syscall.h>
+    int main() {
+        long n = __NR_userfaultfd;
+        return (int)n;
+    }
+" HAVE_NR_USERFAULTFD)
+
 
 if(BZIP2_FOUND)
     set(HAVE_BZIP2 1)
@@ -62,6 +82,12 @@ endif()
 
 if(STATGRAB_FOUND)
     set(HAVE_STATGRAB 1)
+endif()
+
+if (HAVE_LINUX_USERFAULTFD_H AND HAVE_USERFAULTFD_API)
+    set(HAVE_USERFAULTFD 1)
+else()
+    set(HAVE_USERFAULTFD 0)
 endif()
 
 # Write out the header

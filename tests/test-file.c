@@ -154,16 +154,34 @@ MU_TEST(test_asdf_block_count) {
  * Will have to add a new test file and test case for lz4 compression.
  */
 static char *comp_params[] = {"zlib", "bzp2", NULL};
-static MunitParameterEnum test_params[] = {
+static char *mode_params[] = {"eager", "lazy", NULL};
+static MunitParameterEnum comp_test_params[] = {
     {"comp", comp_params},
+    {"mode", mode_params},
     {NULL, NULL}
 };
+
+
+static asdf_block_decomp_mode_t decomp_mode_from_param(const char *mode) {
+    if (strcmp(mode, "eager") == 0)
+        return ASDF_BLOCK_DECOMP_MODE_EAGER;
+
+    if (strcmp(mode, "lazy") == 0)
+        return ASDF_BLOCK_DECOMP_MODE_LAZY;
+
+    UNREACHABLE();
+}
 
 
 MU_TEST(test_asdf_read_compressed_block) {
     const char *comp = munit_parameters_get(params, "comp");
     const char *filename = get_reference_file_path("1.6.0/compressed.asdf");
-    asdf_file_t *file = asdf_open_file(filename, "r");
+    asdf_config_t config = {
+        .decomp = {
+            .mode = decomp_mode_from_param(munit_parameters_get(params, "mode"))
+        }
+    };
+    asdf_file_t *file = asdf_open_file_ex(filename, "r", &config);
     assert_not_null(file);
     asdf_ndarray_t *ndarray = NULL;
     asdf_value_err_t err = asdf_get_ndarray(file, comp, &ndarray);
@@ -202,6 +220,7 @@ MU_TEST(test_asdf_read_compressed_block_to_file) {
     const char *filename = get_reference_file_path("1.6.0/compressed.asdf");
     asdf_config_t config = {
         .decomp = {
+            .mode = decomp_mode_from_param(munit_parameters_get(params, "mode")),
             .max_memory_bytes = 1
         }
     };
@@ -268,6 +287,7 @@ MU_TEST(test_asdf_read_compressed_block_to_file_on_threshold) {
 
     asdf_config_t config = {
         .decomp = {
+            .mode = decomp_mode_from_param(munit_parameters_get(params, "mode")),
             .max_memory_threshold = max_memory_threshold
         }
     };
@@ -321,9 +341,9 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_get_mapping),
     MU_RUN_TEST(test_asdf_get_sequence),
     MU_RUN_TEST(test_asdf_block_count),
-    MU_RUN_TEST(test_asdf_read_compressed_block, test_params),
-    MU_RUN_TEST(test_asdf_read_compressed_block_to_file, test_params),
-    MU_RUN_TEST(test_asdf_read_compressed_block_to_file_on_threshold, test_params)
+    MU_RUN_TEST(test_asdf_read_compressed_block, comp_test_params),
+    MU_RUN_TEST(test_asdf_read_compressed_block_to_file, comp_test_params),
+    MU_RUN_TEST(test_asdf_read_compressed_block_to_file_on_threshold, comp_test_params)
 );
 
 

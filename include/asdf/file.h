@@ -116,10 +116,10 @@ ASDF_EXPORT void asdf_close(asdf_file_t *file);
  *   choose the most appropriate choice (generally userfaultfd if available)
  */
 typedef enum {
-    ASDF_DECOMP_MODE_AUTO = 0,
-    ASDF_DECOMP_MODE_EAGER,
-    ASDF_DECOMP_MODE_LAZY,
-} asdf_decomp_mode_t;
+    ASDF_BLOCK_DECOMP_MODE_AUTO = 0,
+    ASDF_BLOCK_DECOMP_MODE_EAGER,
+    ASDF_BLOCK_DECOMP_MODE_LAZY,
+} asdf_block_decomp_mode_t;
 
 
 /**
@@ -132,7 +132,7 @@ typedef struct _asdf_config_t {
     asdf_parser_cfg_t parser;
     /** Decompression options */
     struct {
-        asdf_decomp_mode_t mode;
+        asdf_block_decomp_mode_t mode;
         size_t max_memory_bytes;
         double max_memory_threshold;
         size_t chunk_size;

@@ -50,6 +50,24 @@ AC_CHECK_DECLS([be64toh], [], [], [[
 # Check functions
 AC_CHECK_FUNCS([strptime])
 
+# Check for userfaultfd (for lazy decompression support, Linux only currently)
+AC_CHECK_HEADERS([linux/userfaultfd.h], [], [])
+AC_COMPILE_IFELSE(
+  [AC_LANG_PROGRAM([[
+    #include <linux/userfaultfd.h>
+  ]], [[
+    struct uffdio_api api;
+    api.api = UFFD_API;
+  ]])],
+  [have_userfaultfd=yes],
+  [have_userfaultfd=no]
+)
+AM_CONDITIONAL([HAVE_USERFAULTFD], [test "x$have_userfaultfd" = "xyes"])
+AS_IF([test "x$have_userfaultfd" = "xyes"], [
+  AC_DEFINE([HAVE_USERFAULTFD], [1],
+            [Define to 1 if userfaultfd support is available])
+])
+AC_CHECK_DECLS([__NR_userfaultfd], [], [], [[#include <sys/syscall.h>]])
 
 # http://www.gnu.org/software/autoconf-archive/ax_valgrind_check.html
 # - make check-valgrind
