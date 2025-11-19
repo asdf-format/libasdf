@@ -116,8 +116,14 @@ static int asdf_block_decomp_until(asdf_block_comp_state_t *cs, size_t offset) {
     if (offset <= cs->produced)
         return 0; // already decompressed enough
 
-    // size_t need = offset - cs->produced;
+    size_t need = offset - cs->produced;
     size_t new_produced = cs->dest_size;
+
+    if (cs->produced + need > cs->dest_size)
+        need = cs->dest_size - cs->produced;
+
+    // Update the destination
+    uint8_t *new_dest = cs->dest + cs->produced;
 
     // TODO: Probably offload this as well as per-compression-type
     // initialization to a separate, extensible interface
@@ -126,6 +132,9 @@ static int asdf_block_decomp_until(asdf_block_comp_state_t *cs, size_t offset) {
     case ASDF_BLOCK_COMP_NONE:
         return -1;
     case ASDF_BLOCK_COMP_ZLIB: {
+        cs->z->next_out = new_dest;
+        cs->z->avail_out = need;
+
         int ret = inflate(cs->z, Z_NO_FLUSH);
         if (ret != Z_OK && ret != Z_STREAM_END)
             return ret;
@@ -134,6 +143,9 @@ static int asdf_block_decomp_until(asdf_block_comp_state_t *cs, size_t offset) {
         break;
     }
     case ASDF_BLOCK_COMP_BZP2: {
+        cs->bz->next_out = (char *)new_dest;
+        cs->bz->avail_out = need;
+
         int ret = BZ2_bzDecompress(cs->bz);
         if (ret != BZ_OK && ret != BZ_STREAM_END)
             return ret;
