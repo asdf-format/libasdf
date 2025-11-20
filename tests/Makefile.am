@@ -42,14 +42,14 @@ unit_test_cppflags = \
     $(AM_CPPFLAGS) \
     -DREFERENCE_FILES_DIR=\"$(asdf_standard_dir)/reference_files\" \
     -DFIXTURES_DIR=\"$(srcdir)/fixtures\"
-unit_test_cflags = $(FYAML_CFLAGS) $(CODE_COVERAGE_CFLAGS) $(ASDF_CFLAGS)
+unit_test_cflags = $(FYAML_CFLAGS) $(STATGRAB_CFLAGS) $(CODE_COVERAGE_CFLAGS) $(ASDF_CFLAGS)
 
 if DEBUG
 unit_test_cflags += -DMUNIT_NO_FORK
 endif
 
 unit_test_ldflags = $(CODE_COVERAGE_LDFLAGS)
-unit_test_ldadd = $(top_builddir)/libasdf.la libmunit.a
+unit_test_ldadd = $(top_builddir)/libasdf.la libmunit.a $(STATGRAB_LIBS)
 
 # Unit tests
 check_LIBRARIES = libmunit.a
@@ -127,7 +127,7 @@ test_stream_unit_SOURCES = \
 test_stream_unit_CPPFLAGS = $(unit_test_cppflags)
 test_stream_unit_CFLAGS = $(unit_test_cflags)
 test_stream_unit_LDFLAGS = $(unit_test_ldflags)
-test_stream_unit_LDADD = $(FYAML_LIBS) libmunit.a
+test_stream_unit_LDADD = $(FYAML_LIBS) libmunit.a $(STATGRAB_LIBS)
 
 # test-value.unit
 test_value_unit_SOURCES = test-value.c
@@ -223,6 +223,7 @@ EXTRA_DIST += \
     util.h \
     fixtures/255.asdf \
     fixtures/byteorder.asdf \
+    fixtures/compressed.asdf \
     fixtures/cube.asdf \
     fixtures/datatypes.asdf \
     fixtures/events/basic.events.txt \

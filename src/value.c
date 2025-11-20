@@ -1843,8 +1843,8 @@ static inline void asdf_find_iter_push_frame(
 
     if (it->frame_count == it->frame_cap) {
         size_t new_frame_cap = it->frame_cap * 2;
-        _asdf_find_frame_t *new_frames =
-            realloc(it->frames, new_frame_cap * sizeof(_asdf_find_frame_t));
+        _asdf_find_frame_t *new_frames = realloc(
+            it->frames, new_frame_cap * sizeof(_asdf_find_frame_t));
 
         if (!new_frames) {
             ASDF_ERROR_OOM(container->file);

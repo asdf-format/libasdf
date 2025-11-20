@@ -61,7 +61,8 @@ jobs:
             libfyaml-dev \
             libbz2-dev \
             liblz4-dev \
-            zlib1g-dev
+            zlib1g-dev \
+            libstatgrab-dev
 
     - name: MacOS dependencies
       if: startsWith(matrix.os, 'macos')
@@ -70,7 +71,8 @@ jobs:
         brew install \
             gcc@${{ matrix.gcc }} \
             argp-standalone \
-            libfyaml
+            libfyaml \
+            libstatgrab
 
     - name: Linux build
       if: startsWith(matrix.os, 'ubuntu')
@@ -163,6 +165,10 @@ jobs:
             build-essential \
             libclang-dev \
             libfyaml-dev \
+            libbz2-dev \
+            liblz4-dev \
+            zlib1g-dev \
+            libstatgrab-dev \
             llvm \
             python3-sphinx \
             python3-clang

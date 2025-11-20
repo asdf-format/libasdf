@@ -1,6 +1,7 @@
 #pragma once
 
 #include <assert.h>
+#include <stddef.h>
 #include <string.h>
 
 #include <asdf/util.h>
@@ -40,3 +41,6 @@
         void *volatile _volatile_ptr = (ptr); \
         memset(_volatile_ptr, 0, (size)); \
     } while (0)
+
+
+ASDF_LOCAL size_t asdf_util_get_total_memory(void);

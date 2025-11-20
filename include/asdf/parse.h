@@ -32,6 +32,12 @@ ASDF_STATIC_ASSERT(ASDF_PARSER_OPT_BUFFER_TREE < (1UL << 63), "too many flags fo
 typedef uint64_t asdf_parser_optflags_t;
 
 
+/**
+ * Low-level parser configuration
+ *
+ * Currently just consists of a bitset of flags that are used internally by
+ * the library; these flags are not currently documented.
+ */
 typedef struct asdf_parser_cfg {
     asdf_parser_optflags_t flags;
 } asdf_parser_cfg_t;

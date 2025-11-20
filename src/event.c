@@ -14,7 +14,6 @@
 #include "parse.h"
 #include "parse_util.h"
 #include "util.h"
-#include "yaml.h"
 
 
 asdf_event_type_t asdf_event_type(asdf_event_t *event) {
@@ -295,7 +294,7 @@ void asdf_event_print(const asdf_event_t *event, FILE *file, bool verbose) {
             if (0 != idx) {
                 fprintf(file, ", ");
             }
-            fprintf(file, "%ld", block_index->offsets[idx]);
+            fprintf(file, "%lld", (long long)block_index->offsets[idx]);
         }
         fprintf(file, "\n");
         break;
@@ -315,8 +314,8 @@ void asdf_event_free(asdf_parser_t *parser, asdf_event_t *event) {
     if (!event)
         return;
 
-    struct asdf_event_p *event_p =
-        (struct asdf_event_p *)((char *)event - offsetof(struct asdf_event_p, event));
+    struct asdf_event_p
+        *event_p = (struct asdf_event_p *)((char *)event - offsetof(struct asdf_event_p, event));
     asdf_event_cleanup(parser, &event_p->event);
     free(event_p);
     parser->current_event_p = NULL;

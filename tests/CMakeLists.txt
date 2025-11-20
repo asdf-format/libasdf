@@ -24,6 +24,10 @@ set(REFERENCE_FILES_DIR "${ASDFSTD_DIR}/reference_files")
 set(FIXTURES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
 
 add_library(util util.c)
+target_include_directories(util PRIVATE
+    ${CMAKE_BINARY_DIR}/include
+    ${STATGRAB_INCLUDEDIR}
+)
 add_compile_definitions(REFERENCE_FILES_DIR=\"${REFERENCE_FILES_DIR}\")
 add_compile_definitions(FIXTURES_DIR=\"${FIXTURES_DIR}\")
 
@@ -57,6 +61,7 @@ foreach(source_file ${source_files})
     target_include_directories(${test_executable} PRIVATE
         ${FYAML_INCLUDEDIR}
         ${ARGP_INCLUDEDIR}
+        ${STATGRAB_INCLUDEDIR}
         ${STC_DIR}/include
         ${CMAKE_SOURCE_DIR}/include
         ${CMAKE_SOURCE_DIR}/src

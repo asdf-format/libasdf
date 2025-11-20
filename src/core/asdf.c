@@ -32,8 +32,8 @@ static asdf_extension_metadata_t **asdf_meta_extensions_deserialize(asdf_value_t
     if (UNLIKELY(extensions_size < 0))
         goto failure;
 
-    asdf_extension_metadata_t **extensions =
-        calloc(extensions_size + 1, sizeof(asdf_extension_metadata_t *));
+    asdf_extension_metadata_t **extensions = calloc(
+        extensions_size + 1, sizeof(asdf_extension_metadata_t *));
 
     if (!extensions) {
         ASDF_ERROR_OOM(value->file);

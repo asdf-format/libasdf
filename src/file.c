@@ -1,10 +1,13 @@
+#include <math.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 
 #include <libfyaml.h>
 
+#include "compression.h"
 #include "context.h"
 #include "error.h"
 #include "event.h"
@@ -15,18 +18,109 @@
 #include "value.h"
 
 
+static const asdf_config_t default_asdf_config = {
+    /* Basic parser settings for high-level file interface: ignore individual YAML events and
+     * just store the tree in memory to parse into a fy_document later */
+    .parser = {.flags = ASDF_PARSER_OPT_BUFFER_TREE}};
+
+
+/**
+ * Override the default config value (which should always be some form of 0) if the
+ * user-provided value is non-zero.
+ *
+ * This might not be sustainable if any config options ever have 0 as a valid value
+ * that the user might want to override though, in which case we'll have to probably
+ * change the configuration API, but this is OK for now.
+ */
+#define ASDF_CONFIG_OVERRIDE(config, user_config, option, default) \
+    do { \
+        if (user_config->option != default) \
+            config->option = user_config->option; \
+    } while (0)
+
+
+static asdf_config_t *asdf_config_build(asdf_config_t *user_config) {
+    asdf_config_t *config = malloc(sizeof(asdf_config_t));
+
+    if (!config) {
+        // TODO: Should have more convenient macros for setting/logging global errors
+        asdf_global_context_t *ctx = asdf_global_context_get();
+        ASDF_LOG(ctx, ASDF_LOG_FATAL, "failed to allocate memory for libasdf config");
+        asdf_context_error_set_oom(ctx->base.ctx);
+        return NULL;
+    }
+
+    memcpy(config, &default_asdf_config, sizeof(asdf_config_t));
+
+    if (user_config) {
+        ASDF_CONFIG_OVERRIDE(config, user_config, parser.flags, 0);
+        ASDF_CONFIG_OVERRIDE(config, user_config, decomp.mode, ASDF_BLOCK_DECOMP_MODE_AUTO);
+        ASDF_CONFIG_OVERRIDE(config, user_config, decomp.max_memory_bytes, 0);
+        ASDF_CONFIG_OVERRIDE(config, user_config, decomp.max_memory_threshold, 0.0);
+        ASDF_CONFIG_OVERRIDE(config, user_config, decomp.chunk_size, 0);
+        ASDF_CONFIG_OVERRIDE(config, user_config, decomp.tmp_dir, NULL);
+    }
+
+    return config;
+}
+
+
+static void asdf_config_validate(asdf_file_t *file) {
+    double max_memory_threshold = file->config->decomp.max_memory_threshold;
+    if (max_memory_threshold < 0.0 || max_memory_threshold > 1.0 || isnan(max_memory_threshold)) {
+        ASDF_LOG(
+            file,
+            ASDF_LOG_WARN,
+            "invalid config value for decomp.max_memory_threshold; the setting will be disabled "
+            "(expected >=0.0 and <= 1.0, got %g)",
+            max_memory_threshold);
+        file->config->decomp.max_memory_threshold = 0.0;
+    }
+#ifndef HAVE_STATGRAB
+    if (max_memory_threshold > 0.0) {
+        ASDF_LOG(
+            file,
+            ASDF_LOG_WARN,
+            "decomp.max_memory_threshold set to %g, but libasdf was compiled without libstatgrab "
+            "support to detect available memory; the setting will be disabled",
+            max_memory_threshold);
+        file->config->decomp.max_memory_threshold = 0.0;
+    }
+#endif
+#ifdef ASDF_BLOCK_DECOMP_LAZY_AVAILABLE
+    asdf_block_decomp_mode_t mode = file->config->decomp.mode;
+    switch (mode) {
+    case ASDF_BLOCK_DECOMP_MODE_AUTO:
+        // Lazy mode not a available, just set to eager
+        file->config->decomp.mode = ASDF_BLOCK_DECOMP_MODE_EAGER;
+        break;
+    case ASDF_BLOCK_DECOMP_MODE_EAGER:
+        break;
+    case ASDF_BLOCK_DECOMP_MODE_LAZY:
+        ASDF_LOG(
+            file,
+            ASDF_LOG_WARN,
+            "decomp.mode is set to lazy but this is only available currently on Linux; eager "
+            "decompression will be used instead");
+        file->config->decomp.mode = ASDF_BLOCK_DECOMP_MODE_EAGER;
+    }
+#endif
+}
+
+
 /* Internal helper to allocate and set up a new asdf_file_t */
-static asdf_file_t *asdf_file_create() {
+static asdf_file_t *asdf_file_create(asdf_config_t *user_config) {
     /* Try to allocate asdf_file_t object, returns NULL on memory allocation failure*/
     asdf_file_t *file = calloc(1, sizeof(asdf_file_t));
+    asdf_config_t *config = asdf_config_build(user_config);
 
     if (UNLIKELY(!file))
         return NULL;
 
-    /* Basic parser settings for high-level file interface: ignore individual YAML events and
-     * just store the tree in memory to parse into a fy_document later */
-    asdf_parser_cfg_t parser_cfg = {.flags = ASDF_PARSER_OPT_BUFFER_TREE};
-    asdf_parser_t *parser = asdf_parser_create(&parser_cfg);
+    if (UNLIKELY(!config))
+        return NULL;
+
+    asdf_parser_t *parser = asdf_parser_create(&config->parser);
 
     if (!parser)
         return NULL;
@@ -34,13 +128,15 @@ static asdf_file_t *asdf_file_create() {
     file->base.ctx = parser->base.ctx;
     asdf_context_retain(file->base.ctx);
     file->parser = parser;
+    file->config = config;
+    asdf_config_validate(file);
     /* Now we can start cooking */
     return file;
 }
 
 
-asdf_file_t *asdf_open_file(const char *filename, const char *mode) {
-    asdf_file_t *file = asdf_file_create();
+asdf_file_t *asdf_open_file_ex(const char *filename, const char *mode, asdf_config_t *config) {
+    asdf_file_t *file = asdf_file_create(config);
 
     if (!file)
         return NULL;
@@ -56,8 +152,8 @@ asdf_file_t *asdf_open_file(const char *filename, const char *mode) {
 }
 
 
-asdf_file_t *asdf_open_fp(FILE *fp, const char *filename) {
-    asdf_file_t *file = asdf_file_create();
+asdf_file_t *asdf_open_fp_ex(FILE *fp, const char *filename, asdf_config_t *config) {
+    asdf_file_t *file = asdf_file_create(config);
 
     if (!file)
         return NULL;
@@ -67,8 +163,8 @@ asdf_file_t *asdf_open_fp(FILE *fp, const char *filename) {
 }
 
 
-asdf_file_t *asdf_open_mem(const void *buf, size_t size) {
-    asdf_file_t *file = asdf_file_create();
+asdf_file_t *asdf_open_mem_ex(const void *buf, size_t size, asdf_config_t *config) {
+    asdf_file_t *file = asdf_file_create(config);
 
     if (!file)
         return NULL;
@@ -85,6 +181,7 @@ void asdf_close(asdf_file_t *file) {
     asdf_context_release(file->base.ctx);
     fy_document_destroy(file->tree);
     asdf_parser_destroy(file->parser);
+    free(file->config);
     /* Clean up */
     ZERO_MEMORY(file, sizeof(asdf_file_t));
     free(file);
@@ -413,6 +510,8 @@ asdf_block_t *asdf_block_open(asdf_file_t *file, size_t index) {
     asdf_block_info_t *info = parser->blocks.block_infos[index];
     block->file = file;
     block->info = *info;
+    block->comp = asdf_block_comp_parse(file, info->header.compression);
+    block->comp_state = NULL;
     return block;
 }
 
@@ -426,6 +525,9 @@ void asdf_block_close(asdf_block_t *block) {
         asdf_stream_t *stream = block->file->parser->stream;
         stream->close_mem(stream, block->data);
     }
+
+    if (block->comp_state)
+        asdf_block_comp_close(block);
 
     ZERO_MEMORY(block, sizeof(asdf_block_t));
     free(block);
@@ -443,7 +545,7 @@ void *asdf_block_data(asdf_block_t *block, size_t *size) {
 
     if (block->data) {
         if (size)
-            *size = block->data_size;
+            *size = block->avail_size;
 
         return block->data;
     }
@@ -451,13 +553,36 @@ void *asdf_block_data(asdf_block_t *block, size_t *size) {
     asdf_parser_t *parser = block->file->parser;
     asdf_stream_t *stream = parser->stream;
     size_t avail = 0;
-    void *data =
-        stream->open_mem(stream, block->info.data_pos, block->info.header.used_size, &avail);
+    void *data = stream->open_mem(
+        stream, block->info.data_pos, block->info.header.used_size, &avail);
     block->data = data;
-    block->data_size = avail;
+    block->avail_size = avail;
+
+    // Open compressed data if applicable
+    if (asdf_block_comp_open(block) != 0) {
+        ASDF_LOG(block->file, ASDF_LOG_ERROR, "failed to open compressed block data");
+        return NULL;
+    }
+
+    if (block->comp_state) {
+        // Return the destination of the compressed data
+        if (size)
+            *size = block->comp_state->dest_size;
+
+        return block->comp_state->dest;
+    }
 
     if (size)
         *size = avail;
 
-    return data;
+    // Just the raw data
+    return block->data;
+}
+
+
+asdf_block_comp_t asdf_block_compression(asdf_block_t *block) {
+    if (!block)
+        return ASDF_BLOCK_COMP_UNKNOWN;
+
+    return block->comp;
 }

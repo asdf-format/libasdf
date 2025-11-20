@@ -22,9 +22,10 @@ AllowShortLoopsOnASingleLine: false
 ColumnLimit: 100
 MaxEmptyLinesToKeep: 2
 
-PenaltyReturnTypeOnItsOwnLine: 10000
-PenaltyBreakBeforeFirstCallParameter: 100
+PenaltyBreakAssignment: 1000
+PenaltyBreakBeforeFirstCallParameter: 0
 PenaltyBreakString: 1000
+PenaltyReturnTypeOnItsOwnLine: 10000
 
 BinPackArguments: false
 BinPackParameters: false

@@ -79,6 +79,7 @@ typedef struct asdf_block_header {
 
 typedef struct asdf_block_info {
     asdf_block_header_t header;
+    size_t index;
     off_t header_pos;
     off_t data_pos;
 } asdf_block_info_t;
