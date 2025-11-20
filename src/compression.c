@@ -256,6 +256,7 @@ static void *asdf_block_comp_userfaultfd_handler(void *arg) {
 #define FEATURE_IS_SET(bits, bit) (((bits) & (bit)) == (bit))
 
 
+#if ASDF_BLOCK_DECOMP_LAZY_AVAILABLE
 /**
  * Test whether lazy decompression is actually possible.
  *
@@ -341,6 +342,12 @@ static bool asdf_block_decomp_lazy_available(asdf_block_comp_state_t *cs, bool u
 
     return true;
 }
+#else
+static bool asdf_block_decomp_lazy_available(
+    UNUSED(asdf_block_comp_state_t *cs), UNUSED(bool use_file_backing)) {
+    return false;
+}
+#endif /* ASDF_BLOCK_DECOMP_LAZY_AVAILABLE */
 
 
 static int asdf_block_decomp_lazy(asdf_block_comp_state_t *cs) {
