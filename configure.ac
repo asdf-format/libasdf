@@ -67,7 +67,7 @@ AS_IF([test "x$have_userfaultfd" = "xyes"], [
   AC_DEFINE([HAVE_USERFAULTFD], [1],
             [Define to 1 if userfaultfd support is available])
 ])
-AC_CHECK_DECLS([__NR_userfaultfd], [], [], [[#include <sys/syscall.h>]])
+AC_CHECK_DECLS([SYS_userfaultfd], [], [], [[#include <sys/syscall.h>]])
 
 # http://www.gnu.org/software/autoconf-archive/ax_valgrind_check.html
 # - make check-valgrind

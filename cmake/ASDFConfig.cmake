@@ -62,10 +62,10 @@ check_c_source_compiles("
 check_c_source_compiles("
     #include <sys/syscall.h>
     int main() {
-        long n = __NR_userfaultfd;
+        long n = SYS_userfaultfd;
         return (int)n;
     }
-" HAVE_NR_USERFAULTFD)
+" HAVE_DECL_SYS_USERFAULTFD)
 
 
 if(BZIP2_FOUND)

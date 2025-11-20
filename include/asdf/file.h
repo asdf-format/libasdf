@@ -123,6 +123,16 @@ typedef enum {
 
 
 /**
+ * A macro which can be used at compile-time to check if lazy-mode
+ * decompression is available.
+ *
+ * Currently only works when built on new-enough Linux versions that have
+ * userfaultfd support, though can provide other implementations later.
+ */
+#define ASDF_BLOCK_DECOMP_LAZY_AVAILABLE HAVE_USERFAULTFD
+
+
+/**
  * Struct containing extended options to use when opening and reading files
  *
  * For use with `asdf_open_ex` and relatives.

@@ -38,6 +38,29 @@ def make_byteorder_asdf():
     return f
 
 
+def make_compressed_asdf():
+    num_pages = 100
+    page_size = 4096
+    total_size = num_pages * page_size
+
+    def make_array():
+        """Each page starts with its page number, rest repeating pattern."""
+        arr = np.empty(total_size, dtype=np.uint8)
+        for idx in range(num_pages):
+            page_start = idx * page_size
+            arr[page_start:page_start + page_size] = np.arange(page_size) % 256
+            arr[page_start] = idx % 256
+
+        return arr
+
+    f = asdf.AsdfFile()
+    f['bzp2'] = make_array()
+    f['zlib'] = make_array()
+    f.set_array_compression(f['bzp2'], 'bzp2')
+    f.set_array_compression(f['zlib'], 'zlib')
+    return f
+
+
 def make_cube_asdf():
     f = asdf.AsdfFile()
     f['cube'] = np.arange(10 ** 3, dtype=np.dtype('>u1')).reshape((10, 10, 10))
@@ -154,6 +177,7 @@ def make_tiles_asdf():
 TEST_FILES = {
     '255.asdf': make_255_asdf,
     'byteorder.asdf': make_byteorder_asdf,
+    'compressed.asdf': make_compressed_asdf,
     'cube.asdf': make_cube_asdf,
     'datatypes.asdf': make_datatypes_asdf,
     'numeric.asdf': make_numeric,

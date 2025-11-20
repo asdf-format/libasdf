@@ -223,6 +223,7 @@ EXTRA_DIST += \
     util.h \
     fixtures/255.asdf \
     fixtures/byteorder.asdf \
+    fixtures/compressed.asdf \
     fixtures/cube.asdf \
     fixtures/datatypes.asdf \
     fixtures/events/basic.events.txt \
