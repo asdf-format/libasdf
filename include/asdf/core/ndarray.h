@@ -125,7 +125,7 @@ struct asdf_datatype {
     const char *name;
     asdf_byteorder_t byteorder;
     uint32_t ndim;
-    const size_t *shape;
+    const uint64_t *shape;
     uint32_t nfields;
     const asdf_datatype_t *fields;
 };

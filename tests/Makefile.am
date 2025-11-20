@@ -42,7 +42,7 @@ unit_test_cppflags = \
     $(AM_CPPFLAGS) \
     -DREFERENCE_FILES_DIR=\"$(asdf_standard_dir)/reference_files\" \
     -DFIXTURES_DIR=\"$(srcdir)/fixtures\"
-unit_test_cflags = $(FYAML_CFLAGS) $(CODE_COVERAGE_CFLAGS) $(ASDF_CFLAGS)
+unit_test_cflags = $(FYAML_CFLAGS) $(STATGRAB_CFLAGS) $(CODE_COVERAGE_CFLAGS) $(ASDF_CFLAGS)
 
 if DEBUG
 unit_test_cflags += -DMUNIT_NO_FORK

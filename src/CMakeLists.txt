@@ -44,7 +44,7 @@ endif()
 
 target_link_libraries(libasdf PUBLIC
     stc
-    ${FYAML_LIBRARIES}
+    ${FYAML_LIBRARIES} ${BZIP2_LIBRARIES} ${ZLIB_LIBRARIES} ${STATGRAB_LIBRARIES}
 )
 target_include_directories(libasdf PUBLIC
     ${CMAKE_SOURCE_DIR}/third_party/STC/include

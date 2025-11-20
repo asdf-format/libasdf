@@ -16,9 +16,9 @@
 #include <bzlib.h>
 #include <zlib.h>
 
-#include "asdf/file.h"
-#include "asdf/log.h"
 #include "config.h"
+#include <asdf/file.h>
+#include <asdf/log.h>
 
 #ifdef HAVE_USERFAULTFD
 #include <fcntl.h>
@@ -71,7 +71,7 @@ void asdf_block_comp_close(asdf_block_t *block) {
 
         // TODO: Maybe extract out any necessary cleanup for specific lazy
         // decompression implementations; currently there is only the one though
-#if HAVE_USERFAULTFD
+#ifdef HAVE_USERFAULTFD
     if (cs->lazy.userfaultfd) {
         atomic_store(&cs->lazy.userfaultfd->stop, true);
         close(cs->lazy.userfaultfd->uffd);
@@ -199,9 +199,13 @@ static int asdf_block_decomp_lazy(asdf_block_comp_state_t *state) {
         "should not have been reached");
     return -1;
 }
+
+
+static bool asdf_block_decomp_lazy_available(
+    UNUSED(asdf_block_comp_state_t *cs), UNUSED(bool use_file_backing)) {
+    return false;
+}
 #else
-
-
 static void *asdf_block_comp_userfaultfd_handler(void *arg) {
     asdf_block_comp_userfaultfd_t *uffd = arg;
     asdf_block_comp_state_t *cs = uffd->comp_state;
@@ -255,8 +259,6 @@ static void *asdf_block_comp_userfaultfd_handler(void *arg) {
 
 #define FEATURE_IS_SET(bits, bit) (((bits) & (bit)) == (bit))
 
-
-#if ASDF_BLOCK_DECOMP_LAZY_AVAILABLE
 /**
  * Test whether lazy decompression is actually possible.
  *
@@ -342,12 +344,6 @@ static bool asdf_block_decomp_lazy_available(asdf_block_comp_state_t *cs, bool u
 
     return true;
 }
-#else
-static bool asdf_block_decomp_lazy_available(
-    UNUSED(asdf_block_comp_state_t *cs), UNUSED(bool use_file_backing)) {
-    return false;
-}
-#endif /* ASDF_BLOCK_DECOMP_LAZY_AVAILABLE */
 
 
 static int asdf_block_decomp_lazy(asdf_block_comp_state_t *cs) {

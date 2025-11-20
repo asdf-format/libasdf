@@ -34,7 +34,7 @@ ASDF_BEGIN_DECLS
 typedef struct asdf_file asdf_file_t;
 
 // Forward-declarations for asdf_open_ex and so on
-typedef struct _asdf_config_t asdf_config_t;
+typedef struct asdf_config_s asdf_config_t;
 asdf_file_t *asdf_open_file_ex(const char *filename, const char *mode, asdf_config_t *config);
 asdf_file_t *asdf_open_fp_ex(FILE *fp, const char *filename, asdf_config_t *config);
 asdf_file_t *asdf_open_mem_ex(const void *buf, size_t size, asdf_config_t *config);
@@ -102,7 +102,8 @@ ASDF_EXPORT void asdf_close(asdf_file_t *file);
 
 
 /**
- * Options for decompression mode, for use with `asdf_config_t`
+ * Options for decompression mode, for use with
+ * :c:type:`asdf_config_t <asdf_config_s>`
  *
  * .. todo::
  *
@@ -137,7 +138,7 @@ typedef enum {
  *
  * For use with `asdf_open_ex` and relatives.
  */
-typedef struct _asdf_config_t {
+typedef struct asdf_config_s {
     /** Low-level parser configuration; see `asdf_parser_cfg_t` */
     asdf_parser_cfg_t parser;
     /** Decompression options */
@@ -155,8 +156,8 @@ typedef struct _asdf_config_t {
  * Opens an ASDF file for reading
  *
  * Extended version of `asdf_open` taking an optional pointer to
- * `asdf_config_t` configuration options, or `NULL` to use the default
- * options (equivalent to `asdf_open`).
+ * :c:type:`asdf_config_t <asdf_config_s>` configuration options, or `NULL` to
+ * use the default options (equivalent to `asdf_open`).
  *
  * When passing in an `asdf_config_t *`, the config struct is *copied*:
  *
