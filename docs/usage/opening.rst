@@ -186,3 +186,12 @@ By default lazy compression decompresses one system page at a time.  However,
 it may be more efficient to use a larger value--this can be controlled with the
 `asdf_config_t.chunk_size` setting (in bytes).  This will always be
 automatically rounded up to the nearest page size.
+
+.. warning::
+
+   Due to technical limitations, lazy decompression does *not* work with
+   disk-backed decompression, and the memory threshold options are ignored.
+   If you really need both the best way is to ensure a sufficiently large
+   pagefile available on your system, and to let the kernel manage swapping.
+   See your system's documentation for the best way to create and manage
+   a pagefile.
