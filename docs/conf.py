@@ -95,6 +95,9 @@ nitpick_ignore = [
     ('c:identifier', 'uint32_t'),
     ('c:identifier', 'uint64_t'),
     ('c:identifier', 'uint8_t'),
+
+# Should be documented but aren't yet
+    ('c:identifier', 'asdf_parser_cfg_t'),
 ]
 
 # Add intersphinx mappings

@@ -1,5 +1,6 @@
 src_files = \
     src/block.c \
+    src/compression.c \
     src/context.c \
     src/core/asdf.c \
     src/core/extension_metadata.c \
@@ -17,6 +18,7 @@ src_files = \
     src/parse.c \
     src/parse_util.c \
     src/stream.c \
+    src/util.c \
     src/value.c \
     src/value_util.c \
     src/yaml.c
@@ -24,6 +26,7 @@ src_files = \
 src_headers = \
     src/block.h \
     src/compat/endian.h \
+    src/compression.h \
     src/context.h \
     src/core/ndarray_convert.h \
     src/error.h \
@@ -77,17 +80,17 @@ noinst_HEADERS = $(src_headers)
 #include .c and .h in SOURCES so that both appear in dist
 lib_LTLIBRARIES = libasdf.la
 libasdf_la_SOURCES = $(src_files)
-libasdf_la_CFLAGS = $(AM_CFLAGS) $(FYAML_CFLAGS) $(CODE_COVERAGE_CFLAGS)
+libasdf_la_CFLAGS = $(AM_CFLAGS) $(FYAML_CFLAGS) $(STATGRAB_CFLAGS) $(CODE_COVERAGE_CFLAGS)
 libasdf_la_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
-libasdf_la_LIBADD = $(FYAML_LIBS) third_party/libstc.la
+libasdf_la_LIBADD = $(FYAML_LIBS) $(ZLIB_LIBS) $(BZIP2_LIBS) $(STATGRAB_LIBS) third_party/libstc.la
 
 # The asdf command line tool
 if ASDF_BUILD_TOOL
 bin_PROGRAMS = asdf
 asdf_SOURCES = src/main.c
-asdf_CFLAGS = $(AM_CFLAGS) $(FYAML_CFLAGS) $(CODE_COVERAGE_CFLAGS)
+asdf_CFLAGS = $(AM_CFLAGS) $(FYAML_CFLAGS) $(STATGRAB_CFLAGS) $(CODE_COVERAGE_CFLAGS)
 asdf_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
-asdf_LDADD = libasdf.la $(ARGP_LIB) $(FYAML_LIBS)
+asdf_LDADD = libasdf.la $(ARGP_LIB) $(FYAML_LIBS) $(ZLIB_LIBS) $(BZIP2_LIBS) $(STATGRAB_LIBS)
 endif # ASDF_BUILD_TOOL
 
 

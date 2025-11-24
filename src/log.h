@@ -34,8 +34,16 @@
             asdf_log(__ctx, (level), __FILE__, __LINE__, fmt, ##__VA_ARGS__); \
         } \
     } while (0)
+
+#define ASDF_LOG_CTX(ctx, level, fmt, ...) \
+    do { \
+        if ((level) >= ASDF_LOG_MIN_LEVEL) { \
+            asdf_log(ctx, (level), __FILE__, __LINE__, fmt, ##__VA_ARGS__); \
+        } \
+    } while (0)
 #else
 #define ASDF_LOG(obj, level, fmt, ...) ((void)0)
+#define ASDF_LOG_CTX(obj, level, fmt, ...) ((void)0)
 #endif
 
 

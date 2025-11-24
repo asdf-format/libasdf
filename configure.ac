@@ -50,6 +50,24 @@ AC_CHECK_DECLS([be64toh], [], [], [[
 # Check functions
 AC_CHECK_FUNCS([strptime])
 
+# Check for userfaultfd (for lazy decompression support, Linux only currently)
+AC_CHECK_HEADERS([linux/userfaultfd.h], [], [])
+AC_COMPILE_IFELSE(
+  [AC_LANG_PROGRAM([[
+    #include <linux/userfaultfd.h>
+  ]], [[
+    struct uffdio_api api;
+    api.api = UFFD_API;
+  ]])],
+  [have_userfaultfd=yes],
+  [have_userfaultfd=no]
+)
+AM_CONDITIONAL([HAVE_USERFAULTFD], [test "x$have_userfaultfd" = "xyes"])
+AS_IF([test "x$have_userfaultfd" = "xyes"], [
+  AC_DEFINE([HAVE_USERFAULTFD], [1],
+            [Define to 1 if userfaultfd support is available])
+])
+AC_CHECK_DECLS([SYS_userfaultfd], [], [], [[#include <sys/syscall.h>]])
 
 # http://www.gnu.org/software/autoconf-archive/ax_valgrind_check.html
 # - make check-valgrind
@@ -169,6 +187,45 @@ fi
 
 PKG_CHECK_MODULES([FYAML], [libfyaml], [], [
   AC_MSG_ERROR([libfyaml is required but was not found])
+])
+
+
+# Check for libstatgrab
+AC_ARG_WITH([libstatgrab],
+    [AS_HELP_STRING([--with-libstatgrab],
+        [Use libstatgrab for system memory info (default: yes)])],
+    [with_libstatgrab=$withval],
+    [with_libstatgrab=yes])
+
+AS_IF([test "x$with_libstatgrab" = "xyes"], [
+  PKG_CHECK_MODULES([STATGRAB], [libstatgrab], [
+    AC_DEFINE([HAVE_STATGRAB], [1], [Define if libstatgrab is available])
+  ], [
+    AC_MSG_ERROR([libstatgrab is required but was not found])
+  ])
+], [
+    AC_MSG_NOTICE([libstatgrab disabled])
+])
+
+# Compression libraries
+PKG_CHECK_MODULES([ZLIB], [zlib], [], [
+  AC_MSG_ERROR([zlib is required but was not found])
+])
+
+# Annoyingly my system does not provide a pc file for bzip2, so fall back on
+# checking without pkg-config (should probably do same for the other deps)
+PKG_CHECK_MODULES([BZIP2], [bzip2], [], [
+  AC_CHECK_HEADER([bzlib.h], [have_bzip2_h=yes], [have_bzip2_h=no])
+  AC_CHECK_LIB([bz2], [BZ2_bzCompressInit],
+    [have_bzip2_lib=yes; BZIP2_LIBS="-lbz2"],
+    [have_bzip2_lib=no])
+
+  AS_IF([test "x$have_bzip2_h" = xyes && test "x$have_bzip2_lib" = xyes], [
+    AC_DEFINE([HAVE_BZIP2], [1], [Define if bzip2 is available])
+    BZIP2_CFLAGS=""
+  ], [
+    AC_MSG_ERROR([bz2 is required but was not found])
+  ])
 ])
 
 # Check for homebrew packages in macOS

@@ -4,13 +4,14 @@
 
 #include <asdf/file.h>
 
+#include "compression.h"
 #include "context.h"
 #include "parse.h"
-#include "util.h"
 
 
 typedef struct asdf_file {
     asdf_base_t base;
+    asdf_config_t *config;
     asdf_parser_t *parser;
     struct fy_document *tree;
 } asdf_file_t;
@@ -29,5 +30,8 @@ typedef struct asdf_block {
     void *data;
     // Should be the same as used_size in the header but may be truncated in exceptional
     // cases (we should probably log a warning when it is)
-    size_t data_size;
+    size_t avail_size;
+
+    asdf_block_comp_t comp;
+    asdf_block_comp_state_t *comp_state;
 } asdf_block_t;

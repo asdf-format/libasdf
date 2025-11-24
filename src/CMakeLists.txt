@@ -9,6 +9,7 @@ target_sources(libasdf PUBLIC
     core/ndarray_convert.c
     core/software.c
     block.c
+    compression.c
     context.c
     error.c
     event.c
@@ -20,6 +21,7 @@ target_sources(libasdf PUBLIC
     parse.c
     parse_util.c
     stream.c
+    util.c
     value.c
     value_util.c
     yaml.c
@@ -42,7 +44,7 @@ endif()
 
 target_link_libraries(libasdf PUBLIC
     stc
-    ${FYAML_LIBRARIES}
+    ${FYAML_LIBRARIES} ${BZIP2_LIBRARIES} ${ZLIB_LIBRARIES} ${STATGRAB_LIBRARIES}
 )
 target_include_directories(libasdf PUBLIC
     ${CMAKE_SOURCE_DIR}/third_party/STC/include

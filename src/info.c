@@ -183,8 +183,8 @@ static tree_node_t *build_tree(asdf_parser_t *parser) {
         /* TODO: Handle anchor events */
         case ASDF_YAML_MAPPING_START_EVENT:
         case ASDF_YAML_SEQUENCE_START_EVENT: {
-            tree_node_type_t node_type =
-                (type == ASDF_YAML_MAPPING_START_EVENT) ? TREE_MAPPING : TREE_SEQUENCE;
+            tree_node_type_t node_type = (type == ASDF_YAML_MAPPING_START_EVENT) ? TREE_MAPPING
+                                                                                 : TREE_SEQUENCE;
             const char *key = NULL;
             size_t index = 0;
 

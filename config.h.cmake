@@ -45,5 +45,8 @@
 #cmakedefine HAVE_BZIP2
 #cmakedefine HAVE_LZ4
 #cmakedefine HAVE_ZLIB
+#cmakedefine HAVE_STATGRAB
+#cmakedefine HAVE_USERFAULTFD
+#cmakedefine HAVE_DECL_SYS_USERFAULTFD
 
 #endif

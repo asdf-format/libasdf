@@ -9,10 +9,7 @@
 #include "block.h"
 #include "compat/endian.h"
 #include "error.h"
-#include "file.h"
-#include "log.h"
 #include "parse.h"
-#include "parse_util.h"
 #include "stream.h"
 #include "util.h"
 
@@ -114,6 +111,7 @@ asdf_block_info_t *asdf_block_read_info(asdf_parser_t *parser) {
 
     block->header_pos = header_pos;
     block->data_pos = asdf_stream_tell(parser->stream);
+    block->index = parser->blocks.found_blocks;
     return block;
 error:
     free(block);

@@ -13,7 +13,6 @@
 #include "parse.h"
 #include "parse_util.h"
 #include "util.h"
-#include "yaml.h"
 
 
 typedef enum {
@@ -651,8 +650,9 @@ static parse_result_t parse_block_index(asdf_parser_t *parser, asdf_event_t *eve
         return ASDF_PARSE_ERROR;
     }
 
-    off_t aligned_offset =
-        (file_size > page_size) ? (file_size - page_size - (file_size % page_size)) : 0;
+    off_t aligned_offset = (file_size > page_size)
+                               ? (file_size - page_size - (file_size % page_size))
+                               : 0;
     struct fy_document *doc = NULL;
 
 
@@ -717,9 +717,11 @@ static parse_result_t parse_block_index(asdf_parser_t *parser, asdf_event_t *eve
     int idx = 0;
     void *iter = NULL;
     while ((item = fy_node_sequence_iterate(root, &iter))) {
-        if (UNLIKELY(1 != fy_node_scanf(item, "/ %ld", &offsets[idx++]))) {
+        long long offset = 0;
+        if (UNLIKELY(1 != fy_node_scanf(item, "/ %lld", (long long *)&offset))) {
             goto cleanup_on_error;
         }
+        offsets[idx++] = (off_t)offset;
     }
     block_index->size = idx;
 
