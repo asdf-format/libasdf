@@ -21,7 +21,9 @@ The second argument ``"r"`` is a mode string.  Currently ``"r"`` is the only
 accepted value, but more will be added when write support is added.
 
 In addition to `asdf_open`, `asdf_open_fp` can read from an existing `FILE *`,
-and `asdf_open_mem` can read from a sized memory buffer.
+and `asdf_open_mem` can read from a sized memory buffer.  These functions also
+have ``_ex`` variants that can accept additioanl configuration parameters; see
+:ref:`configuration`.
 
 .. _error-handling:
 
@@ -67,3 +69,120 @@ needed.
    lot easier to manage.  Nevertheless, it's still good practice to release
    resources when no longer needed to avoid memory leaks in your own
    application.
+
+
+.. _configuration:
+
+Advanced configuration
+----------------------
+
+`asdf_open`, `asdf_open_fp`, etc. all have ``_ex`` variants: `asdf_open_ex`,
+`asdf_open_fp_ex`, `asdf_open_mem_ex`.
+
+These take an additional `asdf_config_t *` argument.  This is a struct in which
+you can provide additional per-file configuration for the library to control
+the behavior of the parser, and other options.  The simplest example is an
+empty config struct (equivalent also to passing `NULL`) which will then be
+filled in with the default settings.
+
+.. code:: c
+
+   asdf_config_t config = {0};
+   asdf_file_t *file = asdf_open_ex("observation.asdf", "r", &config);
+
+.. note::
+
+   The provided ``config`` object is copied/modified internally (e.g. to fill
+   in defaults), so it's safe to point to a local variable.
+
+Any option in the user-provided config left as ``0`` will be filled in from the
+default configuration (though this may change in the future).
+
+Currently, the only documented configuration options that may be of interest to
+end users are the options for controlling the behavior of *decompression* of
+compressed blocks.  For example:
+
+.. code::
+
+   asdf_config_t config = {
+       .decomp = {
+           mode = ASDF_BLOCK_DECOMP_MODE_EAGER,
+           max_memory_bytes = 1073741824,
+           max_memory_threshold = 0.8,
+           chunk_size = 409600,
+           tmp_dir = "/var/tmp"
+         }
+   };
+
+Two things that deserve explanation here are handling of the *size* of
+the decompressed data, and the decompression *mode*.
+
+Compressed data size
+^^^^^^^^^^^^^^^^^^^^
+
+An array containing sparsely populated data may be very small compressed, but
+explode significantly when decompressed.
+
+.. todo::
+
+   Document better how to inspect the compressed vs. decompressed sizes of a
+   block.
+
+By *default* decompression is performed entirely in-memory.  For most files on
+modern systems with significant RAM and swap space this won't be an issue.
+However, libasdf also has the option to decompress to a temporary file on disk
+(effectively a temporary pagefile).  To control this behavior you can use one
+or both of the
+:c:member:`max_memory_bytes <asdf_config_t.max_memory_bytes>` and
+:c:member:`max_memory_threshold <asdf_config_t.max_memory_threshold>`
+options.
+
+The former sets a maximum number of *bytes* of decompressed data above which to
+use decompression to disk.  The latter sets a percentage (from ``0.0`` to
+``1.0``) of total system memory above which to enable this behavior.  If both
+are specified, then the lower value of the two is applied as the absolute
+threshold.
+
+Most users won't need these settings but they are there in case you do.
+
+By default this will write the file to your system's ``TMPDIR`` (typically
+``/tmp`` or ``/var/tmp``).  It also understands the environment variable
+``ASDF_TMPDIR`` to use as the default for all ASDF files read with libasdf.
+
+.. warning::
+
+   However, many systems use a RAM-based filesystem like
+   `tmpfs <https://en.wikipedia.org/wiki/Tmpfs>`_ to back their temporary
+   directory, which also renders this feature meaningless.  If you are
+   sure you definitely need this for large file support, you can either
+   pass the :c:member`tmp_dir <asdf_config_t.tmp_dir` option to also
+   specify a specific disk-backed directory to use for the temp file.
+
+Currently every individual `asdf_file_t*` handle does its own decompression
+separately, though a future option might be to allow multiple `asdf_file_t*`
+to share the same decompressed data pages.
+
+Decompression mode
+^^^^^^^^^^^^^^^^^^
+
+In most cases, compressed block data is decompressed eagerly by default when
+using either `ASDF_BLOCK_DECOMP_MODE_AUTO` or `ASDF_BLOCK_DECOMP_MODE_EAGER`.
+This means that as soon as the decompressed data is needed the full block is
+decompressed.
+
+However, there is also experimental support for `ASDF_BLOCK_DECOMP_MODE_LAZY`
+(currently on supported Linux versions *only*).  This allows blocks to be
+decompressed one or more pages at a time on an as-needed basis, and works
+totally transparently.
+
+For zlib and bzip2 compression this is mostly only useful if you want to access
+just bytes early in the block, as these algorithms can only be decompressed
+sequentially (and the ASDF Standard does not currently define a scheme for
+tiled compression).  If you need the entire block data it will all be
+decompressed anyways.  This can still be useful even in that case if one is
+taking chunks of the data and processing them sequentially.
+
+By default lazy compression decompresses one system page at a time.  However,
+it may be more efficient to use a larger value--this can be controlled with the
+`asdf_config_t.chunk_size` setting (in bytes).  This will always be
+automatically rounded up to the nearest page size.

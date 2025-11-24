@@ -33,11 +33,101 @@ ASDF_BEGIN_DECLS
  */
 typedef struct asdf_file asdf_file_t;
 
+
+/**
+ * .. _int file-configuration:
+ *
+ * Configuration
+ * -------------
+ */
+
+
+/**
+ * Options for decompression mode, for use with
+ * :c:type:`asdf_config_t`
+ *
+ * .. todo::
+ *
+ *   Document modes
+ *
+ * .. todo::
+ *
+ *   When lazy is implemented there may likely be multiple implementations
+ *   (userfaultfd, sigsegv, etc.).  Add options to specify exactly which
+ *   implementation to use, where ASDF_DECOMP_MODE_LAZY by itself will
+ *   choose the most appropriate choice (generally userfaultfd if available)
+ */
+typedef enum {
+    /** Automatically select the best mode */
+    ASDF_BLOCK_DECOMP_MODE_AUTO = 0,
+    /** Force eager decompression */
+    ASDF_BLOCK_DECOMP_MODE_EAGER,
+    /**
+     * Force lazy decompression *if possible*
+     *
+     * Lazy decompression is currently only implemented on recent-enough Linux
+     * versions (4.11+) that support the userfaultfd system call.  If this
+     * option is passed on a system where it is not supported it will
+     * fall back to eager decompression.
+     */
+    ASDF_BLOCK_DECOMP_MODE_LAZY,
+} asdf_block_decomp_mode_t;
+
+
+/**
+ * Struct containing extended options to use when opening and reading files
+ *
+ * For use with `asdf_open_ex` and relatives.
+ */
+typedef struct {
+    /** Low-level parser configuration; see `asdf_parser_cfg_t` */
+    asdf_parser_cfg_t parser;
+    /** Decompression options */
+    struct {
+        /** Decompression mode (see `asdf_block_decomp_mode_t`) */
+        asdf_block_decomp_mode_t mode;
+
+        /**
+         * Max size in bytes of the decompressed data, above which
+         * decompression to disk will be used (see :ref:`compression`)
+         */
+        size_t max_memory_bytes;
+
+        /**
+         * Max percentage (from ``0.0`` to ``1.0`` of total system memory
+         * above which decompression to disk will be used
+         * (see :ref:`compression`)
+         */
+        double max_memory_threshold;
+
+        /**
+         * Size in bytes of chunks to decompress at a time when using lazy
+         * decompression
+         *
+         * Defaults to one page, and is always rounded up to the nearest page
+         * size.
+         */
+        size_t chunk_size;
+
+        /**
+         * Optional temporary directory path to use when decompressing to disk
+         */
+        const char *tmp_dir;
+    } decomp;
+} asdf_config_t;
+
+
 // Forward-declarations for asdf_open_ex and so on
-typedef struct asdf_config_s asdf_config_t;
 asdf_file_t *asdf_open_file_ex(const char *filename, const char *mode, asdf_config_t *config);
 asdf_file_t *asdf_open_fp_ex(FILE *fp, const char *filename, asdf_config_t *config);
 asdf_file_t *asdf_open_mem_ex(const void *buf, size_t size, asdf_config_t *config);
+
+/**
+ * .. _file-openers:
+ *
+ * File openers
+ * ------------
+ */
 
 /**
  * Opens an ASDF file for reading
@@ -102,28 +192,6 @@ ASDF_EXPORT void asdf_close(asdf_file_t *file);
 
 
 /**
- * Options for decompression mode, for use with
- * :c:type:`asdf_config_t <asdf_config_s>`
- *
- * .. todo::
- *
- *   Document modes
- *
- * .. todo::
- *
- *   When lazy is implemented there may likely be multiple implementations
- *   (userfaultfd, sigsegv, etc.).  Add options to specify exactly which
- *   implementation to use, where ASDF_DECOMP_MODE_LAZY by itself will
- *   choose the most appropriate choice (generally userfaultfd if available)
- */
-typedef enum {
-    ASDF_BLOCK_DECOMP_MODE_AUTO = 0,
-    ASDF_BLOCK_DECOMP_MODE_EAGER,
-    ASDF_BLOCK_DECOMP_MODE_LAZY,
-} asdf_block_decomp_mode_t;
-
-
-/**
  * A macro which can be used at compile-time to check if lazy-mode
  * decompression is available.
  *
@@ -134,29 +202,10 @@ typedef enum {
 
 
 /**
- * Struct containing extended options to use when opening and reading files
- *
- * For use with `asdf_open_ex` and relatives.
- */
-typedef struct asdf_config_s {
-    /** Low-level parser configuration; see `asdf_parser_cfg_t` */
-    asdf_parser_cfg_t parser;
-    /** Decompression options */
-    struct {
-        asdf_block_decomp_mode_t mode;
-        size_t max_memory_bytes;
-        double max_memory_threshold;
-        size_t chunk_size;
-        const char *tmp_dir;
-    } decomp;
-} asdf_config_t;
-
-
-/**
  * Opens an ASDF file for reading
  *
  * Extended version of `asdf_open` taking an optional pointer to
- * :c:type:`asdf_config_t <asdf_config_s>` configuration options, or `NULL` to
+ * :c:type:`asdf_config_t` configuration options, or `NULL` to
  * use the default options (equivalent to `asdf_open`).
  *
  * When passing in an `asdf_config_t *`, the config struct is *copied*:
@@ -215,6 +264,14 @@ ASDF_EXPORT asdf_file_t *asdf_open_mem_ex(const void *buf, size_t size, asdf_con
 
 
 /**
+ * .. _file-errors:
+ *
+ * Error handling
+ * --------------
+ */
+
+
+/**
  * Retrieve an error on a file
  *
  * This is typically used to check for errors on the file itself, such as
@@ -231,6 +288,14 @@ ASDF_EXPORT asdf_file_t *asdf_open_mem_ex(const void *buf, size_t size, asdf_con
  *   message string
  */
 ASDF_EXPORT const char *asdf_error(asdf_file_t *file);
+
+
+/**
+ * .. _file-value-getters:
+ *
+ * Reading values
+ * --------------
+ */
 
 /**
  * The following functions are the high-level interface for retrieving typed
