@@ -15,8 +15,6 @@
 typedef struct {
     asdf_compressor_status_t status;
     bz_stream bz;
-    size_t dest_size;
-    size_t produced;
 } asdf_compressor_bzp2_userdata_t;
 
 
@@ -78,9 +76,7 @@ static int asdf_compressor_bzp2_decomp(
     if (ret != BZ_OK && ret != BZ_STREAM_END)
         return ret;
 
-    bzp2->produced += buf_size; // Seems wrong
-
-    if (bzp2->produced >= bzp2->dest_size)
+    if (ret == BZ_STREAM_END)
         bzp2->status = ASDF_COMPRESSOR_DONE;
 
     return 0;

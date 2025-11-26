@@ -14,8 +14,6 @@
 typedef struct {
     asdf_compressor_status_t status;
     z_stream z;
-    size_t dest_size;
-    size_t produced;
 } asdf_compressor_zlib_userdata_t;
 
 
@@ -47,7 +45,6 @@ static asdf_compressor_userdata_t *asdf_compressor_zlib_init(
         return NULL;
     }
 
-    userdata->dest_size = dest_size;
     userdata->status = ASDF_COMPRESSOR_INITIALIZED;
     return userdata;
 }
@@ -83,9 +80,7 @@ static int asdf_compressor_zlib_decomp(
     if (ret != Z_OK && ret != Z_STREAM_END)
         return ret;
 
-    zlib->produced += buf_size; // Seems wrong
-
-    if (zlib->produced >= zlib->dest_size)
+    if (ret == Z_STREAM_END)
         zlib->status = ASDF_COMPRESSOR_DONE;
 
     return 0;
