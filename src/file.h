@@ -4,7 +4,7 @@
 
 #include <asdf/file.h>
 
-#include "compression.h"
+#include "compression/compression.h"
 #include "context.h"
 #include "parse.h"
 

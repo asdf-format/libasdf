@@ -29,12 +29,12 @@
 #endif
 
 
-#include "block.h"
+#include "../block.h"
+#include "../error.h"
+#include "../file.h"
+#include "../log.h"
+#include "../util.h"
 #include "compression.h"
-#include "error.h"
-#include "file.h"
-#include "log.h"
-#include "util.h"
 
 
 void asdf_block_comp_close(asdf_block_t *block) {

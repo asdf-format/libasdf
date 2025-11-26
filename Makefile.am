@@ -1,6 +1,6 @@
 src_files = \
     src/block.c \
-    src/compression.c \
+    src/compression/compression.c \
     src/context.c \
     src/core/asdf.c \
     src/core/extension_metadata.c \
@@ -26,7 +26,7 @@ src_files = \
 src_headers = \
     src/block.h \
     src/compat/endian.h \
-    src/compression.h \
+    src/compression/compression.h \
     src/context.h \
     src/core/ndarray_convert.h \
     src/error.h \

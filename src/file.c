@@ -7,7 +7,7 @@
 
 #include <libfyaml.h>
 
-#include "compression.h"
+#include "compression/compression.h"
 #include "context.h"
 #include "error.h"
 #include "event.h"
