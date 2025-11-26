@@ -11,6 +11,37 @@
 
 #include <asdf/file.h>
 
+#include "../block.h"
+
+
+typedef enum {
+    ASDF_COMPRESSOR_UNINITIALIZED,
+    ASDF_COMPRESSOR_INITIALIZED,
+    ASDF_COMPRESSOR_IN_PROGRESS,
+    ASDF_COMPRESSOR_DONE
+} asdf_compressor_status_t;
+
+
+typedef void asdf_compressor_userdata_t;
+
+typedef asdf_compressor_userdata_t *(*asdf_compressor_init_t)(
+    asdf_block_t *block, const void *dest, size_t dest_size);
+typedef asdf_compressor_status_t (*asdf_compressor_get_status_t)(
+    asdf_compressor_userdata_t *userdata);
+typedef int (*asdf_compressor_decomp_t)(
+    asdf_compressor_userdata_t *userdata, uint8_t *buf, size_t buf_size);
+typedef void (*asdf_compressor_destroy_t)(asdf_compressor_userdata_t *userdata);
+
+
+typedef struct {
+    /** Compression string from the block header */
+    const char compression[ASDF_BLOCK_COMPRESSION_FIELD_SIZE];
+    asdf_compressor_init_t init;
+    asdf_compressor_get_status_t status;
+    asdf_compressor_decomp_t decomp;
+    asdf_compressor_destroy_t destroy;
+} asdf_compressor_t;
+
 
 // Forward-declaration
 typedef struct _asdf_block_comp_state_t asdf_block_comp_state_t;
@@ -38,10 +69,8 @@ typedef struct {
  */
 typedef struct _asdf_block_comp_state_t {
     asdf_file_t *file;
-    asdf_block_comp_t comp;
     int fd;
     bool own_fd;
-    size_t produced;
     uint8_t *dest;
     size_t dest_size;
 
@@ -53,17 +82,9 @@ typedef struct _asdf_block_comp_state_t {
     uint8_t *work_buf;
     size_t work_buf_size;
 
-    /**
-     * Compression-lib-specific data, effectively something like
-     *
-     * z_stream and bz_stream are included since these are built in, but we
-     * leave open the possibility for others in a void*
-     */
-    union {
-        z_stream *z;
-        bz_stream *bz;
-        void *uz;
-    };
+    const asdf_compressor_t *compressor;
+    // Compressor-specific userdata
+    asdf_compressor_userdata_t *userdata;
 
     /** Additional state for lazy decompression, if any */
     union {
@@ -79,6 +100,5 @@ typedef struct _asdf_block_comp_state_t {
 typedef struct asdf_block asdf_block_t;
 
 
-ASDF_LOCAL asdf_block_comp_t asdf_block_comp_parse(asdf_file_t *file, const char *compression);
 ASDF_LOCAL int asdf_block_comp_open(asdf_block_t *block);
 ASDF_LOCAL void asdf_block_comp_close(asdf_block_t *block);

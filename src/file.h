@@ -32,6 +32,6 @@ typedef struct asdf_block {
     // cases (we should probably log a warning when it is)
     size_t avail_size;
 
-    asdf_block_comp_t comp;
+    const char *compression;
     asdf_block_comp_state_t *comp_state;
 } asdf_block_t;

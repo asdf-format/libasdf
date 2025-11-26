@@ -1,6 +1,9 @@
 src_files = \
     src/block.c \
+    src/compression/bzp2.c \
+    src/compression/compressor_registry.c \
     src/compression/compression.c \
+    src/compression/zlib.c \
     src/context.c \
     src/core/asdf.c \
     src/core/extension_metadata.c \

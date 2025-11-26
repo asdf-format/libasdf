@@ -2,6 +2,10 @@ project(libasdf)
 
 add_library(libasdf STATIC)
 target_sources(libasdf PUBLIC
+    compression/bzp2.c
+    compression/compressor_registry.c
+    compression/compression.c
+    compression/zlib.c
     core/asdf.c
     core/extension_metadata.c
     core/history_entry.c
@@ -9,7 +13,6 @@ target_sources(libasdf PUBLIC
     core/ndarray_convert.c
     core/software.c
     block.c
-    compression.c
     context.c
     error.c
     event.c

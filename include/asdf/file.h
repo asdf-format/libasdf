@@ -713,26 +713,6 @@ typedef struct asdf_block asdf_block_t;
 
 
 /**
- * Enum for different types of compression a block can support
- *
- * This can be checked with the `asdf_block_compression` API.
- */
-typedef enum {
-    /**
-     * The block header contains some non-empty compression value but we don't
-     * know how to handle it
-     */
-    ASDF_BLOCK_COMP_UNKNOWN = -1,
-    /** No compression */
-    ASDF_BLOCK_COMP_NONE = 0,
-    /** Compressed with zlib */
-    ASDF_BLOCK_COMP_ZLIB = 1,
-    /** Compressed with bz2 */
-    ASDF_BLOCK_COMP_BZP2 = 2
-} asdf_block_comp_t;
-
-
-/**
  * Return the total number of binary blocks in the ASDF file
  *
  * :param file: The `asdf_file_t *` for the file
@@ -775,9 +755,9 @@ ASDF_EXPORT size_t asdf_block_data_size(asdf_block_t *block);
  * Get the compression type, if any, of a block
  *
  * :param block: The `asdf_block_t *` handle
- * :return: A value of `asdf_block_comp_t`
+ * :return: A NULL-terminated string containing the compression type, if any
  */
-ASDF_EXPORT asdf_block_comp_t asdf_block_compression(asdf_block_t *block);
+ASDF_EXPORT const char *asdf_block_compression(asdf_block_t *block);
 
 
 /**

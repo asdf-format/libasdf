@@ -69,7 +69,7 @@ ASDF_CONSTRUCTOR static void asdf_extension_map_create() {
 }
 
 
-ASDF_DESTRUCTOR static void asdf_common_tag_map_destroy(void) {
+ASDF_DESTRUCTOR static void asdf_extension_map_destroy(void) {
     if (atomic_load_explicit(&extension_map_initialized, memory_order_acquire)) {
         asdf_extension_map_drop(&extension_map);
         atomic_store_explicit(&extension_map_initialized, false, memory_order_release);

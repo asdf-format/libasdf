@@ -510,7 +510,6 @@ asdf_block_t *asdf_block_open(asdf_file_t *file, size_t index) {
     asdf_block_info_t *info = parser->blocks.block_infos[index];
     block->file = file;
     block->info = *info;
-    block->comp = asdf_block_comp_parse(file, info->header.compression);
     block->comp_state = NULL;
     return block;
 }
@@ -525,6 +524,9 @@ void asdf_block_close(asdf_block_t *block) {
         asdf_stream_t *stream = block->file->parser->stream;
         stream->close_mem(stream, block->data);
     }
+
+    if (block->compression)
+        free((void *)block->compression);
 
     if (block->comp_state)
         asdf_block_comp_close(block);
@@ -580,9 +582,18 @@ void *asdf_block_data(asdf_block_t *block, size_t *size) {
 }
 
 
-asdf_block_comp_t asdf_block_compression(asdf_block_t *block) {
+const char *asdf_block_compression(asdf_block_t *block) {
     if (!block)
-        return ASDF_BLOCK_COMP_UNKNOWN;
+        return "";
 
-    return block->comp;
+    if (!block->compression)
+        block->compression = strndup(
+            block->info.header.compression, ASDF_BLOCK_COMPRESSION_FIELD_SIZE);
+
+    if (!block->compression) {
+        ASDF_ERROR_OOM(block->file);
+        return "";
+    }
+
+    return block->compression;
 }

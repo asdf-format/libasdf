@@ -13,9 +13,6 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include <bzlib.h>
-#include <zlib.h>
-
 #include "config.h"
 #include <asdf/file.h>
 #include <asdf/log.h>
@@ -35,6 +32,7 @@
 #include "../log.h"
 #include "../util.h"
 #include "compression.h"
+#include "compressor_registry.h"
 
 
 void asdf_block_comp_close(asdf_block_t *block) {
@@ -44,24 +42,8 @@ void asdf_block_comp_close(asdf_block_t *block) {
     if (!cs)
         return;
 
-    switch (cs->comp) {
-    case ASDF_BLOCK_COMP_UNKNOWN:
-    case ASDF_BLOCK_COMP_NONE:
-        /* Nothing to do */
-        break;
-    case ASDF_BLOCK_COMP_ZLIB:
-        if (cs->z) {
-            inflateEnd(cs->z);
-            free(cs->z);
-        }
-        break;
-    case ASDF_BLOCK_COMP_BZP2:
-        if (cs->bz) {
-            BZ2_bzDecompressEnd(cs->bz);
-            free(cs->bz);
-        }
-        break;
-    }
+    if (cs->compressor)
+        cs->compressor->destroy(cs->userdata);
 
     if (cs->dest)
         munmap(cs->dest, cs->dest_size);
@@ -83,27 +65,6 @@ void asdf_block_comp_close(asdf_block_t *block) {
 
     ZERO_MEMORY(cs, sizeof(asdf_block_comp_state_t));
     free(cs);
-}
-
-
-asdf_block_comp_t asdf_block_comp_parse(asdf_file_t *file, const char *compression) {
-    assert(compression);
-
-    if (strncmp(compression, "zlib", ASDF_BLOCK_COMPRESSION_FIELD_SIZE) == 0)
-        return ASDF_BLOCK_COMP_ZLIB;
-
-    if (strncmp(compression, "bzp2", ASDF_BLOCK_COMPRESSION_FIELD_SIZE) == 0)
-        return ASDF_BLOCK_COMP_BZP2;
-
-    if (compression[0] == '\0')
-        return ASDF_BLOCK_COMP_NONE;
-
-    ASDF_LOG(
-        file,
-        ASDF_LOG_WARN,
-        "unsupported block compression option %s; block data will simply be copied verbatim",
-        compression);
-    return ASDF_BLOCK_COMP_UNKNOWN;
 }
 
 
@@ -140,40 +101,9 @@ static int asdf_create_temp_file(size_t data_size, const char *tmp_dir, int *out
 static int asdf_block_decomp_next(asdf_block_comp_state_t *cs) {
     assert(cs);
     assert(cs->work_buf);
-    size_t new_produced = cs->dest_size;
-
-    // TODO: Probably offload this as well as per-compression-type
-    // initialization to a separate, extensible interface
-    switch (cs->comp) {
-    case ASDF_BLOCK_COMP_UNKNOWN:
-    case ASDF_BLOCK_COMP_NONE:
-        return -1;
-    case ASDF_BLOCK_COMP_ZLIB: {
-        cs->z->next_out = cs->work_buf;
-        cs->z->avail_out = cs->work_buf_size;
-
-        int ret = inflate(cs->z, Z_NO_FLUSH);
-        if (ret != Z_OK && ret != Z_STREAM_END)
-            return ret;
-
-        new_produced -= cs->z->avail_out;
-        break;
-    }
-    case ASDF_BLOCK_COMP_BZP2: {
-        cs->bz->next_out = (char *)cs->work_buf;
-        cs->bz->avail_out = cs->work_buf_size;
-
-        int ret = BZ2_bzDecompress(cs->bz);
-        if (ret != BZ_OK && ret != BZ_STREAM_END)
-            return ret;
-
-        new_produced -= cs->bz->avail_out;
-        break;
-    }
-    }
-
-    cs->produced = new_produced;
-    return 0;
+    assert(cs->compressor);
+    assert(cs->userdata);
+    return cs->compressor->decomp(cs->userdata, cs->work_buf, cs->work_buf_size);
 }
 
 
@@ -209,10 +139,12 @@ static bool asdf_block_decomp_lazy_available(
 static void *asdf_block_comp_userfaultfd_handler(void *arg) {
     asdf_block_comp_userfaultfd_t *uffd = arg;
     asdf_block_comp_state_t *cs = uffd->comp_state;
+    asdf_compressor_status_t status = ASDF_COMPRESSOR_UNINITIALIZED;
     struct uffd_msg msg;
 
     while (!atomic_load(&uffd->stop)) {
-        if (cs->produced >= cs->dest_size)
+        status = cs->compressor->status(cs->userdata);
+        if (status == ASDF_COMPRESSOR_DONE)
             break;
 
         ssize_t n = read(uffd->uffd, &msg, sizeof(msg));
@@ -417,10 +349,6 @@ static int asdf_block_decomp_lazy(asdf_block_comp_state_t *cs) {
 #endif /* HAVE_USERFAULTFD */
 
 
-#define ASDF_ZLIB_FORMAT 15
-#define ASDF_ZLIB_AUTODETECT 32
-
-
 /**
  * Opens a memory handle to contain decompressed block data
  *
@@ -432,9 +360,22 @@ int asdf_block_comp_open(asdf_block_t *block) {
 
     int ret = -1;
 
-    if (block->comp == ASDF_BLOCK_COMP_UNKNOWN || block->comp == ASDF_BLOCK_COMP_NONE) {
+    const char *compression = asdf_block_compression(block);
+
+    if (strlen(compression) == 0) {
         // Actually nothing to do, just return 0
         return 0;
+    }
+
+    const asdf_compressor_t *comp = asdf_compressor_get(block->file, compression);
+
+    if (!comp) {
+        ASDF_LOG(
+            block->file,
+            ASDF_LOG_ERROR,
+            "no compressor extension found for %s compression",
+            compression);
+        return ret;
     }
 
     asdf_block_comp_state_t *state = calloc(1, sizeof(asdf_block_comp_state_t));
@@ -445,7 +386,8 @@ int asdf_block_comp_open(asdf_block_t *block) {
     }
 
     state->file = block->file;
-    state->comp = block->comp;
+    state->compressor = comp;
+
 
     asdf_config_t *config = block->file->config;
     asdf_block_header_t *header = &block->info.header;
@@ -543,52 +485,15 @@ int asdf_block_comp_open(asdf_block_t *block) {
     }
 
     state->dest_size = dest_size;
+    state->userdata = state->compressor->init(block, state->dest, state->dest_size);
 
-    // Initialize compression lib-specific structures
-    switch (state->comp) {
-    case ASDF_BLOCK_COMP_UNKNOWN:
-    case ASDF_BLOCK_COMP_NONE:
-        /* shouldn't even be here */
-        UNREACHABLE();
-    case ASDF_BLOCK_COMP_ZLIB: {
-        z_stream *z = calloc(1, sizeof(z_stream));
-        if (!z) {
-            ASDF_ERROR_OOM(block->file);
-            goto failure;
-        }
-        z->next_in = (Bytef *)block->data;
-        z->avail_in = block->avail_size;
-        z->next_out = (Bytef *)state->dest;
-        z->avail_out = state->dest_size;
-        state->z = z;
-
-        ret = inflateInit2(z, ASDF_ZLIB_FORMAT + ASDF_ZLIB_AUTODETECT);
-
-        if (ret != Z_OK)
-            goto failure;
-
-        break;
-    }
-    case ASDF_BLOCK_COMP_BZP2: {
-        bz_stream *bz = calloc(1, sizeof(bz_stream));
-
-        if (!bz) {
-            ASDF_ERROR_OOM(block->file);
-            goto failure;
-        }
-
-        bz->next_in = (char *)block->data;
-        bz->avail_in = block->avail_size;
-        bz->next_out = (char *)state->dest;
-        bz->avail_out = state->dest_size;
-        state->bz = bz;
-
-        ret = BZ2_bzDecompressInit(bz, 0, 0);
-        if (ret != BZ_OK)
-            goto failure;
-
-        break;
-    }
+    if (!state->userdata) {
+        ASDF_LOG(
+            block->file,
+            ASDF_LOG_ERROR,
+            "failed to initialize compressor for %s compression",
+            compression);
+        goto failure;
     }
 
     if (use_lazy_mode)
