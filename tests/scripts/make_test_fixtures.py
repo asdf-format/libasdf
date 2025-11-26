@@ -56,8 +56,10 @@ def make_compressed_asdf():
     f = asdf.AsdfFile()
     f['bzp2'] = make_array()
     f['zlib'] = make_array()
+    f['lz4'] = make_array()
     f.set_array_compression(f['bzp2'], 'bzp2')
     f.set_array_compression(f['zlib'], 'zlib')
+    f.set_array_compression(f['lz4'], 'lz4')
     return f
 
 

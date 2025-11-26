@@ -1,4 +1,5 @@
 #include <errno.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <sys/stat.h>
 
@@ -153,7 +154,7 @@ MU_TEST(test_asdf_block_count) {
  *
  * Will have to add a new test file and test case for lz4 compression.
  */
-static char *comp_params[] = {"zlib", "bzp2", NULL};
+static char *comp_params[] = {"zlib", "bzp2", NULL};  /* "lz4", NULL}; */
 #ifdef ASDF_BLOCK_DECOMP_LAZY_AVAILABLE
 static char *mode_params[] = {"eager", "lazy", NULL};
 #else
@@ -177,7 +178,8 @@ static asdf_block_decomp_mode_t decomp_mode_from_param(const char *mode) {
 }
 
 
-MU_TEST(test_asdf_read_compressed_block) {
+/** Basic test against the compressed.asdf reference file */
+MU_TEST(test_asdf_read_compressed_reference_file) {
     const char *comp = munit_parameters_get(params, "comp");
     const char *filename = get_reference_file_path("1.6.0/compressed.asdf");
     asdf_config_t config = {
@@ -192,7 +194,7 @@ MU_TEST(test_asdf_read_compressed_block) {
     assert_int(err, ==, ASDF_VALUE_OK);
     assert_not_null(ndarray);
 
-    // The arrays in the test files just contain the values 0 to 127
+    // The arrays in this reference file just contain the values 0 to 127
     int64_t expected[128] = {0};
 
     for (int idx = 0; idx < 128; idx++)
@@ -200,182 +202,20 @@ MU_TEST(test_asdf_read_compressed_block) {
 
     size_t size = 0;
     int64_t *dst = asdf_ndarray_data_raw(ndarray, &size);
-    // Check for errors and log it if there was one (useful for debugging failures in this test)
-    const char *error = asdf_error(file);
-    if (error)
-        munit_logf(MUNIT_LOG_ERROR, "error after opening the ndarray: %s", error);
-    assert_null(error);
     assert_int(size, ==, sizeof(int64_t) * 128);
     assert_memory_equal(size, dst, expected);
-
-    const asdf_block_t *block = asdf_ndarray_block(ndarray);
-    assert_not_null(block);
-    assert_not_null(block->comp_state);
-    assert_false(block->comp_state->own_fd);
-    int fd = block->comp_state->fd;
-    assert_int(fd, ==, -1);
-
     asdf_ndarray_destroy(ndarray);
     asdf_close(file);
     return MUNIT_OK;
 }
 
 
-/**
- * Test decompression to a temp file (set memory threshold very low to force it)
+/** Test routine used for many of the compressed file tests
+ *
+ * Same basic test of reading the array data and testing the data against its
+ * expected values
  */
-MU_TEST(test_asdf_read_compressed_block_to_file) {
-    const char *comp = munit_parameters_get(params, "comp");
-    const char *filename = get_reference_file_path("1.6.0/compressed.asdf");
-    asdf_block_decomp_mode_t mode = decomp_mode_from_param(munit_parameters_get(params, "mode"));
-
-    if (mode == ASDF_BLOCK_DECOMP_MODE_LAZY) {
-        munit_log(MUNIT_LOG_INFO, "this test is not supported in lazy decompression mode");
-        return MUNIT_SKIP;
-    }
-
-    asdf_config_t config = {
-        .decomp = {
-            .max_memory_bytes = 1
-        }
-    };
-    asdf_file_t *file = asdf_open_ex(filename, "r", &config);
-    assert_not_null(file);
-    assert_int(file->config->decomp.max_memory_bytes, ==, 1);
-    asdf_ndarray_t *ndarray = NULL;
-    asdf_value_err_t err = asdf_get_ndarray(file, comp, &ndarray);
-    assert_int(err, ==, ASDF_VALUE_OK);
-    assert_not_null(ndarray);
-
-    // The arrays in the test files just contain the values 0 to 127
-    int64_t expected[128] = {0};
-
-    for (int idx = 0; idx < 128; idx++)
-        expected[idx] = idx;
-
-    size_t size = 0;
-    int64_t *dst = asdf_ndarray_data_raw(ndarray, &size);
-    // Check for errors and log it if there was one (useful for debugging failures in this test)
-    const char *error = asdf_error(file);
-    if (error)
-        munit_logf(MUNIT_LOG_ERROR, "error after opening the ndarray: %s", error);
-    assert_int(size, ==, sizeof(int64_t) * 128);
-    assert_memory_equal(size, dst, expected);
-
-    // Test the file descriptor
-    const asdf_block_t *block = asdf_ndarray_block(ndarray);
-    assert_not_null(block);
-    assert_not_null(block->comp_state);
-    assert_true(block->comp_state->own_fd);
-    int fd = block->comp_state->fd;
-    assert_int(fd, >, 2);
-    struct stat st;
-    assert_int(fstat(fd, &st), ==, 0);
-    assert_true(S_ISREG(st.st_mode));
-
-    asdf_ndarray_destroy(ndarray);
-
-    // The file descriptor for the temp file was closed
-    errno = 0;
-    assert_int(close(fd), ==, -1);
-    assert_int(errno, ==, EBADF);
-
-    asdf_close(file);
-    return MUNIT_OK;
-}
-
-
-/**
- * Test decompression to a temp file based on memory threshold
- */
-MU_TEST(test_asdf_read_compressed_block_to_file_on_threshold) {
-    const char *comp = munit_parameters_get(params, "comp");
-    const char *filename = get_reference_file_path("1.6.0/compressed.asdf");
-    asdf_block_decomp_mode_t mode = decomp_mode_from_param(munit_parameters_get(params, "mode"));
-
-    if (mode == ASDF_BLOCK_DECOMP_MODE_LAZY) {
-        munit_log(MUNIT_LOG_INFO, "this test is not supported in lazy decompression mode");
-        return MUNIT_SKIP;
-    }
-
-    // Determine the threshold parameter to used based on the actual system memory
-    size_t total_memory = get_total_memory();
-
-    if (total_memory == 0) {
-        munit_log(MUNIT_LOG_INFO, "memory information not available; skipping test...");
-        return MUNIT_SKIP;
-    }
-
-    // Choose a smallish value (less then the array size in the test file) to determine a
-    // memory threshold that should trigger file use
-    double max_memory_threshold = (100.0 / (double)total_memory);
-
-    asdf_config_t config = {
-        .decomp = {
-            .max_memory_threshold = max_memory_threshold
-        }
-    };
-    asdf_file_t *file = asdf_open_ex(filename, "r", &config);
-    assert_not_null(file);
-    assert_int(file->config->decomp.max_memory_bytes, ==, 0);
-    assert_double_equal(file->config->decomp.max_memory_threshold, max_memory_threshold, 9);
-    asdf_ndarray_t *ndarray = NULL;
-    asdf_value_err_t err = asdf_get_ndarray(file, comp, &ndarray);
-    assert_int(err, ==, ASDF_VALUE_OK);
-    assert_not_null(ndarray);
-
-    // The arrays in the test files just contain the values 0 to 127
-    int64_t expected[128] = {0};
-
-    for (int idx = 0; idx < 128; idx++)
-        expected[idx] = idx;
-
-    size_t size = 0;
-    int64_t *dst = asdf_ndarray_data_raw(ndarray, &size);
-    // Check for errors and log it if there was one (useful for debugging failures in this test)
-    const char *error = asdf_error(file);
-    if (error)
-        munit_logf(MUNIT_LOG_ERROR, "error after opening the ndarray: %s", error);
-    assert_int(size, ==, sizeof(int64_t) * 128);
-    assert_memory_equal(size, dst, expected);
-
-    // Test the file descriptor
-    const asdf_block_t *block = asdf_ndarray_block(ndarray);
-    assert_not_null(block);
-    assert_not_null(block->comp_state);
-    assert_true(block->comp_state->own_fd);
-    int fd = block->comp_state->fd;
-    assert_int(fd, >, 2);
-    struct stat st;
-    assert_int(fstat(fd, &st), ==, 0);
-    assert_true(S_ISREG(st.st_mode));
-
-    asdf_ndarray_destroy(ndarray);
-
-    // The file descriptor for the temp file was closed
-    errno = 0;
-    assert_int(close(fd), ==, -1);
-    assert_int(errno, ==, EBADF);
-
-    asdf_close(file);
-    return MUNIT_OK;
-}
-
-
-/**
- * Actually tests the same file with lazy and eager decompression, but this
- * this test file is slightly less trivial than the one in the reference-files
- * as the decompressed data is multiple page-sizes not <1 page
- */
-MU_TEST(test_asdf_read_compressed_block_lazy) {
-    const char *comp = munit_parameters_get(params, "comp");
-    const char *filename = get_fixture_file_path("compressed.asdf");
-    asdf_config_t config = {
-        .decomp = {
-            .mode = decomp_mode_from_param(munit_parameters_get(params, "mode"))
-        }
-    };
-    asdf_file_t *file = asdf_open_file_ex(filename, "r", &config);
+static int test_compressed_file(asdf_file_t *file, const char *comp, bool should_own_fd) {
     assert_not_null(file);
     asdf_ndarray_t *ndarray = NULL;
     asdf_value_err_t err = asdf_get_ndarray(file, comp, &ndarray);
@@ -409,10 +249,111 @@ MU_TEST(test_asdf_read_compressed_block_lazy) {
     assert_int(size, ==, page_size * num_pages);
     assert_memory_equal(size, dst, expected);
 
+    const asdf_block_t *block = asdf_ndarray_block(ndarray);
+    assert_not_null(block);
+    assert_not_null(block->comp_state);
+
+    int fd = block->comp_state->fd;
+
+    if (should_own_fd) {
+        assert_true(block->comp_state->own_fd);
+        assert_int(fd, >, 2);
+        struct stat st;
+        assert_int(fstat(fd, &st), ==, 0);
+        assert_true(S_ISREG(st.st_mode));
+    } else {
+        assert_false(block->comp_state->own_fd);
+        assert_int(fd, ==, -1);
+    }
+
     asdf_ndarray_destroy(ndarray);
-    asdf_close(file);
+
+    if (should_own_fd) {
+        // The file descriptor for the temp file was closed
+        errno = 0;
+        assert_int(close(fd), ==, -1);
+        assert_int(errno, ==, EBADF);
+    }
+
     free(expected);
     return MUNIT_OK;
+}
+
+
+MU_TEST(test_asdf_read_compressed_block) {
+    const char *comp = munit_parameters_get(params, "comp");
+    const char *filename = get_fixture_file_path("compressed.asdf");
+    asdf_config_t config = {
+        .decomp = {
+            .mode = decomp_mode_from_param(munit_parameters_get(params, "mode"))
+        }
+    };
+    asdf_file_t *file = asdf_open_file_ex(filename, "r", &config);
+    int ret = test_compressed_file(file, comp, false);
+    asdf_close(file);
+    return ret;
+}
+
+
+/**
+ * Test decompression to a temp file (set memory threshold very low to force it)
+ */
+MU_TEST(test_asdf_read_compressed_block_to_file) {
+    const char *comp = munit_parameters_get(params, "comp");
+    const char *filename = get_fixture_file_path("compressed.asdf");
+    asdf_block_decomp_mode_t mode = decomp_mode_from_param(munit_parameters_get(params, "mode"));
+
+    if (mode == ASDF_BLOCK_DECOMP_MODE_LAZY) {
+        munit_log(MUNIT_LOG_INFO, "this test is not supported in lazy decompression mode");
+        return MUNIT_SKIP;
+    }
+
+    asdf_config_t config = {
+        .decomp = {
+            .max_memory_bytes = 1
+        }
+    };
+    asdf_file_t *file = asdf_open_file_ex(filename, "r", &config);
+    int ret = test_compressed_file(file, comp, true);
+    asdf_close(file);
+    return ret;
+}
+
+
+/**
+ * Test decompression to a temp file based on memory threshold
+ */
+MU_TEST(test_asdf_read_compressed_block_to_file_on_threshold) {
+    const char *comp = munit_parameters_get(params, "comp");
+    const char *filename = get_fixture_file_path("compressed.asdf");
+    asdf_block_decomp_mode_t mode = decomp_mode_from_param(munit_parameters_get(params, "mode"));
+
+    if (mode == ASDF_BLOCK_DECOMP_MODE_LAZY) {
+        munit_log(MUNIT_LOG_INFO, "this test is not supported in lazy decompression mode");
+        return MUNIT_SKIP;
+    }
+
+    // Determine the threshold parameter to used based on the actual system memory
+    size_t total_memory = get_total_memory();
+
+    if (total_memory == 0) {
+        munit_log(MUNIT_LOG_INFO, "memory information not available; skipping test...");
+        return MUNIT_SKIP;
+    }
+
+    // Choose a smallish value (less then the array size in the test file) to determine a
+    // memory threshold that should trigger file use
+    double max_memory_threshold = (100.0 / (double)total_memory);
+
+    asdf_config_t config = {
+        .decomp = {
+            .max_memory_threshold = max_memory_threshold
+        }
+    };
+    asdf_file_t *file = asdf_open_ex(filename, "r", &config);
+    int ret = test_compressed_file(file, comp, true);
+    asdf_close(file);
+    return ret;
 }
 
 
@@ -423,10 +364,10 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_get_mapping),
     MU_RUN_TEST(test_asdf_get_sequence),
     MU_RUN_TEST(test_asdf_block_count),
+    MU_RUN_TEST(test_asdf_read_compressed_reference_file, comp_test_params),
     MU_RUN_TEST(test_asdf_read_compressed_block, comp_test_params),
     MU_RUN_TEST(test_asdf_read_compressed_block_to_file, comp_test_params),
-    MU_RUN_TEST(test_asdf_read_compressed_block_to_file_on_threshold, comp_test_params),
-    MU_RUN_TEST(test_asdf_read_compressed_block_lazy, comp_test_params)
+    MU_RUN_TEST(test_asdf_read_compressed_block_to_file_on_threshold, comp_test_params)
 );
 
 
