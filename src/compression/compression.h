@@ -11,8 +11,6 @@
 
 #include <asdf/file.h>
 
-#include "../block.h"
-
 
 typedef enum {
     ASDF_COMPRESSOR_UNINITIALIZED,
@@ -35,7 +33,7 @@ typedef void (*asdf_compressor_destroy_t)(asdf_compressor_userdata_t *userdata);
 
 typedef struct {
     /** Compression string from the block header */
-    const char compression[ASDF_BLOCK_COMPRESSION_FIELD_SIZE];
+    const char *compression;
     asdf_compressor_init_t init;
     asdf_compressor_get_status_t status;
     asdf_compressor_decomp_t decomp;
