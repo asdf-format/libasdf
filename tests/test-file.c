@@ -154,7 +154,7 @@ MU_TEST(test_asdf_block_count) {
  *
  * Will have to add a new test file and test case for lz4 compression.
  */
-static char *comp_params[] = {"zlib", "bzp2", NULL};  /* "lz4", NULL}; */
+static char *comp_params[] = {"zlib", "bzp2", "lz4", NULL};
 #ifdef ASDF_BLOCK_DECOMP_LAZY_AVAILABLE
 static char *mode_params[] = {"eager", "lazy", NULL};
 #else

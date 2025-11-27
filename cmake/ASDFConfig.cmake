@@ -46,6 +46,21 @@ check_source_runs(C "
     }
 " HAVE_DECL_BE64TOH)
 
+
+check_source_runs(C "
+    #include <stdio.h>
+    #include <${ENDIAN_H}>
+    int main() {
+    #ifdef be32toh
+        puts(\"YES\");
+        return 0;
+    #else
+        puts(\"NO\");
+        return 1;
+    #endif
+    }
+" HAVE_DECL_BE32TOH)
+
 check_function_exists(strptime HAVE_STRPTIME)
 
 

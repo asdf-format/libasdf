@@ -5,7 +5,7 @@ AM_CPPFLAGS = \
     -I$(top_srcdir)/third_party/STC/include \
     -I$(top_srcdir)/src
 
-asdf_standard_dir = $(top_srcdir)/asdf-standard
+asdf_standard_dir = $(abs_top_srcdir)/asdf-standard
 asdf_standard_submodule = $(asdf_standard_dir)/.git
 munit_submodule = $(srcdir)/tests/munit.git
 submodules = $(asdf_standard_submodule) $(munit_submodule)
@@ -41,7 +41,7 @@ TESTS = $(check_PROGRAMS)
 unit_test_cppflags = \
     $(AM_CPPFLAGS) \
     -DREFERENCE_FILES_DIR=\"$(asdf_standard_dir)/reference_files\" \
-    -DFIXTURES_DIR=\"$(srcdir)/fixtures\"
+    -DFIXTURES_DIR=\"$(abs_srcdir)/fixtures\"
 unit_test_cflags = $(FYAML_CFLAGS) $(STATGRAB_CFLAGS) $(CODE_COVERAGE_CFLAGS) $(ASDF_CFLAGS)
 
 if DEBUG
@@ -49,7 +49,7 @@ unit_test_cflags += -DMUNIT_NO_FORK
 endif
 
 unit_test_ldflags = $(CODE_COVERAGE_LDFLAGS)
-unit_test_ldadd = $(top_builddir)/libasdf.la libmunit.a $(STATGRAB_LIBS)
+unit_test_ldadd = $(top_builddir)/libasdf.la libmunit.a $(LZ4_LIBS) $(STATGRAB_LIBS)
 
 # Unit tests
 check_LIBRARIES = libmunit.a

@@ -10,8 +10,8 @@
 #include <stdatomic.h>
 
 #include "../block.h"
+#include "../file.h"
 #include "../log.h"
-#include "../util.h"
 
 #include "asdf_compressor_map.h"
 
