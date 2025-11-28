@@ -141,6 +141,7 @@ static void *asdf_block_comp_userfaultfd_handler(void *arg) {
     asdf_block_comp_state_t *cs = uffd->comp_state;
     asdf_compressor_status_t status = ASDF_COMPRESSOR_UNINITIALIZED;
     struct uffd_msg msg;
+    size_t page_size = sysconf(_SC_PAGE_SIZE);
 
     while (!atomic_load(&uffd->stop)) {
         status = cs->compressor->status(cs->userdata);
@@ -163,7 +164,7 @@ static void *asdf_block_comp_userfaultfd_handler(void *arg) {
         size_t chunk_size = cs->work_buf_size;
 
         // Align to page offset
-        size_t offset = (fault_addr - (uintptr_t)cs->dest) & ~(chunk_size - 1);
+        size_t offset = (fault_addr - (uintptr_t)cs->dest) & ~(page_size - 1);
         memset(cs->work_buf, 0, chunk_size);
         int ret = asdf_block_decomp_next(cs);
 
@@ -172,17 +173,21 @@ static void *asdf_block_comp_userfaultfd_handler(void *arg) {
             break;
         }
 
-        // TODO: Allow PROT_WRITE if we are running in updatable mode
-        mprotect(cs->dest + offset, chunk_size, PROT_READ);
-
         struct uffdio_copy uffd_copy = {
             // Copy back to the (page-aligned) destination in the user's mmap
-            .dst = fault_addr & ~(chunk_size - 1),
+            .dst = fault_addr & ~(page_size - 1),
             // From our lazy decompression buffer
             .src = (uint64_t)uffd->work_buf,
             .len = chunk_size,
             .mode = 0};
-        ioctl(uffd->uffd, UFFDIO_COPY, &uffd_copy);
+
+        ret = ioctl(uffd->uffd, UFFDIO_COPY, &uffd_copy);
+        if (ret != 0) {
+            // TODO: Error handling
+            break;
+        }
+        // TODO: Allow PROT_WRITE if we are running in updatable mode
+        mprotect(cs->dest + offset, chunk_size, PROT_READ);
     }
 
     return NULL;
@@ -202,7 +207,7 @@ static bool asdf_block_decomp_lazy_available(asdf_block_comp_state_t *cs, bool u
     // Probe UFFD features
     // TODO: I Think we only need to do this once, we need to make runtime checks for what's
     // actually supported anyways before enabling this feature
-    int uffd = syscall(SYS_userfaultfd, O_CLOEXEC | O_NONBLOCK | UFFD_USER_MODE_ONLY);
+    int uffd = syscall(SYS_userfaultfd, O_CLOEXEC | UFFD_USER_MODE_ONLY);
 
     if (uffd < 0) {
         ASDF_LOG(
@@ -312,9 +317,8 @@ static int asdf_block_decomp_lazy(asdf_block_comp_state_t *cs) {
     cs->work_buf = uffd->work_buf;
     cs->work_buf_size = uffd->work_buf_size;
 
-
     // Create userfaultfd
-    uffd->uffd = syscall(SYS_userfaultfd, O_CLOEXEC | O_NONBLOCK | UFFD_USER_MODE_ONLY);
+    uffd->uffd = syscall(SYS_userfaultfd, O_CLOEXEC | UFFD_USER_MODE_ONLY);
     if (uffd->uffd < 0) {
         ASDF_ERROR_ERRNO(cs->file, errno);
         return -1;
@@ -447,13 +451,12 @@ int asdf_block_comp_open(asdf_block_t *block) {
                 use_file_backing = false;
                 mode = ASDF_BLOCK_DECOMP_MODE_LAZY;
             }
-        } else if (use_lazy_mode && mode == ASDF_BLOCK_DECOMP_MODE_LAZY) {
+        } else if (!use_lazy_mode && mode == ASDF_BLOCK_DECOMP_MODE_LAZY) {
             ASDF_LOG(
                 block->file,
                 ASDF_LOG_WARN,
                 "lazy decompression mode requested, but the runtime check for kernel "
                 "support failed");
-            use_lazy_mode = false;
             mode = ASDF_BLOCK_DECOMP_MODE_EAGER;
         }
     }
