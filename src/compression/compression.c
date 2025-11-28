@@ -296,19 +296,20 @@ static int asdf_block_decomp_lazy(asdf_block_comp_state_t *cs) {
     // Determine the chunk size--if not specified in the settings set to _SC_PAGESIZE,
     // but otherwise align to a multiple of page size
     size_t page_size = sysconf(_SC_PAGESIZE);
-    size_t chunk_size = cs->file->config->decomp.chunk_size;
+    size_t chunk_size = page_size;
 
     // Check the compressor info in case it reports an optimal chunk size preferred by
-    // the compressor; prefer whichever is larger and round to nearest page size
+    // the compressor
     const asdf_compressor_info_t *info = cs->compressor->info(cs->userdata);
 
-    if (info->optimal_chunk_size > chunk_size)
+    if (info->optimal_chunk_size > 0)
         chunk_size = info->optimal_chunk_size;
 
-    if (chunk_size != 0)
-        chunk_size = (chunk_size + page_size - 1) & ~(page_size - 1);
-    else
-        chunk_size = page_size;
+    if (cs->file->config->decomp.chunk_size > 0)
+        chunk_size = cs->file->config->decomp.chunk_size;
+
+    chunk_size = (chunk_size + page_size - 1) & ~(page_size - 1);
+    ASDF_LOG(cs->file, ASDF_LOG_DEBUG, "lazy decompression chunk size: %ld", chunk_size);
 
     uffd->work_buf = aligned_alloc(page_size, chunk_size);
 
