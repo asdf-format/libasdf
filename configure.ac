@@ -57,6 +57,17 @@ AC_CHECK_DECLS([be32toh], [], [], [[
 #  include <sys/endian.h>
 #endif
 ]])
+AC_CHECK_DECLS([le32toh], [], [], [[
+#ifdef HAVE_ENDIAN_H
+#  include <endian.h>
+#endif
+#ifdef HAVE_MACHINE_ENDIAN_H
+#  include <machine/endian.h>
+#endif
+#ifdef HAVE_SYS_ENDIAN_H
+#  include <sys/endian.h>
+#endif
+]])
 
 # Check functions
 AC_CHECK_FUNCS([strptime])

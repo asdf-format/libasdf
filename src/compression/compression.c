@@ -139,13 +139,13 @@ static bool asdf_block_decomp_lazy_available(
 static void *asdf_block_comp_userfaultfd_handler(void *arg) {
     asdf_block_comp_userfaultfd_t *uffd = arg;
     asdf_block_comp_state_t *cs = uffd->comp_state;
-    asdf_compressor_status_t status = ASDF_COMPRESSOR_UNINITIALIZED;
+    const asdf_compressor_info_t *info = NULL;
     struct uffd_msg msg;
     size_t page_size = sysconf(_SC_PAGE_SIZE);
 
     while (!atomic_load(&uffd->stop)) {
-        status = cs->compressor->status(cs->userdata);
-        if (status == ASDF_COMPRESSOR_DONE)
+        info = cs->compressor->info(cs->userdata);
+        if (info->status == ASDF_COMPRESSOR_DONE)
             break;
 
         ssize_t n = read(uffd->uffd, &msg, sizeof(msg));
@@ -297,6 +297,13 @@ static int asdf_block_decomp_lazy(asdf_block_comp_state_t *cs) {
     // but otherwise align to a multiple of page size
     size_t page_size = sysconf(_SC_PAGESIZE);
     size_t chunk_size = cs->file->config->decomp.chunk_size;
+
+    // Check the compressor info in case it reports an optimal chunk size preferred by
+    // the compressor; prefer whichever is larger and round to nearest page size
+    const asdf_compressor_info_t *info = cs->compressor->info(cs->userdata);
+
+    if (info->optimal_chunk_size > chunk_size)
+        chunk_size = info->optimal_chunk_size;
 
     if (chunk_size != 0)
         chunk_size = (chunk_size + page_size - 1) & ~(page_size - 1);

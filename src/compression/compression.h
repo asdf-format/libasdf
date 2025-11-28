@@ -20,24 +20,30 @@ typedef enum {
 } asdf_compressor_status_t;
 
 
+typedef struct {
+    asdf_compressor_status_t status;
+    size_t optimal_chunk_size;
+} asdf_compressor_info_t;
+
+
 typedef void asdf_compressor_userdata_t;
 
-typedef asdf_compressor_userdata_t *(*asdf_compressor_init_t)(
+typedef asdf_compressor_userdata_t *(*asdf_compressor_init_fn)(
     asdf_block_t *block, const void *dest, size_t dest_size);
-typedef asdf_compressor_status_t (*asdf_compressor_get_status_t)(
+typedef const asdf_compressor_info_t *(*asdf_compressor_info_fn)(
     asdf_compressor_userdata_t *userdata);
-typedef int (*asdf_compressor_decomp_t)(
+typedef int (*asdf_compressor_decomp_fn)(
     asdf_compressor_userdata_t *userdata, uint8_t *buf, size_t buf_size);
-typedef void (*asdf_compressor_destroy_t)(asdf_compressor_userdata_t *userdata);
+typedef void (*asdf_compressor_destroy_fn)(asdf_compressor_userdata_t *userdata);
 
 
 typedef struct {
     /** Compression string from the block header */
     const char *compression;
-    asdf_compressor_init_t init;
-    asdf_compressor_get_status_t status;
-    asdf_compressor_decomp_t decomp;
-    asdf_compressor_destroy_t destroy;
+    asdf_compressor_init_fn init;
+    asdf_compressor_info_fn info;
+    asdf_compressor_decomp_fn decomp;
+    asdf_compressor_destroy_fn destroy;
 } asdf_compressor_t;
 
 

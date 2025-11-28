@@ -34,3 +34,14 @@
 #error be32toh not available
 #endif
 #endif
+
+
+#if !HAVE_DECL_LE32TOH
+/* https://gist.github.com/yinyin/2027912 */
+#ifdef __APPLE__
+#include <libkern/OSByteOrder.h>
+#define le32toh(x) OSSwapLittleToHostInt32(x)
+#else
+#error le32toh not available
+#endif
+#endif

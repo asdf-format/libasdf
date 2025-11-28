@@ -181,6 +181,12 @@ static asdf_block_decomp_mode_t decomp_mode_from_param(const char *mode) {
 /** Basic test against the compressed.asdf reference file */
 MU_TEST(test_asdf_read_compressed_reference_file) {
     const char *comp = munit_parameters_get(params, "comp");
+
+    if (strcmp(comp, "lz4") == 0) {
+        munit_log(MUNIT_LOG_INFO, "no lz4 compression in this reference file");
+        return MUNIT_SKIP;
+    }
+
     const char *filename = get_reference_file_path("1.6.0/compressed.asdf");
     asdf_config_t config = {
         .decomp = {
