@@ -160,9 +160,15 @@ static char *mode_params[] = {"eager", "lazy", NULL};
 #else
 static char *mode_params[] = {"eager", NULL};
 #endif
-static MunitParameterEnum comp_test_params[] = {
+static MunitParameterEnum comp_mode_test_params[] = {
     {"comp", comp_params},
     {"mode", mode_params},
+    {NULL, NULL}
+};
+
+
+static MunitParameterEnum comp_test_params[] = {
+    {"comp", comp_params},
     {NULL, NULL}
 };
 
@@ -307,12 +313,6 @@ MU_TEST(test_asdf_read_compressed_block) {
 MU_TEST(test_asdf_read_compressed_block_to_file) {
     const char *comp = munit_parameters_get(params, "comp");
     const char *filename = get_fixture_file_path("compressed.asdf");
-    asdf_block_decomp_mode_t mode = decomp_mode_from_param(munit_parameters_get(params, "mode"));
-
-    if (mode == ASDF_BLOCK_DECOMP_MODE_LAZY) {
-        munit_log(MUNIT_LOG_INFO, "this test is not supported in lazy decompression mode");
-        return MUNIT_SKIP;
-    }
 
     asdf_config_t config = {
         .decomp = {
@@ -332,12 +332,6 @@ MU_TEST(test_asdf_read_compressed_block_to_file) {
 MU_TEST(test_asdf_read_compressed_block_to_file_on_threshold) {
     const char *comp = munit_parameters_get(params, "comp");
     const char *filename = get_fixture_file_path("compressed.asdf");
-    asdf_block_decomp_mode_t mode = decomp_mode_from_param(munit_parameters_get(params, "mode"));
-
-    if (mode == ASDF_BLOCK_DECOMP_MODE_LAZY) {
-        munit_log(MUNIT_LOG_INFO, "this test is not supported in lazy decompression mode");
-        return MUNIT_SKIP;
-    }
 
     // Determine the threshold parameter to used based on the actual system memory
     size_t total_memory = get_total_memory();
@@ -370,8 +364,8 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_get_mapping),
     MU_RUN_TEST(test_asdf_get_sequence),
     MU_RUN_TEST(test_asdf_block_count),
-    MU_RUN_TEST(test_asdf_read_compressed_reference_file, comp_test_params),
-    MU_RUN_TEST(test_asdf_read_compressed_block, comp_test_params),
+    MU_RUN_TEST(test_asdf_read_compressed_reference_file, comp_mode_test_params),
+    MU_RUN_TEST(test_asdf_read_compressed_block, comp_mode_test_params),
     MU_RUN_TEST(test_asdf_read_compressed_block_to_file, comp_test_params),
     MU_RUN_TEST(test_asdf_read_compressed_block_to_file_on_threshold, comp_test_params)
 );
