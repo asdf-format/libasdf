@@ -237,14 +237,13 @@ static bool asdf_block_decomp_lazy_available(asdf_block_comp_state_t *cs, bool u
         return false;
     }
 
-    close(uffd);
-
     if (!FEATURE_IS_SET(uffd_api.ioctls, _UFFDIO_REGISTER)) {
         ASDF_LOG(
             cs->file,
             ASDF_LOG_DEBUG,
             "UFFDIO_REGISTER ioctl is not supported: lazy decompression with userfaultfd not "
             "available");
+        close(uffd);
         return false;
     }
 
@@ -285,6 +284,7 @@ static bool asdf_block_decomp_lazy_available(asdf_block_comp_state_t *cs, bool u
         munmap(map, page_size);
     }
 
+    close(uffd);
     return true;
 }
 
