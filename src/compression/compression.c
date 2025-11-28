@@ -142,6 +142,7 @@ static void *asdf_block_comp_userfaultfd_handler(void *arg) {
     const asdf_compressor_info_t *info = NULL;
     struct uffd_msg msg;
     size_t page_size = sysconf(_SC_PAGE_SIZE);
+    size_t page_mask = page_size - 1;
 
     while (!atomic_load(&uffd->stop)) {
         info = cs->compressor->info(cs->userdata);
@@ -162,9 +163,14 @@ static void *asdf_block_comp_userfaultfd_handler(void *arg) {
 
         size_t fault_addr = msg.arg.pagefault.address;
         size_t chunk_size = cs->work_buf_size;
-
         // Align to page offset
-        size_t offset = (fault_addr - (uintptr_t)cs->dest) & ~(page_size - 1);
+        size_t offset = (fault_addr - (uintptr_t)cs->dest) & ~page_mask;
+
+        size_t dst = fault_addr & ~page_mask;
+        size_t src = (size_t)uffd->work_buf;
+        size_t len = (offset + chunk_size) > cs->dest_size ? (cs->dest_size - offset) : chunk_size;
+        len = (len + page_size - 1) & ~page_mask;
+
         memset(cs->work_buf, 0, chunk_size);
         int ret = asdf_block_decomp_next(cs);
 
@@ -175,10 +181,10 @@ static void *asdf_block_comp_userfaultfd_handler(void *arg) {
 
         struct uffdio_copy uffd_copy = {
             // Copy back to the (page-aligned) destination in the user's mmap
-            .dst = fault_addr & ~(page_size - 1),
+            .dst = dst,
             // From our lazy decompression buffer
-            .src = (uint64_t)uffd->work_buf,
-            .len = chunk_size,
+            .src = src,
+            .len = len,
             .mode = 0};
 
         ret = ioctl(uffd->uffd, UFFDIO_COPY, &uffd_copy);
@@ -187,7 +193,7 @@ static void *asdf_block_comp_userfaultfd_handler(void *arg) {
             break;
         }
         // TODO: Allow PROT_WRITE if we are running in updatable mode
-        mprotect(cs->dest + offset, chunk_size, PROT_READ);
+        mprotect(cs->dest + offset, len, PROT_READ);
     }
 
     return NULL;
@@ -283,6 +289,9 @@ static bool asdf_block_decomp_lazy_available(asdf_block_comp_state_t *cs, bool u
 }
 
 
+#define ASDF_BLOCK_DECOMP_DEFAULT_PAGES_PER_CHUNK 1024
+
+
 static int asdf_block_decomp_lazy(asdf_block_comp_state_t *cs) {
     asdf_block_comp_userfaultfd_t *uffd = calloc(1, sizeof(asdf_block_comp_userfaultfd_t));
 
@@ -296,7 +305,7 @@ static int asdf_block_decomp_lazy(asdf_block_comp_state_t *cs) {
     // Determine the chunk size--if not specified in the settings set to _SC_PAGESIZE,
     // but otherwise align to a multiple of page size
     size_t page_size = sysconf(_SC_PAGESIZE);
-    size_t chunk_size = page_size;
+    size_t chunk_size = page_size * ASDF_BLOCK_DECOMP_DEFAULT_PAGES_PER_CHUNK;
 
     // Check the compressor info in case it reports an optimal chunk size preferred by
     // the compressor
