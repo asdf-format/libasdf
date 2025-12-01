@@ -191,6 +191,7 @@ static inline asdf_file_t *asdf_open_mem(const void *buf, size_t size) {
 ASDF_EXPORT void asdf_close(asdf_file_t *file);
 
 
+#ifdef HAVE_USERFAULTFD
 /**
  * A macro which can be used at compile-time to check if lazy-mode
  * decompression is available.
@@ -199,6 +200,7 @@ ASDF_EXPORT void asdf_close(asdf_file_t *file);
  * userfaultfd support, though can provide other implementations later.
  */
 #define ASDF_BLOCK_DECOMP_LAZY_AVAILABLE HAVE_USERFAULTFD
+#endif
 
 
 /**

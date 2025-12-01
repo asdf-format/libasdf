@@ -62,6 +62,7 @@ foreach(source_file ${source_files})
         ${FYAML_INCLUDEDIR}
         ${ARGP_INCLUDEDIR}
         ${STATGRAB_INCLUDEDIR}
+        ${LZ4_INCLUDEDIR}
         ${STC_DIR}/include
         ${CMAKE_SOURCE_DIR}/include
         ${CMAKE_SOURCE_DIR}/src
