@@ -15,6 +15,7 @@
 typedef struct {
     asdf_compressor_info_t info;
     bz_stream bz;
+    size_t progress;
 } asdf_compressor_bzp2_userdata_t;
 
 
@@ -43,6 +44,7 @@ static asdf_compressor_userdata_t *asdf_compressor_bzp2_init(
 
     userdata->info.status = ASDF_COMPRESSOR_INITIALIZED;
     userdata->info.optimal_chunk_size = 0;
+    userdata->progress = 0;
     return userdata;
 }
 
@@ -67,16 +69,28 @@ static const asdf_compressor_info_t *asdf_compressor_bzp2_info(
 
 
 static int asdf_compressor_bzp2_decomp(
-    asdf_compressor_userdata_t *userdata, uint8_t *buf, size_t buf_size) {
+    asdf_compressor_userdata_t *userdata,
+    uint8_t *buf,
+    size_t buf_size,
+    size_t offset_hint,
+    size_t *offset_out) {
     assert(userdata);
     asdf_compressor_bzp2_userdata_t *bzp2 = userdata;
     bzp2->info.status = ASDF_COMPRESSOR_IN_PROGRESS;
     bzp2->bz.next_out = (char *)buf;
     bzp2->bz.avail_out = buf_size;
 
+    if (offset_hint < bzp2->progress)
+        return 0;
+
     int ret = BZ2_bzDecompress(&bzp2->bz);
     if (ret != BZ_OK && ret != BZ_STREAM_END)
         return ret;
+
+    if (offset_out)
+        *offset_out = bzp2->progress;
+
+    bzp2->progress += buf_size;
 
     if (ret == BZ_STREAM_END)
         bzp2->info.status = ASDF_COMPRESSOR_DONE;

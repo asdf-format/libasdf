@@ -67,12 +67,14 @@ static int asdf_create_temp_file(size_t data_size, const char *tmp_dir, int *out
 }
 
 
-static int asdf_block_decomp_next(asdf_block_comp_state_t *cs) {
+static int asdf_block_decomp_offset(
+    asdf_block_comp_state_t *cs, size_t offset_hint, size_t *offset_out) {
     assert(cs);
     assert(cs->work_buf);
     assert(cs->compressor);
     assert(cs->userdata);
-    return cs->compressor->decomp(cs->userdata, cs->work_buf, cs->work_buf_size);
+    return cs->compressor->decomp(
+        cs->userdata, cs->work_buf, cs->work_buf_size, offset_hint, offset_out);
 }
 
 
@@ -80,7 +82,8 @@ static int asdf_block_decomp_eager(asdf_block_comp_state_t *cs) {
     cs->work_buf = cs->dest;
     cs->work_buf_size = cs->dest_size;
     // Decompress the full range
-    int ret = asdf_block_decomp_next(cs);
+    size_t offset = 0;
+    int ret = asdf_block_decomp_offset(cs, 0, &offset);
     // After decompression set PROT_READ for now (later this should depend on the mode flag the
     // file was opened with)
     mprotect(cs->dest, cs->dest_size, PROT_READ);
@@ -128,7 +131,7 @@ static void *asdf_block_comp_userfaultfd_handler(void *arg) {
 
     while (!atomic_load(&uffd->stop)) {
         info = cs->compressor->info(cs->userdata);
-        if (info->status == ASDF_COMPRESSOR_DONE)
+        if (!info || info->status == ASDF_COMPRESSOR_DONE)
             break;
 
         int nready = poll(fds, 2, -1);
@@ -163,39 +166,54 @@ static void *asdf_block_comp_userfaultfd_handler(void *arg) {
             continue;
         }
 
-        size_t fault_addr = msg.arg.pagefault.address;
+        size_t fault_addr = msg.arg.pagefault.address & ~page_mask;
         size_t chunk_size = cs->work_buf_size;
         // Align to page offset
         size_t offset = (fault_addr - (uintptr_t)cs->dest) & ~page_mask;
+        int ret = 0;
 
-        size_t dst = fault_addr & ~page_mask;
-        size_t src = (size_t)uffd->work_buf;
-        size_t len = (offset + chunk_size) > cs->dest_size ? (cs->dest_size - offset) : chunk_size;
-        len = (len + page_size - 1) & ~page_mask;
+        while (!atomic_load(&uffd->stop)) {
+            size_t got_offset = 0;
+            memset(cs->work_buf, 0, chunk_size);
+            ret = asdf_block_decomp_offset(cs, offset, &got_offset);
 
-        memset(cs->work_buf, 0, chunk_size);
-        int ret = asdf_block_decomp_next(cs);
+            // TODO: Better handling or at least logging of error in decompressor
+            if (ret != 0)
+                break;
 
-        if (ret != 0) {
-            // TODO: Error handling
-            break;
+            size_t dst = (uintptr_t)cs->dest + got_offset;
+            size_t src = (size_t)uffd->work_buf;
+            size_t len =
+                ((got_offset + chunk_size) > cs->dest_size ? (cs->dest_size - got_offset)
+                                                           : chunk_size);
+            len = (len + page_size - 1) & ~page_mask;
+            uint64_t mode = (got_offset == offset) ? 0 : UFFDIO_COPY_MODE_DONTWAKE;
+
+            struct uffdio_copy uffd_copy = {
+                // Copy back to the (page-aligned) destination in the user's mmap
+                .dst = dst,
+                // From our lazy decompression buffer
+                .src = src,
+                .len = len,
+                .mode = mode};
+
+            // TODO: Allow PROT_WRITE if we are running in updatable mode
+            mprotect(cs->dest + got_offset, len, PROT_READ);
+
+            ret = ioctl(uffd->uffd, UFFDIO_COPY, &uffd_copy);
+            if (ret != 0) {
+                // TODO: Error handling
+                break;
+            }
+
+            if (got_offset == offset) {
+                break;
+            }
         }
 
-        struct uffdio_copy uffd_copy = {
-            // Copy back to the (page-aligned) destination in the user's mmap
-            .dst = dst,
-            // From our lazy decompression buffer
-            .src = src,
-            .len = len,
-            .mode = 0};
-
-        ret = ioctl(uffd->uffd, UFFDIO_COPY, &uffd_copy);
         if (ret != 0) {
-            // TODO: Error handling
             break;
         }
-        // TODO: Allow PROT_WRITE if we are running in updatable mode
-        mprotect(cs->dest + offset, len, PROT_READ);
     }
 
     return NULL;

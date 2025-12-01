@@ -14,6 +14,7 @@
 typedef struct {
     asdf_compressor_info_t info;
     z_stream z;
+    size_t progress;
 } asdf_compressor_zlib_userdata_t;
 
 
@@ -47,6 +48,7 @@ static asdf_compressor_userdata_t *asdf_compressor_zlib_init(
 
     userdata->info.status = ASDF_COMPRESSOR_INITIALIZED;
     userdata->info.optimal_chunk_size = 0;
+    userdata->progress = 0;
     return userdata;
 }
 
@@ -71,16 +73,29 @@ static const asdf_compressor_info_t *asdf_compressor_zlib_info(
 
 
 static int asdf_compressor_zlib_decomp(
-    asdf_compressor_userdata_t *userdata, uint8_t *buf, size_t buf_size) {
+    asdf_compressor_userdata_t *userdata,
+    uint8_t *buf,
+    size_t buf_size,
+    size_t offset_hint,
+    size_t *offset_out) {
     assert(userdata);
     asdf_compressor_zlib_userdata_t *zlib = userdata;
     zlib->info.status = ASDF_COMPRESSOR_IN_PROGRESS;
+
+    if (offset_hint < zlib->progress)
+        return 0;
+
     zlib->z.next_out = buf;
     zlib->z.avail_out = buf_size;
 
     int ret = inflate(&zlib->z, Z_NO_FLUSH);
     if (ret != Z_OK && ret != Z_STREAM_END)
         return ret;
+
+    if (offset_out)
+        *offset_out = zlib->progress;
+
+    zlib->progress += buf_size;
 
     if (ret == Z_STREAM_END)
         zlib->info.status = ASDF_COMPRESSOR_DONE;

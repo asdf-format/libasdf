@@ -52,6 +52,7 @@ typedef struct {
     uint8_t *data;
     size_t data_size;
     size_t pos;
+    size_t progress;
 
     /** Manage buffer for the LZ4 block header */
     struct {
@@ -128,6 +129,7 @@ static asdf_compressor_userdata_t *asdf_compressor_lz4_init(
     userdata->data = block->data;
     userdata->data_size = block->avail_size;
     userdata->pos = 0;
+    userdata->progress = 0;
 
     // Try to read the first block header; if not enough bytes are found
     // return NULL and indicate an error
@@ -173,10 +175,20 @@ static int asdf_compresser_lz4_read_block(asdf_compressor_lz4_userdata_t *lz4) {
     if (asdf_compressor_lz4_read_header(lz4) != 0)
         return 0;
 
-    if (lz4->header.block_size == 0) {
+    if (lz4->header.block_size <= 0) {
         // Zero-width compressed block encountered--I guess done?
         ASDF_LOG(
             lz4->file, ASDF_LOG_ERROR, "zero-width LZ4 block encountered; aborting decompression");
+        return -1;
+    }
+
+    if (lz4->header.decomp_block_size < 0) {
+        // Zero-width compressed block encountered--I guess done?
+        ASDF_LOG(
+            lz4->file,
+            ASDF_LOG_ERROR,
+            "invalid decompressed size LZ4 block encountered (%d); aborting decompression",
+            lz4->header.decomp_block_size);
         return -1;
     }
 
@@ -214,12 +226,23 @@ static int asdf_compresser_lz4_read_block(asdf_compressor_lz4_userdata_t *lz4) {
 
 /**
  * LZ4 doesn't have a stream interface like zlib and libbz2, so this implements our own similar
+ *
+ * .. todo::
+ *
+ *   Fix this so that it can use offset_hint to actually decompress only the requested chunk
  */
 static int asdf_compressor_lz4_decomp(
-    asdf_compressor_userdata_t *userdata, uint8_t *buf, size_t buf_size) {
+    asdf_compressor_userdata_t *userdata,
+    uint8_t *buf,
+    size_t buf_size,
+    size_t offset_hint,
+    size_t *offset_out) {
     assert(userdata);
     asdf_compressor_lz4_userdata_t *lz4 = userdata;
     lz4->info.status = ASDF_COMPRESSOR_IN_PROGRESS;
+
+    if (offset_hint < lz4->progress)
+        return 0;
 
     size_t need = buf_size;
     size_t pos = 0;
@@ -243,7 +266,12 @@ static int asdf_compressor_lz4_decomp(
         need -= take;
     }
 
-    if (lz4->pos >= lz4->data_size)
+    if (offset_out)
+        *offset_out = lz4->progress;
+
+    lz4->progress += buf_size;
+
+    if (lz4->progress >= (uint32_t)lz4->header.decomp_block_size)
         lz4->info.status = ASDF_COMPRESSOR_DONE;
 
     return 0;

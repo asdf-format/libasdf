@@ -222,12 +222,26 @@ MU_TEST(test_asdf_read_compressed_reference_file) {
 }
 
 
+static void fisher_yates_shuffle(size_t *array, uint32_t size) {
+    for (uint32_t idx = size - 1; idx > 0; idx--) {
+        uint32_t jdx = (size_t) (munit_rand_uint32() % (idx + 1));
+        size_t tmp = array[idx];
+        array[idx] = array[jdx];
+        array[jdx] = tmp;
+    }
+}
+
+
 /** Test routine used for many of the compressed file tests
  *
  * Same basic test of reading the array data and testing the data against its
  * expected values
+ *
+ * If given randomize=true the pages of the expected data are checked in
+ * random order
  */
-static int test_compressed_file(asdf_file_t *file, const char *comp, bool should_own_fd) {
+static int test_compressed_file(
+    asdf_file_t *file, const char *comp, bool should_own_fd, bool randomize) {
     assert_not_null(file);
     asdf_ndarray_t *ndarray = NULL;
     asdf_value_err_t err = asdf_get_ndarray(file, comp, &ndarray);
@@ -252,14 +266,38 @@ static int test_compressed_file(asdf_file_t *file, const char *comp, bool should
     }
 
     size_t size = 0;
-    int64_t *dst = asdf_ndarray_data_raw(ndarray, &size);
+    uint8_t *dst = asdf_ndarray_data_raw(ndarray, &size);
     // Check for errors and log it if there was one (useful for debugging failures in this test)
     const char *error = asdf_error(file);
     if (error)
         munit_logf(MUNIT_LOG_ERROR, "error after opening the ndarray: %s", error);
     assert_null(error);
     assert_int(size, ==, page_size * num_pages);
-    assert_memory_equal(size, dst, expected);
+
+    if (!randomize) {
+        assert_memory_equal(size, dst, expected);
+    } else {
+        size_t *pages = malloc(num_pages * sizeof(size_t));
+
+        if (!pages)
+            return MUNIT_ERROR;
+
+        for (int idx = 0; idx < num_pages; idx++)
+            pages[idx] = idx;
+
+        fisher_yates_shuffle(pages, num_pages);
+
+        for (int idx = 0; idx < num_pages; idx++) {
+            size_t page_idx = pages[idx];
+            //munit_logf(MUNIT_LOG_DEBUG, "checking page %zu\n", page_idx);
+            printf("pausing for fault handling...");
+            assert_memory_equal(
+                page_size, dst + (page_idx * page_size), expected + (page_idx * page_size));
+            printf("...fault handled!\n");
+        }
+
+        free(pages);
+    }
 
     const asdf_block_t *block = asdf_ndarray_block(ndarray);
     assert_not_null(block);
@@ -301,7 +339,7 @@ MU_TEST(test_asdf_read_compressed_block) {
         }
     };
     asdf_file_t *file = asdf_open_file_ex(filename, "r", &config);
-    int ret = test_compressed_file(file, comp, false);
+    int ret = test_compressed_file(file, comp, false, false);
     asdf_close(file);
     return ret;
 }
@@ -320,7 +358,7 @@ MU_TEST(test_asdf_read_compressed_block_to_file) {
         }
     };
     asdf_file_t *file = asdf_open_file_ex(filename, "r", &config);
-    int ret = test_compressed_file(file, comp, true);
+    int ret = test_compressed_file(file, comp, true, false);
     asdf_close(file);
     return ret;
 }
@@ -351,7 +389,7 @@ MU_TEST(test_asdf_read_compressed_block_to_file_on_threshold) {
         }
     };
     asdf_file_t *file = asdf_open_ex(filename, "r", &config);
-    int ret = test_compressed_file(file, comp, true);
+    int ret = test_compressed_file(file, comp, true, false);
     asdf_close(file);
     return ret;
 }
@@ -388,6 +426,28 @@ MU_TEST(test_asdf_open_close_compressed_block) {
 }
 
 
+/**
+ * Test decompressed block lazy random access
+ */
+MU_TEST(test_asdf_read_compressed_block_lazy_random_access) {
+    const char *comp = munit_parameters_get(params, "comp");
+    const char *filename = get_fixture_file_path("compressed.asdf");
+
+    asdf_config_t config = {
+        .decomp = {
+            // Run the test in eager mode too as a control
+            .mode = decomp_mode_from_param(munit_parameters_get(params, "mode")),
+            .chunk_size = 4096
+        }
+    };
+
+    asdf_file_t *file = asdf_open_ex(filename, "r", &config);
+    int ret = test_compressed_file(file, comp, false, true);
+    asdf_close(file);
+    return ret;
+}
+
+
 MU_TEST_SUITE(
     test_asdf_file,
     MU_RUN_TEST(test_asdf_open_file),
@@ -399,7 +459,8 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_read_compressed_block, comp_mode_test_params),
     MU_RUN_TEST(test_asdf_read_compressed_block_to_file, comp_test_params),
     MU_RUN_TEST(test_asdf_read_compressed_block_to_file_on_threshold, comp_test_params),
-    MU_RUN_TEST(test_asdf_open_close_compressed_block, comp_mode_test_params)
+    MU_RUN_TEST(test_asdf_open_close_compressed_block, comp_mode_test_params),
+    MU_RUN_TEST(test_asdf_read_compressed_block_lazy_random_access, comp_mode_test_params)
 );
 
 

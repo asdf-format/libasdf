@@ -519,17 +519,17 @@ void asdf_block_close(asdf_block_t *block) {
     if (!block)
         return;
 
+    if (block->comp_state)
+        asdf_block_comp_close(block);
+
+    if (block->compression)
+        free((void *)block->compression);
+
     // If the block has an open data handle, close it
     if (block->data) {
         asdf_stream_t *stream = block->file->parser->stream;
         stream->close_mem(stream, block->data);
     }
-
-    if (block->compression)
-        free((void *)block->compression);
-
-    if (block->comp_state)
-        asdf_block_comp_close(block);
 
     ZERO_MEMORY(block, sizeof(asdf_block_t));
     free(block);

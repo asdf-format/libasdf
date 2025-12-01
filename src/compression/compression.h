@@ -33,7 +33,11 @@ typedef asdf_compressor_userdata_t *(*asdf_compressor_init_fn)(
 typedef const asdf_compressor_info_t *(*asdf_compressor_info_fn)(
     asdf_compressor_userdata_t *userdata);
 typedef int (*asdf_compressor_decomp_fn)(
-    asdf_compressor_userdata_t *userdata, uint8_t *buf, size_t buf_size);
+    asdf_compressor_userdata_t *userdata,
+    uint8_t *buf,
+    size_t buf_size,
+    size_t offset_hint,
+    size_t *offset_out);
 typedef void (*asdf_compressor_destroy_fn)(asdf_compressor_userdata_t *userdata);
 
 
