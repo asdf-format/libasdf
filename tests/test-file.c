@@ -467,7 +467,7 @@ MU_TEST(test_asdf_compressed_block_no_hang_on_segfault) {
         munit_logf(MUNIT_LOG_ERROR, "error after opening the ndarray: %s", error);
     assert_null(error);
 
-    uint8_t x = data[0];
+    volatile uint8_t x = data[0];
     (void)x;
 
     asdf_ndarray_destroy(ndarray);
@@ -488,11 +488,12 @@ MU_TEST(test_asdf_compressed_block_no_hang_on_segfault) {
         alarm(0);
         sigaction(SIGSEGV, &old_sa, NULL);
         return MUNIT_FAIL;
-    } else {
-        if (rc == SIGBUS)
-            munit_log(MUNIT_LOG_INFO, "passed: got SIGBUS");
-        else if (rc == SIGSEGV)
-            munit_log(MUNIT_LOG_INFO, "passed: got SIGSEGV");
+    }
+
+    if (rc == SIGBUS) {
+        munit_log(MUNIT_LOG_INFO, "passed: got SIGBUS");
+    } else if (rc == SIGSEGV) {
+        munit_log(MUNIT_LOG_INFO, "passed: got SIGSEGV");
     }
 
     alarm(0);
