@@ -474,11 +474,12 @@ MU_TEST(test_asdf_compressed_block_no_hang_on_segfault) {
 
     // Try to access the data after the ndarray is closed; should segfault
     struct sigaction sa = {0};
-    struct sigaction old_sa = {0};
+    struct sigaction old_segv_sa = {0};
+    struct sigaction old_bus_sa = {0};
     sa.sa_handler = segv_handler;
     sigemptyset(&sa.sa_mask);
-    sigaction(SIGSEGV, &sa, &old_sa);
-    sigaction(SIGBUS, &sa, NULL);
+    sigaction(SIGSEGV, &sa, &old_segv_sa);
+    sigaction(SIGBUS, &sa, &old_bus_sa);
 
     int rc = sigsetjmp(sigsegv_jmp, 1);
     if (rc == 0) {
@@ -486,7 +487,8 @@ MU_TEST(test_asdf_compressed_block_no_hang_on_segfault) {
         x = data[4096];
         munit_log(MUNIT_LOG_INFO, "fail: did not segfault");
         alarm(0);
-        sigaction(SIGSEGV, &old_sa, NULL);
+        sigaction(SIGSEGV, &old_segv_sa, NULL);
+        sigaction(SIGBUS, &old_bus_sa, NULL);
         return MUNIT_FAIL;
     }
 
@@ -497,7 +499,8 @@ MU_TEST(test_asdf_compressed_block_no_hang_on_segfault) {
     }
 
     alarm(0);
-    sigaction(SIGSEGV, &old_sa, NULL);
+    sigaction(SIGSEGV, &old_segv_sa, NULL);
+    sigaction(SIGBUS, &old_bus_sa, NULL);
 
     asdf_close(file);
     return MUNIT_OK;
