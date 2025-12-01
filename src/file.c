@@ -87,7 +87,7 @@ static void asdf_config_validate(asdf_file_t *file) {
         file->config->decomp.max_memory_threshold = 0.0;
     }
 #endif
-#ifdef ASDF_BLOCK_DECOMP_LAZY_AVAILABLE
+#ifndef ASDF_BLOCK_DECOMP_LAZY_AVAILABLE
     asdf_block_decomp_mode_t mode = file->config->decomp.mode;
     switch (mode) {
     case ASDF_BLOCK_DECOMP_MODE_AUTO:
