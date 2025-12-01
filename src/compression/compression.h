@@ -56,6 +56,8 @@ typedef struct {
     asdf_block_comp_state_t *comp_state;
     /** File descriptor for the UUFD handle */
     int uffd;
+    /** File descriptor for passing other events to the lazy decompression handler */
+    int evtfd;
     pthread_t handler_thread;
     /** Signal the thread to stop */
     atomic_bool stop;
@@ -73,6 +75,7 @@ typedef struct {
  */
 typedef struct _asdf_block_comp_state_t {
     asdf_file_t *file;
+    asdf_block_decomp_mode_t mode;
     int fd;
     bool own_fd;
     uint8_t *dest;

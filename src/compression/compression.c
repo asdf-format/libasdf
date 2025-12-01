@@ -20,8 +20,10 @@
 #ifdef HAVE_USERFAULTFD
 #include <fcntl.h>
 #include <linux/userfaultfd.h>
-#include <pthread.h> // TODO: Should have configure-time check
+#include <pthread.h>
+#include <sys/eventfd.h>
 #include <sys/ioctl.h>
+#include <sys/poll.h>
 #include <sys/syscall.h>
 #endif
 
@@ -33,39 +35,6 @@
 #include "../util.h"
 #include "compression.h"
 #include "compressor_registry.h"
-
-
-void asdf_block_comp_close(asdf_block_t *block) {
-    assert(block);
-    asdf_block_comp_state_t *cs = block->comp_state;
-
-    if (!cs)
-        return;
-
-    if (cs->compressor)
-        cs->compressor->destroy(cs->userdata);
-
-    if (cs->dest)
-        munmap(cs->dest, cs->dest_size);
-
-    if (cs->own_fd)
-        close(cs->fd);
-
-        // TODO: Maybe extract out any necessary cleanup for specific lazy
-        // decompression implementations; currently there is only the one though
-#ifdef HAVE_USERFAULTFD
-    if (cs->lazy.userfaultfd) {
-        atomic_store(&cs->lazy.userfaultfd->stop, true);
-        close(cs->lazy.userfaultfd->uffd);
-        pthread_join(cs->lazy.userfaultfd->handler_thread, NULL);
-        free(cs->lazy.userfaultfd->work_buf);
-        free(cs->lazy.userfaultfd);
-    }
-#endif
-
-    ZERO_MEMORY(cs, sizeof(asdf_block_comp_state_t));
-    free(cs);
-}
 
 
 static int asdf_create_temp_file(size_t data_size, const char *tmp_dir, int *out_fd) {
@@ -135,6 +104,10 @@ static bool asdf_block_decomp_lazy_available(
     UNUSED(asdf_block_comp_state_t *cs), UNUSED(bool use_file_backing)) {
     return false;
 }
+
+
+static void asdf_block_decomp_lazy_shutdown(UNUSED(asdf_block_comp_state_t *cs)) {
+}
 #else
 static void *asdf_block_comp_userfaultfd_handler(void *arg) {
     asdf_block_comp_userfaultfd_t *uffd = arg;
@@ -144,22 +117,51 @@ static void *asdf_block_comp_userfaultfd_handler(void *arg) {
     size_t page_size = sysconf(_SC_PAGE_SIZE);
     size_t page_mask = page_size - 1;
 
+    struct pollfd fds[2] = {0};
+    fds[0].fd = uffd->uffd;
+    fds[0].events = POLLIN;
+    fds[1].fd = uffd->evtfd;
+    fds[1].events = POLLIN;
+
+    struct pollfd *poll_uffd = &fds[0];
+    struct pollfd *poll_evtfd = &fds[1];
+
     while (!atomic_load(&uffd->stop)) {
         info = cs->compressor->info(cs->userdata);
         if (info->status == ASDF_COMPRESSOR_DONE)
             break;
 
-        ssize_t n = read(uffd->uffd, &msg, sizeof(msg));
+        int nready = poll(fds, 2, -1);
 
-        if (n <= 0) {
+        if (nready == -1) {
             if (errno == EINTR)
                 continue;
 
+            ASDF_ERROR_ERRNO(cs->file, errno);
             break;
         }
 
-        if (msg.event != UFFD_EVENT_PAGEFAULT)
+        if ((poll_evtfd->revents & POLLIN) != 0) {
+            uint64_t val = 0;
+            read(uffd->evtfd, &val, sizeof(val));
+            break;
+        }
+
+        if ((poll_uffd->revents & POLLIN) != 0) {
+            ssize_t n = read(uffd->uffd, &msg, sizeof(msg));
+
+            if (n <= 0) {
+                if (errno == EINTR)
+                    continue;
+
+                break;
+            }
+
+            if (msg.event != UFFD_EVENT_PAGEFAULT)
+                continue;
+        } else {
             continue;
+        }
 
         size_t fault_addr = msg.arg.pagefault.address;
         size_t chunk_size = cs->work_buf_size;
@@ -213,7 +215,7 @@ static bool asdf_block_decomp_lazy_available(asdf_block_comp_state_t *cs, bool u
     // Probe UFFD features
     // TODO: I Think we only need to do this once, we need to make runtime checks for what's
     // actually supported anyways before enabling this feature
-    int uffd = syscall(SYS_userfaultfd, O_CLOEXEC | UFFD_USER_MODE_ONLY);
+    int uffd = syscall(SYS_userfaultfd, O_CLOEXEC | O_NONBLOCK | UFFD_USER_MODE_ONLY);
 
     if (uffd < 0) {
         ASDF_LOG(
@@ -301,6 +303,7 @@ static int asdf_block_decomp_lazy(asdf_block_comp_state_t *cs) {
     }
 
     uffd->comp_state = cs;
+    cs->lazy.userfaultfd = uffd;
 
     // Determine the chunk size--if not specified in the settings set to _SC_PAGESIZE,
     // but otherwise align to a multiple of page size
@@ -335,7 +338,7 @@ static int asdf_block_decomp_lazy(asdf_block_comp_state_t *cs) {
     cs->work_buf_size = uffd->work_buf_size;
 
     // Create userfaultfd
-    uffd->uffd = syscall(SYS_userfaultfd, O_CLOEXEC | UFFD_USER_MODE_ONLY);
+    uffd->uffd = syscall(SYS_userfaultfd, O_CLOEXEC | O_NONBLOCK | UFFD_USER_MODE_ONLY);
     if (uffd->uffd < 0) {
         ASDF_ERROR_ERRNO(cs->file, errno);
         return -1;
@@ -362,12 +365,65 @@ static int asdf_block_decomp_lazy(asdf_block_comp_state_t *cs) {
         return -1;
     }
 
+    // Create the eventfd for signalling
+    uffd->evtfd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+
+    if (uffd->evtfd < 0) {
+        ASDF_ERROR_ERRNO(cs->file, errno);
+        return -1;
+    }
+
     // Spawn handler thread
     pthread_create(&uffd->handler_thread, NULL, asdf_block_comp_userfaultfd_handler, uffd);
 
     return 0;
 }
+
+
+static void asdf_block_decomp_lazy_shutdown(asdf_block_comp_state_t *cs) {
+    if (!cs)
+        return;
+
+    asdf_block_comp_userfaultfd_t *uffd = cs->lazy.userfaultfd;
+
+    if (!uffd)
+        return;
+
+    // Set the stop flag then signal the thread to stop
+    atomic_store(&uffd->stop, true);
+    uint64_t one = 1;
+    write(uffd->evtfd, &one, sizeof(one));
+    pthread_join(uffd->handler_thread, NULL);
+    close(uffd->uffd);
+    close(uffd->evtfd);
+    free(uffd->work_buf);
+    free(uffd);
+}
 #endif /* HAVE_USERFAULTFD */
+
+
+void asdf_block_comp_close(asdf_block_t *block) {
+    assert(block);
+    asdf_block_comp_state_t *cs = block->comp_state;
+
+    if (!cs)
+        return;
+
+    if (cs->mode == ASDF_BLOCK_DECOMP_MODE_LAZY)
+        asdf_block_decomp_lazy_shutdown(cs);
+
+    if (cs->compressor)
+        cs->compressor->destroy(cs->userdata);
+
+    if (cs->dest)
+        munmap(cs->dest, cs->dest_size);
+
+    if (cs->own_fd)
+        close(cs->fd);
+
+    ZERO_MEMORY(cs, sizeof(asdf_block_comp_state_t));
+    free(cs);
+}
 
 
 /**
@@ -506,6 +562,7 @@ int asdf_block_comp_open(asdf_block_t *block) {
 
     state->dest_size = dest_size;
     state->userdata = state->compressor->init(block, state->dest, state->dest_size);
+    state->mode = mode; // Store the effective mode we're running under
 
     if (!state->userdata) {
         ASDF_LOG(

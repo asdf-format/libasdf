@@ -356,6 +356,37 @@ MU_TEST(test_asdf_read_compressed_block_to_file_on_threshold) {
     return ret;
 }
 
+/**
+ * Test opening a compressed block in lazy read mode, but without reading it
+ *
+ * Tests edge cases where the compression handler isn't stopped properly or
+ * goes into an undefined state if we don't decompress the whole file first.
+ */
+MU_TEST(test_asdf_open_close_compressed_block) {
+    const char *comp = munit_parameters_get(params, "comp");
+    const char *filename = get_fixture_file_path("compressed.asdf");
+    asdf_config_t config = {
+        .decomp = {
+            .mode = decomp_mode_from_param(munit_parameters_get(params, "mode"))
+        }
+    };
+    asdf_file_t *file = asdf_open_ex(filename, "r", &config);
+    assert_not_null(file);
+    asdf_ndarray_t *ndarray = NULL;
+    asdf_value_err_t err = asdf_get_ndarray(file, comp, &ndarray);
+    assert_int(err, ==, ASDF_VALUE_OK);
+    assert_not_null(ndarray);
+    asdf_ndarray_data_raw(ndarray, NULL);
+    // Check for errors and log it if there was one (useful for debugging failures in this test)
+    const char *error = asdf_error(file);
+    if (error)
+        munit_logf(MUNIT_LOG_ERROR, "error after opening the ndarray: %s", error);
+    assert_null(error);
+    asdf_ndarray_destroy(ndarray);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
 
 MU_TEST_SUITE(
     test_asdf_file,
@@ -367,7 +398,8 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_read_compressed_reference_file, comp_mode_test_params),
     MU_RUN_TEST(test_asdf_read_compressed_block, comp_mode_test_params),
     MU_RUN_TEST(test_asdf_read_compressed_block_to_file, comp_test_params),
-    MU_RUN_TEST(test_asdf_read_compressed_block_to_file_on_threshold, comp_test_params)
+    MU_RUN_TEST(test_asdf_read_compressed_block_to_file_on_threshold, comp_test_params),
+    MU_RUN_TEST(test_asdf_open_close_compressed_block, comp_mode_test_params)
 );
 
 
