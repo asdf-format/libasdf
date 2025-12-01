@@ -13,6 +13,7 @@ src_files = \
     src/core/ndarray_convert.c \
     src/core/software.c \
     src/emitter.c \
+    src/core/time.c \
     src/error.c \
     src/event.c \
     src/extension_registry.c \
