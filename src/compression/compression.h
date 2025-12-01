@@ -6,8 +6,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <bzlib.h>
-#include <zlib.h>
+#ifdef HAVE_USERFAULTFD
+#include <linux/userfaultfd.h>
+#endif
 
 #include <asdf/file.h>
 
@@ -62,6 +63,8 @@ typedef struct {
     int uffd;
     /** File descriptor for passing other events to the lazy decompression handler */
     int evtfd;
+    /** Keep track of the range on which the UFFD was registered */
+    struct uffdio_range range;
     pthread_t handler_thread;
     /** Signal the thread to stop */
     atomic_bool stop;

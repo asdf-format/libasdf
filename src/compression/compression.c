@@ -216,6 +216,13 @@ static void *asdf_block_comp_userfaultfd_handler(void *arg) {
         }
     }
 
+    // If the thread exits for any reason make sure to deregister UFFD for
+    // for the range handled; of course if the thread crashes we're in deep
+    // water (main thread may hang)
+    if (ioctl(uffd->uffd, UFFDIO_UNREGISTER, &uffd->range) == -1) {
+        ASDF_ERROR_ERRNO(cs->file, errno);
+    }
+
     return NULL;
 }
 
@@ -373,9 +380,10 @@ static int asdf_block_decomp_lazy(asdf_block_comp_state_t *cs) {
     // Register the memory range
     // Per careful reading of the man page, the length of the range must also be page-aligned
     size_t range_len = (cs->dest_size + page_size - 1) & ~(page_size - 1);
-    struct uffdio_register uffd_reg = {
-        .range = {.start = (uintptr_t)cs->dest, .len = range_len},
-        .mode = UFFDIO_REGISTER_MODE_MISSING};
+    uffd->range.start = (uintptr_t)cs->dest;
+    uffd->range.len = range_len;
+    struct uffdio_register uffd_reg = {.range = uffd->range, .mode = UFFDIO_REGISTER_MODE_MISSING};
+
     if (ioctl(uffd->uffd, UFFDIO_REGISTER, &uffd_reg) == -1) {
         ASDF_LOG(
             cs->file, ASDF_LOG_ERROR, "failed registering memory range for userfaultfd handling");

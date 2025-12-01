@@ -1,7 +1,10 @@
 #include <errno.h>
+#include <setjmp.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include <asdf/file.h>
 #include <asdf/core/ndarray.h>
@@ -290,10 +293,8 @@ static int test_compressed_file(
         for (int idx = 0; idx < num_pages; idx++) {
             size_t page_idx = pages[idx];
             //munit_logf(MUNIT_LOG_DEBUG, "checking page %zu\n", page_idx);
-            printf("pausing for fault handling...");
             assert_memory_equal(
                 page_size, dst + (page_idx * page_size), expected + (page_idx * page_size));
-            printf("...fault handled!\n");
         }
 
         free(pages);
@@ -354,6 +355,7 @@ MU_TEST(test_asdf_read_compressed_block_to_file) {
 
     asdf_config_t config = {
         .decomp = {
+            .mode = ASDF_BLOCK_DECOMP_MODE_EAGER,
             .max_memory_bytes = 1
         }
     };
@@ -385,6 +387,7 @@ MU_TEST(test_asdf_read_compressed_block_to_file_on_threshold) {
 
     asdf_config_t config = {
         .decomp = {
+            .mode = ASDF_BLOCK_DECOMP_MODE_EAGER,
             .max_memory_threshold = max_memory_threshold
         }
     };
@@ -393,6 +396,7 @@ MU_TEST(test_asdf_read_compressed_block_to_file_on_threshold) {
     asdf_close(file);
     return ret;
 }
+
 
 /**
  * Test opening a compressed block in lazy read mode, but without reading it
@@ -421,6 +425,72 @@ MU_TEST(test_asdf_open_close_compressed_block) {
         munit_logf(MUNIT_LOG_ERROR, "error after opening the ndarray: %s", error);
     assert_null(error);
     asdf_ndarray_destroy(ndarray);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+/* Used for test_asdf_compressed_block_no_hang_on_segfault
+ *
+ * This is to ensure that trying to access the data after the block is closed
+ * actually results in a segfault instead of just hanging the process
+ *
+ * (if the test fails the process will just hang)
+ */
+static sigjmp_buf sigsegv_jmp;
+
+
+static void segv_handler(UNUSED(int sig)) {
+    siglongjmp(sigsegv_jmp, 1);
+}
+
+
+MU_TEST(test_asdf_compressed_block_no_hang_on_segfault) {
+    const char *comp = munit_parameters_get(params, "comp");
+    const char *filename = get_fixture_file_path("compressed.asdf");
+    asdf_config_t config = {
+        .decomp = {
+            .mode = decomp_mode_from_param(munit_parameters_get(params, "mode")),
+            .chunk_size = 4096
+        }
+    };
+    asdf_file_t *file = asdf_open_ex(filename, "r", &config);
+    assert_not_null(file);
+    asdf_ndarray_t *ndarray = NULL;
+    asdf_value_err_t err = asdf_get_ndarray(file, comp, &ndarray);
+    assert_int(err, ==, ASDF_VALUE_OK);
+    assert_not_null(ndarray);
+    uint8_t *data = asdf_ndarray_data_raw(ndarray, NULL);
+    // Check for errors and log it if there was one (useful for debugging failures in this test)
+    const char *error = asdf_error(file);
+    if (error)
+        munit_logf(MUNIT_LOG_ERROR, "error after opening the ndarray: %s", error);
+    assert_null(error);
+
+    uint8_t x = data[0];
+    (void)x;
+
+    asdf_ndarray_destroy(ndarray);
+
+    // Try to access the data after the ndarray is closed; should segfault
+    struct sigaction sa = {0};
+    struct sigaction old_sa = {0};
+
+    if (sigsetjmp(sigsegv_jmp, 1) == 0) {
+        sa.sa_handler = segv_handler;
+        sigemptyset(&sa.sa_mask);
+        sigaction(SIGSEGV, &sa, &old_sa);
+        alarm(1);
+        x = data[4096];
+        munit_log(MUNIT_LOG_INFO, "fail: did not segfault");
+        alarm(0);
+        sigaction(SIGSEGV, &old_sa, NULL);
+        return MUNIT_FAIL;
+    }
+
+    alarm(0);
+    sigaction(SIGSEGV, &old_sa, NULL);
+
     asdf_close(file);
     return MUNIT_OK;
 }
@@ -460,7 +530,8 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_read_compressed_block_to_file, comp_test_params),
     MU_RUN_TEST(test_asdf_read_compressed_block_to_file_on_threshold, comp_test_params),
     MU_RUN_TEST(test_asdf_open_close_compressed_block, comp_mode_test_params),
-    MU_RUN_TEST(test_asdf_read_compressed_block_lazy_random_access, comp_mode_test_params)
+    MU_RUN_TEST(test_asdf_read_compressed_block_lazy_random_access, comp_mode_test_params),
+    MU_RUN_TEST(test_asdf_compressed_block_no_hang_on_segfault, comp_mode_test_params)
 );
 
 
