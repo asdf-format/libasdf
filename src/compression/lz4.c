@@ -29,7 +29,6 @@
  */
 
 #include <assert.h>
-#include <endian.h>
 #include <stdbool.h>
 
 #include <lz4.h>

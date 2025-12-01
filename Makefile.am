@@ -30,7 +30,9 @@ src_files = \
 src_headers = \
     src/block.h \
     src/compat/endian.h \
+    src/compression/asdf_compressor_map.h \
     src/compression/compression.h \
+    src/compression/compressor_registry.h \
     src/context.h \
     src/core/ndarray_convert.h \
     src/error.h \
