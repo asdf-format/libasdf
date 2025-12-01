@@ -440,8 +440,8 @@ MU_TEST(test_asdf_open_close_compressed_block) {
 static sigjmp_buf sigsegv_jmp;
 
 
-static void segv_handler(UNUSED(int sig)) {
-    siglongjmp(sigsegv_jmp, 1);
+static void segv_handler(int sig) {
+    siglongjmp(sigsegv_jmp, sig);
 }
 
 
@@ -475,17 +475,24 @@ MU_TEST(test_asdf_compressed_block_no_hang_on_segfault) {
     // Try to access the data after the ndarray is closed; should segfault
     struct sigaction sa = {0};
     struct sigaction old_sa = {0};
+    sa.sa_handler = segv_handler;
+    sigemptyset(&sa.sa_mask);
+    sigaction(SIGSEGV, &sa, &old_sa);
+    sigaction(SIGBUS, &sa, NULL);
 
-    if (sigsetjmp(sigsegv_jmp, 1) == 0) {
-        sa.sa_handler = segv_handler;
-        sigemptyset(&sa.sa_mask);
-        sigaction(SIGSEGV, &sa, &old_sa);
+    int rc = sigsetjmp(sigsegv_jmp, 1);
+    if (rc == 0) {
         alarm(1);
         x = data[4096];
         munit_log(MUNIT_LOG_INFO, "fail: did not segfault");
         alarm(0);
         sigaction(SIGSEGV, &old_sa, NULL);
         return MUNIT_FAIL;
+    } else {
+        if (rc == SIGBUS)
+            munit_log(MUNIT_LOG_INFO, "passed: got SIGBUS");
+        else if (rc == SIGSEGV)
+            munit_log(MUNIT_LOG_INFO, "passed: got SIGSEGV");
     }
 
     alarm(0);
