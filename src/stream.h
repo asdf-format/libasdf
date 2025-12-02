@@ -92,6 +92,8 @@ static inline const uint8_t *asdf_stream_next_impl(
     }
     return r;
 #else
+    (void)file;
+    (void)lineno;
     return stream->next(stream, count, avail);
 #endif
 }
