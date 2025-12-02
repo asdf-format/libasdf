@@ -530,7 +530,7 @@ static asdf_block_info_t *validate_block(
     if (!is_block_magic(buf, avail))
         return NULL;
 
-    return asdf_block_read_info(parser);
+    return asdf_block_info_read(parser);
 }
 
 
@@ -789,14 +789,14 @@ static parse_result_t parse_block(asdf_parser_t *parser, asdf_event_t *event) {
         // Happy path, we are already pointing to the start of a block
         // Otherwise scan for the first block magic we find, if any
         if (buf && is_block_magic(buf, len)) {
-            block_info = asdf_block_read_info(parser);
+            block_info = asdf_block_info_read(parser);
         } else {
             if (!scan_for_block(parser)) {
                 parser->state = ASDF_PARSER_STATE_END;
                 // Should immediately emit the end event, not a block event
                 return ASDF_PARSE_CONTINUE;
             }
-            block_info = asdf_block_read_info(parser);
+            block_info = asdf_block_info_read(parser);
         }
     }
 
@@ -843,6 +843,13 @@ static parse_result_t parse_block(asdf_parser_t *parser, asdf_event_t *event) {
     }
 
     parser->blocks.n_blocks = parser->blocks.found_blocks;
+
+    // If an old asdf_block_info_t is in the array (from a previous, invalidated block index)
+    // free it first
+    if (block_infos[block_idx] != block_info) {
+        free(block_infos[block_idx]);
+        block_infos[block_idx] = NULL;
+    }
     block_infos[block_idx] = block_info;
 
     off_t offset;
@@ -1051,7 +1058,7 @@ void asdf_parser_destroy(asdf_parser_t *parser) {
     asdf_parse_event_freelist_free(parser);
     asdf_block_index_free(parser->block_index);
 
-    for (size_t idx = 0; idx < parser->blocks.n_blocks; idx++)
+    for (size_t idx = 0; idx < parser->blocks.cap; idx++)
         free(parser->blocks.block_infos[idx]);
 
     free(parser->blocks.block_infos);

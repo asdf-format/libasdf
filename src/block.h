@@ -105,7 +105,7 @@ static inline bool is_block_magic(const uint8_t *buf, size_t len) {
 }
 
 
-ASDF_LOCAL asdf_block_info_t *asdf_block_read_info(asdf_parser_t *parser);
+ASDF_LOCAL asdf_block_info_t *asdf_block_info_read(asdf_parser_t *parser);
 ASDF_LOCAL asdf_block_index_t *asdf_block_index_init(size_t size);
 ASDF_LOCAL asdf_block_index_t *asdf_block_index_resize(
     asdf_block_index_t *block_index, size_t size);

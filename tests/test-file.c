@@ -206,6 +206,7 @@ MU_TEST(missing_block_index) {
     assert_not_null(file);
     test_multi_block_asdf_content(file);
     asdf_close(file);
+    free(contents);
     return MUNIT_OK;
 }
 
@@ -242,6 +243,7 @@ MU_TEST(invalid_block_index) {
     test_multi_block_asdf_content(file);
     asdf_close(file);
     cstr_drop(&contents);
+    free(content_bytes);
     return MUNIT_OK;
 }
 
