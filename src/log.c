@@ -30,7 +30,7 @@ static const char *level_names[] = {"NONE", "TRACE", "DEBUG", "INFO", "WARN", "E
 
 
 _Static_assert(
-    (ASDF_LOG_FATAL + 1) == (sizeof(level_names) / sizeof(level_names[0])),
+    ASDF_LOG_NUM_LEVELS == (sizeof(level_names) / sizeof(level_names[0])),
     "Mismatch between log level enum and level_strings array");
 
 
@@ -38,13 +38,13 @@ _Static_assert(
 static const char *level_colors[] = {
     "", COLOR_BRIGHT_BLUE, COLOR_CYAN, COLOR_GREEN, COLOR_YELLOW, COLOR_RED, COLOR_MAGENTA};
 _Static_assert(
-    (ASDF_LOG_FATAL + 1) == (sizeof(level_colors) / sizeof(level_colors[0])),
+    ASDF_LOG_NUM_LEVELS == (sizeof(level_colors) / sizeof(level_colors[0])),
     "Mismatch between log level enum and level_strings array");
 #endif
 
 
 static asdf_log_level_t asdf_log_level_from_string(const char *s) {
-    for (unsigned int idx = 1; idx < sizeof(level_names); idx++) {
+    for (unsigned int idx = 1; idx < ASDF_LOG_NUM_LEVELS; idx++) {
         if (0 == strcasecmp(s, level_names[idx]))
             return (asdf_log_level_t)idx;
     }

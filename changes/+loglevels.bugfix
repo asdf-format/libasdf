@@ -1,0 +1,1 @@
+Fixed segfault when passing an unknown log level name to ASDF_LOG_LEVEL
