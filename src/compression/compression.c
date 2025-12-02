@@ -146,7 +146,12 @@ static void *asdf_block_comp_userfaultfd_handler(void *arg) {
 
         if ((poll_evtfd->revents & POLLIN) != 0) {
             uint64_t val = 0;
-            read(uffd->evtfd, &val, sizeof(val));
+            ssize_t n = read(uffd->evtfd, &val, sizeof(val));
+
+            if (n <= 0) {
+                if (errno == EINTR)
+                    continue;
+            }
             break;
         }
 
@@ -418,7 +423,17 @@ static void asdf_block_decomp_lazy_shutdown(asdf_block_comp_state_t *cs) {
     // Set the stop flag then signal the thread to stop
     atomic_store(&uffd->stop, true);
     uint64_t one = 1;
-    write(uffd->evtfd, &one, sizeof(one));
+    ssize_t n = write(uffd->evtfd, &one, sizeof(one));
+
+    if (n < 0) {
+        ASDF_LOG(
+            cs->file,
+            ASDF_LOG_ERROR,
+            "failed to write the shutdown event to the lazy decompression handler: %s",
+            strerror(errno));
+        ASDF_ERROR_ERRNO(cs->file, errno);
+    }
+
     pthread_join(uffd->handler_thread, NULL);
     close(uffd->uffd);
     close(uffd->evtfd);
