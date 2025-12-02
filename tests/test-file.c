@@ -53,7 +53,7 @@ MU_TEST(test_asdf_open_file) {
 
 
 /* Test the high-level asdf_is_* and asdf_get_* helpers */
-MU_TEST(test_asdf_scalar_getters) {
+MU_TEST(scalar_getters) {
     const char *filename = get_fixture_file_path("scalars.asdf");
     asdf_file_t *file = asdf_open_file(filename, "r");
     assert_not_null(file);
@@ -188,7 +188,7 @@ static asdf_block_decomp_mode_t decomp_mode_from_param(const char *mode) {
 
 
 /** Basic test against the compressed.asdf reference file */
-MU_TEST(test_asdf_read_compressed_reference_file) {
+MU_TEST(read_compressed_reference_file) {
     const char *comp = munit_parameters_get(params, "comp");
 
     if (strcmp(comp, "lz4") == 0) {
@@ -331,7 +331,7 @@ static int test_compressed_file(
 }
 
 
-MU_TEST(test_asdf_read_compressed_block) {
+MU_TEST(read_compressed_block) {
     const char *comp = munit_parameters_get(params, "comp");
     const char *filename = get_fixture_file_path("compressed.asdf");
     asdf_config_t config = {
@@ -349,7 +349,7 @@ MU_TEST(test_asdf_read_compressed_block) {
 /**
  * Test decompression to a temp file (set memory threshold very low to force it)
  */
-MU_TEST(test_asdf_read_compressed_block_to_file) {
+MU_TEST(read_compressed_block_to_file) {
     const char *comp = munit_parameters_get(params, "comp");
     const char *filename = get_fixture_file_path("compressed.asdf");
 
@@ -369,7 +369,7 @@ MU_TEST(test_asdf_read_compressed_block_to_file) {
 /**
  * Test decompression to a temp file based on memory threshold
  */
-MU_TEST(test_asdf_read_compressed_block_to_file_on_threshold) {
+MU_TEST(read_compressed_block_to_file_on_threshold) {
     const char *comp = munit_parameters_get(params, "comp");
     const char *filename = get_fixture_file_path("compressed.asdf");
 
@@ -404,7 +404,7 @@ MU_TEST(test_asdf_read_compressed_block_to_file_on_threshold) {
  * Tests edge cases where the compression handler isn't stopped properly or
  * goes into an undefined state if we don't decompress the whole file first.
  */
-MU_TEST(test_asdf_open_close_compressed_block) {
+MU_TEST(open_close_compressed_block) {
     const char *comp = munit_parameters_get(params, "comp");
     const char *filename = get_fixture_file_path("compressed.asdf");
     asdf_config_t config = {
@@ -430,7 +430,7 @@ MU_TEST(test_asdf_open_close_compressed_block) {
 }
 
 
-/* Used for test_asdf_compressed_block_no_hang_on_segfault
+/* Used for compressed_block_no_hang_on_segfault
  *
  * This is to ensure that trying to access the data after the block is closed
  * actually results in a segfault instead of just hanging the process
@@ -445,7 +445,7 @@ static void segv_handler(int sig) {
 }
 
 
-MU_TEST(test_asdf_compressed_block_no_hang_on_segfault) {
+MU_TEST(compressed_block_no_hang_on_segfault) {
     const char *comp = munit_parameters_get(params, "comp");
     const char *filename = get_fixture_file_path("compressed.asdf");
     asdf_config_t config = {
@@ -510,7 +510,7 @@ MU_TEST(test_asdf_compressed_block_no_hang_on_segfault) {
 /**
  * Test decompressed block lazy random access
  */
-MU_TEST(test_asdf_read_compressed_block_lazy_random_access) {
+MU_TEST(read_compressed_block_lazy_random_access) {
     const char *comp = munit_parameters_get(params, "comp");
     const char *filename = get_fixture_file_path("compressed.asdf");
 
@@ -530,20 +530,20 @@ MU_TEST(test_asdf_read_compressed_block_lazy_random_access) {
 
 
 MU_TEST_SUITE(
-    test_asdf_file,
+    file,
     MU_RUN_TEST(test_asdf_open_file),
-    MU_RUN_TEST(test_asdf_scalar_getters),
+    MU_RUN_TEST(scalar_getters),
     MU_RUN_TEST(test_asdf_get_mapping),
     MU_RUN_TEST(test_asdf_get_sequence),
     MU_RUN_TEST(test_asdf_block_count),
-    MU_RUN_TEST(test_asdf_read_compressed_reference_file, comp_mode_test_params),
-    MU_RUN_TEST(test_asdf_read_compressed_block, comp_mode_test_params),
-    MU_RUN_TEST(test_asdf_read_compressed_block_to_file, comp_test_params),
-    MU_RUN_TEST(test_asdf_read_compressed_block_to_file_on_threshold, comp_test_params),
-    MU_RUN_TEST(test_asdf_open_close_compressed_block, comp_mode_test_params),
-    MU_RUN_TEST(test_asdf_read_compressed_block_lazy_random_access, comp_mode_test_params),
-    MU_RUN_TEST(test_asdf_compressed_block_no_hang_on_segfault, comp_mode_test_params)
+    MU_RUN_TEST(read_compressed_reference_file, comp_mode_test_params),
+    MU_RUN_TEST(read_compressed_block, comp_mode_test_params),
+    MU_RUN_TEST(read_compressed_block_to_file, comp_test_params),
+    MU_RUN_TEST(read_compressed_block_to_file_on_threshold, comp_test_params),
+    MU_RUN_TEST(open_close_compressed_block, comp_mode_test_params),
+    MU_RUN_TEST(read_compressed_block_lazy_random_access, comp_mode_test_params),
+    MU_RUN_TEST(compressed_block_no_hang_on_segfault, comp_mode_test_params)
 );
 
 
-MU_RUN_SUITE(test_asdf_file);
+MU_RUN_SUITE(file);

@@ -11,7 +11,7 @@
 
 
 /* Read contiguous 1-D "tiles" from arrays of different shapes */
-MU_TEST(test_asdf_ndarray_read_1d_tile_contiguous) {
+MU_TEST(ndarray_read_1d_tile_contiguous) {
     const char *path = get_fixture_file_path("tiles.asdf");
     asdf_file_t *file = asdf_open_file(path, "r");
     assert_not_null(file);
@@ -67,7 +67,7 @@ MU_TEST(test_asdf_ndarray_read_1d_tile_contiguous) {
 
 
 /* Read 2-D tiles from 2-D and 3-D arrays */
-MU_TEST(test_asdf_ndarray_read_2d_tile) {
+MU_TEST(test_asdf_ndarray_read_tile_2d) {
     const char *path = get_fixture_file_path("tiles.asdf");
     asdf_file_t *file = asdf_open_file(path, "r");
     assert_not_null(file);
@@ -106,7 +106,7 @@ MU_TEST(test_asdf_ndarray_read_2d_tile) {
 
 
 /* Read a 3-D cube from a a 3-D array */
-MU_TEST(test_asdf_ndarray_read_3d_tile) {
+MU_TEST(ndarray_read_3d_tile) {
     const char *path = get_fixture_file_path("tiles.asdf");
     asdf_file_t *file = asdf_open_file(path, "r");
     assert_not_null(file);
@@ -131,7 +131,7 @@ MU_TEST(test_asdf_ndarray_read_3d_tile) {
 }
 
 
-/* Helper for test_asdf_ndarray_read_tile_byteswap
+/* Helper for ndarray_read_tile_byteswap
  *
  * Each array in byteorder.asdf just contains 0...7 in different int types, different
  * endianness
@@ -159,7 +159,7 @@ MU_TEST(test_asdf_ndarray_read_3d_tile) {
 
 
 /* Test reading from (1-D) arrays with different byte orders */
-MU_TEST(test_asdf_ndarray_read_tile_byteswap) {
+MU_TEST(ndarray_read_tile_byteswap) {
     const char *path = get_fixture_file_path("byteorder.asdf");
     asdf_file_t *file = asdf_open_file(path, "r");
     assert_not_null(file);
@@ -188,10 +188,10 @@ static MunitParameterEnum test_numeric_conversion_params[] = {
 };
 
 
-/** Helper functions for `test_asdf_ndarray_numeric_conversion` */
+/** Helper functions for `ndarray_numeric_conversion` */
 
 /**
- * For the purposes of `test_asdf_ndarray_numeric_conversion` will the result
+ * For the purposes of `ndarray_numeric_conversion` will the result
  * overflow for a given source and destination datatype
  *
  * This is not a guaranteed overflow in general (as it depends on the data in
@@ -442,7 +442,7 @@ static char *append_char(const char *src, char c) {
 }
 
 
-MU_TEST(test_asdf_ndarray_numeric_conversion) {
+MU_TEST(ndarray_numeric_conversion) {
     const char *src_dtype = munit_parameters_get(params, "src_dtype");
     const char *dst_dtype = munit_parameters_get(params, "dst_dtype");
     const char *src_byteorder = munit_parameters_get(params, "src_byteorder");
@@ -475,7 +475,7 @@ MU_TEST(test_asdf_ndarray_numeric_conversion) {
 }
 
 
-MU_TEST(test_asdf_ndarray_record_datatype) {
+MU_TEST(ndarray_record_datatype) {
     const char *path = get_fixture_file_path("datatypes.asdf");
     asdf_file_t *file = asdf_open_file(path, "r");
     assert_not_null(file);
@@ -551,7 +551,7 @@ MU_TEST(test_asdf_ndarray_record_datatype) {
 }
 
 
-MU_TEST(test_heap_use_after_free_issue_63) {
+MU_TEST(heap_use_after_free_issue_63) {
     const char *path = get_fixture_file_path("multiple_hdu.asdf");
     asdf_file_t *file = asdf_open_file(path, "r");
     assert_not_null(file);
@@ -600,15 +600,15 @@ MU_TEST(test_heap_use_after_free_issue_63) {
 
 
 MU_TEST_SUITE(
-    test_asdf_ndarray,
-    MU_RUN_TEST(test_asdf_ndarray_read_1d_tile_contiguous),
-    MU_RUN_TEST(test_asdf_ndarray_read_2d_tile),
-    MU_RUN_TEST(test_asdf_ndarray_read_3d_tile),
-    MU_RUN_TEST(test_asdf_ndarray_read_tile_byteswap),
-    MU_RUN_TEST(test_asdf_ndarray_numeric_conversion, test_numeric_conversion_params),
-    MU_RUN_TEST(test_asdf_ndarray_record_datatype),
-    MU_RUN_TEST(test_heap_use_after_free_issue_63)
+    ndarray,
+    MU_RUN_TEST(ndarray_read_1d_tile_contiguous),
+    MU_RUN_TEST(test_asdf_ndarray_read_tile_2d),
+    MU_RUN_TEST(ndarray_read_3d_tile),
+    MU_RUN_TEST(ndarray_read_tile_byteswap),
+    MU_RUN_TEST(ndarray_numeric_conversion, test_numeric_conversion_params),
+    MU_RUN_TEST(ndarray_record_datatype),
+    MU_RUN_TEST(heap_use_after_free_issue_63)
 );
 
 
-MU_RUN_SUITE(test_asdf_ndarray);
+MU_RUN_SUITE(ndarray);

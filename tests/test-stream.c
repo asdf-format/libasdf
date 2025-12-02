@@ -18,7 +18,7 @@ static const uint8_t *tokens[] = {TOKEN("dummy"), TOKEN("asdf")};
 static size_t token_lens[] = {TOKEN_LEN("dummy"), TOKEN_LEN("asdf")};
 
 
-MU_TEST(test_file_scan_token_no_match) {
+MU_TEST(file_scan_token_no_match) {
     char buffer[] = "fdsa and some other garbage";
     FILE *file = fmemopen(buffer, strlen(buffer), "r");
     asdf_stream_t *stream = asdf_stream_from_fp(NULL, file, NULL);
@@ -37,7 +37,7 @@ MU_TEST(test_file_scan_token_no_match) {
 }
 
 
-MU_TEST(test_file_scan_token_at_beginning) {
+MU_TEST(file_scan_token_at_beginning) {
     char buffer[] = "asdf and some other garbage";
     FILE *file = fmemopen(buffer, strlen(buffer), "r");
     asdf_stream_t *stream = asdf_stream_from_fp(NULL, file, NULL);
@@ -57,7 +57,7 @@ MU_TEST(test_file_scan_token_at_beginning) {
 }
 
 
-MU_TEST(test_file_scan_token_at_end) {
+MU_TEST(file_scan_token_at_end) {
     char buffer[] = "and some other garbage asdf";
     FILE *file = fmemopen(buffer, strlen(buffer), "r");
     asdf_stream_t *stream = asdf_stream_from_fp(NULL, file, NULL);
@@ -78,7 +78,7 @@ MU_TEST(test_file_scan_token_at_end) {
 }
 
 
-MU_TEST(test_file_scan_token_in_middle) {
+MU_TEST(file_scan_token_in_middle) {
     char buffer[] = "fdsa and some asdf other garbage";
     FILE *file = fmemopen(buffer, strlen(buffer), "r");
     asdf_stream_t *stream = asdf_stream_from_fp(NULL, file, NULL);
@@ -99,7 +99,7 @@ MU_TEST(test_file_scan_token_in_middle) {
 }
 
 
-MU_TEST(test_file_scan_token_spans_buffers) {
+MU_TEST(file_scan_token_spans_buffers) {
     char buffer[] = "fdsa and some asdf other garbage";
 
     // Hack buf_size so that it only reads up to part-way into the token to match
@@ -133,7 +133,7 @@ MU_TEST(test_file_scan_token_spans_buffers) {
 }
 
 
-MU_TEST(test_stream_file_open_mem) {
+MU_TEST(stream_file_open_mem) {
     const char *filename = get_fixture_file_path("255.asdf");
     asdf_stream_t *stream = asdf_stream_from_file(NULL, filename);
     assert_not_null(stream);
@@ -153,7 +153,7 @@ MU_TEST(test_stream_file_open_mem) {
 }
 
 
-MU_TEST(test_stream_mem_open_mem) {
+MU_TEST(stream_mem_open_mem) {
     const char *filename = get_fixture_file_path("255.asdf");
     size_t filesize = 0;
     char *data = tail_file(filename, 0, &filesize);
@@ -178,14 +178,14 @@ MU_TEST(test_stream_mem_open_mem) {
 
 
 MU_TEST_SUITE(
-    test_asdf_stream,
-    MU_RUN_TEST(test_file_scan_token_at_beginning),
-    MU_RUN_TEST(test_file_scan_token_at_end),
-    MU_RUN_TEST(test_file_scan_token_in_middle),
-    MU_RUN_TEST(test_file_scan_token_spans_buffers),
-    MU_RUN_TEST(test_stream_file_open_mem),
-    MU_RUN_TEST(test_stream_mem_open_mem)
+    stream,
+    MU_RUN_TEST(file_scan_token_at_beginning),
+    MU_RUN_TEST(file_scan_token_at_end),
+    MU_RUN_TEST(file_scan_token_in_middle),
+    MU_RUN_TEST(file_scan_token_spans_buffers),
+    MU_RUN_TEST(stream_file_open_mem),
+    MU_RUN_TEST(stream_mem_open_mem)
 );
 
 
-MU_RUN_SUITE(test_asdf_stream);
+MU_RUN_SUITE(stream);

@@ -4,7 +4,7 @@
 #include "file.h"
 
 
-MU_TEST(test_asdf_block_data) {
+MU_TEST(block_data) {
     const char *filename = get_fixture_file_path("255.asdf");
     asdf_file_t *file = asdf_open_file(filename, "r");
     assert_not_null(file);
@@ -26,9 +26,9 @@ MU_TEST(test_asdf_block_data) {
 
 
 MU_TEST_SUITE(
-    test_asdf_block,
-    MU_RUN_TEST(test_asdf_block_data)
+    block,
+    MU_RUN_TEST(block_data)
 );
 
 
-MU_RUN_SUITE(test_asdf_block);
+MU_RUN_SUITE(block);

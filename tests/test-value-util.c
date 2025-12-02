@@ -13,9 +13,9 @@ MU_TEST(test_asdf_common_tag_get) {
 
 
 MU_TEST_SUITE(
-    test_asdf_value_util,
+    value_util,
     MU_RUN_TEST(test_asdf_common_tag_get)
 );
 
 
-MU_RUN_SUITE(test_asdf_value_util);
+MU_RUN_SUITE(value_util);

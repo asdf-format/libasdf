@@ -491,7 +491,7 @@ MU_TEST(test_asdf_value_as_double) {
 /**
  * Test that scalars explicitly tagged as !!str as interpreted as strings
  */
-MU_TEST(test_asdf_value_tagged_strings) {
+MU_TEST(test_value_tagged_strings) {
     const char *path = get_fixture_file_path("tagged-scalars.asdf");
     asdf_file_t *file = asdf_open_file(path, "r");
     assert_not_null(file);
@@ -746,7 +746,7 @@ static bool value_find_pred_b(asdf_value_t *value) {
 }
 
 
-MU_TEST(test_value_find_iter_ex_descend_mapping_only) {
+MU_TEST(test_asdf_value_find_iter_ex_descend_mapping_only) {
     const char *filename = get_fixture_file_path("nested.asdf");
     asdf_file_t *file = asdf_open_file(filename, "r");
     assert_not_null(file);
@@ -786,7 +786,7 @@ MU_TEST(test_value_find_iter_ex_descend_mapping_only) {
 }
 
 
-MU_TEST(test_value_find_iter_ex_descend_sequence_only) {
+MU_TEST(test_asdf_value_find_iter_ex_descend_sequence_only) {
     const char *filename = get_fixture_file_path("nested.asdf");
     asdf_file_t *file = asdf_open_file(filename, "r");
     assert_not_null(file);
@@ -826,7 +826,7 @@ MU_TEST(test_value_find_iter_ex_descend_sequence_only) {
 }
 
 
-MU_TEST(test_value_find_iter_max_depth) {
+MU_TEST(test_asdf_value_find_iter_max_depth) {
     const char *filename = get_fixture_file_path("nested.asdf");
     asdf_file_t *file = asdf_open_file(filename, "r");
     assert_not_null(file);
@@ -860,7 +860,7 @@ MU_TEST(test_value_find_iter_max_depth) {
 }
 
 
-MU_TEST(test_value_find_ex) {
+MU_TEST(test_asdf_value_find_ex) {
     const char *filename = get_fixture_file_path("nested.asdf");
     asdf_file_t *file = asdf_open_file(filename, "r");
     assert_not_null(file);
@@ -887,7 +887,7 @@ MU_TEST(test_value_find_ex) {
 }
 
 
-MU_TEST(test_value_find_iter) {
+MU_TEST(test_asdf_value_find_iter) {
     const char *filename = get_fixture_file_path("nested.asdf");
     asdf_file_t *file = asdf_open_file(filename, "r");
     assert_not_null(file);
@@ -935,7 +935,7 @@ MU_TEST(test_value_find_iter) {
 }
 
 
-MU_TEST(test_value_find) {
+MU_TEST(test_asdf_value_find) {
     const char *filename = get_fixture_file_path("nested.asdf");
     asdf_file_t *file = asdf_open_file(filename, "r");
     assert_not_null(file);
@@ -961,7 +961,7 @@ MU_TEST(test_value_find) {
 }
 
 
-MU_TEST(test_value_find_on_scalar) {
+MU_TEST(test_asdf_value_find_on_scalar) {
     const char *filename = get_fixture_file_path("nested.asdf");
     asdf_file_t *file = asdf_open_file(filename, "r");
     assert_not_null(file);
@@ -1043,7 +1043,7 @@ MU_TEST(test_clone_extension_value) {
 
 
 MU_TEST_SUITE(
-    test_asdf_value,
+    value,
     MU_RUN_TEST(test_asdf_value_get_type),
     MU_RUN_TEST(test_asdf_value_as_string),
     MU_RUN_TEST(test_asdf_value_as_string0),
@@ -1062,23 +1062,23 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_value_as_uint64_on_bigint),
     MU_RUN_TEST(test_asdf_value_as_float),
     MU_RUN_TEST(test_asdf_value_as_double),
-    MU_RUN_TEST(test_asdf_value_tagged_strings),
+    MU_RUN_TEST(test_value_tagged_strings),
     MU_RUN_TEST(test_asdf_mapping_iter),
     MU_RUN_TEST(test_asdf_mapping_get),
     MU_RUN_TEST(test_asdf_sequence_iter),
     MU_RUN_TEST(test_asdf_sequence_get),
     MU_RUN_TEST(test_asdf_container_iter),
     MU_RUN_TEST(test_value_copy_with_parent_path),
-    MU_RUN_TEST(test_value_find_iter_ex_descend_mapping_only),
-    MU_RUN_TEST(test_value_find_iter_ex_descend_sequence_only),
-    MU_RUN_TEST(test_value_find_iter_max_depth),
-    MU_RUN_TEST(test_value_find_ex),
-    MU_RUN_TEST(test_value_find_iter),
-    MU_RUN_TEST(test_value_find),
-    MU_RUN_TEST(test_value_find_on_scalar),
+    MU_RUN_TEST(test_asdf_value_find_iter_ex_descend_mapping_only),
+    MU_RUN_TEST(test_asdf_value_find_iter_ex_descend_sequence_only),
+    MU_RUN_TEST(test_asdf_value_find_iter_max_depth),
+    MU_RUN_TEST(test_asdf_value_find_ex),
+    MU_RUN_TEST(test_asdf_value_find_iter),
+    MU_RUN_TEST(test_asdf_value_find),
+    MU_RUN_TEST(test_asdf_value_find_on_scalar),
     MU_RUN_TEST(test_raw_value_type_preserved_after_type_resolution),
     MU_RUN_TEST(test_clone_extension_value)
 );
 
 
-MU_RUN_SUITE(test_asdf_value);
+MU_RUN_SUITE(value);

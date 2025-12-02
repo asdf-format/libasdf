@@ -17,7 +17,7 @@
  *
  * It just consists of the #ASDF and #ASDF_STANDARD comments, and nothing more
  */
-MU_TEST(test_asdf_parse_minimal) {
+MU_TEST(parse_minimal) {
     const char *filename = get_fixture_file_path("parse-minimal.asdf");
 
     asdf_parser_t *parser = asdf_parser_create(NULL);
@@ -45,9 +45,9 @@ MU_TEST(test_asdf_parse_minimal) {
 
 
 /**
- * Like `test_asdf_parse_minimal` but with an additional non-standard comment event
+ * Like `parse_minimal` but with an additional non-standard comment event
  */
-MU_TEST(test_asdf_parse_minimal_extra_comment) {
+MU_TEST(parse_minimal_extra_comment) {
     const char *filename = get_fixture_file_path("parse-minimal-extra-comment.asdf");
 
     asdf_parser_t *parser = asdf_parser_create(NULL);
@@ -78,10 +78,10 @@ MU_TEST(test_asdf_parse_minimal_extra_comment) {
 
 
 MU_TEST_SUITE(
-    test_asdf_parse,
-    MU_RUN_TEST(test_asdf_parse_minimal),
-    MU_RUN_TEST(test_asdf_parse_minimal_extra_comment)
+    parse,
+    MU_RUN_TEST(parse_minimal),
+    MU_RUN_TEST(parse_minimal_extra_comment)
 );
 
 
-MU_RUN_SUITE(test_asdf_parse);
+MU_RUN_SUITE(parse);
