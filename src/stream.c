@@ -69,6 +69,9 @@ static void stream_capture(asdf_stream_t *stream, const uint8_t *buf, size_t siz
     if (!capture_buf)
         return;
 
+    if (size == 0)
+        return;
+
     size_t needed = *stream->capture_size + size;
 
     if (needed > stream->capture_cap) {

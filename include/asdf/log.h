@@ -11,4 +11,6 @@ typedef enum {
     ASDF_LOG_FATAL,
 } asdf_log_level_t;
 
-#endif  /* ASDF_LOG_H */
+#define ASDF_LOG_NUM_LEVELS (ASDF_LOG_FATAL + 1)
+
+#endif /* ASDF_LOG_H */

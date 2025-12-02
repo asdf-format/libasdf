@@ -24,7 +24,7 @@ const char asdf_block_index_header[] = "#ASDF BLOCK INDEX";
  *
  * On success, allocates an ``asdf_block_info_t`` on the heap, to be freed by the caller.
  */
-asdf_block_info_t *asdf_block_read_info(asdf_parser_t *parser) {
+asdf_block_info_t *asdf_block_info_read(asdf_parser_t *parser) {
     asdf_stream_t *stream = parser->stream;
     size_t header_pos = asdf_stream_tell(stream);
     size_t avail = 0;

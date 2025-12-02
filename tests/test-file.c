@@ -1,10 +1,22 @@
+#define _GNU_SOURCE  /* for memmem */
 #include <errno.h>
 #include <setjmp.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
+#include <stc/cstr.h>
+#ifdef __GNUC__
+// Seems to be a bug in gcc that the warning diagnostics set by STC are not
+// all restored on #pragma GCC diagnostic pop
+// This makes munit sad, but for the tests we can safely ignore.
+#pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
+#endif
 
 #include <asdf/file.h>
 #include <asdf/core/ndarray.h>
@@ -147,6 +159,99 @@ MU_TEST(test_asdf_block_count) {
     asdf_close(file);
     return MUNIT_OK;
 }
+
+
+/**
+ * Tests the expected contents of fixtures/multi-block.asdf
+ */
+static int test_multi_block_asdf_content(asdf_file_t *file) {
+    assert_int(asdf_block_count(file), ==, 4);
+
+    char key[2];
+    for (int idx = 1; idx <= 4; idx++) {
+        snprintf(key, 2, "%d", idx);
+        asdf_ndarray_t *ndarray = NULL;
+        assert_int(asdf_get_ndarray(file, key, &ndarray), ==, ASDF_VALUE_OK);
+        assert_not_null(ndarray);
+        size_t size = 0;
+        uint8_t *data = asdf_ndarray_data_raw(ndarray, &size);
+        assert_not_null(data);
+        assert_int(size, ==, 128);
+        for (int jdx = 0; jdx < 128; jdx++) {
+            assert_int(data[jdx], ==, jdx / idx);
+        }
+        asdf_ndarray_destroy(ndarray);
+    }
+
+    return MUNIT_OK;
+}
+
+
+/**
+ * Test that a file without a block index can still be read
+ */
+MU_TEST(missing_block_index) {
+    const char *filename = get_fixture_file_path("multi-block.asdf");
+    size_t len = 0;
+    char *contents = read_file(filename, &len);
+    assert_int(len, ==, 1746);  // Known size of the file
+    // Find the beginning of the block index
+    const char *block_index_magic = "#ASDF BLOCK INDEX";
+    void *block_index_addr = memmem(contents, len, block_index_magic, strlen(block_index_magic));
+    size_t block_index_idx = (uintptr_t)block_index_addr - (uintptr_t)contents;
+    assert_int(block_index_idx, >, 0);
+
+    // Open a memory buffer that includes just up to the block index, excluding it
+    asdf_file_t *file = asdf_open_mem(contents, block_index_idx);
+    assert_not_null(file);
+    test_multi_block_asdf_content(file);
+    asdf_close(file);
+    free(contents);
+    return MUNIT_OK;
+}
+
+
+/**
+ * Test that a multi-block file with a block index can still be read 
+ *
+ * The test file contains 4 uint8 arrays containing the values 0..127
+ * with integer division by the integer in the name of the array (1..4).
+ * We insert some new keys in to the YAML tree "by hand", invalidating
+ * the block index.
+ */
+MU_TEST(invalid_block_index) {
+    const char *filename = get_fixture_file_path("multi-block.asdf");
+    size_t len = 0;
+    char *content_bytes = read_file(filename, &len);
+    assert_int(len, ==, 1746);  // Known size of the file
+    cstr contents = cstr_with_n(content_bytes, len);
+    // Find the YAML document end marker
+    ssize_t document_end_idx = cstr_find(&contents, "\n...");
+    assert_int(document_end_idx, >, 0);
+    // Insert a new key
+    const char *insertion = "\nnew_key: \"here's some fresh garbage\"";
+    cstr_insert(&contents, document_end_idx, insertion);
+    csview tree = cstr_subview(&contents, 0, document_end_idx + 4 + strlen(insertion));
+    munit_logf(MUNIT_LOG_DEBUG, "new tree:\n\n" c_svfmt "\n", c_svarg(tree));
+
+    asdf_file_t *file = asdf_open_mem(cstr_str(&contents), cstr_size(&contents));
+    assert_not_null(file);
+
+    const char *s = NULL;
+    assert_int(asdf_get_string0(file, "new_key", &s), ==, ASDF_VALUE_OK);
+    assert_string_equal(s, "here's some fresh garbage");
+    test_multi_block_asdf_content(file);
+    asdf_close(file);
+    cstr_drop(&contents);
+    free(content_bytes);
+    return MUNIT_OK;
+}
+
+
+/**
+ * Compression tests
+ * =================
+ */
 
 
 /**
@@ -536,6 +641,8 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_get_mapping),
     MU_RUN_TEST(test_asdf_get_sequence),
     MU_RUN_TEST(test_asdf_block_count),
+    MU_RUN_TEST(missing_block_index),
+    MU_RUN_TEST(invalid_block_index),
     MU_RUN_TEST(read_compressed_reference_file, comp_mode_test_params),
     MU_RUN_TEST(read_compressed_block, comp_mode_test_params),
     MU_RUN_TEST(read_compressed_block_to_file, comp_test_params),
