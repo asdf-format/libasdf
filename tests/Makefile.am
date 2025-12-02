@@ -112,6 +112,7 @@ test_parse_util_unit_SOURCES = \
     test-parse-util.c \
     $(top_srcdir)/src/block.c \
     $(top_srcdir)/src/error.c \
+    $(top_srcdir)/src/log.c \
     $(top_srcdir)/src/parse_util.c
 test_parse_util_unit_CPPFLAGS = $(unit_test_cppflags)
 test_parse_util_unit_CFLAGS = $(unit_test_cflags)

@@ -50,11 +50,19 @@ typedef struct asdf_stream {
     size_t last_next_size;
     const uint8_t *last_next_ptr;
     int unconsumed_next_count;
+    const char *prev_next_file;
+    int prev_next_lineno;
 #endif /* DEBUG */
 } asdf_stream_t;
 
 
-static inline const uint8_t *asdf_stream_next(asdf_stream_t *stream, size_t count, size_t *avail) {
+// NOLINTNEXTLINE(readability-identifier-naming)
+#define asdf_stream_next(stream, count, avail) \
+    asdf_stream_next_impl((stream), (count), (avail), __FILE__, __LINE__)
+
+
+static inline const uint8_t *asdf_stream_next_impl(
+    asdf_stream_t *stream, size_t count, size_t *avail, const char *file, int lineno) {
 #if DEBUG
     const uint8_t *r = stream->next(stream, count, avail);
     if (stream->last_next_ptr == r) {
@@ -65,16 +73,22 @@ static inline const uint8_t *asdf_stream_next(asdf_stream_t *stream, size_t coun
             // times at the same position indicates a likely bug
             ASDF_LOG(
                 stream,
-                ASDF_LOG_DEBUG,
-                "warning: calling stream->next() without consuming previous buffer"
-                "(%zu bytes at %p)\n",
+                ASDF_LOG_WARN,
+                "warning: calling stream->next() at %s:%d without consuming previous buffer "
+                "(%zu bytes at %p); previous stream->next() call was at %s:%d\n",
+                file,
+                lineno,
                 stream->last_next_size,
-                stream->last_next_ptr);
+                stream->last_next_ptr,
+                stream->prev_next_file,
+                stream->prev_next_lineno);
         }
     } else {
         stream->unconsumed_next_count = 1;
         stream->last_next_size = *avail;
         stream->last_next_ptr = r;
+        stream->prev_next_file = file;
+        stream->prev_next_lineno = lineno;
     }
     return r;
 #else
@@ -88,7 +102,23 @@ static inline void asdf_stream_consume(asdf_stream_t *stream, size_t count) {
 #if DEBUG
     stream->unconsumed_next_count = 0;
     stream->last_next_ptr = NULL;
+    stream->prev_next_file = NULL;
+    stream->prev_next_lineno = 0;
 #endif
+}
+
+
+/**
+ * Like `asdf_stream_next` but just peek the next bytes without having to consume them
+ *
+ * This is mostly useful for peeking just a few bytes, as it will only use what's available
+ * in the buffer.
+ */
+static inline const uint8_t *asdf_stream_peek(asdf_stream_t *stream, size_t count, size_t *avail) {
+    const uint8_t *ret = asdf_stream_next(stream, count, avail);
+    // Immediately "consume" zero bytes
+    asdf_stream_consume(stream, 0);
+    return ret;
 }
 
 

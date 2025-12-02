@@ -12,6 +12,7 @@
 #include "log.h"
 #include "parse.h"
 #include "parse_util.h"
+#include "stream.h"
 #include "util.h"
 
 
@@ -524,7 +525,7 @@ static asdf_block_info_t *validate_block(
     off_t offset = block_index->offsets[idx];
     size_t avail = 0;
     TRY_SEEK(parser, offset, SEEK_SET, NULL);
-    const uint8_t *buf = asdf_stream_next(parser->stream, ASDF_BLOCK_MAGIC_SIZE, &avail);
+    const uint8_t *buf = asdf_stream_peek(parser->stream, ASDF_BLOCK_MAGIC_SIZE, &avail);
 
     if (!is_block_magic(buf, avail))
         return NULL;
@@ -784,7 +785,7 @@ static parse_result_t parse_block(asdf_parser_t *parser, asdf_event_t *event) {
 
     if (!block_info) {
         // Case without block index (or invalid block index)
-        buf = asdf_stream_next(parser->stream, ASDF_BLOCK_MAGIC_SIZE, &len);
+        buf = asdf_stream_peek(parser->stream, ASDF_BLOCK_MAGIC_SIZE, &len);
         // Happy path, we are already pointing to the start of a block
         // Otherwise scan for the first block magic we find, if any
         if (buf && is_block_magic(buf, len)) {
