@@ -124,7 +124,7 @@ static parse_result_t parse_comment(asdf_parser_t *parser, asdf_event_t *event) 
     size_t len = 0;
 
     // Peek the stream to see if we have a comment or blank line
-    while ((r = asdf_stream_next(parser->stream, 1, &len))) {
+    while ((r = asdf_stream_peek(parser->stream, 1, &len))) {
         if (len == 0) {
             // EOF
             parser->state = ASDF_PARSER_STATE_END;
@@ -185,7 +185,7 @@ static parse_result_t emit_tree_start_event(asdf_parser_t *parser, asdf_event_t 
 static parse_result_t parse_tree_or_block(asdf_parser_t *parser, asdf_event_t *event) {
     size_t len = 0;
 
-    const uint8_t *r = asdf_stream_next(parser->stream, 0, &len);
+    const uint8_t *r = asdf_stream_peek(parser->stream, 0, &len);
 
     if (!r || !len) {
         parser->state = ASDF_PARSER_STATE_END;
@@ -674,7 +674,7 @@ static parse_result_t parse_block_index(asdf_parser_t *parser, asdf_event_t *eve
 
     while (0 == asdf_parser_scan_tokens(parser, tokens, &match_offset, &match_token)) {
         size_t avail = 0;
-        const uint8_t *buf = asdf_stream_next(stream, ASDF_BLOCK_INDEX_HEADER_SIZE + 1, &avail);
+        const uint8_t *buf = asdf_stream_peek(stream, ASDF_BLOCK_INDEX_HEADER_SIZE + 1, &avail);
 
         if (buf == NULL || avail < ASDF_BLOCK_INDEX_HEADER_SIZE + 1) {
             goto cleanup;

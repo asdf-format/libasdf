@@ -68,9 +68,7 @@ static inline const uint8_t *asdf_stream_next_impl(
     if (stream->last_next_ptr == r) {
         stream->unconsumed_next_count++;
 
-        if (stream->unconsumed_next_count > 2) {
-            // It's ok to call next() once (to peek) without consuming, but peeking multiple
-            // times at the same position indicates a likely bug
+        if (stream->unconsumed_next_count > 1) {
             ASDF_LOG(
                 stream,
                 ASDF_LOG_WARN,
