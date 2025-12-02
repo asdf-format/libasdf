@@ -74,7 +74,7 @@
 const off_t expected_offsets[] = {664};
 
 
-MU_TEST(test_asdf_event_basic) {
+MU_TEST(basic) {
     // TODO: Move all of this setup into setup/teardown functions; lots of repetition here
     const char *filename = get_reference_file_path("1.6.0/basic.asdf");
     asdf_parser_cfg_t parser_cfg = {.flags = ASDF_PARSER_OPT_EMIT_YAML_EVENTS};
@@ -202,9 +202,9 @@ MU_TEST(test_asdf_event_basic) {
 
 
 /**
- * Like `test_asdf_event_basic` but with YAML events disabled
+ * Like `basic` but with YAML events disabled
  */
-MU_TEST(test_asdf_event_basic_no_yaml) {
+MU_TEST(basic_no_yaml) {
     const char *filename = get_reference_file_path("1.6.0/basic.asdf");
     asdf_parser_cfg_t parser_cfg = {0};
 
@@ -272,9 +272,9 @@ MU_TEST(test_asdf_event_basic_no_yaml) {
 
 
 /**
- * Like `test_asdf_event_basic_no_yaml` but with YAML buffering enabled
+ * Like `basic_no_yaml` but with YAML buffering enabled
  */
-MU_TEST(test_asdf_event_basic_no_yaml_buffer_yaml) {
+MU_TEST(basic_no_yaml_buffer_yaml) {
     const char *filename = get_reference_file_path("1.6.0/basic.asdf");
     asdf_parser_cfg_t parser_cfg = {.flags = ASDF_PARSER_OPT_BUFFER_TREE};
 
@@ -340,9 +340,9 @@ MU_TEST(test_asdf_event_basic_no_yaml_buffer_yaml) {
 
 
 /**
- * Like `test_asdf_event_basic` but with YAML buffering enabled
+ * Like `basic` but with YAML buffering enabled
  */
-MU_TEST(test_asdf_event_basic_buffer_yaml) {
+MU_TEST(basic_buffer_yaml) {
     const char *filename = get_reference_file_path("1.6.0/basic.asdf");
     FILE *file = fopen(filename, "r");
     assert_not_null(file);
@@ -477,12 +477,12 @@ static MunitParameterEnum test_params[] = {
 
 
 MU_TEST_SUITE(
-    test_asdf_event,
-    MU_RUN_TEST(test_asdf_event_basic, test_params),
-    MU_RUN_TEST(test_asdf_event_basic_no_yaml, test_params),
-    MU_RUN_TEST(test_asdf_event_basic_no_yaml_buffer_yaml, test_params),
-    MU_RUN_TEST(test_asdf_event_basic_buffer_yaml, test_params)
+    event,
+    MU_RUN_TEST(basic, test_params),
+    MU_RUN_TEST(basic_no_yaml, test_params),
+    MU_RUN_TEST(basic_no_yaml_buffer_yaml, test_params),
+    MU_RUN_TEST(basic_buffer_yaml, test_params)
 );
 
 
-MU_RUN_SUITE(test_asdf_event);
+MU_RUN_SUITE(event);

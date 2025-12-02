@@ -77,7 +77,7 @@ ASDF_REGISTER_EXTENSION(
 )
 
 
-MU_TEST(test_asdf_extension_registered) {
+MU_TEST(extension_registered) {
     const char *path = get_fixture_file_path("trivial-extension.asdf");
     asdf_file_t *file = asdf_open_file(path, "r");
     assert_not_null(file);
@@ -148,8 +148,8 @@ MU_TEST(test_asdf_get_foo) {
 
 
 MU_TEST_SUITE(
-    test_asdf_extension,
-    MU_RUN_TEST(test_asdf_extension_registered),
+    extension,
+    MU_RUN_TEST(extension_registered),
     MU_RUN_TEST(test_asdf_value_is_foo),
     MU_RUN_TEST(test_asdf_value_as_foo),
     MU_RUN_TEST(test_asdf_is_foo),
@@ -157,4 +157,4 @@ MU_TEST_SUITE(
 );
 
 
-MU_RUN_SUITE(test_asdf_extension);
+MU_RUN_SUITE(extension);

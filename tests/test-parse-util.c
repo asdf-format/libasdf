@@ -37,10 +37,10 @@ MU_TEST(test_is_generic_yaml_directive) {
 
 
 MU_TEST_SUITE(
-    test_asdf_parse_util,
+    parse_util,
     MU_RUN_TEST(test_is_yaml_1_1_directive),
     MU_RUN_TEST(test_is_generic_yaml_directive)
 );
 
 
-MU_RUN_SUITE(test_asdf_parse_util);
+MU_RUN_SUITE(parse_util);

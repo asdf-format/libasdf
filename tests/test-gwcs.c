@@ -109,10 +109,10 @@ MU_TEST(test_asdf_get_gwcs) {
 
 
 MU_TEST_SUITE(
-    test_asdf_gwcs,
+    gwcs,
     MU_RUN_TEST(test_asdf_get_gwcs_fits),
     MU_RUN_TEST(test_asdf_get_gwcs)
 );
 
 
-MU_RUN_SUITE(test_asdf_gwcs);
+MU_RUN_SUITE(gwcs);

@@ -15,7 +15,7 @@
 /* TODO: Should have more tests for this, for now just using one test case that's already lying
  * around...
  */
-MU_TEST(test_asdf_extension_metadata) {
+MU_TEST(extension_metadata) {
     const char *path = get_reference_file_path("1.6.0/basic.asdf");
     asdf_file_t *file = asdf_open_file(path, "r");
     assert_not_null(file);
@@ -67,7 +67,7 @@ MU_TEST(test_asdf_extension_metadata) {
 }
 
 
-MU_TEST(test_asdf_history_entry) {
+MU_TEST(history_entry) {
     const char *path = get_fixture_file_path("255.asdf");
     asdf_file_t *file = asdf_open_file(path, "r");
     assert_not_null(file);
@@ -92,7 +92,7 @@ MU_TEST(test_asdf_history_entry) {
 }
 
 
-MU_TEST(test_asdf_meta) {
+MU_TEST(meta) {
     const char *path = get_fixture_file_path("255.asdf");
     asdf_file_t *file = asdf_open_file(path, "r");
     assert_not_null(file);
@@ -137,7 +137,7 @@ MU_TEST(test_asdf_meta) {
 /*
  * Very basic test of ndarray parsing; will have more comprehensive ndarray tests in their own suite
  */
-MU_TEST(test_asdf_ndarray) {
+MU_TEST(ndarray) {
     const char *path = get_reference_file_path("1.6.0/basic.asdf");
     asdf_file_t *file = asdf_open_file(path, "r");
     assert_not_null(file);
@@ -167,7 +167,7 @@ MU_TEST(test_asdf_ndarray) {
 }
 
 
-MU_TEST(test_asdf_software) {
+MU_TEST(software) {
     const char *path = get_reference_file_path("1.6.0/basic.asdf");
     asdf_file_t *file = asdf_open_file(path, "r");
     assert_not_null(file);
@@ -186,13 +186,13 @@ MU_TEST(test_asdf_software) {
 
 
 MU_TEST_SUITE(
-    test_asdf_core_extensions,
-    MU_RUN_TEST(test_asdf_extension_metadata),
-    MU_RUN_TEST(test_asdf_history_entry),
-    MU_RUN_TEST(test_asdf_meta),
-    MU_RUN_TEST(test_asdf_ndarray),
-    MU_RUN_TEST(test_asdf_software)
+    core_extensions,
+    MU_RUN_TEST(extension_metadata),
+    MU_RUN_TEST(history_entry),
+    MU_RUN_TEST(meta),
+    MU_RUN_TEST(ndarray),
+    MU_RUN_TEST(software)
 );
 
 
-MU_RUN_SUITE(test_asdf_core_extensions);
+MU_RUN_SUITE(core_extensions);
