@@ -1,3 +1,4 @@
+#define _GNU_SOURCE  /* for memmem */
 #include <errno.h>
 #include <setjmp.h>
 #include <signal.h>
@@ -5,6 +6,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -185,24 +187,6 @@ static int test_multi_block_asdf_content(asdf_file_t *file) {
 }
 
 
-/** Like strstr but compares memory */
-static ssize_t memmem(
-    const char *haystack, size_t haystack_len, const char *needle, size_t needle_len) {
-    if (needle_len == 0)
-        return 0;
-
-    if (haystack_len < needle_len)
-        return -1;
-
-    for (size_t idx = 0; idx <= haystack_len - needle_len; idx++) {
-        if (memcmp(haystack + idx, needle, needle_len) == 0)
-            return (ssize_t)idx;
-    }
-
-    return -1;
-}
-
-
 /**
  * Test that a file without a block index can still be read
  */
@@ -213,7 +197,8 @@ MU_TEST(missing_block_index) {
     assert_int(len, ==, 1746);  // Known size of the file
     // Find the beginning of the block index
     const char *block_index_magic = "#ASDF BLOCK INDEX";
-    ssize_t block_index_idx = memmem(contents, len, block_index_magic, strlen(block_index_magic));
+    void *block_index_addr = memmem(contents, len, block_index_magic, strlen(block_index_magic));
+    size_t block_index_idx = (uintptr_t)block_index_addr - (uintptr_t)contents;
     assert_int(block_index_idx, >, 0);
 
     // Open a memory buffer that includes just up to the block index, excluding it
