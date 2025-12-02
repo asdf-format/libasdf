@@ -587,13 +587,22 @@ static bool validate_block_index(asdf_parser_t *parser, asdf_block_index_t *bloc
     asdf_block_info_t *first_block = validate_block(parser, block_index, 0);
     asdf_block_info_t *last_block = NULL;
 
-    if (!first_block)
+    if (!first_block) {
+        ASDF_LOG(
+            parser,
+            ASDF_LOG_DEBUG,
+            "invalid 0-th block index entry; the block index will be discarded");
         return false;
+    }
 
     if (n_blocks > 1) {
         last_block = validate_block(parser, block_index, n_blocks - 1);
 
         if (!last_block) {
+            ASDF_LOG(
+                parser,
+                ASDF_LOG_DEBUG,
+                "invalid last block index entry; the block index will be discarded");
             free(first_block);
             return false;
         }

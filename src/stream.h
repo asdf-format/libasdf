@@ -6,13 +6,13 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <sys/types.h>
 #include <unistd.h>
 
 #include <libfyaml.h>
 
 #include "context.h"
+#include "log.h"
 #include "util.h"
 
 
@@ -63,8 +63,9 @@ static inline const uint8_t *asdf_stream_next(asdf_stream_t *stream, size_t coun
         if (stream->unconsumed_next_count > 2) {
             // It's ok to call next() once (to peek) without consuming, but peeking multiple
             // times at the same position indicates a likely bug
-            fprintf(
-                stderr,
+            ASDF_LOG(
+                stream,
+                ASDF_LOG_DEBUG,
                 "warning: calling stream->next() without consuming previous buffer"
                 "(%zu bytes at %p)\n",
                 stream->last_next_size,
