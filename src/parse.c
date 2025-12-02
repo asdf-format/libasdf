@@ -445,12 +445,14 @@ static parse_result_t parse_tree(asdf_parser_t *parser, asdf_event_t *event) {
 
 
 static parse_result_t parse_yaml(asdf_parser_t *parser, asdf_event_t *event) {
+#ifndef NDEBUG
     bool emit_yaml_events = asdf_parser_has_opt(parser, ASDF_PARSER_OPT_EMIT_YAML_EVENTS);
     bool buffer_tree = asdf_parser_has_opt(parser, ASDF_PARSER_OPT_BUFFER_TREE);
 
     // Only allowed if the stream is seekable or the YAML is buffered.  Other logic
     // elsewhere should enforce this.
     assert(emit_yaml_events && (buffer_tree || parser->stream->is_seekable));
+#endif
 
     if (parser->tree.found) {
         // Already found the end of the YAML tree; just emit the TREE_END event

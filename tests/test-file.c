@@ -1,4 +1,6 @@
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE  /* for memmem */
+#endif
 #include <errno.h>
 #include <setjmp.h>
 #include <signal.h>
