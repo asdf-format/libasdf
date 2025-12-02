@@ -46,6 +46,28 @@ AC_CHECK_DECLS([be64toh], [], [], [[
 #  include <sys/endian.h>
 #endif
 ]])
+AC_CHECK_DECLS([be32toh], [], [], [[
+#ifdef HAVE_ENDIAN_H
+#  include <endian.h>
+#endif
+#ifdef HAVE_MACHINE_ENDIAN_H
+#  include <machine/endian.h>
+#endif
+#ifdef HAVE_SYS_ENDIAN_H
+#  include <sys/endian.h>
+#endif
+]])
+AC_CHECK_DECLS([le32toh], [], [], [[
+#ifdef HAVE_ENDIAN_H
+#  include <endian.h>
+#endif
+#ifdef HAVE_MACHINE_ENDIAN_H
+#  include <machine/endian.h>
+#endif
+#ifdef HAVE_SYS_ENDIAN_H
+#  include <sys/endian.h>
+#endif
+]])
 
 # Check functions
 AC_CHECK_FUNCS([strptime])
@@ -227,6 +249,12 @@ PKG_CHECK_MODULES([BZIP2], [bzip2], [], [
     AC_MSG_ERROR([bz2 is required but was not found])
   ])
 ])
+
+
+PKG_CHECK_MODULES([LZ4], [liblz4], [], [
+  AC_MSG_ERROR([liblz4 is required but was not found])
+])
+
 
 # Check for homebrew packages in macOS
 AS_IF([test "x$asdf_build_tool" = "xyes"], [

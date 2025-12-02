@@ -72,7 +72,8 @@ jobs:
             gcc@${{ matrix.gcc }} \
             argp-standalone \
             libfyaml \
-            libstatgrab
+            libstatgrab \
+            lz4
 
     - name: Linux build
       if: startsWith(matrix.os, 'ubuntu')

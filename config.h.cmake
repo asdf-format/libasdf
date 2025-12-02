@@ -42,6 +42,8 @@
 #cmakedefine HAVE_SYS_ENDIAN_H
 #cmakedefine HAVE_STRPTIME
 #cmakedefine01 HAVE_DECL_BE64TOH
+#cmakedefine01 HAVE_DECL_BE32TOH
+#cmakedefine01 HAVE_DECL_LE32TOH
 #cmakedefine HAVE_BZIP2
 #cmakedefine HAVE_LZ4
 #cmakedefine HAVE_ZLIB
