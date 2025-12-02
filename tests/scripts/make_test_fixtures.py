@@ -99,7 +99,17 @@ def make_datatypes_asdf():
     return f
 
 
-def make_numeric():
+# Test file with multiple binary blocks all the same size but containing different data patterns
+def make_multi_block_asdf():
+    f = asdf.AsdfFile()
+
+    for n in range(1, 5):
+        f[str(n)] = np.arange(0, 128, dtype=np.uint8) // n
+
+    return f
+
+
+def make_numeric_asdf():
     f = asdf.AsdfFile()
 
     # Map asdf datatypes to numpy dtypes; later we will also ensure
@@ -182,7 +192,8 @@ TEST_FILES = {
     'compressed.asdf': make_compressed_asdf,
     'cube.asdf': make_cube_asdf,
     'datatypes.asdf': make_datatypes_asdf,
-    'numeric.asdf': make_numeric,
+    'multi-block.asdf': make_multi_block_asdf,
+    'numeric.asdf': make_numeric_asdf,
     'tiles.asdf': make_tiles_asdf,
 }
 """Maps the names of test files to the function that generates it"""

@@ -839,10 +839,10 @@ static parse_result_t parse_block(asdf_parser_t *parser, asdf_event_t *event) {
         }
 
         parser->blocks.block_infos = block_infos;
-        parser->blocks.n_blocks = parser->blocks.found_blocks;
         parser->blocks.cap = block_index_cap;
     }
 
+    parser->blocks.n_blocks = parser->blocks.found_blocks;
     block_infos[block_idx] = block_info;
 
     off_t offset;
