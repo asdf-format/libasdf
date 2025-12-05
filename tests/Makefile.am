@@ -42,7 +42,8 @@ TESTS = $(check_PROGRAMS)
 unit_test_cppflags = \
     $(AM_CPPFLAGS) \
     -DREFERENCE_FILES_DIR=\"$(asdf_standard_dir)/reference_files\" \
-    -DFIXTURES_DIR=\"$(abs_srcdir)/fixtures\"
+    -DFIXTURES_DIR=\"$(abs_srcdir)/fixtures\" \
+    -DTEMP_DIR=\"$(abs_builddir)/tmp\"
 unit_test_cflags = \
     $(FYAML_CFLAGS) $(STATGRAB_CFLAGS) $(LZ4_CFLAGS) $(CODE_COVERAGE_CFLAGS) $(ASDF_CFLAGS)
 
@@ -138,7 +139,7 @@ test_tests_unit_SOURCES = test-tests.c
 test_tests_unit_CPPFLAGS = $(unit_test_cppflags)
 test_tests_unit_CFLAGS = $(unit_test_cflags)
 test_tests_unit_LDFLAGS = $(unit_test_ldflags)
-test_tests_unit_LDADD = libmunit.a
+test_tests_unit_LDADD = libmunit.a $(STATGRAB_LIBS)
 
 # test-value.unit
 test_value_unit_SOURCES = test-value.c
