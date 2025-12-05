@@ -71,6 +71,9 @@ jobs:
             libfyaml \
             libstatgrab
 
+      - name: Setup ccache action
+        uses: Chocobo1/setup-ccache-action@v1.5.1
+
       - name: Bootstrap autotools
         run: ./autogen.sh
 
