@@ -101,7 +101,10 @@ jobs:
         run: make dist ${{ github.event.inputs.make_flags }}
 
       - name: Dist check
-        run: make distcheck ${{ github.event.inputs.make_flags }}
+        run: |
+          hbroot=/opt/homebrew
+          CMAKE_EXTRA_FLAGS="-DARGP_NO_PKGCONFIG=YES -DARGP_LIBDIR=${hbroot}/lib -DARGP_INCLUDEDIR=${hbroot}/include"
+          make distcheck ${{ github.event.inputs.make_flags }} CMAKE_EXTRA_FLAGS="${CMAKE_EXTRA_FLAGS}"
 
   # Test the documentation build if the build passes
   docs:
