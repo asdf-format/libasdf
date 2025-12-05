@@ -1,1 +1,0 @@
-Fix bug in correctly identifying the number of binary blocks when the block index is missing or corrupt.

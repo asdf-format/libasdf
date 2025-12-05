@@ -1,3 +1,36 @@
+libasdf 0.1.0a2 (2025-12-05)
+============================
+
+Bugfix
+------
+
+- Fix bug in correctly identifying the number of binary blocks when the block
+  index is missing or corrupt. (`#93
+  <https://github.com/asdf-format/asdf/issues/93>`_)
+- Fixed segfault when passing an unknown log level name to ASDF_LOG_LEVEL
+
+
+Feature
+-------
+
+- Support for reading compressed block data with zlib or bzip2.
+
+  Includes experimental "lazy decompression" (Linux only at the moment) that
+  can
+  transparently decompress blocks sequentially on an as-needed basis (e.g. it's
+  possible to read just the first few pages of a block without full
+  decompression). (`#37 <https://github.com/asdf-format/asdf/issues/37>`_)
+- Support for reading lz4 compressed block data as produced by the Python asdf.
+  (`#88 <https://github.com/asdf-format/asdf/issues/88>`_)
+
+
+General
+-------
+
+- Changed version scheme to follow PEP-440 particularly for pre-release tags.
+- Fixed missing CMake files in release tarball.
+
+
 libasdf 0.1.0-alpha1 (2025-11-12)
 =================================
 

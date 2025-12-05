@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 # Internal full package version
-set(PACKAGE_VERSION 0.1.0a1)
+set(PACKAGE_VERSION 0.1.0a2)
 
 # CMake-compatible project version
 set(PROJECT_VERSION 0.1.0)
