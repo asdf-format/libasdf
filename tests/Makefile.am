@@ -32,6 +32,7 @@ check_PROGRAMS = \
     test-parse-util.unit \
     test-parser.unit \
     test-stream.unit \
+    test-tests.unit \
     test-value.unit \
     test-value-util.unit
 
@@ -131,6 +132,13 @@ test_stream_unit_CPPFLAGS = $(unit_test_cppflags)
 test_stream_unit_CFLAGS = $(unit_test_cflags)
 test_stream_unit_LDFLAGS = $(unit_test_ldflags)
 test_stream_unit_LDADD = $(FYAML_LIBS) libmunit.a $(STATGRAB_LIBS)
+
+# test-tests.unit
+test_tests_unit_SOURCES = test-tests.c
+test_tests_unit_CPPFLAGS = $(unit_test_cppflags)
+test_tests_unit_CFLAGS = $(unit_test_cflags)
+test_tests_unit_LDFLAGS = $(unit_test_ldflags)
+test_tests_unit_LDADD = libmunit.a
 
 # test-value.unit
 test_value_unit_SOURCES = test-value.c

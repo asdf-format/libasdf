@@ -1,6 +1,7 @@
 /**
  * Thin wrapper around munit to make some common tasks quicker
  */
+
 #define MUNIT_ENABLE_ASSERT_ALIASES
 #include "munit/munit.h"
 
@@ -12,12 +13,30 @@
 #endif
 
 
-#define MU_TEST(name) MunitResult name(UNUSED(const MunitParameter params[]), UNUSED(void *fixture))
+typedef struct {
+    const char *suite_name;
+    const char *test_name;
+} fixtures;
+
+
+#define MU_TEST(name) \
+    MunitResult name(UNUSED(const MunitParameter params[]), UNUSED(fixtures *fixture)); \
+    MunitResult name##_wrapper(const MunitParameter params[], void *fixture) { \
+        fixtures *fix = calloc(1, sizeof(fixtures)); \
+        if (!fix) \
+            return MUNIT_ERROR; \
+        fix->suite_name = ((fixtures *)fixture)->suite_name; \
+        fix->test_name = #name; \
+        int ret = name(params, fix); \
+        free(fix); \
+        return ret; \
+    } \
+MunitResult name(UNUSED(const MunitParameter params[]), UNUSED(fixtures *fixture))
 
 
 #define __MU_RUN_TEST_DISPATCH(_1, _2, NAME, ...) NAME
 #define __MU_RUN_TEST_2(name, params) \
-    { "/" #name, name, NULL, NULL, MUNIT_TEST_OPTION_NONE, (params) }
+    { "/" #name, name##_wrapper, NULL, NULL, MUNIT_TEST_OPTION_NONE, (params) }
 #define __MU_RUN_TEST_1(name) __MU_RUN_TEST_2(name, NULL)
 
 // Macro to declare tests to run within a test suite
@@ -46,6 +65,7 @@
 
 
 #define MU_RUN_SUITE(suite) \
+    static const fixtures suite##_fixtures = { .suite_name = #suite }; \
     int main(int argc, char *argv[]) { \
-        return munit_suite_main(&suite, NULL, argc, argv); \
+        return munit_suite_main(&suite, (void *)&suite##_fixtures, argc, argv); \
     }
