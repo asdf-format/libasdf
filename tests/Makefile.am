@@ -232,7 +232,9 @@ endif
 
 AUTOMAKE_OPTIONS = parallel-tests
 
-EXTRA_DIST = $(TOOL_TESTS)
+# CMake-related files to include in the distribution
+CMAKE_DIST = CMakeLists.txt
+EXTRA_DIST = $(TOOL_TESTS) $(CMAKE_DIST)
 EXTRA_DIST += \
     munit.h \
     shell-test.sh \

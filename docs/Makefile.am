@@ -1,4 +1,8 @@
+# CMake-related files to include in the distribution
+CMAKE_DIST = CMakeLists.txt
+
 EXTRA_DIST = \
+    $(CMAKE_DIST) \
     conf.py \
     environment.yml \
     index.rst \
