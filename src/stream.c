@@ -617,8 +617,9 @@ asdf_stream_t *asdf_stream_from_fp(asdf_context_t *ctx, FILE *file, const char *
 asdf_stream_t *asdf_stream_from_file(asdf_context_t *ctx, const char *filename) {
     FILE *file = fopen(filename, "rb");
 
-    if (!file)
+    if (!file) {
         return NULL;
+    }
 
     asdf_stream_t *stream = asdf_stream_from_fp(ctx, file, filename);
 

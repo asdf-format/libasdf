@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <math.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -156,7 +157,12 @@ asdf_file_t *asdf_open_file_ex(const char *filename, const char *mode, asdf_conf
     if (!file)
         return NULL;
 
-    asdf_parser_set_input_file(file->parser, filename);
+    if (asdf_parser_set_input_file(file->parser, filename) != 0) {
+        ASDF_ERROR_ERRNO(NULL, errno);
+        asdf_close(file);
+        return NULL;
+    }
+
     return file;
 }
 

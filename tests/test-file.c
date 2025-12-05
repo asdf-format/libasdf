@@ -53,6 +53,16 @@ MU_TEST(test_asdf_open_file) {
 }
 
 
+MU_TEST(test_asdf_open_file_nonexistent) {
+    asdf_file_t *file = asdf_open_file("does-not-exist", "r");
+    assert_null(file);
+    const char *error = asdf_error(file);
+    assert_not_null(error);
+    assert_string_equal(error, "No such file or directory");
+    return MUNIT_OK;
+}
+
+
 MU_TEST(test_asdf_open_file_invalid_mode) {
     asdf_file_t *file = asdf_open_file("does-not-exist", "x");
     assert_null(file);
@@ -649,6 +659,7 @@ MU_TEST(read_compressed_block_lazy_random_access) {
 MU_TEST_SUITE(
     file,
     MU_RUN_TEST(test_asdf_open_file),
+    MU_RUN_TEST(test_asdf_open_file_nonexistent),
     MU_RUN_TEST(test_asdf_open_file_invalid_mode),
     MU_RUN_TEST(scalar_getters),
     MU_RUN_TEST(test_asdf_get_mapping),
