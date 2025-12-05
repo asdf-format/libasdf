@@ -10,8 +10,8 @@
 #include "error.h"
 #include "event.h"
 #include "log.h"
-#include "parse.h"
 #include "parse_util.h"
+#include "parser.h"
 #include "stream.h"
 #include "util.h"
 

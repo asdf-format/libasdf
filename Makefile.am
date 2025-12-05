@@ -19,8 +19,8 @@ src_files = \
     src/file.c \
     src/info.c \
     src/log.c \
-    src/parse.c \
     src/parse_util.c \
+    src/parser.c \
     src/stream.c \
     src/util.c \
     src/value.c \
@@ -42,8 +42,8 @@ src_headers = \
     src/file.h \
     src/info.h \
     src/log.h \
-    src/parse.h \
     src/parse_util.h \
+    src/parser.h \
     src/stream.h \
     src/stream_intern.h \
     src/types/asdf_common_tag_map.h \

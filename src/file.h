@@ -10,7 +10,7 @@
 
 #include "compression/compression.h"
 #include "context.h"
-#include "parse.h"
+#include "parser.h"
 
 
 #ifdef HAVE_USERFAULTFD

@@ -18,7 +18,7 @@
 #include <stddef.h>
 #include <stdio.h>
 
-#include <asdf/parse.h>
+#include <asdf/parser.h>
 #include <asdf/util.h>
 #include <asdf/value.h>
 

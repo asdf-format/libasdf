@@ -29,8 +29,8 @@ check_PROGRAMS = \
     test-extension.unit \
     test-file.unit \
     test-ndarray.unit \
-    test-parse.unit \
     test-parse-util.unit \
+    test-parser.unit \
     test-stream.unit \
     test-value.unit \
     test-value-util.unit
@@ -100,12 +100,12 @@ test_ndarray_unit_CFLAGS = $(unit_test_cflags)
 test_ndarray_unit_LDFLAGS = $(unit_test_ldflags)
 test_ndarray_unit_LDADD = $(unit_test_ldadd)
 
-# test-parse.unit
-test_parse_unit_SOURCES = test-parse.c
-test_parse_unit_CPPFLAGS = $(unit_test_cppflags)
-test_parse_unit_CFLAGS = $(unit_test_cflags)
-test_parse_unit_LDFLAGS = $(unit_test_ldflags)
-test_parse_unit_LDADD = $(unit_test_ldadd)
+# test-parser.unit
+test_parser_unit_SOURCES = test-parser.c
+test_parser_unit_CPPFLAGS = $(unit_test_cppflags)
+test_parser_unit_CFLAGS = $(unit_test_cflags)
+test_parser_unit_LDFLAGS = $(unit_test_ldflags)
+test_parser_unit_LDADD = $(unit_test_ldadd)
 
 # test-parse-util.unit
 test_parse_util_unit_SOURCES = \

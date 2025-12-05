@@ -11,7 +11,7 @@
 
 #include "event.h"
 #include "info.h"
-#include "parse.h"
+#include "parser.h"
 
 const char *argp_program_version = PACKAGE_STRING;
 const char *argp_program_bug_address = PACKAGE_BUGREPORT;
@@ -158,7 +158,12 @@ static char events_args_doc[] = "FILENAME";
 static struct argp_option events_options[] = {
     {"verbose", 'v', 0, 0, "Show extra information about each event", 0},
     {"no-yaml", EVENTS_OPT_NO_YAML_KEY, 0, 0, "Do not produce YAML stream events", 0},
-    {"cap-tree", EVENTS_OPT_CAP_TREE_KEY, 0, 0, "Capture the YAML tree and print it (for debugging)", 0},
+    {"cap-tree",
+     EVENTS_OPT_CAP_TREE_KEY,
+     0,
+     0,
+     "Capture the YAML tree and print it (for debugging)",
+     0},
     {0}};
 
 
@@ -202,7 +207,8 @@ static error_t parse_events_opt(int key, char *arg, struct argp_state *state) {
 }
 
 
-static struct argp events_argp = {events_options, parse_events_opt, events_args_doc, events_doc, 0, 0, 0};
+static struct argp events_argp = {
+    events_options, parse_events_opt, events_args_doc, events_doc, 0, 0, 0};
 
 
 int events_main(const char *filename, bool verbose, bool no_yaml, bool cap_tree) {
@@ -266,8 +272,8 @@ int main(int argc, char *argv[]) {
         argp_parse(
             &events_argp, global_args.subcmd_argc, global_args.subcmd_argv, 0, NULL, &events_args);
 
-        return events_main(events_args.filename, events_args.verbose, events_args.no_yaml,
-                           events_args.cap_tree);
+        return events_main(
+            events_args.filename, events_args.verbose, events_args.no_yaml, events_args.cap_tree);
     }
     case ASDF_SUBCMD_NONE:
         break;

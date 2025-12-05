@@ -9,7 +9,7 @@ nobase_include_HEADERS = \
     asdf/extension.h \
     asdf/file.h \
     asdf/log.h \
-    asdf/parse.h \
+    asdf/parser.h \
     asdf/util.h \
     asdf/value.h \
     asdf/yaml.h

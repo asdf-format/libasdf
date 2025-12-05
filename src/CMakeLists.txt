@@ -22,8 +22,8 @@ target_sources(libasdf PUBLIC
     file.c
     info.c
     log.c
-    parse.c
     parse_util.c
+    parser.c
     stream.c
     util.c
     value.c

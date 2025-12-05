@@ -2,10 +2,9 @@
 #include <ctype.h>
 
 #include "block.h"
-#include "error.h"
 #include "event.h"
-#include "parse.h"
 #include "parse_util.h"
+#include "parser.h"
 #include "stream.h"
 
 const char *asdf_standard_comment = "#ASDF_STANDARD ";
