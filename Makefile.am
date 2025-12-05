@@ -134,6 +134,8 @@ else
 CMAKE_WITH_GWCS=NO
 endif
 
+CMAKE_EXTRA_FLAGS=
+
 # Try building and running tests with cmake to ensure the cmake build works
 # from the distribution tarball
 #
@@ -149,7 +151,8 @@ distcheck-cmake:
                 -DWITH_GWCS=$(CMAKE_WITH_GWCS) \
                 -DENABLE_TESTING_ALL=YES \
                 -DCMAKE_BUILD_TYPE=Release \
-                -DBZIP2_LIBRARIES=$(BZIP2_LIBS) && \
+                -DBZIP2_LIBRARIES=$(BZIP2_LIBS) \
+                $(CMAKE_EXTRA_FLAGS) && \
             $(MAKE) && \
             $(MAKE) test
 
