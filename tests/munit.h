@@ -2,6 +2,9 @@
  * Thin wrapper around munit to make some common tasks quicker
  */
 
+#include <stdlib.h>
+#include <stdio.h>
+
 #define MUNIT_ENABLE_ASSERT_ALIASES
 #include "munit/munit.h"
 
@@ -16,19 +19,60 @@
 typedef struct {
     const char *suite_name;
     const char *test_name;
+    const char *tempfile_prefix;
 } fixtures;
+
+
+static inline fixtures *mu_test_init_fixtures(fixtures *suite_fixture, const char *test_name) {
+    fixtures *fix = calloc(1, sizeof(fixtures));
+
+    if (!fix)
+        return NULL;
+
+    fix->suite_name = suite_fixture->suite_name;
+    fix->test_name = test_name;
+
+    size_t suite_name_len = strlen(fix->suite_name);
+    size_t test_name_len = strlen(fix->test_name);
+    size_t tempfile_prefix_len = suite_name_len + 1 + test_name_len + 1;
+    char *tempfile_prefix = malloc(tempfile_prefix_len);
+
+    if (!tempfile_prefix) {
+        free(fix);
+        return NULL;
+    }
+
+    int n = snprintf(
+        tempfile_prefix, tempfile_prefix_len, "%s-%s", fix->suite_name, fix->test_name);
+
+    if (n < 0) {
+        free(tempfile_prefix);
+        free(fix);
+        return NULL;
+    }
+
+    fix->tempfile_prefix = tempfile_prefix;
+    return fix;
+}
+
+
+static inline void mu_test_free_fixtures(fixtures *fixture) {
+    if (!fixture)
+        return;
+
+    free((char *)fixture->tempfile_prefix);
+    free(fixture);
+}
 
 
 #define MU_TEST(name) \
     MunitResult name(UNUSED(const MunitParameter params[]), UNUSED(fixtures *fixture)); \
     MunitResult name##_wrapper(const MunitParameter params[], void *fixture) { \
-        fixtures *fix = calloc(1, sizeof(fixtures)); \
+        fixtures *fix = mu_test_init_fixtures((fixtures *)fixture, #name); \
         if (!fix) \
             return MUNIT_ERROR; \
-        fix->suite_name = ((fixtures *)fixture)->suite_name; \
-        fix->test_name = #name; \
         int ret = name(params, fix); \
-        free(fix); \
+        mu_test_free_fixtures(fix); \
         return ret; \
     } \
 MunitResult name(UNUSED(const MunitParameter params[]), UNUSED(fixtures *fixture))

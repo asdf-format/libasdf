@@ -11,6 +11,7 @@
 MU_TEST(test_test_name_1) {
     assert_string_equal(fixture->suite_name, "tests");
     assert_string_equal(fixture->test_name, "test_test_name_1");
+    assert_string_equal(fixture->tempfile_prefix, "tests-test_test_name_1");
     return MUNIT_OK;
 }
 
@@ -19,6 +20,7 @@ MU_TEST(test_test_name_1) {
 MU_TEST(test_test_name_2) {
     assert_string_equal(fixture->suite_name, "tests");
     assert_string_equal(fixture->test_name, "test_test_name_2");
+    assert_string_equal(fixture->tempfile_prefix, "tests-test_test_name_2");
     return MUNIT_OK;
 }
 
