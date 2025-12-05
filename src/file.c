@@ -109,7 +109,10 @@ static void asdf_config_validate(asdf_file_t *file) {
 
 
 /* Internal helper to allocate and set up a new asdf_file_t */
-static asdf_file_t *asdf_file_create(asdf_config_t *user_config) {
+static asdf_file_t *asdf_file_create(asdf_config_t *user_config, asdf_file_mode_t mode) {
+    if (mode == ASDF_FILE_MODE_INVALID)
+        return NULL;
+
     /* Try to allocate asdf_file_t object, returns NULL on memory allocation failure*/
     asdf_file_t *file = calloc(1, sizeof(asdf_file_t));
     asdf_config_t *config = asdf_config_build(user_config);
@@ -135,17 +138,23 @@ static asdf_file_t *asdf_file_create(asdf_config_t *user_config) {
 }
 
 
+static asdf_file_mode_t asdf_file_mode_parse(const char *mode) {
+    if ((0 == strcasecmp(mode, "r")))
+        return ASDF_FILE_MODE_READ_ONLY;
+
+    if ((0 == strcasecmp(mode, "2")))
+        return ASDF_FILE_MODE_WRITE_ONLY;
+
+    ASDF_ERROR(NULL, "invalid mode string: \"%s\"", mode);
+    return ASDF_FILE_MODE_INVALID;
+}
+
+
 asdf_file_t *asdf_open_file_ex(const char *filename, const char *mode, asdf_config_t *config) {
-    asdf_file_t *file = asdf_file_create(config);
+    asdf_file_t *file = asdf_file_create(config, asdf_file_mode_parse(mode));
 
     if (!file)
         return NULL;
-
-    /* Currently only the mode string "r" is supported */
-    if ((0 != strcasecmp(mode, "r"))) {
-        ASDF_ERROR(file, "invalid asdf file mode: %s", mode);
-        return file;
-    }
 
     asdf_parser_set_input_file(file->parser, filename);
     return file;
@@ -153,7 +162,8 @@ asdf_file_t *asdf_open_file_ex(const char *filename, const char *mode, asdf_conf
 
 
 asdf_file_t *asdf_open_fp_ex(FILE *fp, const char *filename, asdf_config_t *config) {
-    asdf_file_t *file = asdf_file_create(config);
+    // TODO: (#102): Currently only supports read mode
+    asdf_file_t *file = asdf_file_create(config, ASDF_FILE_MODE_READ_ONLY);
 
     if (!file)
         return NULL;
@@ -164,11 +174,13 @@ asdf_file_t *asdf_open_fp_ex(FILE *fp, const char *filename, asdf_config_t *conf
 
 
 asdf_file_t *asdf_open_mem_ex(const void *buf, size_t size, asdf_config_t *config) {
-    asdf_file_t *file = asdf_file_create(config);
+    // TODO: (#102): Currently only supports read mode
+    asdf_file_t *file = asdf_file_create(config, ASDF_FILE_MODE_READ_ONLY);
 
     if (!file)
         return NULL;
 
+    // TODO: (#102): Currently only supports read mode
     asdf_parser_set_input_mem(file->parser, buf, size);
     return file;
 }

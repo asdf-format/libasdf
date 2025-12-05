@@ -111,6 +111,7 @@ test_parse_unit_LDADD = $(unit_test_ldadd)
 test_parse_util_unit_SOURCES = \
     test-parse-util.c \
     $(top_srcdir)/src/block.c \
+    $(top_srcdir)/src/context.c \
     $(top_srcdir)/src/error.c \
     $(top_srcdir)/src/log.c \
     $(top_srcdir)/src/parse_util.c

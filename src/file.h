@@ -25,9 +25,20 @@
 #endif
 
 
+/**
+ * Open modes for files
+ */
+typedef enum {
+    ASDF_FILE_MODE_INVALID = -1,
+    ASDF_FILE_MODE_READ_ONLY,
+    ASDF_FILE_MODE_WRITE_ONLY
+} asdf_file_mode_t;
+
+
 typedef struct asdf_file {
     asdf_base_t base;
     asdf_config_t *config;
+    asdf_file_mode_t mode;
     asdf_parser_t *parser;
     struct fy_document *tree;
 } asdf_file_t;
