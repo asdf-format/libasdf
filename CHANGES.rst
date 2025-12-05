@@ -1,13 +1,11 @@
 libasdf 0.1.0a2 (2025-12-05)
 ============================
 
-Bugfix
-------
+General
+-------
 
-- Fix bug in correctly identifying the number of binary blocks when the block
-  index is missing or corrupt. (`#93
-  <https://github.com/asdf-format/asdf/issues/93>`_)
-- Fixed segfault when passing an unknown log level name to ASDF_LOG_LEVEL
+- Changed version scheme to follow PEP-440 particularly for pre-release tags.
+- Fixed missing CMake files in release tarball.
 
 
 Feature
@@ -24,11 +22,13 @@ Feature
   (`#88 <https://github.com/asdf-format/asdf/issues/88>`_)
 
 
-General
--------
+Bugfix
+------
 
-- Changed version scheme to follow PEP-440 particularly for pre-release tags.
-- Fixed missing CMake files in release tarball.
+- Fix bug in correctly identifying the number of binary blocks when the block
+  index is missing or corrupt. (`#93
+  <https://github.com/asdf-format/asdf/issues/93>`_)
+- Fixed segfault when passing an unknown log level name to ASDF_LOG_LEVEL
 
 
 libasdf 0.1.0-alpha1 (2025-11-12)
