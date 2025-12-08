@@ -994,7 +994,7 @@ asdf_parser_t *asdf_parser_create(asdf_parser_cfg_t *config) {
 
 int asdf_parser_set_input_file(asdf_parser_t *parser, const char *filename) {
     assert(parser);
-    parser->stream = asdf_stream_from_file(parser->base.ctx, filename);
+    parser->stream = asdf_stream_from_file(parser->base.ctx, filename, false);
 
     if (!parser->stream) {
         // TODO: Better error handling for file opening errors
@@ -1009,7 +1009,7 @@ int asdf_parser_set_input_file(asdf_parser_t *parser, const char *filename) {
 
 int asdf_parser_set_input_fp(asdf_parser_t *parser, FILE *fp, const char *filename) {
     assert(parser);
-    parser->stream = asdf_stream_from_fp(parser->base.ctx, fp, filename);
+    parser->stream = asdf_stream_from_fp(parser->base.ctx, fp, filename, false);
 
     if (!parser->stream) {
         // TODO: Better error handling for file opening errors

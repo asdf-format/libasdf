@@ -1,6 +1,7 @@
 #include "munit.h"
 #include "util.h"
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -21,7 +22,7 @@ static size_t token_lens[] = {TOKEN_LEN("dummy"), TOKEN_LEN("asdf")};
 MU_TEST(file_scan_token_no_match) {
     char buffer[] = "fdsa and some other garbage";
     FILE *file = fmemopen(buffer, strlen(buffer), "r");
-    asdf_stream_t *stream = asdf_stream_from_fp(NULL, file, NULL);
+    asdf_stream_t *stream = asdf_stream_from_fp(NULL, file, NULL, false);
     size_t match_offset = 0;
     size_t match_idx = 0;
     int ret = asdf_stream_scan(stream, tokens, token_lens, 2, &match_offset, &match_idx);
@@ -40,7 +41,7 @@ MU_TEST(file_scan_token_no_match) {
 MU_TEST(file_scan_token_at_beginning) {
     char buffer[] = "asdf and some other garbage";
     FILE *file = fmemopen(buffer, strlen(buffer), "r");
-    asdf_stream_t *stream = asdf_stream_from_fp(NULL, file, NULL);
+    asdf_stream_t *stream = asdf_stream_from_fp(NULL, file, NULL, false);
     size_t match_offset = 0;
     size_t match_idx = 0;
     int ret = asdf_stream_scan(stream, tokens, token_lens, 2, &match_offset, &match_idx);
@@ -60,7 +61,7 @@ MU_TEST(file_scan_token_at_beginning) {
 MU_TEST(file_scan_token_at_end) {
     char buffer[] = "and some other garbage asdf";
     FILE *file = fmemopen(buffer, strlen(buffer), "r");
-    asdf_stream_t *stream = asdf_stream_from_fp(NULL, file, NULL);
+    asdf_stream_t *stream = asdf_stream_from_fp(NULL, file, NULL, false);
     size_t match_offset = 0;
     size_t match_idx = 0;
     int ret = asdf_stream_scan(stream, tokens, token_lens, 2, &match_offset, &match_idx);
@@ -81,7 +82,7 @@ MU_TEST(file_scan_token_at_end) {
 MU_TEST(file_scan_token_in_middle) {
     char buffer[] = "fdsa and some asdf other garbage";
     FILE *file = fmemopen(buffer, strlen(buffer), "r");
-    asdf_stream_t *stream = asdf_stream_from_fp(NULL, file, NULL);
+    asdf_stream_t *stream = asdf_stream_from_fp(NULL, file, NULL, false);
     size_t match_offset = 0;
     size_t match_idx = 0;
     int ret = asdf_stream_scan(stream, tokens, token_lens, 2, &match_offset, &match_idx);
@@ -106,7 +107,7 @@ MU_TEST(file_scan_token_spans_buffers) {
     // TODO item is still to make an option to configure the read buffer size explicitly
     for (size_t buf_size = 15; buf_size < 18; buf_size++) {
         FILE *file = fmemopen(buffer, strlen(buffer), "r");
-        asdf_stream_t *stream = asdf_stream_from_fp(NULL, file, NULL);
+        asdf_stream_t *stream = asdf_stream_from_fp(NULL, file, NULL, false);
         file_userdata_t *data = stream->userdata;
         data->buf_size = buf_size;
 
@@ -133,9 +134,25 @@ MU_TEST(file_scan_token_spans_buffers) {
 }
 
 
+/** Test basic write support for file streams */
+MU_TEST(file_write) {
+    const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    assert_not_null(filename);
+    asdf_stream_t *stream = asdf_stream_from_file(NULL, filename, true);
+    assert_not_null(stream);
+    assert_int(asdf_stream_write(stream, "#ASDF 1.0.0\n", 12), ==, 12);
+    assert_int(asdf_stream_write(stream, "#ASDF_STANDARD 1.6.0\n", 21), ==, 21);
+    assert_int(asdf_stream_flush(stream), ==, 0);
+    assert_int(asdf_stream_tell(stream), ==, 33);
+    asdf_stream_close(stream);
+    assert_true(compare_files(filename, get_fixture_file_path("parse-minimal.asdf")));
+    return MUNIT_OK;
+}
+
+
 MU_TEST(stream_file_open_mem) {
     const char *filename = get_fixture_file_path("255.asdf");
-    asdf_stream_t *stream = asdf_stream_from_file(NULL, filename);
+    asdf_stream_t *stream = asdf_stream_from_file(NULL, filename, false);
     assert_not_null(stream);
     off_t offset = 0x3bb;  // Known offset of the first block data in this file
     size_t size = 256;  // Known size of the block data in this file
@@ -183,6 +200,7 @@ MU_TEST_SUITE(
     MU_RUN_TEST(file_scan_token_at_end),
     MU_RUN_TEST(file_scan_token_in_middle),
     MU_RUN_TEST(file_scan_token_spans_buffers),
+    MU_RUN_TEST(file_write),
     MU_RUN_TEST(stream_file_open_mem),
     MU_RUN_TEST(stream_mem_open_mem)
 );

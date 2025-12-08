@@ -147,3 +147,16 @@ char *tail_file(const char *filename, uint32_t skip, size_t *out_len) {
 char *read_file(const char *filename, size_t *out_len) {
     return tail_file(filename, 0, out_len);
 }
+
+
+bool compare_files(const char *filename_a, const char *filename_b) {
+    size_t len_a = 0;
+    char *contents_a = read_file(filename_a, &len_a);
+    size_t len_b = 0;
+    char *contents_b = read_file(filename_b, &len_b);
+
+    if (len_a != len_b)
+        return false;
+
+    return (memcmp(contents_a, contents_b, len_a) == 0);
+}

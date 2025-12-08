@@ -344,6 +344,52 @@ static off_t file_tell(asdf_stream_t *stream) {
 }
 
 
+static size_t file_write(asdf_stream_t *stream, const void *buf, size_t count) {
+    // TODO: This is not correct because it does not interact properly with the
+    // stream buffer.  That is ok for the first pass because we don't implement
+    // read/write support yet
+    assert(stream);
+
+    if (!stream->is_writeable) {
+        ASDF_ERROR_COMMON(stream, ASDF_ERR_STREAM_READ_ONLY);
+        return -1;
+    }
+
+    file_userdata_t *data = stream->userdata;
+
+    size_t n = fwrite(buf, 1, count, data->file);
+
+    if (n != count) {
+        ASDF_ERROR_ERRNO(stream, errno);
+        return n;
+    }
+
+    data->file_pos += n;
+    return n;
+}
+
+
+static int file_flush(asdf_stream_t *stream) {
+    // TODO: Same here
+    assert(stream);
+
+    if (!stream->is_writeable) {
+        ASDF_ERROR_COMMON(stream, ASDF_ERR_STREAM_READ_ONLY);
+        return -1;
+    }
+
+    file_userdata_t *data = stream->userdata;
+
+    int ret = fflush(data->file);
+
+    if (ret != 0) {
+        ASDF_ERROR_ERRNO(stream, errno);
+    }
+
+    return ret;
+}
+
+
 static void *file_open_mem(asdf_stream_t *stream, off_t offset, size_t size, size_t *avail) {
     /* TODO: open_mem not supported yet for non-seekable streams (which are not fully supported
      * yet in general).  Idea would be when reading from a stream there will be option flags
@@ -547,7 +593,8 @@ static int file_fy_parser_set_input(asdf_stream_t *stream, struct fy_parser *fyp
 }
 
 
-asdf_stream_t *asdf_stream_from_fp(asdf_context_t *ctx, FILE *file, const char *filename) {
+asdf_stream_t *asdf_stream_from_fp(
+    asdf_context_t *ctx, FILE *file, const char *filename, bool is_writeable) {
     if (!file)
         return NULL;
 
@@ -591,6 +638,7 @@ asdf_stream_t *asdf_stream_from_fp(asdf_context_t *ctx, FILE *file, const char *
 
     stream->base.ctx = ctx;
     stream->is_seekable = file_is_seekable(file);
+    stream->is_writeable = is_writeable; // TODO: Should actually test if it's writeable
     stream->userdata = data;
     stream->next = file_next;
     stream->consume = file_consume;
@@ -598,6 +646,9 @@ asdf_stream_t *asdf_stream_from_fp(asdf_context_t *ctx, FILE *file, const char *
     stream->scan = file_scan;
     stream->seek = file_seek;
     stream->tell = file_tell;
+    stream->write = file_write;
+    stream->flush = file_flush;
+    stream->seek = file_seek;
     stream->open_mem = file_open_mem;
     stream->close_mem = file_close_mem;
     stream->close = file_close;
@@ -614,14 +665,14 @@ asdf_stream_t *asdf_stream_from_fp(asdf_context_t *ctx, FILE *file, const char *
 }
 
 
-asdf_stream_t *asdf_stream_from_file(asdf_context_t *ctx, const char *filename) {
-    FILE *file = fopen(filename, "rb");
+asdf_stream_t *asdf_stream_from_file(asdf_context_t *ctx, const char *filename, bool is_writeable) {
+    FILE *file = fopen(filename, is_writeable ? "wb" : "rb");
 
     if (!file) {
         return NULL;
     }
 
-    asdf_stream_t *stream = asdf_stream_from_fp(ctx, file, filename);
+    asdf_stream_t *stream = asdf_stream_from_fp(ctx, file, filename, is_writeable);
 
     if (!stream) {
         fclose(file);
@@ -741,6 +792,19 @@ static off_t mem_tell(asdf_stream_t *stream) {
 }
 
 
+static size_t mem_write(
+    UNUSED(asdf_stream_t *stream), UNUSED(const void *buf), UNUSED(size_t count)) {
+    assert(0); // TODO: #102
+    return -1;
+}
+
+
+static int mem_flush(UNUSED(asdf_stream_t *stream)) {
+    assert(0); // TODO: #102
+    return -1;
+}
+
+
 /* Memory access interfaces
  *
  * When the stream is from a memory buffer this is trivial; just returns pointer
@@ -844,6 +908,8 @@ asdf_stream_t *asdf_stream_from_memory(asdf_context_t *ctx, const void *buf, siz
     stream->scan = mem_scan;
     stream->seek = mem_seek;
     stream->tell = mem_tell;
+    stream->write = mem_write;
+    stream->flush = mem_flush;
     stream->open_mem = mem_open_mem;
     stream->close_mem = mem_close_mem;
     stream->close = mem_close;

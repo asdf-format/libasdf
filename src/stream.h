@@ -4,6 +4,7 @@
 #include "config.h"
 #endif
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <sys/types.h>
@@ -20,6 +21,7 @@
 typedef struct asdf_stream {
     asdf_base_t base;
     bool is_seekable;
+    bool is_writeable;
 
     void *userdata;
 
@@ -40,6 +42,8 @@ typedef struct asdf_stream {
         size_t *match_token_idx);
     int (*seek)(struct asdf_stream *stream, off_t offset, int whence);
     off_t (*tell)(struct asdf_stream *stream);
+    size_t (*write)(struct asdf_stream *stream, const void *buf, size_t count);
+    int (*flush)(struct asdf_stream *stream);
     void *(*open_mem)(struct asdf_stream *stream, off_t offset, size_t size, size_t *avail);
     int (*close_mem)(struct asdf_stream *stream, void *addr);
     void (*close)(struct asdf_stream *stream);
@@ -143,6 +147,16 @@ static inline off_t asdf_stream_tell(asdf_stream_t *stream) {
 }
 
 
+static inline size_t asdf_stream_write(asdf_stream_t *stream, const void *buf, size_t count) {
+    return stream->write(stream, buf, count);
+}
+
+
+static inline int asdf_stream_flush(asdf_stream_t *stream) {
+    return stream->flush(stream);
+}
+
+
 static inline void asdf_stream_close(asdf_stream_t *stream) {
     return stream->close(stream);
 }
@@ -150,9 +164,10 @@ static inline void asdf_stream_close(asdf_stream_t *stream) {
 
 ASDF_LOCAL int asdf_stream_seek(asdf_stream_t *stream, off_t offset, int whence);
 
-ASDF_LOCAL asdf_stream_t *asdf_stream_from_file(asdf_context_t *ctx, const char *filename);
+ASDF_LOCAL asdf_stream_t *asdf_stream_from_file(
+    asdf_context_t *ctx, const char *filename, bool is_writeable);
 ASDF_LOCAL asdf_stream_t *asdf_stream_from_fp(
-    asdf_context_t *ctx, FILE *file, const char *filename);
+    asdf_context_t *ctx, FILE *file, const char *filename, bool is_writeable);
 ASDF_LOCAL asdf_stream_t *asdf_stream_from_memory(
     asdf_context_t *ctx, const void *buf, size_t size);
 
