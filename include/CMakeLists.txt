@@ -7,6 +7,7 @@ install(
 
 install(
     FILES
+        asdf/emitter.h
         asdf/event.h
         asdf/extension.h
         asdf/file.h

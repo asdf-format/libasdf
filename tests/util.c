@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "config.h"
 #ifdef HAVE_STATGRAB
@@ -158,5 +159,11 @@ bool compare_files(const char *filename_a, const char *filename_b) {
     if (len_a != len_b)
         return false;
 
-    return (memcmp(contents_a, contents_b, len_a) == 0);
+    if (contents_a == NULL || contents_b == NULL)
+        return false;
+
+    bool ret = (memcmp(contents_a, contents_b, len_a) == 0);
+    free(contents_a);
+    free(contents_b);
+    return ret;
 }

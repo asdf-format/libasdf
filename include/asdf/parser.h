@@ -1,5 +1,5 @@
-#ifndef ASDF_PARSE_H
-#define ASDF_PARSE_H
+#ifndef ASDF_PARSER_H
+#define ASDF_PARSER_H
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -62,4 +62,4 @@ ASDF_EXPORT const char *asdf_parser_get_error(const asdf_parser_t *parser);
 
 ASDF_END_DECLS
 
-#endif /* ASDF_PARSE_H */
+#endif /* ASDF_PARSER_H */

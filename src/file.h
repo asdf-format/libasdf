@@ -10,6 +10,7 @@
 
 #include "compression/compression.h"
 #include "context.h"
+#include "emitter.h"
 #include "parser.h"
 
 
@@ -40,6 +41,7 @@ typedef struct asdf_file {
     asdf_config_t *config;
     asdf_file_mode_t mode;
     asdf_parser_t *parser;
+    asdf_emitter_t *emitter;
     struct fy_document *tree;
 } asdf_file_t;
 

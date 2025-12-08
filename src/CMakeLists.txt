@@ -16,6 +16,7 @@ target_sources(libasdf PUBLIC
     block.c
     context.c
     error.c
+    emitter.c
     event.c
     extension_registry.c
     extension_util.c

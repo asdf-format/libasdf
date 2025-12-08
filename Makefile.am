@@ -12,6 +12,7 @@ src_files = \
     src/core/ndarray.c \
     src/core/ndarray_convert.c \
     src/core/software.c \
+    src/emitter.c \
     src/error.c \
     src/event.c \
     src/extension_registry.c \
@@ -35,6 +36,7 @@ src_headers = \
     src/compression/compressor_registry.h \
     src/context.h \
     src/core/ndarray_convert.h \
+    src/emitter.h \
     src/error.h \
     src/extension_registry.h \
     src/extension_util.h \

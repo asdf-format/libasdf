@@ -10,6 +10,7 @@
 
 #include "compression/compression.h"
 #include "context.h"
+#include "emitter.h"
 #include "error.h"
 #include "event.h"
 #include "file.h"
@@ -55,6 +56,7 @@ static asdf_config_t *asdf_config_build(asdf_config_t *user_config) {
 
     if (user_config) {
         ASDF_CONFIG_OVERRIDE(config, user_config, parser.flags, 0);
+        ASDF_CONFIG_OVERRIDE(config, user_config, emitter.flags, 0);
         ASDF_CONFIG_OVERRIDE(config, user_config, decomp.mode, ASDF_BLOCK_DECOMP_MODE_AUTO);
         ASDF_CONFIG_OVERRIDE(config, user_config, decomp.max_memory_bytes, 0);
         ASDF_CONFIG_OVERRIDE(config, user_config, decomp.max_memory_threshold, 0.0);
@@ -116,23 +118,50 @@ static asdf_file_t *asdf_file_create(asdf_config_t *user_config, asdf_file_mode_
 
     /* Try to allocate asdf_file_t object, returns NULL on memory allocation failure*/
     asdf_file_t *file = calloc(1, sizeof(asdf_file_t));
-    asdf_config_t *config = asdf_config_build(user_config);
 
     if (UNLIKELY(!file))
         return NULL;
 
+    asdf_config_t *config = asdf_config_build(user_config);
+
     if (UNLIKELY(!config))
         return NULL;
 
-    asdf_parser_t *parser = asdf_parser_create(&config->parser);
-
-    if (!parser)
-        return NULL;
-
-    file->base.ctx = parser->base.ctx;
-    asdf_context_retain(file->base.ctx);
-    file->parser = parser;
     file->config = config;
+    file->mode = mode;
+
+    switch (mode) {
+    case ASDF_FILE_MODE_READ_ONLY: {
+        asdf_parser_t *parser = asdf_parser_create(&config->parser);
+
+        if (UNLIKELY(!parser)) {
+            asdf_close(file);
+            return NULL;
+        }
+
+        file->base.ctx = parser->base.ctx;
+        asdf_context_retain(file->base.ctx);
+        file->parser = parser;
+        break;
+    }
+    case ASDF_FILE_MODE_WRITE_ONLY: {
+        asdf_emitter_t *emitter = asdf_emitter_create(&config->emitter);
+
+        if (UNLIKELY(!emitter)) {
+            asdf_close(file);
+            return NULL;
+        }
+
+        file->base.ctx = emitter->base.ctx;
+        asdf_context_retain(file->base.ctx);
+        file->emitter = emitter;
+        break;
+    }
+    default:
+        UNREACHABLE();
+        return NULL;
+    }
+
     asdf_config_validate(file);
     /* Now we can start cooking */
     return file;
@@ -143,7 +172,7 @@ static asdf_file_mode_t asdf_file_mode_parse(const char *mode) {
     if ((0 == strcasecmp(mode, "r")))
         return ASDF_FILE_MODE_READ_ONLY;
 
-    if ((0 == strcasecmp(mode, "2")))
+    if ((0 == strcasecmp(mode, "w")))
         return ASDF_FILE_MODE_WRITE_ONLY;
 
     ASDF_ERROR(NULL, "invalid mode string: \"%s\"", mode);
@@ -157,8 +186,25 @@ asdf_file_t *asdf_open_file_ex(const char *filename, const char *mode, asdf_conf
     if (!file)
         return NULL;
 
-    if (asdf_parser_set_input_file(file->parser, filename) != 0) {
-        ASDF_ERROR_ERRNO(NULL, errno);
+    switch (file->mode) {
+    case ASDF_FILE_MODE_READ_ONLY:
+        assert(file->parser);
+        if (asdf_parser_set_input_file(file->parser, filename) != 0) {
+            ASDF_ERROR_ERRNO(NULL, errno);
+            asdf_close(file);
+            return NULL;
+        }
+        break;
+    case ASDF_FILE_MODE_WRITE_ONLY:
+        assert(file->emitter);
+        if (asdf_emitter_set_output_file(file->emitter, filename) != 0) {
+            ASDF_ERROR_ERRNO(NULL, errno);
+            asdf_close(file);
+            return NULL;
+        }
+        break;
+    default:
+        // Invalid mode
         asdf_close(file);
         return NULL;
     }
@@ -192,9 +238,24 @@ asdf_file_t *asdf_open_mem_ex(const void *buf, size_t size, asdf_config_t *confi
 }
 
 
+int asdf_flush(asdf_file_t *file) {
+    if (!file || file->mode != ASDF_FILE_MODE_WRITE_ONLY)
+        return -1;
+
+    assert(file->emitter);
+    if (asdf_emitter_emit(file->emitter) == ASDF_EMITTER_STATE_ERROR)
+        return -1;
+
+    return 0;
+}
+
+
 void asdf_close(asdf_file_t *file) {
     if (!file)
         return;
+
+    if (file->mode == ASDF_FILE_MODE_WRITE_ONLY)
+        asdf_flush(file);
 
     asdf_context_release(file->base.ctx);
     fy_document_destroy(file->tree);
