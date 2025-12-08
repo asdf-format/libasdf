@@ -259,6 +259,7 @@ void asdf_close(asdf_file_t *file) {
 
     asdf_context_release(file->base.ctx);
     fy_document_destroy(file->tree);
+    asdf_emitter_destroy(file->emitter);
     asdf_parser_destroy(file->parser);
     free(file->config);
     /* Clean up */
