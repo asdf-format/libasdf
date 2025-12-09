@@ -61,11 +61,15 @@ ASDF_LOCAL void asdf_context_release(asdf_context_t *ctx);
 ASDF_LOCAL asdf_global_context_t *asdf_global_context_get(void);
 
 
+static inline asdf_context_t *asdf_get_context_helper(void *obj) {
+    if (obj == NULL)
+        return asdf_global_context_get()->base.ctx;
+
 #ifdef DEBUG
-#define __ASDF_GET_CONTEXT(obj) \
-    static_assert( \
-        offsetof(typeof(*(obj)), base) == 0, "object must have asdf_base_t as first member"); \
-    asdf_context_t *__ctx = ((asdf_base_t *)(obj))->ctx;
-#else
-#define __ASDF_GET_CONTEXT(obj) asdf_context_t *__ctx = ((asdf_base_t *)(obj))->ctx;
+    static_assert(offsetof(asdf_base_t, ctx) == 0, "object must have asdf_base_t as first member");
 #endif
+    return ((asdf_base_t *)obj)->ctx;
+}
+
+
+#define __ASDF_GET_CONTEXT(obj) asdf_context_t *__ctx = asdf_get_context_helper(obj);

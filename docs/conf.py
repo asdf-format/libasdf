@@ -97,6 +97,7 @@ nitpick_ignore = [
     ('c:identifier', 'uint8_t'),
 
 # Should be documented but aren't yet
+    ('c:identifier', 'asdf_emitter_cfg_t'),
     ('c:identifier', 'asdf_parser_cfg_t'),
 ]
 

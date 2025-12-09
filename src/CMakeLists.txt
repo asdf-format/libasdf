@@ -16,14 +16,15 @@ target_sources(libasdf PUBLIC
     block.c
     context.c
     error.c
+    emitter.c
     event.c
     extension_registry.c
     extension_util.c
     file.c
     info.c
     log.c
-    parse.c
     parse_util.c
+    parser.c
     stream.c
     util.c
     value.c

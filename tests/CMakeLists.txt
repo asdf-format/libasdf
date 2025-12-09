@@ -22,6 +22,7 @@ add_library(munit ${MUNIT_DIR}/munit.c)
 # Build util static library
 set(REFERENCE_FILES_DIR "${ASDFSTD_DIR}/reference_files")
 set(FIXTURES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
+set(TEMP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/tmp")
 
 add_library(util util.c)
 target_include_directories(util PRIVATE
@@ -30,6 +31,7 @@ target_include_directories(util PRIVATE
 )
 add_compile_definitions(REFERENCE_FILES_DIR=\"${REFERENCE_FILES_DIR}\")
 add_compile_definitions(FIXTURES_DIR=\"${FIXTURES_DIR}\")
+add_compile_definitions(TEMP_DIR=\"${TEMP_DIR}\")
 
 set(runtime "WITH_CMAKE=set:YES;OBJC_DISABLE_INITIALIZE_FORK_SAFETY=set:YES;srcdir=set:${CMAKE_CURRENT_SOURCE_DIR};top_srcdir=set:${CMAKE_SOURCE_DIR};top_builddir=set:${CMAKE_BINARY_DIR}")
 

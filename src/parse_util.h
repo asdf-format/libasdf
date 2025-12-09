@@ -11,12 +11,18 @@
 #endif
 
 #include "block.h"
-#include "parse.h"
+#include "parser.h"
 #include "util.h"
 
 
 extern ASDF_LOCAL const char *asdf_standard_comment;
 extern ASDF_LOCAL const char *asdf_version_comment;
+
+/** The default ASDF format version to use when writing new files */
+extern ASDF_LOCAL const char *asdf_version_default;
+
+/** The default ASDF standard version to use when writing new files */
+extern ASDF_LOCAL const char *asdf_standard_default;
 
 /**
  * The "%YAML 1.1\n" directive specifically expected for valid ASDF

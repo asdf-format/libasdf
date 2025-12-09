@@ -18,7 +18,8 @@
 #include <stddef.h>
 #include <stdio.h>
 
-#include <asdf/parse.h>
+#include <asdf/emitter.h>
+#include <asdf/parser.h>
 #include <asdf/util.h>
 #include <asdf/value.h>
 
@@ -82,6 +83,10 @@ typedef enum {
 typedef struct {
     /** Low-level parser configuration; see `asdf_parser_cfg_t` */
     asdf_parser_cfg_t parser;
+
+    /** Low-level emitter configuration; see `asdf_emitter_cfg_t` */
+    asdf_emitter_cfg_t emitter;
+
     /** Decompression options */
     struct {
         /** Decompression mode (see `asdf_block_decomp_mode_t`) */
@@ -179,12 +184,30 @@ static inline asdf_file_t *asdf_open_mem(const void *buf, size_t size) {
     return asdf_open_mem_ex(buf, size, NULL);
 }
 
+
+/**
+ * Flush changes to disk if the file is open for writing
+ *
+ * .. todo::
+ *
+ *   Clarify error handling on flush.
+ *
+ * :param file: The `asdf_file_t *` to close
+ * :return: 0 on success or a negative value if the file is not open for
+ *   writing or another error occurred on write.
+ */
+ASDF_EXPORT int asdf_flush(asdf_file_t *file);
+
+
 /**
  * Closes an open `asdf_file_t *`, freeing associated resources where possible
  *
  * Any other resources associated with that file handle, such as ndarrays,
  * should no longer be expected to work and should ideally be freed before
  * closing the file.
+ *
+ * If the file was open for writing, also attempts to call `asdf_flush` to
+ * ensure any unwriten changes are written.
  *
  * :param file: The `asdf_file_t *` to close
  */

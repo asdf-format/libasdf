@@ -11,6 +11,7 @@ static const char *const asdf_error_common_messages[] = {
     [ASDF_ERR_NONE] = NULL,
     [ASDF_ERR_UNKNOWN_STATE] = "Unknown parser state",
     [ASDF_ERR_STREAM_INIT_FAILED] = "Failed to initialize stream",
+    [ASDF_ERR_STREAM_READ_ONLY] = "Tried to write to a read-only stream",
     [ASDF_ERR_UNEXPECTED_EOF] = "Unexpected end of file",
     [ASDF_ERR_INVALID_ASDF_HEADER] = "Invalid ASDF header",
     [ASDF_ERR_INVALID_BLOCK_HEADER] = "Invalid block header",

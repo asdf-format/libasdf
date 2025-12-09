@@ -26,7 +26,7 @@ typedef struct {
     size_t buf_size;
     size_t buf_avail;
     size_t buf_pos;
-    off_t file_pos;
+    size_t file_pos;
 
     // Array of pointers to mmap'd memory regions
     // Realistically these are for (non-overlapping) block data, so we simply track an

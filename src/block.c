@@ -9,7 +9,7 @@
 #include "block.h"
 #include "compat/endian.h"
 #include "error.h"
-#include "parse.h"
+#include "parser.h"
 #include "stream.h"
 #include "util.h"
 

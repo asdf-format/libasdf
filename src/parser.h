@@ -9,7 +9,7 @@
 
 #include <libfyaml.h>
 
-#include <asdf/parse.h>
+#include <asdf/parser.h>
 
 #include "block.h"
 #include "context.h"

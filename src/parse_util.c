@@ -2,14 +2,15 @@
 #include <ctype.h>
 
 #include "block.h"
-#include "error.h"
 #include "event.h"
-#include "parse.h"
 #include "parse_util.h"
+#include "parser.h"
 #include "stream.h"
 
 const char *asdf_standard_comment = "#ASDF_STANDARD ";
 const char *asdf_version_comment = "#ASDF ";
+const char *asdf_version_default = "1.0.0";
+const char *asdf_standard_default = "1.6.0";
 
 
 #define ASDF_YAML_DIRECTIVE_PREFIX "%YAML "

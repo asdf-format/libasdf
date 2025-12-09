@@ -53,6 +53,26 @@ MU_TEST(test_asdf_open_file) {
 }
 
 
+MU_TEST(test_asdf_open_file_nonexistent) {
+    asdf_file_t *file = asdf_open_file("does-not-exist", "r");
+    assert_null(file);
+    const char *error = asdf_error(file);
+    assert_not_null(error);
+    assert_string_equal(error, "No such file or directory");
+    return MUNIT_OK;
+}
+
+
+MU_TEST(test_asdf_open_file_invalid_mode) {
+    asdf_file_t *file = asdf_open_file("does-not-exist", "x");
+    assert_null(file);
+    const char *error = asdf_error(file);
+    assert_not_null(error);
+    assert_string_equal(error, "invalid mode string: \"x\"");
+    return MUNIT_OK;
+}
+
+
 #define CHECK_GET_INT(type, key, expected) \
     do { \
         type##_t __v = 0; \
@@ -636,9 +656,58 @@ MU_TEST(read_compressed_block_lazy_random_access) {
 }
 
 
+/**
+ * Write mode tests
+ * ================
+ */
+
+
+/**
+ * Opening and closing a file without adding content results in an empty file
+ */
+MU_TEST(write_empty) {
+    const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    // Allow emitting an "empty" ASDF file that is still a valid ASDF file
+    // (has the ASDF header) but contains no tree or blocks.
+    asdf_file_t *file = asdf_open(filename, "w");
+    assert_not_null(file);
+    asdf_close(file);
+    size_t len = SIZE_MAX;
+    const char *contents = read_file(filename, &len);
+    assert_int(len, ==, 0);
+    free(contents);
+    return MUNIT_OK;
+}
+
+/**
+ * Write the bare minimal valid ASDF file
+ *
+ * .. todo::
+ *
+ *   As of writing this test it is the *only* ASDF file that can be written,
+ *   as no tree or blocks are written.  Update this test once more of the file
+ *   is writeable (e.g. add option to skip outputting the tree).
+ */
+MU_TEST(write_minimal) {
+    const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    // Allow emitting an "empty" ASDF file that is still a valid ASDF file
+    // (has the ASDF header) but contains no tree or blocks.
+    asdf_config_t config = { .emitter = { .flags = ASDF_EMITTER_OPT_EMIT_EMPTY }};
+    asdf_file_t *file = asdf_open_ex(filename, "w", &config);
+    assert_not_null(file);
+    asdf_close(file);
+    assert_true(compare_files(filename, get_fixture_file_path("parse-minimal.asdf")));
+    return MUNIT_OK;
+}
+
+
+
+
 MU_TEST_SUITE(
     file,
     MU_RUN_TEST(test_asdf_open_file),
+    MU_RUN_TEST(test_asdf_open_file_nonexistent),
+    MU_RUN_TEST(test_asdf_open_file_invalid_mode),
     MU_RUN_TEST(scalar_getters),
     MU_RUN_TEST(test_asdf_get_mapping),
     MU_RUN_TEST(test_asdf_get_sequence),
@@ -651,7 +720,9 @@ MU_TEST_SUITE(
     MU_RUN_TEST(read_compressed_block_to_file_on_threshold, comp_test_params),
     MU_RUN_TEST(open_close_compressed_block, comp_mode_test_params),
     MU_RUN_TEST(read_compressed_block_lazy_random_access, comp_mode_test_params),
-    MU_RUN_TEST(compressed_block_no_hang_on_segfault, comp_mode_test_params)
+    MU_RUN_TEST(compressed_block_no_hang_on_segfault, comp_mode_test_params),
+    MU_RUN_TEST(write_empty),
+    MU_RUN_TEST(write_minimal)
 );
 
 
