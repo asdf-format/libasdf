@@ -25,6 +25,11 @@
 #include <sys/ioctl.h>
 #include <sys/poll.h>
 #include <sys/syscall.h>
+
+#ifndef UFFD_USER_MODE_ONLY
+#pragma message "warning: UFFD_USER_MODE_ONLY missing"
+#define UFFD_USER_MODE_ONLY 0
+#endif
 #endif
 
 

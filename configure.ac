@@ -262,9 +262,12 @@ AS_IF([test "x$asdf_build_tool" = "xyes"], [
 
 # Shouldn't be needed with glibc but is if we're using the homebrew package, e.g.
   AC_CHECK_LIB([argp], [argp_parse], [
-    AC_SUBST([ARGP_LIB], [-largp])
+    AC_SUBST([ARGP_LIBS], [-largp])
   ])
 ])
+
+ASDF_LIBS="$FYAML_LIBS $ZLIB_LIBS $BZIP2_LIBS $LZ4_LIBS $STATGRAB_LIBS"
+AC_SUBST([ASDF_LIBS])
 
 # ------ Optional features ---------------------------------------------------
 

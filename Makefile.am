@@ -81,9 +81,6 @@ ACLOCAL_AMFLAGS = -Im4
 
 noinst_HEADERS = $(src_headers)
 
-ASDF_LIBS = $(FYAML_LIBS) $(ZLIB_LIBS) $(BZIP2_LIBS) $(LZ4_LIBS) $(STATGRAB_LIBS)
-
-
 # libasdf library
 #include .c and .h in SOURCES so that both appear in dist
 lib_LTLIBRARIES = libasdf.la
@@ -98,7 +95,7 @@ bin_PROGRAMS = asdf
 asdf_SOURCES = src/main.c
 asdf_CFLAGS = $(AM_CFLAGS) $(FYAML_CFLAGS) $(STATGRAB_CFLAGS) $(LZ4_CFLAGS) $(CODE_COVERAGE_CFLAGS)
 asdf_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
-asdf_LDADD = libasdf.la $(ARGP_LIB) $(ASDF_LIBS)
+asdf_LDADD = libasdf.la $(ARGP_LIBS) $(ASDF_LIBS)
 endif # ASDF_BUILD_TOOL
 
 
