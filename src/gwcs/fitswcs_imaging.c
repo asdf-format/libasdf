@@ -1,29 +1,14 @@
 #include <assert.h>
 #include <stdlib.h>
 
-// NOTE: The internal definitions for asdf_gwcs_transform_t must be included early
-#include "transform.h"
-
-#include <asdf/core/asdf.h>
-#include <asdf/core/ndarray.h>
-#include <string.h>
-#define ASDF_GWCS_INTERNAL
-#include <asdf/gwcs/core.h>
-#include <asdf/gwcs/fitswcs_imaging.h>
-#include <asdf/gwcs/frame.h>
-#include <asdf/gwcs/frame_celestial.h>
-#include <asdf/gwcs/gwcs.h>
-#include <asdf/gwcs/step.h>
-#include <asdf/gwcs/transform.h>
-#include <asdf/gwcs/transforms/property/bounding_box.h>
-#undef ASDF_GWCS_INTERNAL
-#include <asdf/value.h>
-
+#include "../core/ndarray.h"
 #include "../extension_util.h"
 #include "../log.h"
 #include "../util.h"
 
+#include "gwcs.h"
 #include "step.h"
+#include "transform.h"
 
 
 /** Helper to read crpix, crval, etc. */

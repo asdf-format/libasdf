@@ -4,9 +4,7 @@
 #include "config.h"
 #endif
 
-#include <stdio.h>
-
-#include <asdf/log.h>
+#include "asdf/log.h" // IWYU pragma: export
 
 #include "context.h"
 #include "util.h"

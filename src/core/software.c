@@ -1,10 +1,8 @@
-#include <asdf/core/asdf.h>
-#include <asdf/core/software.h>
-#include <asdf/extension.h>
-
 #include "../log.h"
 #include "../util.h"
 #include "../value.h"
+
+#include "asdf.h"
 
 
 static asdf_value_err_t asdf_software_deserialize(

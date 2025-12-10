@@ -1,19 +1,12 @@
 #include <stdlib.h>
 
-#include <asdf/core/asdf.h>
-#include <asdf/extension.h>
-#define ASDF_GWCS_INTERNAL
-#include <asdf/gwcs/fitswcs_imaging.h>
-#include <asdf/gwcs/gwcs.h>
-#include <asdf/gwcs/transform.h>
-#undef ASDF_GWCS_INTERNAL
-#include <asdf/value.h>
-
 #include "../extension_util.h"
 #include "../log.h"
 #include "../util.h"
 #include "../value.h"
+
 #include "fitswcs_imaging.h"
+#include "gwcs.h"
 #include "step.h"
 
 

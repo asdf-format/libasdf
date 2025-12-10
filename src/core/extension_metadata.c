@@ -1,11 +1,11 @@
-#include <asdf/core/asdf.h>
-#include <asdf/core/extension_metadata.h>
-#include <asdf/core/software.h>
-#include <asdf/extension.h>
-
+#include "../extension_registry.h"
 #include "../log.h"
 #include "../util.h"
 #include "../value.h"
+
+#include "asdf.h"
+#include "extension_metadata.h"
+#include "software.h"
 
 
 static asdf_value_err_t asdf_extension_metadata_deserialize(

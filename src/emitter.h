@@ -9,7 +9,7 @@
  */
 #pragma once
 
-#include <asdf/emitter.h>
+#include "asdf/emitter.h" // IWYU pragma: export
 
 #include "context.h"
 #include "stream.h"

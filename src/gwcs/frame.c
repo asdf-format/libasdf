@@ -2,19 +2,12 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include <asdf/core/asdf.h>
-#include <asdf/extension.h>
-#include <asdf/gwcs/frame.h>
-#include <asdf/gwcs/frame2d.h>
-#include <asdf/gwcs/gwcs.h>
-#include <asdf/log.h>
-#include <asdf/value.h>
-
 #include "../extension_util.h"
 #include "../util.h"
 #include "../value.h"
 
 #include "frame.h"
+#include "gwcs.h"
 
 #ifdef ASDF_LOGGING_ENABLED
 static inline void warn_invalid_frame_axes_param(

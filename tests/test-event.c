@@ -1,8 +1,8 @@
-#include <errno.h>
 #include <string.h>
 
 #include <asdf/event.h>
 #include <asdf/parser.h>
+#include <asdf/yaml.h>
 
 #include "munit.h"
 #include "util.h"
@@ -10,7 +10,6 @@
 #include "block.h"
 #include "event.h"
 #include "parser.h"
-#include "yaml.h"
 
 
 /**

@@ -14,4 +14,4 @@
 #endif
 
 
-#include <asdf/yaml.h>
+#include "asdf/yaml.h" // IWYU pragma: export

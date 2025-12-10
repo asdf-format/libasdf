@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <string.h>
 
-#include <asdf/util.h>
+#include "asdf/util.h" // IWYU pragma: export
 
 
 #if defined(__GNUC__) || defined(__clang__)

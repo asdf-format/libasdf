@@ -2,9 +2,9 @@
 
 #include <stdint.h>
 
-#include <asdf/gwcs/frame.h>
-#include <asdf/util.h>
+#include "gwcs.h"
 
+#include "../util.h"
 #include "../value.h"
 
 

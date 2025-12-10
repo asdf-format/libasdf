@@ -12,7 +12,7 @@
 #include <stdatomic.h>
 #include <stdio.h>
 
-#include <asdf/log.h>
+#include "asdf/log.h"
 
 #include "util.h"
 

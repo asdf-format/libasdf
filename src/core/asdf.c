@@ -1,8 +1,3 @@
-#include <asdf/core/asdf.h>
-#include <asdf/core/extension_metadata.h>
-#include <asdf/core/history_entry.h>
-#include <asdf/core/software.h>
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -11,6 +6,11 @@
 #include "../log.h"
 #include "../util.h"
 #include "../value.h"
+
+#include "asdf.h"
+#include "extension_metadata.h"
+#include "history_entry.h"
+#include "software.h"
 
 
 asdf_software_t libasdf_software = {

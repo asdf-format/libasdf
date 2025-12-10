@@ -14,6 +14,7 @@
 #include "parse_util.h"
 #include "parser.h"
 #include "util.h"
+#include "yaml.h"
 
 
 asdf_event_type_t asdf_event_type(asdf_event_t *event) {

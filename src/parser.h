@@ -9,13 +9,12 @@
 
 #include <libfyaml.h>
 
-#include <asdf/parser.h>
+#include "asdf/parser.h" // IWYU pragma: export
 
 #include "block.h"
 #include "context.h"
 #include "event.h"
 #include "stream.h"
-#include "util.h"
 
 
 #define ASDF_COMMENT_CHAR '#'
