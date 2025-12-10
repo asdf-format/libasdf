@@ -14,6 +14,7 @@ stc_headers = \
     $(stc_dir)/include/stc/priv/template.h \
     $(stc_dir)/include/stc/priv/template2.h \
     $(stc_dir)/include/stc/priv/utf8_prv.h \
+    $(stc_dir)/include/stc/vec.h \
     $(stc_dir)/include/stc/types.h
 
 stc_src = $(stc_dir)/src/cstr_core.c

@@ -9,6 +9,7 @@
 
 #include "asdf/event.h" // IWYU pragma: export
 
+#include "types/asdf_block_index.h"
 #include "util.h"
 
 
@@ -34,10 +35,6 @@ typedef struct asdf_tree_info {
 typedef struct fy_event asdf_yaml_event_t;
 
 
-/* Forward declaration */
-typedef struct asdf_block_index asdf_block_index_t;
-
-
 typedef struct asdf_event {
     asdf_event_type_t type;
     union {
@@ -50,7 +47,7 @@ typedef struct asdf_event {
         // Only if ASDF_YAML_EVENT
         asdf_yaml_event_t *yaml;
         // Only if ASDF_BLOCK_EVENT
-        asdf_block_info_t *block;
+        const asdf_block_info_t *block;
         // Only if ASDF_BLOCK_INDEX_EVENT
         asdf_block_index_t *block_index;
     } payload;

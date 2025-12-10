@@ -239,7 +239,7 @@ ASDF_DECLARE_EXTENSION(ndarray, asdf_ndarray_t);
 
 
 /** ndarray methods */
-ASDF_EXPORT void *asdf_ndarray_data_raw(asdf_ndarray_t *ndarray, size_t *size);
+ASDF_EXPORT const void *asdf_ndarray_data_raw(asdf_ndarray_t *ndarray, size_t *size);
 
 /**
  * Return the total number of elements (not bytes) in the ndarray

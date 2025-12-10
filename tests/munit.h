@@ -10,6 +10,19 @@
 #include <stdio.h>
 #include <unistd.h>
 
+// Workaround to likely GCC bug:
+// When STC is imported it typically pushes/pops some warning diagnostics,
+// but it seems that this results in -Wdiscarded-qualifiers remaining "stuck"
+// on in some GCCs.  This would be fine (it's a useful warning), except it
+// causes problems with munit which omits const qualifiers in some of its
+// structs.
+#ifdef __GNUC__
+// Seems to be a bug in gcc that the warning diagnostics set by STC are not
+// all restored on #pragma GCC diagnostic pop
+// This makes munit sad, but for the tests we can safely ignore.
+#pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
+#endif
+
 #define MUNIT_ENABLE_ASSERT_ALIASES
 #include "munit/munit.h"
 

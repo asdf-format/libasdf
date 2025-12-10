@@ -32,49 +32,30 @@ elseif(HAVE_SYS_ENDIAN_H)
     set(ENDIAN_H sys/endian.h)
 endif()
 
-check_source_runs(C "
-    #include <stdio.h>
-    #include <${ENDIAN_H}>
-    int main() {
-    #ifdef be64toh
-        puts(\"YES\");
-        return 0;
-    #else
-        puts(\"NO\");
-        return 1;
-    #endif
-    }
-" HAVE_DECL_BE64TOH)
+macro(check_endian_decl func)
+    string(TOUPPER ${func} var_name)
+    set(var_name "HAVE_DECL_${var_name}")
+    check_source_runs(C "
+        #include <stdio.h>
+        #include <${ENDIAN_H}>
+        int main() {
+        #ifdef ${func}
+            puts(\"YES\");
+            return 0;
+        #else
+            puts(\"NO\");
+            return 1;
+        #endif
+        }
+    " ${var_name})
+endmacro()
 
-
-check_source_runs(C "
-    #include <stdio.h>
-    #include <${ENDIAN_H}>
-    int main() {
-    #ifdef be32toh
-        puts(\"YES\");
-        return 0;
-    #else
-        puts(\"NO\");
-        return 1;
-    #endif
-    }
-" HAVE_DECL_BE32TOH)
-
-
-check_source_runs(C "
-    #include <stdio.h>
-    #include <${ENDIAN_H}>
-    int main() {
-    #ifdef le32toh
-        puts(\"YES\");
-        return 0;
-    #else
-        puts(\"NO\");
-        return 1;
-    #endif
-    }
-" HAVE_DECL_LE32TOH)
+check_endian_decl(be64toh)
+check_endian_decl(be32toh)
+check_endian_decl(htobe16)
+check_endian_decl(htobe32)
+check_endian_decl(htobe64)
+check_endian_decl(le32toh)
 
 
 check_function_exists(strptime HAVE_STRPTIME)
