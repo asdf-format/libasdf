@@ -4,6 +4,7 @@
 #include "context.h"
 #include "emitter.h"
 #include "error.h"
+#include "file.h"
 #include "parse_util.h"
 #include "stream.h"
 
@@ -13,20 +14,15 @@
 static const asdf_emitter_cfg_t default_asdf_emitter_cfg = {};
 
 
-asdf_emitter_t *asdf_emitter_create(asdf_emitter_cfg_t *config) {
+asdf_emitter_t *asdf_emitter_create(asdf_file_t *file, asdf_emitter_cfg_t *config) {
     asdf_emitter_t *emitter = calloc(1, sizeof(asdf_emitter_t));
 
     if (!emitter)
         return emitter;
 
-    asdf_context_t *ctx = asdf_context_create();
-
-    if (!ctx) {
-        free(emitter);
-        return NULL;
-    }
-
-    emitter->base.ctx = ctx;
+    emitter->base.ctx = file->base.ctx;
+    asdf_context_retain(emitter->base.ctx);
+    emitter->file = file;
     emitter->config = config ? *config : default_asdf_emitter_cfg;
     emitter->state = ASDF_EMITTER_STATE_INITIAL;
     emitter->done = false;

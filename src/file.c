@@ -147,7 +147,7 @@ static asdf_file_t *asdf_file_create(asdf_config_t *user_config, asdf_file_mode_
         break;
     }
     case ASDF_FILE_MODE_WRITE_ONLY: {
-        asdf_emitter_t *emitter = asdf_emitter_create(&config->emitter);
+        asdf_emitter_t *emitter = asdf_emitter_create(file, &config->emitter);
 
         if (UNLIKELY(!emitter)) {
             asdf_close(file);
