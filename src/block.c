@@ -2,13 +2,14 @@
  * ASDF block functions
  */
 
+#include <endian.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "block.h"
-#include "compat/endian.h"
+#include "compat/endian.h" // IWYU pragma: keep
 #include "error.h"
 #include "stream.h"
 #include "util.h"
@@ -117,5 +118,40 @@ bool asdf_block_info_read(asdf_stream_t *stream, asdf_block_info_t *out_block) {
 
     out_block->header_pos = header_pos;
     out_block->data_pos = asdf_stream_tell(stream);
+    return true;
+}
+
+
+#define WRITE_CHECK(stream, data, size) \
+    do { \
+        size_t n_written = asdf_stream_write((stream), (data), (size)); \
+        if (n_written != (size)) \
+            return false; \
+    } while (0)
+
+
+bool asdf_block_info_write(asdf_stream_t *stream, asdf_block_info_t *block) {
+    assert(stream);
+    assert(stream->is_writeable);
+    assert(block);
+    block->header_pos = asdf_stream_tell(stream);
+    WRITE_CHECK(stream, asdf_block_magic, ASDF_BLOCK_MAGIC_SIZE);
+    uint16_t header_size = htobe16(ASDF_BLOCK_HEADER_SIZE);
+    WRITE_CHECK(stream, &header_size, sizeof(uint16_t));
+    uint32_t flags = htobe32(block->header.flags);
+    WRITE_CHECK(stream, &flags, sizeof(uint32_t));
+    WRITE_CHECK(stream, block->header.compression, ASDF_BLOCK_COMPRESSION_FIELD_SIZE);
+    uint64_t data_size = htobe64(block->header.data_size);
+    // allocated_size -- generally same as used_size, but could be useful to add
+    // an option to reserve more size for a block to grow
+    WRITE_CHECK(stream, &data_size, sizeof(uint64_t));
+    // used_size -- will need to be updated when adding compression support
+    WRITE_CHECK(stream, &data_size, sizeof(uint64_t));
+    // data_size
+    WRITE_CHECK(stream, &data_size, sizeof(uint64_t));
+    // TODO: Optionally compute checksum (#106)
+    WRITE_CHECK(stream, block->header.checksum, ASDF_BLOCK_CHECKSUM_FIELD_SIZE);
+    block->data_pos = asdf_stream_tell(stream);
+    WRITE_CHECK(stream, block->data, block->header.data_size);
     return true;
 }

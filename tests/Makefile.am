@@ -235,6 +235,7 @@ EXTRA_DIST += \
     shell-test.sh \
     util.h \
     fixtures/255.asdf \
+    fixtures/255-block-no-index.asdf \
     fixtures/byteorder.asdf \
     fixtures/compressed.asdf \
     fixtures/cube.asdf \

@@ -1,12 +1,14 @@
 #include <assert.h>
 #include <stdbool.h>
 
+#include "block.h"
 #include "context.h"
 #include "emitter.h"
 #include "error.h"
 #include "file.h"
 #include "parse_util.h"
 #include "stream.h"
+#include "types/asdf_block_info_vec.h"
 
 /**
  * Default libasdf emitter configuration
@@ -30,6 +32,20 @@ asdf_emitter_t *asdf_emitter_create(asdf_file_t *file, asdf_emitter_cfg_t *confi
 }
 
 
+/** Helper to determine if there is any content to write to the file */
+static bool asdf_emitter_should_emit(asdf_emitter_t *emitter) {
+    // TODO: Check if has tree to write
+    bool should_emit = false;
+    if (asdf_block_info_vec_size(&emitter->file->blocks) > 0)
+        should_emit = true;
+
+    if (asdf_emitter_has_opt(emitter, ASDF_EMITTER_OPT_EMIT_EMPTY))
+        should_emit |= true;
+
+    return should_emit;
+}
+
+
 int asdf_emitter_set_output_file(asdf_emitter_t *emitter, const char *filename) {
     assert(emitter);
     emitter->stream = asdf_stream_from_file(emitter->base.ctx, filename, true);
@@ -41,15 +57,7 @@ int asdf_emitter_set_output_file(asdf_emitter_t *emitter, const char *filename) 
         return 1;
     }
 
-    // TODO: Whether or not to write anything actually depends on if there is
-    // at minimum a tree or one block to write
-    if (asdf_emitter_has_opt(emitter, ASDF_EMITTER_OPT_EMIT_EMPTY))
-        emitter->state = ASDF_EMITTER_STATE_ASDF_VERSION;
-    else {
-        emitter->state = ASDF_EMITTER_STATE_END;
-        emitter->done = true;
-    }
-
+    emitter->state = ASDF_EMITTER_STATE_INITIAL;
     return 0;
 }
 
@@ -87,6 +95,32 @@ static asdf_emitter_state_t emit_standard_version(asdf_emitter_t *emitter) {
     WRITE_STRING0(emitter->stream, asdf_standard_default);
     WRITE_NEWLINE(emitter->stream);
     asdf_stream_flush(emitter->stream);
+    return ASDF_EMITTER_STATE_BLOCKS;
+}
+
+
+/**
+ * Emit blocks to the file
+ *
+ * Very basic version that just emits the blocks serially; no compression is
+ * supported yet or checksums, and the block header/data positions are assumed
+ * unknown as yet.  Later this will need to be able to do things like backtrack
+ * to write the header (or possibly compress to a temp file first to get
+ * compression size--this might be useful for streaming), compute the the
+ * checksum, etc)
+ */
+static asdf_emitter_state_t emit_blocks(asdf_emitter_t *emitter) {
+    assert(emitter);
+    assert(emitter->file);
+    assert(emitter->stream);
+    asdf_block_info_vec_t *blocks = &emitter->file->blocks;
+    for (asdf_block_info_vec_iter_t it = asdf_block_info_vec_begin(blocks); it.ref;
+         asdf_block_info_vec_next(&it)) {
+        if (!asdf_block_info_write(emitter->stream, it.ref))
+            return ASDF_EMITTER_STATE_ERROR;
+
+        asdf_stream_flush(emitter->stream);
+    }
     return ASDF_EMITTER_STATE_END;
 }
 
@@ -96,13 +130,25 @@ asdf_emitter_state_t asdf_emitter_emit(asdf_emitter_t *emitter) {
         asdf_emitter_state_t next_state = ASDF_EMITTER_STATE_ERROR;
         switch (emitter->state) {
         case ASDF_EMITTER_STATE_INITIAL:
-            ASDF_ERROR_COMMON(emitter, ASDF_ERR_STREAM_INIT_FAILED);
+            // TODO: Whether or not to write anything actually depends on if there is
+            // at minimum a tree or one block to write
+            if (asdf_emitter_should_emit(emitter))
+                next_state = ASDF_EMITTER_STATE_ASDF_VERSION;
+            else {
+                next_state = ASDF_EMITTER_STATE_END;
+            }
             break;
         case ASDF_EMITTER_STATE_ASDF_VERSION:
             next_state = emit_asdf_version(emitter);
             break;
         case ASDF_EMITTER_STATE_STANDARD_VERSION:
             next_state = emit_standard_version(emitter);
+            break;
+        case ASDF_EMITTER_STATE_BLOCKS:
+            next_state = emit_blocks(emitter);
+            break;
+        case ASDF_EMITTER_STATE_BLOCK_INDEX:
+            // TODO
             break;
         case ASDF_EMITTER_STATE_END:
             next_state = ASDF_EMITTER_STATE_END;

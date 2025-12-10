@@ -34,40 +34,12 @@ AC_HEADER_ASSERT # ./configure --disable-assert to define NDEBUG
 
 # Check headers
 AC_CHECK_HEADER([stdlib.h])
-AC_CHECK_HEADERS([endian.h machine/endian.h sys/endian.h])
-AC_CHECK_DECLS([be64toh], [], [], [[
-#ifdef HAVE_ENDIAN_H
-#  include <endian.h>
-#endif
-#ifdef HAVE_MACHINE_ENDIAN_H
-#  include <machine/endian.h>
-#endif
-#ifdef HAVE_SYS_ENDIAN_H
-#  include <sys/endian.h>
-#endif
-]])
-AC_CHECK_DECLS([be32toh], [], [], [[
-#ifdef HAVE_ENDIAN_H
-#  include <endian.h>
-#endif
-#ifdef HAVE_MACHINE_ENDIAN_H
-#  include <machine/endian.h>
-#endif
-#ifdef HAVE_SYS_ENDIAN_H
-#  include <sys/endian.h>
-#endif
-]])
-AC_CHECK_DECLS([le32toh], [], [], [[
-#ifdef HAVE_ENDIAN_H
-#  include <endian.h>
-#endif
-#ifdef HAVE_MACHINE_ENDIAN_H
-#  include <machine/endian.h>
-#endif
-#ifdef HAVE_SYS_ENDIAN_H
-#  include <sys/endian.h>
-#endif
-]])
+AX_CHECK_ENDIAN_DECL([be64toh])
+AX_CHECK_ENDIAN_DECL([be32toh])
+AX_CHECK_ENDIAN_DECL([htobe16])
+AX_CHECK_ENDIAN_DECL([htobe32])
+AX_CHECK_ENDIAN_DECL([htobe64])
+AX_CHECK_ENDIAN_DECL([le32toh])
 
 # Check functions
 AC_CHECK_FUNCS([strptime])

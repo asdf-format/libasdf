@@ -21,6 +21,7 @@
 #include "compression/compression.h"
 #include "config.h"
 #include "file.h"
+
 #include "munit.h"
 #include "util.h"
 
@@ -294,6 +295,34 @@ MU_TEST(test_asdf_block_append_read_only) {
     const char *error = asdf_error(file);
     assert_string_equal(error, "cannot append blocks to read-only files");
     asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+/**
+ * Write a trivial ASDF file containing no YAML and no block index, just a
+ * single binary block
+ */
+MU_TEST(write_block_no_index) {
+    const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    asdf_file_t *file = asdf_open(filename, "w");
+    assert_not_null(file);
+
+    size_t size = (UINT8_MAX + 1) * sizeof(uint8_t);
+    uint8_t *data = malloc(size);
+
+    if (!data)
+        return MUNIT_ERROR;
+
+    for (int idx = 0; idx <= UINT8_MAX; idx++)
+        data[idx] = idx;
+
+    assert_int(asdf_block_append(file, data, size), ==, 0);
+    asdf_close(file);
+
+    const char *reference = get_fixture_file_path("255-block-no-index.asdf");
+    assert_true(compare_files(filename, reference));
+    free(data);
     return MUNIT_OK;
 }
 
@@ -744,6 +773,7 @@ MU_TEST_SUITE(
     MU_RUN_TEST(invalid_block_index),
     MU_RUN_TEST(test_asdf_block_append),
     MU_RUN_TEST(test_asdf_block_append_read_only),
+    MU_RUN_TEST(write_block_no_index),
     MU_RUN_TEST(read_compressed_reference_file, comp_mode_test_params),
     MU_RUN_TEST(read_compressed_block, comp_mode_test_params),
     MU_RUN_TEST(read_compressed_block_to_file, comp_test_params),
