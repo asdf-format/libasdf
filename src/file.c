@@ -561,7 +561,7 @@ size_t asdf_block_count(asdf_file_t *file) {
         asdf_event_iterate(parser);
     }
 
-    return parser->blocks.n_blocks;
+    return parser->block.count;
 }
 
 asdf_block_t *asdf_block_open(asdf_file_t *file, size_t index) {
@@ -587,7 +587,7 @@ asdf_block_t *asdf_block_open(asdf_file_t *file, size_t index) {
         return NULL;
     }
 
-    asdf_block_info_vec_t *blocks = &file->parser->blocks.block_infos;
+    asdf_block_info_vec_t *blocks = &file->parser->block.infos;
     const asdf_block_info_t *info = asdf_block_info_vec_at(blocks, index);
     block->file = file;
     block->info = *info;

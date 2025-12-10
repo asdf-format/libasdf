@@ -10,6 +10,8 @@
 #include "block.h"
 #include "event.h"
 #include "parser.h"
+#include "types/asdf_block_index.h"
+#include "yaml.h"
 
 
 /**
@@ -70,7 +72,7 @@
     )(__VA_ARGS__)
 
 
-const off_t expected_offsets[] = {664};
+static const off_t basic_asdf_block_index_offsets[] = {664};
 
 
 MU_TEST(basic) {
@@ -108,8 +110,13 @@ MU_TEST(basic) {
     assert_string_equal(event->payload.version->version, "1.6.0");
 
     CHECK_NEXT_EVENT_TYPE(ASDF_BLOCK_INDEX_EVENT);
-    assert_int(event->payload.block_index->size, ==, 1);
-    assert_memory_equal(1, event->payload.block_index->offsets, expected_offsets);
+    asdf_block_index_t *block_index = event->payload.block_index;
+    isize block_index_size = asdf_block_index_size(block_index);
+    assert_int(block_index_size, ==, 1);
+    for (isize idx = 0; idx < block_index_size; idx++) {
+        off_t expected = basic_asdf_block_index_offsets[idx];
+        assert_int(*(asdf_block_index_at(block_index, idx)), ==, expected);
+    }
 
     CHECK_NEXT_EVENT_TYPE(ASDF_TREE_START_EVENT);
     assert_int(event->payload.tree->start, ==, 0x21);
@@ -236,8 +243,13 @@ MU_TEST(basic_no_yaml) {
     assert_string_equal(event->payload.version->version, "1.6.0");
 
     CHECK_NEXT_EVENT_TYPE(ASDF_BLOCK_INDEX_EVENT);
-    assert_int(event->payload.block_index->size, ==, 1);
-    assert_memory_equal(1, event->payload.block_index->offsets, expected_offsets);
+    asdf_block_index_t *block_index = event->payload.block_index;
+    isize block_index_size = asdf_block_index_size(block_index);
+    assert_int(block_index_size, ==, 1);
+    for (isize idx = 0; idx < block_index_size; idx++) {
+        off_t expected = basic_asdf_block_index_offsets[idx];
+        assert_int(*(asdf_block_index_at(block_index, idx)), ==, expected);
+    }
 
     CHECK_NEXT_EVENT_TYPE(ASDF_TREE_START_EVENT);
     assert_int(event->payload.tree->start, ==, 0x21);

@@ -85,17 +85,6 @@ typedef struct asdf_block_info {
 } asdf_block_info_t;
 
 
-// TODO: The block index is really nothing more than a resizeable vector of
-// size_t, and could be replaced by that.
-/* Structure for the block index, whether read from the actual block index in the file or
- * reconstructed while parsing */
-typedef struct asdf_block_index {
-    off_t *offsets;
-    size_t size;
-    size_t cap;
-} asdf_block_index_t;
-
-
 /**
  * Returns `true` if the given buffer begins with the ASDF block magic
  */
@@ -108,7 +97,3 @@ static inline bool is_block_magic(const uint8_t *buf, size_t len) {
 
 
 ASDF_LOCAL bool asdf_block_info_read(asdf_stream_t *stream, asdf_block_info_t *out_block);
-ASDF_LOCAL asdf_block_index_t *asdf_block_index_init(size_t size);
-ASDF_LOCAL asdf_block_index_t *asdf_block_index_resize(
-    asdf_block_index_t *block_index, size_t size);
-ASDF_LOCAL void asdf_block_index_free(asdf_block_index_t *block_index);

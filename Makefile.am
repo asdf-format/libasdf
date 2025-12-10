@@ -53,6 +53,7 @@ src_headers = \
     src/parser.h \
     src/stream.h \
     src/stream_intern.h \
+    src/types/asdf_block_index.h \
     src/types/asdf_block_info_vec.h \
     src/types/asdf_common_tag_map.h \
     src/types/asdf_extension_map.h \

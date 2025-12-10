@@ -13,6 +13,7 @@
 #include "event.h"
 #include "parse_util.h"
 #include "parser.h"
+#include "types/asdf_block_index.h"
 #include "util.h"
 #include "yaml.h"
 
@@ -291,11 +292,15 @@ void asdf_event_print(const asdf_event_t *event, FILE *file, bool verbose) {
         const asdf_block_index_t *block_index = event->payload.block_index;
         assert(block_index);
         fprintf(file, "  Offsets: ");
-        for (size_t idx = 0; idx < block_index->size; idx++) {
+        size_t idx = 0;
+        for (asdf_block_index_iter_t it = asdf_block_index_begin(block_index); it.ref;
+             asdf_block_index_next(&it)) {
+            isize *offset = it.ref;
             if (0 != idx) {
                 fprintf(file, ", ");
             }
-            fprintf(file, "%lld", (long long)block_index->offsets[idx]);
+            fprintf(file, "%lld", (long long)*offset);
+            idx++;
         }
         fprintf(file, "\n");
         break;
