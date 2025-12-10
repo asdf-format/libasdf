@@ -265,6 +265,39 @@ MU_TEST(invalid_block_index) {
 }
 
 
+MU_TEST(test_asdf_block_append) {
+    const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    asdf_file_t *file = asdf_open(filename, "w");
+    assert_not_null(file);
+    const char *data = "this is my data and it is my friend";
+    size_t len = strlen(data);
+    assert_int(asdf_block_append(file, data, len), ==, 0);
+    assert_int(asdf_block_count(file), ==, 1);
+    asdf_block_t *block = asdf_block_open(file, 0);
+    assert_not_null(block);
+    assert_int(asdf_block_data_size(block), ==, len);
+    size_t read_len = 0;
+    const char *read_data = asdf_block_data(block, &read_len);
+    assert_int(read_len, ==, len);
+    assert_memory_equal(len, read_data, data);
+    asdf_block_close(block);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+MU_TEST(test_asdf_block_append_read_only) {
+    const char *filename = get_fixture_file_path("multi-block.asdf");
+    asdf_file_t *file = asdf_open(filename, "r");
+    assert_not_null(file);
+    assert_int(asdf_block_append(file, NULL, 0), ==, -1);
+    const char *error = asdf_error(file);
+    assert_string_equal(error, "cannot append blocks to read-only files");
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
 /**
  * Compression tests
  * =================
@@ -709,6 +742,8 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_block_count),
     MU_RUN_TEST(missing_block_index),
     MU_RUN_TEST(invalid_block_index),
+    MU_RUN_TEST(test_asdf_block_append),
+    MU_RUN_TEST(test_asdf_block_append_read_only),
     MU_RUN_TEST(read_compressed_reference_file, comp_mode_test_params),
     MU_RUN_TEST(read_compressed_block, comp_mode_test_params),
     MU_RUN_TEST(read_compressed_block_to_file, comp_test_params),

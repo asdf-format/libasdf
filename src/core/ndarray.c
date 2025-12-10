@@ -679,7 +679,7 @@ static inline asdf_byteorder_t asdf_host_byteorder() {
 
 
 /* ndarray methods */
-void *asdf_ndarray_data_raw(asdf_ndarray_t *ndarray, size_t *size) {
+const void *asdf_ndarray_data_raw(asdf_ndarray_t *ndarray, size_t *size) {
     if (!ndarray)
         return NULL;
 
@@ -755,7 +755,7 @@ asdf_ndarray_err_t asdf_ndarray_read_tile_ndim(
     size_t src_tile_size = src_elsize * tile_nelems;
     size_t tile_size = dst_elsize * tile_nelems;
     size_t data_size = 0;
-    void *data = asdf_ndarray_data_raw(ndarray, &data_size);
+    const void *data = asdf_ndarray_data_raw(ndarray, &data_size);
 
     if (data_size < src_tile_size)
         return ASDF_NDARRAY_ERR_OUT_OF_BOUNDS;

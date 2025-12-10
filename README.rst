@@ -135,7 +135,7 @@ the ASDF tree, as well as extract block data.  Inline comments provide further e
        // Get just a raw pointer to the ndarray data block (if uncompressed).
        // Optionally returns the size in bytes as well
        size_t size = 0;
-       void *data = asdf_ndarray_data_raw(ndarray, &size);
+       const void *data = asdf_ndarray_data_raw(ndarray, &size);
 
        if (data == NULL) {
            fprintf(stderr, "error reading ndarray data\n");

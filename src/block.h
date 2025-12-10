@@ -78,10 +78,17 @@ typedef struct asdf_block_header {
 
 
 typedef struct asdf_block_info {
-    asdf_block_header_t header;
+    size_t index;
     off_t header_pos;
     off_t data_pos;
-    size_t index;
+    asdf_block_header_t header;
+    /**
+     * Optional pointer to existing block data
+     *
+     * When parsing an existing file this is not set, but when adding a new
+     * block to the file this is set to the user's provided data buffer.
+     */
+    const void *data;
 } asdf_block_info_t;
 
 
@@ -96,4 +103,6 @@ static inline bool is_block_magic(const uint8_t *buf, size_t len) {
 }
 
 
+ASDF_LOCAL void asdf_block_info_init(
+    size_t index, const void *data, size_t size, asdf_block_info_t *out_block);
 ASDF_LOCAL bool asdf_block_info_read(asdf_stream_t *stream, asdf_block_info_t *out_block);

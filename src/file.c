@@ -1,3 +1,4 @@
+#include <bits/posix1_lim.h>
 #include <errno.h>
 #include <math.h>
 #include <stddef.h>
@@ -596,6 +597,8 @@ asdf_block_t *asdf_block_open(asdf_file_t *file, size_t index) {
     asdf_block_info_vec_t *blocks = &file->blocks;
     const asdf_block_info_t *info = asdf_block_info_vec_at(blocks, (isize)index);
     block->file = file;
+    block->data = NULL;
+    block->should_close = false;
     block->info = *info;
     block->comp_state = NULL;
     return block;
@@ -613,7 +616,7 @@ void asdf_block_close(asdf_block_t *block) {
         free((void *)block->compression);
 
     // If the block has an open data handle, close it
-    if (block->data) {
+    if (block->should_close && block->data) {
         asdf_stream_t *stream = block->file->parser->stream;
         stream->close_mem(stream, block->data);
     }
@@ -623,12 +626,37 @@ void asdf_block_close(asdf_block_t *block) {
 }
 
 
+ssize_t asdf_block_append(asdf_file_t *file, const void *data, size_t size) {
+    if (file->mode == ASDF_FILE_MODE_READ_ONLY) {
+        ASDF_ERROR(file, "cannot append blocks to read-only files");
+        ASDF_LOG(file, ASDF_LOG_DEBUG, ASDF_ERROR_GET(file));
+        return -1;
+    }
+
+    size_t n_blocks = asdf_block_count(file);
+
+    if (n_blocks >= SSIZE_MAX) {
+        ASDF_ERROR(file, "cannot append more than %lld blocks to the file", SSIZE_MAX);
+        ASDF_LOG(file, ASDF_LOG_ERROR, ASDF_ERROR_GET(file));
+        return -1;
+    }
+
+    // Create a new block_info for the new block
+    asdf_block_info_t block_info = {0};
+    asdf_block_info_init(n_blocks, data, size, &block_info);
+    if (!asdf_block_info_vec_push(&file->blocks, block_info))
+        return -1;
+
+    return (ssize_t)n_blocks;
+}
+
+
 size_t asdf_block_data_size(asdf_block_t *block) {
     return block->info.header.data_size;
 }
 
 
-void *asdf_block_data(asdf_block_t *block, size_t *size) {
+const void *asdf_block_data(asdf_block_t *block, size_t *size) {
     if (!block)
         return NULL;
 
@@ -639,12 +667,21 @@ void *asdf_block_data(asdf_block_t *block, size_t *size) {
         return block->data;
     }
 
+    if (block->info.data) {
+        if (size)
+            *size = block->info.header.data_size;
+
+        block->data = (void *)block->info.data;
+        return block->data;
+    }
+
     asdf_parser_t *parser = block->file->parser;
     asdf_stream_t *stream = parser->stream;
     size_t avail = 0;
     void *data = stream->open_mem(
         stream, block->info.data_pos, block->info.header.used_size, &avail);
     block->data = data;
+    block->should_close = true;
     block->avail_size = avail;
 
     // Open compressed data if applicable

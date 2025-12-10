@@ -19,6 +19,21 @@ const unsigned char asdf_block_magic[] = {'\xd3', 'B', 'L', 'K'};
 const char asdf_block_index_header[] = "#ASDF BLOCK INDEX";
 
 
+void asdf_block_info_init(
+    size_t index, const void *data, size_t size, asdf_block_info_t *out_block) {
+    out_block->index = index;
+    // Fill out the header for as much as we know (prior to compression)
+    out_block->header = (asdf_block_header_t){
+        .header_size = ASDF_BLOCK_HEADER_SIZE,
+        .allocated_size = size,
+        .used_size = size,
+        .data_size = size};
+    out_block->header_pos = -1;
+    out_block->data_pos = -1;
+    out_block->data = data;
+}
+
+
 /**
  * Parse a block header pointed to by the current stream position
  *

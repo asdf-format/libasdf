@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdbool.h>
+
 #include <libfyaml.h>
 
 #ifdef HAVE_CONFIG_H
@@ -60,6 +62,7 @@ typedef struct asdf_block {
     asdf_file_t *file;
     asdf_block_info_t info;
     void *data;
+    bool should_close;
     // Should be the same as used_size in the header but may be truncated in exceptional
     // cases (we should probably log a warning when it is)
     size_t avail_size;
