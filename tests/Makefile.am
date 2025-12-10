@@ -7,7 +7,10 @@ AM_CPPFLAGS = \
 
 asdf_standard_dir = $(abs_top_srcdir)/asdf-standard
 asdf_standard_submodule = $(asdf_standard_dir)/.git
-munit_submodule = $(srcdir)/tests/munit.git
+munit_dir = $(top_builddir)/tests/munit
+munit_submodule = $(munit_dir)/.git
+munit_cflags = -I$(top_srcdir)/tests
+munit_ldflags = $(builddir)/libmunit.a
 submodules = $(asdf_standard_submodule) $(munit_submodule)
 
 $(asdf_standard_submodule) $(munit_submodule):
@@ -45,18 +48,18 @@ unit_test_cppflags = \
     -DFIXTURES_DIR=\"$(abs_srcdir)/fixtures\" \
     -DTEMP_DIR=\"$(abs_builddir)/tmp\"
 unit_test_cflags = \
-    $(FYAML_CFLAGS) $(STATGRAB_CFLAGS) $(LZ4_CFLAGS) $(CODE_COVERAGE_CFLAGS) $(ASDF_CFLAGS)
+    $(munit_cflags) $(FYAML_CFLAGS) $(STATGRAB_CFLAGS) $(LZ4_CFLAGS) $(CODE_COVERAGE_CFLAGS) $(ASDF_CFLAGS)
 
 if DEBUG
 unit_test_cflags += -DMUNIT_NO_FORK
 endif
 
-unit_test_ldflags = $(CODE_COVERAGE_LDFLAGS)
-unit_test_ldadd = $(top_builddir)/libasdf.la libmunit.a $(ASDF_LIBS)
+unit_test_ldflags = $(LDFLAGS) $(CODE_COVERAGE_LDFLAGS)
+unit_test_ldadd = $(munit_ldflags) $(top_builddir)/libasdf.la $(ASDF_LIBS)
 
 # Unit tests
 check_LIBRARIES = libmunit.a
-libmunit_a_SOURCES = util.c munit/munit.c
+libmunit_a_SOURCES = util.c $(munit_dir)/munit.c
 libmunit_a_CPPFLAGS = $(unit_test_cppflags)
 libmunit_a_CFLAGS = $(unit_test_cflags) -w
 
@@ -201,7 +204,7 @@ $(cpp_header_test): $(asdf_public_headers) $(srcdir)/scripts/generate_test_cpp_h
 
 test-cpp-headers$(EXEEXT): $(cpp_header_test) $(top_builddir)/libasdf.la
 	$(AM_V_at)$(LIBTOOL) --mode=link $(CXX) -std=c++17 -I$(top_srcdir)/include \
-	    $(ASDF_LDFLAGS) $(cpp_header_test) $(top_builddir)/libasdf.la $(ASDF_LIBS) \
+	    $(ASDF_LDFLAGS) $(unit_test_ldflags) $(cpp_header_test) $(top_builddir)/libasdf.la $(ASDF_LIBS) \
 	    -o $@ $(QUIET_OUT)
 
 TESTS += test-cpp-headers
@@ -221,7 +224,7 @@ $(DOC_EXAMPLES_DIR)/test-doc-examples.sh: $(top_srcdir)/README.rst $(srcdir)/scr
 	$(AM_V_at)for f in $(DOC_EXAMPLES_DIR)/*.c; do \
 	    exe=$${f%.c}; \
 	    $(LIBTOOL) --mode=link $(CC) $(ASDF_CFLAGS) -I$(top_srcdir)/include \
-	      $(ASDF_LDFLAGS) $$f $(top_builddir)/libasdf.la $(ASDF_LIBS) \
+	      $(ASDF_LDFLAGS) $(unit_test_ldflags) $$f $(top_builddir)/libasdf.la $(ASDF_LIBS) \
 	      -o $$exe $(QUIET_OUT); \
 	done
 
