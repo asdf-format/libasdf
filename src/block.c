@@ -2,7 +2,6 @@
  * ASDF block functions
  */
 
-#include <endian.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdlib.h>

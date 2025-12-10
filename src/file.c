@@ -1,5 +1,5 @@
-#include <bits/posix1_lim.h>
 #include <errno.h>
+#include <limits.h>
 #include <math.h>
 #include <stddef.h>
 #include <stdio.h>
