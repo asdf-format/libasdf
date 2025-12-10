@@ -7,10 +7,9 @@
 #include "config.h"
 #endif
 
-#include <asdf/event.h>
+#include "asdf/event.h" // IWYU pragma: export
 
 #include "util.h"
-#include "yaml.h"
 
 
 static const char *const asdf_event_type_names[] = {

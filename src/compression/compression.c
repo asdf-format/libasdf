@@ -13,9 +13,9 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
+#ifdef HAVE_CONFIG_H
 #include "config.h"
-#include <asdf/file.h>
-#include <asdf/log.h>
+#endif
 
 #ifdef HAVE_USERFAULTFD
 #include <fcntl.h>
@@ -38,6 +38,7 @@
 #include "../file.h"
 #include "../log.h"
 #include "../util.h"
+
 #include "compression.h"
 #include "compressor_registry.h"
 

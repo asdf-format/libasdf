@@ -5,11 +5,11 @@
 
 #include <libfyaml.h>
 
-#include <asdf/extension.h>
-#include <asdf/util.h>
-#include <asdf/value.h>
+#include "asdf/extension.h"
+#include "asdf/value.h" // IWYU pragma: export
 
 #include "file.h"
+#include "util.h"
 
 
 typedef struct {

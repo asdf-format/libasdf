@@ -6,9 +6,8 @@
 #include "config.h"
 #endif
 
-#include <asdf/file.h>
+#include "asdf/file.h" // IWYU pragma: export
 
-#include "compression/compression.h"
 #include "context.h"
 #include "emitter.h"
 #include "parser.h"
@@ -49,6 +48,8 @@ typedef struct asdf_file {
 /* Internal helper to get the `struct fy_document` for the tree, if any */
 ASDF_LOCAL struct fy_document *asdf_file_get_tree_document(asdf_file_t *file);
 
+// Forward-declaration
+typedef struct _asdf_block_comp_state_t asdf_block_comp_state_t;
 
 /**
  * User-level object for inspecting ASDF block metadata and data

@@ -6,11 +6,16 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #ifdef HAVE_USERFAULTFD
 #include <linux/userfaultfd.h>
 #endif
 
-#include <asdf/file.h>
+#include "../file.h"
+#include "../util.h"
 
 
 typedef enum {

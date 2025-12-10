@@ -35,7 +35,12 @@ src_headers = \
     src/compression/compression.h \
     src/compression/compressor_registry.h \
     src/context.h \
+    src/core/asdf.h \
+    src/core/extension_metadata.h \
+    src/core/history_entry.h \
+    src/core/ndarray.h \
     src/core/ndarray_convert.h \
+    src/core/software.h \
     src/emitter.h \
     src/error.h \
     src/extension_registry.h \
@@ -69,6 +74,7 @@ if WITH_GWCS
     src_headers += \
         src/gwcs/fitswcs_imaging.h \
         src/gwcs/frame.h \
+        src/gwcs/gwcs.h \
         src/gwcs/step.h \
         src/gwcs/transform.h \
         src/gwcs/types/asdf_gwcs_transform_map.h

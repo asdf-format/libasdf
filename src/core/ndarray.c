@@ -1,37 +1,17 @@
-#include "asdf/value.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
-
-#include <asdf/core/asdf.h>
-#define ASDF_CORE_NDARRAY_INTERNAL
-#include <asdf/core/ndarray.h>
-#undef ASDF_CORE_NDARRAY_INTERNAL
-#include <asdf/extension.h>
 
 #include "../extension_util.h"
 #include "../file.h"
 #include "../log.h"
 #include "../util.h"
 #include "../value.h"
+
+#include "asdf.h"
+#include "ndarray.h"
 #include "ndarray_convert.h"
-
-
-/** Internal definition of the asdf_ndarray_t type with extended internal fields */
-typedef struct asdf_ndarray {
-    size_t source;
-    uint32_t ndim;
-    uint64_t *shape;
-    asdf_datatype_t datatype;
-    asdf_byteorder_t byteorder;
-    uint64_t offset;
-    int64_t *strides;
-
-    // Internal fields
-    asdf_block_t *block;
-    asdf_file_t *file;
-} asdf_ndarray_t;
 
 
 #ifdef ASDF_LOG_ENABLED

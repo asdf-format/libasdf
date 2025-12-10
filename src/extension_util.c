@@ -1,12 +1,10 @@
-#include <ctype.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <asdf/value.h>
-
 #include "extension_util.h"
 #include "log.h"
+#include "value.h"
 
 
 /**

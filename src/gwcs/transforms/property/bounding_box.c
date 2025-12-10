@@ -1,14 +1,10 @@
 #include <stdlib.h>
 
-#include <asdf/core/asdf.h>
-#define ASDF_GWCS_INTERNAL
-#include <asdf/gwcs/transform.h>
-#include <asdf/gwcs/transforms/property/bounding_box.h>
-#undef ASDF_GWCS_INTERNAL
-#include <asdf/value.h>
-
 #include "../../../extension_util.h"
 #include "../../../log.h"
+#include "../../../value.h"
+
+#include "../../gwcs.h"
 
 
 static asdf_value_err_t asdf_gwcs_bounding_box_deserialize(

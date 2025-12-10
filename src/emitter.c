@@ -1,8 +1,6 @@
 #include <assert.h>
-#include <errno.h>
 #include <stdbool.h>
 
-#include "asdf/emitter.h"
 #include "context.h"
 #include "emitter.h"
 #include "error.h"

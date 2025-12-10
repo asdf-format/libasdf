@@ -1,13 +1,8 @@
-#include <asdf/core/asdf.h>
-#include <asdf/gwcs/gwcs.h>
-#include <asdf/log.h>
-
 #include "../util.h"
 #include "../value.h"
 
-#include "asdf/gwcs/frame.h"
-#include "asdf/value.h"
 #include "frame.h"
+#include "gwcs.h"
 
 
 static asdf_value_err_t asdf_gwcs_frame2d_deserialize(

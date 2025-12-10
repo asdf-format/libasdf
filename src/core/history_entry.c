@@ -6,15 +6,14 @@
 #include <string.h>
 #include <time.h>
 
-#include <asdf/core/asdf.h>
-#include <asdf/core/history_entry.h>
-#include <asdf/core/software.h>
-#include <asdf/extension.h>
-
 #include "../error.h"
 #include "../log.h"
 #include "../util.h"
 #include "../value.h"
+
+#include "asdf.h"
+#include "history_entry.h"
+#include "software.h"
 
 
 /*

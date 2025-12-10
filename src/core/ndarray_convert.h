@@ -3,9 +3,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#include <asdf/core/ndarray.h>
-
 #include "../util.h"
+
+#include "ndarray.h"
 
 
 typedef int (*asdf_ndarray_convert_fn_t)(

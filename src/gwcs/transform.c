@@ -1,17 +1,8 @@
 #include <stdatomic.h>
 
-#define ASDF_GWCS_INTERNAL
-#include <asdf/gwcs/core.h>
-#include <asdf/gwcs/fitswcs_imaging.h>
-#include <asdf/gwcs/transform.h>
-#include <asdf/gwcs/transforms/property/bounding_box.h>
-#include <asdf/gwcs/wcs.h>
-#undef ASDF_GWCS_INTERNAL
-#include <asdf/util.h>
-#include <asdf/value.h>
-
 #include "../extension_util.h"
-#include "transform.h"
+
+#include "gwcs.h"
 #include "types/asdf_gwcs_transform_map.h"
 
 

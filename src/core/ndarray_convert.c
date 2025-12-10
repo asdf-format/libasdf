@@ -12,9 +12,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include <asdf/core/ndarray.h>
-
 #include "../util.h"
+
+#include "ndarray.h"
 #include "ndarray_convert.h"
 
 

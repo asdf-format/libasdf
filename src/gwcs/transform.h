@@ -2,10 +2,11 @@
 #pragma once
 
 #define ASDF_GWCS_INTERNAL
-#include <asdf/gwcs/transform.h>
+#include "asdf/gwcs/transform.h" // IWYU pragma: export
 #undef ASDF_GWCS_INTERNAL
-#include <asdf/util.h>
-#include <asdf/value.h>
+
+#include "../util.h"
+#include "../value.h"
 
 
 ASDF_LOCAL asdf_value_err_t

@@ -1,21 +1,14 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-#include <asdf/core/asdf.h>
-#include <asdf/extension.h>
-#define ASDF_GWCS_INTERNAL
-#include <asdf/gwcs/frame.h>
-#include <asdf/gwcs/frame2d.h>
-#include <asdf/gwcs/gwcs.h>
-#undef ASDF_GWCS_INTERNAL
-#include <asdf/value.h>
+#include "gwcs.h"
+#include "step.h"
+#include "transform.h"
 
 #include "../extension_util.h"
 #include "../log.h"
 #include "../util.h"
 #include "../value.h"
-#include "step.h"
-#include "transform.h"
 
 
 static asdf_value_err_t asdf_gwcs_step_deserialize(

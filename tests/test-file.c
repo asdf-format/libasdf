@@ -24,6 +24,7 @@
 #include <asdf/core/ndarray.h>
 #include <asdf/value.h>
 
+#include "compression/compression.h"
 #include "config.h"
 #include "file.h"
 #include "munit.h"
