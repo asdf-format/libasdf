@@ -50,7 +50,7 @@ typedef struct asdf_event {
         // Only if ASDF_YAML_EVENT
         asdf_yaml_event_t *yaml;
         // Only if ASDF_BLOCK_EVENT
-        asdf_block_info_t *block;
+        const asdf_block_info_t *block;
         // Only if ASDF_BLOCK_INDEX_EVENT
         asdf_block_index_t *block_index;
     } payload;

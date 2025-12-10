@@ -16,6 +16,7 @@
 #include "file.h"
 #include "log.h"
 #include "parser.h"
+#include "types/asdf_block_info_vec.h"
 #include "util.h"
 #include "value.h"
 
@@ -586,8 +587,8 @@ asdf_block_t *asdf_block_open(asdf_file_t *file, size_t index) {
         return NULL;
     }
 
-    asdf_parser_t *parser = file->parser;
-    asdf_block_info_t *info = parser->blocks.block_infos[index];
+    asdf_block_info_vec_t *blocks = &file->parser->blocks.block_infos;
+    const asdf_block_info_t *info = asdf_block_info_vec_at(blocks, index);
     block->file = file;
     block->info = *info;
     block->comp_state = NULL;

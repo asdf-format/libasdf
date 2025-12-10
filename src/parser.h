@@ -15,6 +15,7 @@
 #include "context.h"
 #include "event.h"
 #include "stream.h"
+#include "types/asdf_block_info_vec.h"
 
 
 #define ASDF_COMMENT_CHAR '#'
@@ -69,11 +70,9 @@ struct asdf_event_p {
 
 typedef struct asdf_parser_block_info {
     // Array of block infos for all blocks
-    asdf_block_info_t **block_infos;
+    asdf_block_info_vec_t block_infos;
     // Number of valid blocks
     size_t n_blocks;
-    // Allocation for the block_infos array
-    size_t cap;
     // Number of blocks found so far by the parser state machine
     // This may exclude blocks that were already found during block index validation.
     size_t found_blocks;

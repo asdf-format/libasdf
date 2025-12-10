@@ -2,6 +2,7 @@
  * ASDF block functions
  */
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,7 +10,6 @@
 #include "block.h"
 #include "compat/endian.h"
 #include "error.h"
-#include "parser.h"
 #include "stream.h"
 #include "util.h"
 
@@ -22,11 +22,11 @@ const char asdf_block_index_header[] = "#ASDF BLOCK INDEX";
 /**
  * Parse a block header pointed to by the current stream position
  *
- * On success, allocates an ``asdf_block_info_t`` on the heap, to be freed by the caller.
+ * Assigns the block info into the allocated `asdf_block_info_t *` output,
+ * and returns true if a block could be read successfully.
  */
-asdf_block_info_t *asdf_block_info_read(asdf_parser_t *parser) {
-    asdf_stream_t *stream = parser->stream;
-    size_t header_pos = asdf_stream_tell(stream);
+bool asdf_block_info_read(asdf_stream_t *stream, asdf_block_info_t *out_block) {
+    off_t header_pos = asdf_stream_tell(stream);
     size_t avail = 0;
     const uint8_t *buf = NULL;
 
@@ -36,49 +36,41 @@ asdf_block_info_t *asdf_block_info_read(asdf_parser_t *parser) {
     // magic but then contains garbage.  But we will need some heuristics
     // for what counts as "garbage"
     // Go ahead and allocate storage for the block info
-    asdf_block_info_t *block = calloc(1, sizeof(asdf_block_info_t));
-
-    if (!block) {
-        ASDF_ERROR_OOM(parser);
-        goto error;
-    }
-
     asdf_stream_consume(stream, ASDF_BLOCK_MAGIC_SIZE);
 
-    if (UNLIKELY(ASDF_ERROR_GET(parser) != NULL))
-        goto error;
+    if (UNLIKELY(ASDF_ERROR_GET(stream) != NULL))
+        return false;
 
     buf = asdf_stream_next(stream, FIELD_SIZEOF(asdf_block_header_t, header_size), &avail);
 
     if (!buf) {
-        ASDF_ERROR_STATIC(parser, "Failed to seek past block magic");
-        goto error;
+        ASDF_ERROR_STATIC(stream, "Failed to seek past block magic");
+        return false;
     }
 
     if (avail < 2) {
-        ASDF_ERROR_STATIC(parser, "Failed to read block header size");
-        goto error;
+        ASDF_ERROR_STATIC(stream, "Failed to read block header size");
+        return false;
     }
 
-    asdf_block_header_t *header = &block->header;
+    asdf_block_header_t *header = &out_block->header;
     // NOLINTNEXTLINE(readability-magic-numbers)
     header->header_size = (buf[0] << 8) | buf[1];
     if (header->header_size < ASDF_BLOCK_HEADER_SIZE) {
-        ASDF_ERROR_STATIC(parser, "Invalid block header size");
-        goto error;
+        ASDF_ERROR_STATIC(stream, "Invalid block header size");
+        return false;
     }
 
     asdf_stream_consume(stream, FIELD_SIZEOF(asdf_block_header_t, header_size));
 
-    if (UNLIKELY(ASDF_ERROR_GET(parser) != NULL)) {
-        goto error;
-    }
+    if (UNLIKELY(ASDF_ERROR_GET(stream) != NULL))
+        return false;
 
     buf = asdf_stream_next(stream, header->header_size, &avail);
 
     if (avail < header->header_size) {
-        ASDF_ERROR_STATIC(parser, "Failed to read full block header");
-        goto error;
+        ASDF_ERROR_STATIC(stream, "Failed to read full block header");
+        return false;
     }
 
     // Parse block fields
@@ -105,17 +97,12 @@ asdf_block_info_t *asdf_block_info_read(asdf_parser_t *parser) {
 
     asdf_stream_consume(stream, header->header_size);
 
-    if (UNLIKELY(ASDF_ERROR_GET(parser) != NULL)) {
-        goto error;
-    }
+    if (UNLIKELY(ASDF_ERROR_GET(stream) != NULL))
+        return false;
 
-    block->header_pos = header_pos;
-    block->data_pos = asdf_stream_tell(parser->stream);
-    block->index = parser->blocks.found_blocks;
-    return block;
-error:
-    free(block);
-    return NULL;
+    out_block->header_pos = header_pos;
+    out_block->data_pos = asdf_stream_tell(stream);
+    return true;
 }
 
 

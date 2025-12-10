@@ -13,12 +13,6 @@
 #include <unistd.h>
 
 #include <stc/cstr.h>
-#ifdef __GNUC__
-// Seems to be a bug in gcc that the warning diagnostics set by STC are not
-// all restored on #pragma GCC diagnostic pop
-// This makes munit sad, but for the tests we can safely ignore.
-#pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
-#endif
 
 #include <asdf/file.h>
 #include <asdf/core/ndarray.h>

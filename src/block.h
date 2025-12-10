@@ -13,7 +13,7 @@
 #include <string.h>
 #include <sys/types.h>
 
-#include "parser.h"
+#include "stream.h"
 #include "util.h"
 
 
@@ -79,12 +79,14 @@ typedef struct asdf_block_header {
 
 typedef struct asdf_block_info {
     asdf_block_header_t header;
-    size_t index;
     off_t header_pos;
     off_t data_pos;
+    size_t index;
 } asdf_block_info_t;
 
 
+// TODO: The block index is really nothing more than a resizeable vector of
+// size_t, and could be replaced by that.
 /* Structure for the block index, whether read from the actual block index in the file or
  * reconstructed while parsing */
 typedef struct asdf_block_index {
@@ -105,7 +107,7 @@ static inline bool is_block_magic(const uint8_t *buf, size_t len) {
 }
 
 
-ASDF_LOCAL asdf_block_info_t *asdf_block_info_read(asdf_parser_t *parser);
+ASDF_LOCAL bool asdf_block_info_read(asdf_stream_t *stream, asdf_block_info_t *out_block);
 ASDF_LOCAL asdf_block_index_t *asdf_block_index_init(size_t size);
 ASDF_LOCAL asdf_block_index_t *asdf_block_index_resize(
     asdf_block_index_t *block_index, size_t size);
