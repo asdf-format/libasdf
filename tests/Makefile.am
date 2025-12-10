@@ -7,9 +7,9 @@ AM_CPPFLAGS = \
 
 asdf_standard_dir = $(abs_top_srcdir)/asdf-standard
 asdf_standard_submodule = $(asdf_standard_dir)/.git
-munit_dir = $(top_srcdir)/tests/munit
+munit_dir = $(top_builddir)/tests/munit
 munit_submodule = $(munit_dir)/.git
-munit_cflags = -I$(srcdir)/tests
+munit_cflags = -I$(top_srcdir)/tests
 munit_ldflags = $(builddir)/libmunit.a
 submodules = $(asdf_standard_submodule) $(munit_submodule)
 
