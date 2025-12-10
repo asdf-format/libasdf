@@ -262,6 +262,7 @@ void asdf_close(asdf_file_t *file) {
     fy_document_destroy(file->tree);
     asdf_emitter_destroy(file->emitter);
     asdf_parser_destroy(file->parser);
+    asdf_block_info_vec_drop(&file->blocks);
     free(file->config);
     /* Clean up */
     ZERO_MEMORY(file, sizeof(asdf_file_t));
@@ -557,11 +558,16 @@ size_t asdf_block_count(asdf_file_t *file) {
      */
     asdf_parser_t *parser = file->parser;
 
-    while (!parser->done) {
-        asdf_event_iterate(parser);
+    if (parser && !parser->done) {
+        while (!parser->done) {
+            asdf_event_iterate(parser);
+        }
+
+        // Copy the parser's block info into the file's
+        asdf_block_info_vec_copy(&file->blocks, parser->block.infos);
     }
 
-    return parser->block.count;
+    return (size_t)asdf_block_info_vec_size(&file->blocks);
 }
 
 asdf_block_t *asdf_block_open(asdf_file_t *file, size_t index) {
@@ -587,8 +593,8 @@ asdf_block_t *asdf_block_open(asdf_file_t *file, size_t index) {
         return NULL;
     }
 
-    asdf_block_info_vec_t *blocks = &file->parser->block.infos;
-    const asdf_block_info_t *info = asdf_block_info_vec_at(blocks, index);
+    asdf_block_info_vec_t *blocks = &file->blocks;
+    const asdf_block_info_t *info = asdf_block_info_vec_at(blocks, (isize)index);
     block->file = file;
     block->info = *info;
     block->comp_state = NULL;

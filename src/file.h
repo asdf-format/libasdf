@@ -11,6 +11,7 @@
 #include "context.h"
 #include "emitter.h"
 #include "parser.h"
+#include "types/asdf_block_info_vec.h"
 
 
 #ifdef HAVE_USERFAULTFD
@@ -42,6 +43,7 @@ typedef struct asdf_file {
     asdf_parser_t *parser;
     asdf_emitter_t *emitter;
     struct fy_document *tree;
+    asdf_block_info_vec_t blocks;
 } asdf_file_t;
 
 

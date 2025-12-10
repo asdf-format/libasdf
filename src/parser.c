@@ -867,6 +867,7 @@ static parse_result_t parse_block(asdf_parser_t *parser, asdf_event_t *event) {
 
     // Still no blocks found; set the parser to end
     if (!block_info) {
+        asdf_block_index_shrink_to_fit(block_index);
         parser->state = ASDF_PARSER_STATE_END;
         return ASDF_PARSE_CONTINUE;
     }
