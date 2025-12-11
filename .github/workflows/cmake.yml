@@ -89,7 +89,7 @@ jobs:
           -DENABLE_TESTING_ALL=YES \
           ${{ matrix.cmake_options }} \
           ${{ github.event.inputs.cmake_flags }}
-        make ${{ github.event.inputs.make_flags }}
+        make VERBOSE=1 ${{ github.event.inputs.make_flags }}
 
     - name: MacOS build
       if: startsWith(matrix.os, 'macos')
@@ -113,23 +113,23 @@ jobs:
           -DARGP_INCLUDEDIR=${hbroot}/include \
           ${{ matrix.cmake_options }} \
           ${{ github.event.inputs.cmake_flags }}
-        make ${{ github.event.inputs.make_flags }}
+        make VERBOSE=1 ${{ github.event.inputs.make_flags }}
 
 
     - name: Install
       run: |
         cd build
-        make install
+        make VERBOSE=1 install
 
     - name: Generate source archive
       run: |
         cd build
-        make package_source
+        make VERBOSE=1 package_source
 
     - name: Generate binary archives
       run: |
         cd build
-        make package
+        make VERBOSE=1 package
 
     - name: Test
       working-directory: ${{github.workspace}}/build
