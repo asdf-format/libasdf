@@ -36,15 +36,12 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-14]
-        gcc: [12, 14]
+        cc: [gcc]
+        cxx: [g++]
         cmake_options: ["", "-DENABLE_ASAN=ON"]
         exclude:
           - os: macos-14
             cmake_options: "-DENABLE_ASAN=ON"
-          - os: macos-14
-            gcc: 14
-          - os: ubuntu-latest
-            gcc: 14
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout code
@@ -69,7 +66,6 @@ jobs:
       run: |
         brew update
         brew install \
-            gcc@${{ matrix.gcc }} \
             argp-standalone \
             libfyaml \
             libstatgrab \
@@ -94,9 +90,8 @@ jobs:
     - name: MacOS build
       if: startsWith(matrix.os, 'macos')
       env:
-        CC: gcc-${{ matrix.gcc }}
-        CXX: g++-${{ matrix.gcc }}
-        FC: gfortran-${{ matrix.gcc }}
+        CC: ${{ matrix.cc }}
+        CXX: ${{ matrix.cxx }}
         PKG_CONFIG_PATH: /opt/homebrew/lib/pkgconfig:/usr/local/lib/pkgconfig
 
       run: |
