@@ -1,7 +1,9 @@
 #include <assert.h>
 #include <stdbool.h>
+#include <string.h>
 
-#include "block.h"
+#include <libfyaml.h>
+
 #include "context.h"
 #include "emitter.h"
 #include "error.h"
@@ -13,7 +15,7 @@
 /**
  * Default libasdf emitter configuration
  */
-static const asdf_emitter_cfg_t default_asdf_emitter_cfg = {};
+static const asdf_emitter_cfg_t asdf_emitter_cfg_default = ASDF_EMITTER_CFG_DEFAULT;
 
 
 asdf_emitter_t *asdf_emitter_create(asdf_file_t *file, asdf_emitter_cfg_t *config) {
@@ -25,17 +27,53 @@ asdf_emitter_t *asdf_emitter_create(asdf_file_t *file, asdf_emitter_cfg_t *confi
     emitter->base.ctx = file->base.ctx;
     asdf_context_retain(emitter->base.ctx);
     emitter->file = file;
-    emitter->config = config ? *config : default_asdf_emitter_cfg;
+    emitter->config = config ? *config : asdf_emitter_cfg_default;
     emitter->state = ASDF_EMITTER_STATE_INITIAL;
     emitter->done = false;
     return emitter;
 }
 
 
+static bool asdf_emitter_should_emit_tree(asdf_emitter_t *emitter) {
+    bool emit_empty = asdf_emitter_has_opt(emitter, ASDF_EMITTER_OPT_EMIT_EMPTY_TREE);
+
+    if (asdf_emitter_has_opt(emitter, ASDF_EMITTER_OPT_NO_EMIT_EMPTY_TREE))
+        emit_empty = false;
+
+    struct fy_document *tree = emitter->file->tree;
+
+    // If the tree was never created, no reason to create it here either,
+    // just return based on the emit option
+    if (!tree)
+        return emit_empty;
+
+    struct fy_node *root = fy_document_root(tree);
+
+    // If there is is no root node explicitly set libfyaml's emitter actually
+    // returns an error. If the EMIT_EMPTY_TREE flag was set then this is ok
+    // and we can just skip tree emission altogether.  Otherwise assign an
+    // empty root node and proceed.
+    if (!root) {
+        if (!emit_empty)
+            return false;
+
+        root = fy_node_create_mapping(tree);
+        // May not succeed in principle but we'll find out when it emits NULL
+        // below
+        fy_document_set_root(tree, root);
+    } else if (!emit_empty && fy_node_mapping_is_empty(root)) {
+        // root node is set but is an empty mapping, so same deal
+        return false;
+    }
+
+    return true;
+}
+
+
 /** Helper to determine if there is any content to write to the file */
 static bool asdf_emitter_should_emit(asdf_emitter_t *emitter) {
-    // TODO: Check if has tree to write
-    bool should_emit = false;
+    bool should_emit = asdf_emitter_should_emit_tree(emitter);
+
     if (asdf_block_info_vec_size(&emitter->file->blocks) > 0)
         should_emit = true;
 
@@ -95,6 +133,58 @@ static asdf_emitter_state_t emit_standard_version(asdf_emitter_t *emitter) {
     WRITE_STRING0(emitter->stream, asdf_standard_default);
     WRITE_NEWLINE(emitter->stream);
     asdf_stream_flush(emitter->stream);
+    return ASDF_EMITTER_STATE_TREE;
+}
+
+
+/**
+ * Custom outputter for the fy_emitter that just writes to our stream
+ */
+static int fy_emitter_stream_output(
+    struct fy_emitter *fy_emit,
+    UNUSED(enum fy_emitter_write_type type),
+    const char *str,
+    int len,
+    void *userdata) {
+    assert(fy_emit);
+    assert(userdata);
+    // The userdata passed in is our stream
+    asdf_stream_t *stream = userdata;
+    return (int)asdf_stream_write(stream, str, len);
+}
+
+
+/**
+ * Emit the YAML tree to the file
+ */
+static asdf_emitter_state_t emit_tree(asdf_emitter_t *emitter) {
+    if (!asdf_emitter_should_emit_tree(emitter))
+        return ASDF_EMITTER_STATE_BLOCKS;
+
+    struct fy_document *tree = asdf_file_get_tree_document(emitter->file);
+
+    // There *should* be a tree now, even if empty
+    if (!tree)
+        return ASDF_EMITTER_STATE_ERROR;
+
+    // NOTE: There are many, many different options that can be passed to the
+    // libfyaml document emitter; we will probably want to give some
+    // opportunities to control this, and also determine which options hew
+    // closest to the Python output
+    struct fy_emitter_cfg config = {
+        .flags = FYECF_DEFAULT, .output = fy_emitter_stream_output, .userdata = emitter->stream};
+
+    struct fy_emitter *fy_emitter = fy_emitter_create(&config);
+
+    if (!fy_emitter)
+        return ASDF_EMITTER_STATE_ERROR;
+
+    if (fy_emit_document(fy_emitter, tree) != 0) {
+        fy_emitter_destroy(fy_emitter);
+        return ASDF_EMITTER_STATE_ERROR;
+    }
+
+    fy_emitter_destroy(fy_emitter);
     return ASDF_EMITTER_STATE_BLOCKS;
 }
 
@@ -143,6 +233,9 @@ asdf_emitter_state_t asdf_emitter_emit(asdf_emitter_t *emitter) {
             break;
         case ASDF_EMITTER_STATE_STANDARD_VERSION:
             next_state = emit_standard_version(emitter);
+            break;
+        case ASDF_EMITTER_STATE_TREE:
+            next_state = emit_tree(emitter);
             break;
         case ASDF_EMITTER_STATE_BLOCKS:
             next_state = emit_blocks(emitter);

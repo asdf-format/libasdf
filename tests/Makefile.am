@@ -244,6 +244,7 @@ EXTRA_DIST += \
     fixtures/byteorder.asdf \
     fixtures/compressed.asdf \
     fixtures/cube.asdf \
+    fixtures/custom-tag-handle.asdf \
     fixtures/datatypes.asdf \
     fixtures/events/basic.events.txt \
     fixtures/events/complex.events.txt \
@@ -270,6 +271,7 @@ EXTRA_DIST += \
     fixtures/nested.asdf \
     fixtures/numeric.asdf \
     fixtures/parse-minimal.asdf \
+    fixtures/parse-minimal-empty-tree.asdf \
     fixtures/parse-minimal-extra-comment.asdf \
     fixtures/roman_wcs.asdf \
     fixtures/scalars.asdf \

@@ -16,16 +16,18 @@
 #include "event.h"
 #include "file.h"
 #include "log.h"
+#include "parse_util.h"
 #include "parser.h"
 #include "types/asdf_block_info_vec.h"
 #include "util.h"
 #include "value.h"
 
 
-static const asdf_config_t default_asdf_config = {
+static const asdf_config_t asdf_config_default = {
     /* Basic parser settings for high-level file interface: ignore individual YAML events and
      * just store the tree in memory to parse into a fy_document later */
-    .parser = {.flags = ASDF_PARSER_OPT_BUFFER_TREE}};
+    .parser = {.flags = ASDF_PARSER_OPT_BUFFER_TREE},
+    .emitter = ASDF_EMITTER_CFG_DEFAULT};
 
 
 /**
@@ -54,11 +56,12 @@ static asdf_config_t *asdf_config_build(asdf_config_t *user_config) {
         return NULL;
     }
 
-    memcpy(config, &default_asdf_config, sizeof(asdf_config_t));
+    memcpy(config, &asdf_config_default, sizeof(asdf_config_t));
 
     if (user_config) {
         ASDF_CONFIG_OVERRIDE(config, user_config, parser.flags, 0);
         ASDF_CONFIG_OVERRIDE(config, user_config, emitter.flags, 0);
+        ASDF_CONFIG_OVERRIDE(config, user_config, emitter.tag_handles, NULL);
         ASDF_CONFIG_OVERRIDE(config, user_config, decomp.mode, ASDF_BLOCK_DECOMP_MODE_AUTO);
         ASDF_CONFIG_OVERRIDE(config, user_config, decomp.max_memory_bytes, 0);
         ASDF_CONFIG_OVERRIDE(config, user_config, decomp.max_memory_threshold, 0.0);
@@ -147,6 +150,7 @@ static asdf_file_t *asdf_file_create(asdf_config_t *user_config, asdf_file_mode_
         break;
     }
     case ASDF_FILE_MODE_WRITE_ONLY: {
+        file->base.ctx = asdf_context_create();
         asdf_emitter_t *emitter = asdf_emitter_create(file, &config->emitter);
 
         if (UNLIKELY(!emitter)) {
@@ -154,8 +158,6 @@ static asdf_file_t *asdf_file_create(asdf_config_t *user_config, asdf_file_mode_
             return NULL;
         }
 
-        file->base.ctx = emitter->base.ctx;
-        asdf_context_retain(file->base.ctx);
         file->emitter = emitter;
         break;
     }
@@ -292,6 +294,57 @@ const char *asdf_error(asdf_file_t *file) {
 }
 
 
+// TODO: Could maybe cache the default empty document and use fy_document_clone on it
+// but I don't think this is a very expensive operation to begin with.
+static struct fy_document *asdf_file_create_empty_document(asdf_config_t *config) {
+    bool has_default_tag_handle = false;
+    struct fy_document *doc = fy_document_build_from_string(NULL, asdf_yaml_empty_document, FY_NT);
+
+    if (!doc)
+        return NULL;
+
+    if (config && config->emitter.tag_handles) {
+        // One loop over to see if we actually have the ! handle defined, if not
+        // set it to the default
+        asdf_yaml_tag_handle_t *handle = config->emitter.tag_handles;
+        while (handle && handle->handle) {
+            if (strcmp(handle->handle, ASDF_YAML_DEFAULT_TAG_HANDLE) == 0) {
+                has_default_tag_handle = true;
+                break;
+            }
+            handle++;
+        }
+
+        if (!has_default_tag_handle) {
+            if (fy_document_tag_directive_lookup(doc, ASDF_YAML_DEFAULT_TAG_HANDLE) != NULL) {
+                if (fy_document_tag_directive_remove(doc, ASDF_YAML_DEFAULT_TAG_HANDLE) != 0)
+                    goto error;
+            }
+
+            if (fy_document_tag_directive_add(
+                    doc, ASDF_YAML_DEFAULT_TAG_HANDLE, ASDF_STANDARD_TAG_PREFIX) != 0)
+                goto error;
+        }
+
+        handle = config->emitter.tag_handles;
+        while (handle && handle->handle) {
+            if (fy_document_tag_directive_lookup(doc, handle->handle) != NULL) {
+                if (fy_document_tag_directive_remove(doc, handle->handle) != 0)
+                    goto error;
+            }
+            if (fy_document_tag_directive_add(doc, handle->handle, handle->prefix) != 0)
+                goto error;
+            handle++;
+        }
+    }
+
+    return doc;
+error:
+    fy_document_destroy(doc);
+    return NULL;
+}
+
+
 ASDF_LOCAL struct fy_document *asdf_file_get_tree_document(asdf_file_t *file) {
     if (!file)
         return NULL;
@@ -302,8 +355,13 @@ ASDF_LOCAL struct fy_document *asdf_file_get_tree_document(asdf_file_t *file) {
 
     asdf_parser_t *parser = file->parser;
 
-    if (!parser)
-        return NULL;
+    // If no parser (e.g. we are in write-only mode) create a new empty document
+    // TODO: Add a subroutine to initialize the empty document as well, with
+    // core/asdf schema, initial tag prefixes, etc.
+    if (!parser) {
+        file->tree = asdf_file_create_empty_document(file->config);
+        return file->tree;
+    }
 
     if (UNLIKELY(0 == parser->tree.has_tree))
         return NULL;
