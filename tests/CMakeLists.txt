@@ -22,7 +22,7 @@ add_library(munit ${MUNIT_DIR}/munit.c)
 # Build util static library
 set(REFERENCE_FILES_DIR "${ASDFSTD_DIR}/reference_files")
 set(FIXTURES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
-set(TEMP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/tmp")
+set(TEMP_DIR "${CMAKE_CURRENT_BINARY_DIR}/tmp")
 
 add_library(util util.c)
 target_include_directories(util PRIVATE
