@@ -39,6 +39,20 @@ extern ASDF_LOCAL const char *asdf_yaml_directive_prefix;
 
 
 /**
+ * A hard-coded string containg an empty YAML 1.1 document
+ *
+ * This is used with libfyaml to initialize an empty document.  This is a
+ * workaround to a shortcoming that libfyaml does not allow setting a
+ * YAML version on a document unless it's preserving the original version
+ * of an existing document (otherwise it always outputs the latest version).
+ *
+ * That would be fine except for the fact that ASDF 1.x standardizes on
+ * YAML 1.1 specifically
+ */
+extern ASDF_LOCAL const char *asdf_yaml_empty_document;
+
+
+/**
  * Token for a valid YAML document end marker, i.e. '\n...'
  * It should also end with a newline but that's excluded from this constant
  * since it could be either \r\n or just \n so we check for that explicitly once

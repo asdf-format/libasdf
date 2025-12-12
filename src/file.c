@@ -16,6 +16,7 @@
 #include "event.h"
 #include "file.h"
 #include "log.h"
+#include "parse_util.h"
 #include "parser.h"
 #include "types/asdf_block_info_vec.h"
 #include "util.h"
@@ -25,7 +26,8 @@
 static const asdf_config_t default_asdf_config = {
     /* Basic parser settings for high-level file interface: ignore individual YAML events and
      * just store the tree in memory to parse into a fy_document later */
-    .parser = {.flags = ASDF_PARSER_OPT_BUFFER_TREE}};
+    .parser = {.flags = ASDF_PARSER_OPT_BUFFER_TREE},
+    .emitter = {.flags = ASDF_EMITTER_OPT_DEFAULT}};
 
 
 /**
@@ -147,6 +149,7 @@ static asdf_file_t *asdf_file_create(asdf_config_t *user_config, asdf_file_mode_
         break;
     }
     case ASDF_FILE_MODE_WRITE_ONLY: {
+        file->base.ctx = asdf_context_create();
         asdf_emitter_t *emitter = asdf_emitter_create(file, &config->emitter);
 
         if (UNLIKELY(!emitter)) {
@@ -154,7 +157,6 @@ static asdf_file_t *asdf_file_create(asdf_config_t *user_config, asdf_file_mode_
             return NULL;
         }
 
-        file->base.ctx = emitter->base.ctx;
         asdf_context_retain(file->base.ctx);
         file->emitter = emitter;
         break;
@@ -292,6 +294,13 @@ const char *asdf_error(asdf_file_t *file) {
 }
 
 
+// TODO: Could maybe cache the default empty document and use fy_document_clone on it
+// but I don't think this is a very expensive operation to begin with.
+static struct fy_document *asdf_file_create_empty_document(void) {
+    return fy_document_build_from_string(NULL, asdf_yaml_empty_document, FY_NT);
+}
+
+
 ASDF_LOCAL struct fy_document *asdf_file_get_tree_document(asdf_file_t *file) {
     if (!file)
         return NULL;
@@ -302,8 +311,13 @@ ASDF_LOCAL struct fy_document *asdf_file_get_tree_document(asdf_file_t *file) {
 
     asdf_parser_t *parser = file->parser;
 
-    if (!parser)
-        return NULL;
+    // If no parser (e.g. we are in write-only mode) create a new empty document
+    // TODO: Add a subroutine to initialize the empty document as well, with
+    // core/asdf schema, initial tag prefixes, etc.
+    if (!parser) {
+        file->tree = asdf_file_create_empty_document();
+        return file->tree;
+    }
 
     if (UNLIKELY(0 == parser->tree.has_tree))
         return NULL;

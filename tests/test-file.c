@@ -14,6 +14,7 @@
 
 #include <stc/cstr.h>
 
+#include <asdf/emitter.h>
 #include <asdf/file.h>
 #include <asdf/core/ndarray.h>
 #include <asdf/value.h>
@@ -305,7 +306,8 @@ MU_TEST(test_asdf_block_append_read_only) {
  */
 MU_TEST(write_block_no_index) {
     const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
-    asdf_file_t *file = asdf_open(filename, "w");
+    asdf_config_t config = {.emitter = {.flags = ASDF_EMITTER_OPT_NO_EMIT_EMPTY_TREE}};
+    asdf_file_t *file = asdf_open_ex(filename, "w", &config);
     assert_not_null(file);
 
     size_t size = (UINT8_MAX + 1) * sizeof(uint8_t);
@@ -736,14 +738,9 @@ MU_TEST(write_empty) {
     return MUNIT_OK;
 }
 
+
 /**
- * Write the bare minimal valid ASDF file
- *
- * .. todo::
- *
- *   As of writing this test it is the *only* ASDF file that can be written,
- *   as no tree or blocks are written.  Update this test once more of the file
- *   is writeable (e.g. add option to skip outputting the tree).
+ * Write the bare minimal valid ASDF file with no tree or blocks
  */
 MU_TEST(write_minimal) {
     const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
@@ -758,6 +755,21 @@ MU_TEST(write_minimal) {
 }
 
 
+/**
+ * Write the bare minimal valid ASDF file with an empty YAML tree
+ */
+MU_TEST(write_minimal_empty_tree) {
+    const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    // Allow emitting an "empty" ASDF file that is still a valid ASDF file
+    // (has the ASDF header) but contains no tree or blocks.
+    asdf_config_t config = { .emitter = {
+        .flags = ASDF_EMITTER_OPT_EMIT_EMPTY_TREE }};
+    asdf_file_t *file = asdf_open_ex(filename, "w", &config);
+    assert_not_null(file);
+    asdf_close(file);
+    assert_true(compare_files(filename, get_fixture_file_path("parse-minimal-empty-tree.asdf")));
+    return MUNIT_OK;
+}
 
 
 MU_TEST_SUITE(
@@ -782,7 +794,8 @@ MU_TEST_SUITE(
     MU_RUN_TEST(read_compressed_block_lazy_random_access, comp_mode_test_params),
     MU_RUN_TEST(compressed_block_no_hang_on_segfault, comp_mode_test_params),
     MU_RUN_TEST(write_empty),
-    MU_RUN_TEST(write_minimal)
+    MU_RUN_TEST(write_minimal),
+    MU_RUN_TEST(write_minimal_empty_tree)
 );
 
 

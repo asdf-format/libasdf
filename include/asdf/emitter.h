@@ -11,8 +11,11 @@ ASDF_BEGIN_DECLS
 
 // NOLINTNEXTLINE(readability-identifier-naming)
 #define _ASDF_EMITTER_OPTS(X) \
-    X(ASDF_EMITTER_OPT_EMIT_EMPTY, 0) \
-    X(ASDF_EMITTER_OPT_NO_BLOCK_INDEX, 1)
+    X(ASDF_EMITTER_OPT_DEFAULT, 0) \
+    X(ASDF_EMITTER_OPT_EMIT_EMPTY, 1) \
+    X(ASDF_EMITTER_OPT_NO_BLOCK_INDEX, 2) \
+    X(ASDF_EMITTER_OPT_EMIT_EMPTY_TREE, 3) \
+    X(ASDF_EMITTER_OPT_NO_EMIT_EMPTY_TREE, 4)
 
 
 typedef enum {
@@ -25,7 +28,8 @@ typedef enum {
 
 
 // NOLINTNEXTLINE(readability-magic-numbers)
-ASDF_STATIC_ASSERT(ASDF_EMITTER_OPT_NO_BLOCK_INDEX < (1UL << 63), "too many flags for 64-bit int");
+ASDF_STATIC_ASSERT(
+    ASDF_EMITTER_OPT_NO_EMIT_EMPTY_TREE < (1UL << 63), "too many flags for 64-bit int");
 
 
 typedef uint64_t asdf_emitter_optflags_t;

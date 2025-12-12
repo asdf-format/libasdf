@@ -268,6 +268,7 @@ EXTRA_DIST += \
     fixtures/nested.asdf \
     fixtures/numeric.asdf \
     fixtures/parse-minimal.asdf \
+    fixtures/parse-minimal-empty-tree.asdf \
     fixtures/parse-minimal-extra-comment.asdf \
     fixtures/roman_wcs.asdf \
     fixtures/scalars.asdf \
