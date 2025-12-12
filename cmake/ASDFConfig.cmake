@@ -102,7 +102,9 @@ else()
     set(HAVE_USERFAULTFD 0)
 endif()
 
+# Configure include directories
+include_directories(${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/include)
+
 # Write out the header
-include_directories(${CMAKE_SOURCE_DIR}/include)
 configure_file(config.h.cmake include/config.h @ONLY)
 
