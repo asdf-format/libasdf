@@ -1,0 +1,4 @@
+Re-added CMake build files to the source distribution.
+
+This was supposed to be fixed in 0.1.0a2 but was lost somehow in a mess-up
+of the release process.
