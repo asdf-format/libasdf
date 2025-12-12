@@ -29,3 +29,8 @@ if WITH_GWCS
         asdf/gwcs/transforms/property/bounding_box.h \
         asdf/gwcs/wcs.h
 endif
+
+
+# CMake-related files to include in the distribution
+CMAKE_DIST = CMakeLists.txt
+EXTRA_DIST = $(CMAKE_DIST)

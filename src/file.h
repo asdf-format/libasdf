@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdbool.h>
+
 #include <libfyaml.h>
 
 #ifdef HAVE_CONFIG_H
@@ -11,6 +13,7 @@
 #include "context.h"
 #include "emitter.h"
 #include "parser.h"
+#include "types/asdf_block_info_vec.h"
 
 
 #ifdef HAVE_USERFAULTFD
@@ -42,6 +45,7 @@ typedef struct asdf_file {
     asdf_parser_t *parser;
     asdf_emitter_t *emitter;
     struct fy_document *tree;
+    asdf_block_info_vec_t blocks;
 } asdf_file_t;
 
 
@@ -58,6 +62,7 @@ typedef struct asdf_block {
     asdf_file_t *file;
     asdf_block_info_t info;
     void *data;
+    bool should_close;
     // Should be the same as used_size in the header but may be truncated in exceptional
     // cases (we should probably log a warning when it is)
     size_t avail_size;

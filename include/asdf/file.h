@@ -15,6 +15,7 @@
 #ifndef ASDF_FILE_H
 #define ASDF_FILE_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 
@@ -755,6 +756,25 @@ ASDF_EXPORT asdf_block_t *asdf_block_open(asdf_file_t *file, size_t index);
  */
 ASDF_EXPORT void asdf_block_close(asdf_block_t *block);
 
+
+/**
+ * Append a new block to the file, given the data and size of the block
+ *
+ * Currently requires the file to be open in write mode.
+ *
+ * The same data can be duplicated to multiple blocks simply by repeated calls
+ * to this function; there is not currently any tracking as to whether the same
+ * data array already has an associated block in the file.
+ *
+ * :param file: The `asdf_file_t *` handle
+ * :param data: The data array to write to the block (uncompressed)
+ * :param size: The uncompressed size of the block data
+ * :return: The index of the appended block, or a negative value if appending
+ *   the block failed
+ */
+ASDF_EXPORT ssize_t asdf_block_append(asdf_file_t *file, const void *data, size_t size);
+
+
 /**
  * Get the (uncompressed) size of the block data
  *
@@ -786,7 +806,7 @@ ASDF_EXPORT const char *asdf_block_compression(asdf_block_t *block);
  *   is returned
  * :return: A `void *` to the block data
  */
-ASDF_EXPORT void *asdf_block_data(asdf_block_t *block, size_t *size);
+ASDF_EXPORT const void *asdf_block_data(asdf_block_t *block, size_t *size);
 
 ASDF_END_DECLS
 

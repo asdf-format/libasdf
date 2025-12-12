@@ -15,6 +15,7 @@
 #include "context.h"
 #include "event.h"
 #include "stream.h"
+#include "types/asdf_block_info_vec.h"
 
 
 #define ASDF_COMMENT_CHAR '#'
@@ -69,14 +70,14 @@ struct asdf_event_p {
 
 typedef struct asdf_parser_block_info {
     // Array of block infos for all blocks
-    asdf_block_info_t **block_infos;
+    asdf_block_info_vec_t infos;
+    asdf_block_index_t index;
+    bool has_index;
     // Number of valid blocks
-    size_t n_blocks;
-    // Allocation for the block_infos array
-    size_t cap;
+    size_t count;
     // Number of blocks found so far by the parser state machine
     // This may exclude blocks that were already found during block index validation.
-    size_t found_blocks;
+    size_t found;
 } asdf_parser_block_info_t;
 
 
@@ -91,8 +92,7 @@ typedef struct asdf_parser {
     char standard_version[ASDF_STANDARD_VERSION_BUFFER_SIZE];
     struct fy_parser *yaml_parser;
     asdf_parser_tree_info_t tree;
-    asdf_parser_block_info_t blocks;
-    asdf_block_index_t *block_index;
+    asdf_parser_block_info_t block;
     bool done;
 } asdf_parser_t;
 

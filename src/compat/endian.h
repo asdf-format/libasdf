@@ -15,7 +15,6 @@
 #endif
 
 #if !HAVE_DECL_BE64TOH
-/* https://gist.github.com/yinyin/2027912 */
 #ifdef __APPLE__
 #include <libkern/OSByteOrder.h>
 #define be64toh(x) OSSwapBigToHostInt64(x)
@@ -26,7 +25,6 @@
 
 
 #if !HAVE_DECL_BE32TOH
-/* https://gist.github.com/yinyin/2027912 */
 #ifdef __APPLE__
 #include <libkern/OSByteOrder.h>
 #define be32toh(x) OSSwapBigToHostInt32(x)
@@ -36,8 +34,37 @@
 #endif
 
 
+#if !HAVE_DECL_HTOBE16
+#ifdef __APPLE__
+#include <libkern/OSByteOrder.h>
+#define htobe16(x) OSSwapHostToBigInt16(x)
+#else
+#error htobe16 not available
+#endif
+#endif
+
+
+#if !HAVE_DECL_HTOBE32
+#ifdef __APPLE__
+#include <libkern/OSByteOrder.h>
+#define htobe32(x) OSSwapHostToBigInt32(x)
+#else
+#error htobe32 not available
+#endif
+#endif
+
+
+#if !HAVE_DECL_HTOBE64
+#ifdef __APPLE__
+#include <libkern/OSByteOrder.h>
+#define htobe64(x) OSSwapHostToBigInt64(x)
+#else
+#error htobe64 not available
+#endif
+#endif
+
+
 #if !HAVE_DECL_LE32TOH
-/* https://gist.github.com/yinyin/2027912 */
 #ifdef __APPLE__
 #include <libkern/OSByteOrder.h>
 #define le32toh(x) OSSwapLittleToHostInt32(x)

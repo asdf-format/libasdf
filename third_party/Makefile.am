@@ -14,6 +14,7 @@ stc_headers = \
     $(stc_dir)/include/stc/priv/template.h \
     $(stc_dir)/include/stc/priv/template2.h \
     $(stc_dir)/include/stc/priv/utf8_prv.h \
+    $(stc_dir)/include/stc/vec.h \
     $(stc_dir)/include/stc/types.h
 
 stc_src = $(stc_dir)/src/cstr_core.c
@@ -24,5 +25,9 @@ noinst_LTLIBRARIES = libstc.la
 libstc_la_SOURCES = $(stc_src)
 libstc_la_CFLAGS = $(AM_CFLAGS)
 
+# CMake-related files to include in the distribution
+CMAKE_DIST = CMakeLists.txt
+
 EXTRA_DIST = \
+    $(CMAKE_DIST) \
     $(stc_dir)/LICENSE

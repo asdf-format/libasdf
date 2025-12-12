@@ -13,13 +13,8 @@
 #include <unistd.h>
 
 #include <stc/cstr.h>
-#ifdef __GNUC__
-// Seems to be a bug in gcc that the warning diagnostics set by STC are not
-// all restored on #pragma GCC diagnostic pop
-// This makes munit sad, but for the tests we can safely ignore.
-#pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
-#endif
 
+#include <asdf/emitter.h>
 #include <asdf/file.h>
 #include <asdf/core/ndarray.h>
 #include <asdf/value.h>
@@ -27,6 +22,7 @@
 #include "compression/compression.h"
 #include "config.h"
 #include "file.h"
+
 #include "munit.h"
 #include "util.h"
 
@@ -267,6 +263,68 @@ MU_TEST(invalid_block_index) {
     asdf_close(file);
     cstr_drop(&contents);
     free(content_bytes);
+    return MUNIT_OK;
+}
+
+
+MU_TEST(test_asdf_block_append) {
+    const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    asdf_file_t *file = asdf_open(filename, "w");
+    assert_not_null(file);
+    const char *data = "this is my data and it is my friend";
+    size_t len = strlen(data);
+    assert_int(asdf_block_append(file, data, len), ==, 0);
+    assert_int(asdf_block_count(file), ==, 1);
+    asdf_block_t *block = asdf_block_open(file, 0);
+    assert_not_null(block);
+    assert_int(asdf_block_data_size(block), ==, len);
+    size_t read_len = 0;
+    const char *read_data = asdf_block_data(block, &read_len);
+    assert_int(read_len, ==, len);
+    assert_memory_equal(len, read_data, data);
+    asdf_block_close(block);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+MU_TEST(test_asdf_block_append_read_only) {
+    const char *filename = get_fixture_file_path("multi-block.asdf");
+    asdf_file_t *file = asdf_open(filename, "r");
+    assert_not_null(file);
+    assert_int(asdf_block_append(file, NULL, 0), ==, -1);
+    const char *error = asdf_error(file);
+    assert_string_equal(error, "cannot append blocks to read-only files");
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+/**
+ * Write a trivial ASDF file containing no YAML and no block index, just a
+ * single binary block
+ */
+MU_TEST(write_block_no_index) {
+    const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    asdf_config_t config = {.emitter = {.flags = ASDF_EMITTER_OPT_NO_EMIT_EMPTY_TREE}};
+    asdf_file_t *file = asdf_open_ex(filename, "w", &config);
+    assert_not_null(file);
+
+    size_t size = (UINT8_MAX + 1) * sizeof(uint8_t);
+    uint8_t *data = malloc(size);
+
+    if (!data)
+        return MUNIT_ERROR;
+
+    for (int idx = 0; idx <= UINT8_MAX; idx++)
+        data[idx] = idx;
+
+    assert_int(asdf_block_append(file, data, size), ==, 0);
+    asdf_close(file);
+
+    const char *reference = get_fixture_file_path("255-block-no-index.asdf");
+    assert_true(compare_files(filename, reference));
+    free(data);
     return MUNIT_OK;
 }
 
@@ -680,14 +738,9 @@ MU_TEST(write_empty) {
     return MUNIT_OK;
 }
 
+
 /**
- * Write the bare minimal valid ASDF file
- *
- * .. todo::
- *
- *   As of writing this test it is the *only* ASDF file that can be written,
- *   as no tree or blocks are written.  Update this test once more of the file
- *   is writeable (e.g. add option to skip outputting the tree).
+ * Write the bare minimal valid ASDF file with no tree or blocks
  */
 MU_TEST(write_minimal) {
     const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
@@ -702,6 +755,41 @@ MU_TEST(write_minimal) {
 }
 
 
+/**
+ * Write the bare minimal valid ASDF file with an empty YAML tree
+ */
+MU_TEST(write_minimal_empty_tree) {
+    const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    // Allow emitting an "empty" ASDF file that is still a valid ASDF file
+    // (has the ASDF header) but contains no tree or blocks.
+    asdf_config_t config = { .emitter = {
+        .flags = ASDF_EMITTER_OPT_EMIT_EMPTY_TREE }};
+    asdf_file_t *file = asdf_open_ex(filename, "w", &config);
+    assert_not_null(file);
+    asdf_close(file);
+    assert_true(compare_files(filename, get_fixture_file_path("parse-minimal-empty-tree.asdf")));
+    return MUNIT_OK;
+}
+
+
+/**
+ * Test adding additional custom tag handles to the document
+ */
+MU_TEST(write_custom_tag_handle) {
+    const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    // Allow emitting an "empty" ASDF file that is still a valid ASDF file
+    // (has the ASDF header) but contains no tree or blocks.
+    asdf_yaml_tag_handle_t tag_handles[] = {{ "!foo", "tag:example.com:foo/" }, { NULL, NULL }};
+    asdf_config_t config = { .emitter = {
+        .flags = ASDF_EMITTER_OPT_EMIT_EMPTY_TREE,
+        .tag_handles = tag_handles
+    }};
+    asdf_file_t *file = asdf_open_ex(filename, "w", &config);
+    assert_not_null(file);
+    asdf_close(file);
+    assert_true(compare_files(filename, get_fixture_file_path("custom-tag-handle.asdf")));
+    return MUNIT_OK;
+}
 
 
 MU_TEST_SUITE(
@@ -715,6 +803,9 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_block_count),
     MU_RUN_TEST(missing_block_index),
     MU_RUN_TEST(invalid_block_index),
+    MU_RUN_TEST(test_asdf_block_append),
+    MU_RUN_TEST(test_asdf_block_append_read_only),
+    MU_RUN_TEST(write_block_no_index),
     MU_RUN_TEST(read_compressed_reference_file, comp_mode_test_params),
     MU_RUN_TEST(read_compressed_block, comp_mode_test_params),
     MU_RUN_TEST(read_compressed_block_to_file, comp_test_params),
@@ -723,7 +814,9 @@ MU_TEST_SUITE(
     MU_RUN_TEST(read_compressed_block_lazy_random_access, comp_mode_test_params),
     MU_RUN_TEST(compressed_block_no_hang_on_segfault, comp_mode_test_params),
     MU_RUN_TEST(write_empty),
-    MU_RUN_TEST(write_minimal)
+    MU_RUN_TEST(write_minimal),
+    MU_RUN_TEST(write_minimal_empty_tree),
+    MU_RUN_TEST(write_custom_tag_handle)
 );
 
 

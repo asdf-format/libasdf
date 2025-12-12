@@ -14,4 +14,7 @@
 #endif
 
 
+#define ASDF_YAML_DEFAULT_TAG_HANDLE "!"
+
+
 #include "asdf/yaml.h" // IWYU pragma: export
