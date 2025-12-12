@@ -12,8 +12,10 @@
 #include "asdf/emitter.h" // IWYU pragma: export
 
 #include "context.h"
+#include "core/asdf.h"
 #include "stream.h"
 #include "util.h"
+#include "yaml.h"
 
 
 typedef enum {
@@ -26,6 +28,16 @@ typedef enum {
     ASDF_EMITTER_STATE_END,
     ASDF_EMITTER_STATE_ERROR
 } asdf_emitter_state_t;
+
+
+#define ASDF_EMITTER_CFG_DEFAULT \
+    (asdf_emitter_cfg_t) { \
+        .flags = ASDF_EMITTER_OPT_DEFAULT, .tag_handles = (asdf_yaml_tag_handle_t[]) { \
+            {ASDF_YAML_DEFAULT_TAG_HANDLE, ASDF_STANDARD_TAG_PREFIX}, { \
+                NULL, NULL \
+            } \
+        } \
+    }
 
 
 // Forward-declaration

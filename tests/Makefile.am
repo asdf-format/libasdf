@@ -242,6 +242,7 @@ EXTRA_DIST += \
     fixtures/byteorder.asdf \
     fixtures/compressed.asdf \
     fixtures/cube.asdf \
+    fixtures/custom-tag-handle.asdf \
     fixtures/datatypes.asdf \
     fixtures/events/basic.events.txt \
     fixtures/events/complex.events.txt \

@@ -15,7 +15,7 @@
 /**
  * Default libasdf emitter configuration
  */
-static const asdf_emitter_cfg_t default_asdf_emitter_cfg = {.flags = ASDF_EMITTER_OPT_DEFAULT};
+static const asdf_emitter_cfg_t asdf_emitter_cfg_default = ASDF_EMITTER_CFG_DEFAULT;
 
 
 asdf_emitter_t *asdf_emitter_create(asdf_file_t *file, asdf_emitter_cfg_t *config) {
@@ -27,7 +27,7 @@ asdf_emitter_t *asdf_emitter_create(asdf_file_t *file, asdf_emitter_cfg_t *confi
     emitter->base.ctx = file->base.ctx;
     asdf_context_retain(emitter->base.ctx);
     emitter->file = file;
-    emitter->config = config ? *config : default_asdf_emitter_cfg;
+    emitter->config = config ? *config : asdf_emitter_cfg_default;
     emitter->state = ASDF_EMITTER_STATE_INITIAL;
     emitter->done = false;
     return emitter;

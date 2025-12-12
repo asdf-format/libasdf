@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include <asdf/util.h>
+#include <asdf/yaml.h>
 
 
 ASDF_BEGIN_DECLS
@@ -43,6 +44,7 @@ typedef uint64_t asdf_emitter_optflags_t;
  */
 typedef struct asdf_emitter_cfg {
     asdf_emitter_optflags_t flags;
+    asdf_yaml_tag_handle_t *tag_handles;
 } asdf_emitter_cfg_t;
 
 ASDF_END_DECLS

@@ -772,6 +772,26 @@ MU_TEST(write_minimal_empty_tree) {
 }
 
 
+/**
+ * Test adding additional custom tag handles to the document
+ */
+MU_TEST(write_custom_tag_handle) {
+    const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    // Allow emitting an "empty" ASDF file that is still a valid ASDF file
+    // (has the ASDF header) but contains no tree or blocks.
+    asdf_yaml_tag_handle_t tag_handles[] = {{ "!foo", "tag:example.com:foo/" }, { NULL, NULL }};
+    asdf_config_t config = { .emitter = {
+        .flags = ASDF_EMITTER_OPT_EMIT_EMPTY_TREE,
+        .tag_handles = tag_handles
+    }};
+    asdf_file_t *file = asdf_open_ex(filename, "w", &config);
+    assert_not_null(file);
+    asdf_close(file);
+    assert_true(compare_files(filename, get_fixture_file_path("custom-tag-handle.asdf")));
+    return MUNIT_OK;
+}
+
+
 MU_TEST_SUITE(
     file,
     MU_RUN_TEST(test_asdf_open_file),
@@ -795,7 +815,8 @@ MU_TEST_SUITE(
     MU_RUN_TEST(compressed_block_no_hang_on_segfault, comp_mode_test_params),
     MU_RUN_TEST(write_empty),
     MU_RUN_TEST(write_minimal),
-    MU_RUN_TEST(write_minimal_empty_tree)
+    MU_RUN_TEST(write_minimal_empty_tree),
+    MU_RUN_TEST(write_custom_tag_handle)
 );
 
 

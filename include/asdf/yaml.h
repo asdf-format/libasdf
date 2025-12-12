@@ -22,6 +22,12 @@ typedef enum {
 } asdf_yaml_event_type_t;
 
 
+typedef struct {
+    const char *handle;
+    const char *prefix;
+} asdf_yaml_tag_handle_t;
+
+
 ASDF_EXPORT const char *asdf_yaml_event_scalar_value(const asdf_event_t *event, size_t *lenp);
 ASDF_EXPORT const char *asdf_yaml_event_tag(const asdf_event_t *event, size_t *lenp);
 ASDF_EXPORT asdf_yaml_event_type_t asdf_yaml_event_type(const asdf_event_t *event);
@@ -29,4 +35,4 @@ ASDF_EXPORT const char *asdf_yaml_event_type_text(const asdf_event_t *event);
 
 ASDF_END_DECLS
 
-#endif  /* ASDF_YAML_H */
+#endif /* ASDF_YAML_H */
