@@ -25,5 +25,9 @@ noinst_LTLIBRARIES = libstc.la
 libstc_la_SOURCES = $(stc_src)
 libstc_la_CFLAGS = $(AM_CFLAGS)
 
+# CMake-related files to include in the distribution
+CMAKE_DIST = CMakeLists.txt
+
 EXTRA_DIST = \
+    $(CMAKE_DIST) \
     $(stc_dir)/LICENSE

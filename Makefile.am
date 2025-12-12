@@ -121,15 +121,49 @@ tidy:
 if BUILD_DOCS
 docs:
 	$(SPHINXBUILD) $(SPHINX_FLAGS) -b html $(srcdir)/docs $(srcdir)/docs/_build/html
-endif
-.PHONY: docs
 
-
-# Check building docs from the distribution if possible
-distcheck-hook:
-if BUILD_DOCS
+distcheck-docs:
 	$(MAKE) docs SPHINX_FLAGS=-W
 endif
+.PHONY: docs distcheck-docs
+
+
+if WITH_GWCS
+CMAKE_WITH_GWCS=YES
+else
+CMAKE_WITH_GWCS=NO
+endif
+
+CMAKE_EXTRA_FLAGS=
+
+# Try building and running tests with cmake to ensure the cmake build works
+# from the distribution tarball
+#
+# - Pass BZIP2_LIBRARIES etc. since my system at least is missing a pc file
+#   for bzip2.  Maybe should do this for other dependencies as well but only
+#   on an as-needed basis
+distcheck-cmake:
+	@echo "=== Running CMake build inside distcheck ==="
+	rm -rf $(distdir)/_build/cmake
+	mkdir $(distdir)/_build/cmake
+	cd $(distdir)/_build/cmake && \
+	    cmake ../.. \
+                -DWITH_GWCS=$(CMAKE_WITH_GWCS) \
+                -DENABLE_TESTING_ALL=YES \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DBZIP2_LIBRARIES=$(BZIP2_LIBS) \
+                $(CMAKE_EXTRA_FLAGS) && \
+            $(MAKE) && \
+            $(MAKE) test
+
+.PHONY: distcheck-cmake
+
+
+# 1. Check building docs from the distribution if possible
+# 2. Test the CMake build
+distcheck-hook:
+	$(MAKE) distcheck-docs
+	$(MAKE) distcheck-cmake
 
 
 CODE_COVERAGE_IGNORE_PATTERN = \
@@ -144,7 +178,21 @@ SUBDIRS = include tests third_party docs
 # Include sample files from asdf-standard in the distribution (used in tests)
 # Eventually test against older reference files as well
 reference_files = $(top_srcdir)/asdf-standard/reference_files/1.6.0
+
+# CMake-related files to include in the distribution
+CMAKE_DIST = \
+    CMakeLists.txt \
+    cmake/AddressAnalyzer.cmake \
+    cmake/ASDFConfig.cmake \
+    cmake/ASDFDependencies.cmake \
+    cmake/ASDFOptions.cmake \
+    cmake/SubmoduleInit.cmake \
+    config.h.cmake \
+    src/CMakeLists.txt
+
+
 EXTRA_DIST = \
+    $(CMAKE_DIST) \
     CHANGES.rst \
     CODE_OF_CONDUCT.md \
     LICENSE \
