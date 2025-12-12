@@ -179,9 +179,12 @@ static asdf_emitter_state_t emit_tree(asdf_emitter_t *emitter) {
     if (!fy_emitter)
         return ASDF_EMITTER_STATE_ERROR;
 
-    if (fy_emit_document(fy_emitter, tree) != 0)
+    if (fy_emit_document(fy_emitter, tree) != 0) {
+        fy_emitter_destroy(fy_emitter);
         return ASDF_EMITTER_STATE_ERROR;
+    }
 
+    fy_emitter_destroy(fy_emitter);
     return ASDF_EMITTER_STATE_BLOCKS;
 }
 

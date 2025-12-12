@@ -158,7 +158,6 @@ static asdf_file_t *asdf_file_create(asdf_config_t *user_config, asdf_file_mode_
             return NULL;
         }
 
-        asdf_context_retain(file->base.ctx);
         file->emitter = emitter;
         break;
     }
