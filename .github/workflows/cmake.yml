@@ -36,11 +36,13 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-14]
-        cc: [gcc]
-        cxx: [g++]
+        cc: [clang, gcc]
+        cxx: [clang++, g++]
         cmake_options: ["", "-DENABLE_ASAN=ON"]
         exclude:
           - os: macos-14
+            cc: gcc
+            cxx: g++
             cmake_options: "-DENABLE_ASAN=ON"
     runs-on: ${{ matrix.os }}
     steps:
@@ -55,6 +57,7 @@ jobs:
         sudo apt update
         sudo apt install -y \
             build-essential \
+            clang \
             libfyaml-dev \
             libbz2-dev \
             liblz4-dev \
