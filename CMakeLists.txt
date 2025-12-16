@@ -33,7 +33,7 @@ list(APPEND submodules
     third_party/STC
     tests/munit
 )
-submodule_init(${submodules})
+submodule_init("${submodules}")
 
 include(ASDFOptions)
 include(ASDFDependencies)
