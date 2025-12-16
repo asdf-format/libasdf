@@ -2,6 +2,7 @@
 #include "util.h"
 
 #include "parse_util.h"
+#include "yaml.h"
 
 
 /**

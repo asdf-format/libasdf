@@ -4,6 +4,7 @@
 
 #include <libfyaml.h>
 
+#include "block.h"
 #include "context.h"
 #include "emitter.h"
 #include "error.h"
@@ -11,6 +12,7 @@
 #include "parse_util.h"
 #include "stream.h"
 #include "types/asdf_block_info_vec.h"
+#include "yaml.h"
 
 /**
  * Default libasdf emitter configuration
@@ -204,6 +206,7 @@ static asdf_emitter_state_t emit_blocks(asdf_emitter_t *emitter) {
     assert(emitter->file);
     assert(emitter->stream);
     asdf_block_info_vec_t *blocks = &emitter->file->blocks;
+
     for (asdf_block_info_vec_iter_t it = asdf_block_info_vec_begin(blocks); it.ref;
          asdf_block_info_vec_next(&it)) {
         if (!asdf_block_info_write(emitter->stream, it.ref))
@@ -211,7 +214,100 @@ static asdf_emitter_state_t emit_blocks(asdf_emitter_t *emitter) {
 
         asdf_stream_flush(emitter->stream);
     }
-    return ASDF_EMITTER_STATE_END;
+    return ASDF_EMITTER_STATE_BLOCK_INDEX;
+}
+
+
+static asdf_emitter_state_t emit_block_index(asdf_emitter_t *emitter) {
+    assert(emitter);
+    assert(emitter->file);
+    assert(emitter->stream);
+
+    asdf_emitter_state_t next_state = ASDF_EMITTER_STATE_END;
+
+    if (asdf_emitter_has_opt(emitter, ASDF_EMITTER_OPT_NO_BLOCK_INDEX)) {
+        /* Do not write the block index. Technically the block index is optional and can be
+         * removed.  The ASDF Standard also states that the block index is incompatible with
+         * streaming mode though I'm not sure I understand the rationale behind that.  It's true
+         * that if a block is open for streaming you're supposed to be able to continue appending
+         * to it ad-infinitum.  But one could also have the possibility of "closing" a stream,
+         * disallowing further writing, at which point it could make sense to append a block
+         * block index.  Nevertheless, that idea does not yet exist as part of the standard
+         */
+        return next_state;
+    }
+
+    asdf_block_info_vec_t *blocks = &emitter->file->blocks;
+
+    if (asdf_block_info_vec_size(blocks) <= 0)
+        // No blocks, so no need to write a block index
+        return next_state;
+
+    struct fy_document *doc = asdf_yaml_create_empty_document(NULL);
+    struct fy_node *index = NULL;
+    struct fy_node *offset = NULL;
+    struct fy_emitter *fy_emitter = NULL;
+
+    // For the rest of the function it's useful to assume the next state will be
+    // an error unless we explicitly succeed
+    next_state = ASDF_EMITTER_STATE_ERROR;
+
+    if (!doc) {
+        ASDF_ERROR_OOM(emitter);
+        goto cleanup;
+    }
+
+    // Sequence node to hold the block index--it is the root of the block index document
+    index = fy_node_create_sequence(doc);
+
+    if (!index || 0 != fy_document_set_root(doc, index)) {
+        // TODO: Error message for this? Hard to see why it would fail except a memory error
+        ASDF_ERROR_OOM(emitter);
+        goto cleanup;
+    }
+
+    for (asdf_block_info_vec_iter_t it = asdf_block_info_vec_begin(blocks); it.ref;
+         asdf_block_info_vec_next(&it)) {
+
+        if (it.ref->header_pos < 0) {
+            // Invalid block; should not happen
+            goto cleanup;
+        }
+
+        offset = fy_node_buildf(doc, "%" PRIu64, (uint64_t)it.ref->header_pos);
+
+        if (!offset || 0 != fy_node_sequence_append(index, offset)) {
+            ASDF_ERROR_OOM(emitter);
+            goto cleanup;
+        }
+    }
+
+    WRITE_STRING0(emitter->stream, asdf_block_index_header);
+    WRITE_NEWLINE(emitter->stream);
+
+    struct fy_emitter_cfg config = {
+        .flags = FYECF_DEFAULT, .output = fy_emitter_stream_output, .userdata = emitter->stream};
+
+    fy_emitter = fy_emitter_create(&config);
+
+    if (!fy_emitter) {
+        ASDF_ERROR_OOM(emitter);
+        goto cleanup;
+    }
+
+    if (fy_emit_document(fy_emitter, doc) != 0)
+        goto cleanup;
+
+    next_state = ASDF_EMITTER_STATE_END;
+
+cleanup:
+    if (doc)
+        fy_document_destroy(doc);
+
+    if (fy_emitter)
+        fy_emitter_destroy(fy_emitter);
+
+    return next_state;
 }
 
 
@@ -241,7 +337,7 @@ asdf_emitter_state_t asdf_emitter_emit(asdf_emitter_t *emitter) {
             next_state = emit_blocks(emitter);
             break;
         case ASDF_EMITTER_STATE_BLOCK_INDEX:
-            // TODO
+            next_state = emit_block_index(emitter);
             break;
         case ASDF_EMITTER_STATE_END:
             next_state = ASDF_EMITTER_STATE_END;
