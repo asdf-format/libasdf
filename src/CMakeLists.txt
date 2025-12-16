@@ -64,7 +64,9 @@ target_include_directories(libasdf_objs PUBLIC
 )
 
 # Avoid generating "liblibasdf"
-set_target_properties(libasdf ${PROJECT_NAME} PROPERTIES OUTPUT_NAME "asdf")
+set_target_properties(libasdf ${PROJECT_NAME} PROPERTIES
+    SOVERSION ${PROJECT_SOVERSION}
+    OUTPUT_NAME "asdf")
 
 install(TARGETS libasdf
     DESTINATION ${CMAKE_INSTALL_LIBDIR}

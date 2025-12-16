@@ -6,6 +6,9 @@ set(PACKAGE_VERSION 0.1.0a2)
 # CMake-compatible project version
 set(PROJECT_VERSION 0.1.0)
 
+# Shared library compatibility version
+set(PROJECT_SOVERSION 0.0.0)
+
 project(libasdf
     VERSION ${PROJECT_VERSION}
     LANGUAGES C
