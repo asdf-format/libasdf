@@ -204,7 +204,7 @@ typedef struct asdf_ndarray asdf_ndarray_t;
  *   Get an `asdf_ndarray_t *` out of the ASDF tree
  *
  *   :param file: The `asdf_file_t *` for the file
- *   :param path: The JSON Path to the ndarray
+ *   :param path: The :ref:`yaml-pointer` to the ndarray
  *   :param out: An `asdf_ndarray_t **` into which to return the `asdf_ndarray_t *`
  *
  *   :return: `ASDF_VALUE_OK` if the value exists and is an ndarray, otherwise

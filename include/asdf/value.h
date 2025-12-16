@@ -124,8 +124,8 @@ typedef enum {
     ASDF_VALUE_ERR_UNKNOWN = -2,
 
     /**
-     * Error when the given JSON Path does not correspond to a path in the
-     * ASDF tree
+     * Error when the given :ref:`yaml-pointer` does not correspond to a path
+     * in the ASDF tree
      */
     ASDF_VALUE_ERR_NOT_FOUND = -1,
 

@@ -51,19 +51,72 @@ argument is undefined.
 Value paths
 -----------
 
-Paths to values are always expressed using a simple `JSON Pointer`_ syntax like
-``"metadata/principle_inspectors/0/name"``.  The term before the first ``/`` is
-a key in the mapping.  If the value at that key is itself a mapping, it can
-then be drilled into with subsequent ``/<key>`` component appended, much like
-traversing directories in a filesystem.  If the value is a *sequence* it is
-also possible to address specific items in that sequence by providing an
-integer as the path component.
+Paths to values are always expressed using a simple `JSON Pointer`_-like
+referred to informally as "YAML Pointer".
+
+For example: ``"metadata/principle_inspectors/0/name"``.  The term before the
+first ``/`` is a key in the mapping.  If the value at that key is itself a
+mapping, it can then be drilled into with subsequent ``/<key>`` component
+appended, much like traversing directories in a filesystem.  If the value is
+a *sequence* it is also possible to address specific items in that sequence by
+providing an integer as the path component.
 
 Like in a filesystem the "root" of the ASDF tree can be addressed as ``/``,
 though in all cases the leading ``/`` may be omitted.  That is, the
 ``asdf_get_<type>`` functions always address a value relative to the root
 (we'll see in a later section how to retrieve values relative to another
 value).
+
+This is generally intuitive for common cases, but there are some details
+about escaping and corner-cases to be aware of, explained next.
+
+.. _yaml-pointer:
+
+YAML Pointer
+^^^^^^^^^^^^
+
+The YAML Pointer syntax is the native path lookup format used by default by
+`libfyaml`_, which provides libasdf's YAML parsing.  It is, however, a little
+underspecified in libfyaml's documentation so we provide here a more complete
+(if informal) description of the syntax.
+
+As shown in the previous example, each path component is separated by a slash
+``/``.  Each path component can be either a non-numeric string like ``xyz``,
+which always indicates a key in a mapping.  Or it can be a numeric string like
+``10`` in which case the meaning depends on the context:
+
+* If the parent path element was a mapping, this is still treated as a key in
+  that mapping
+
+* If the parent path element was a sequence, this is treated as an index into
+  the sequence
+
+  * Added bonus: for sequence indices, negative values are also allowed,
+    indicating reverse indexing.  For example given the document:
+
+    .. code:: yaml
+
+      a: [b, c]
+
+    the path ``a/-1`` will return the value ``c`` (the last value in the
+    sequence at ``a``).
+
+Two other special bracketing syntaxes can be used to further reduce ambiguity:
+
+* If the path element begins and ends with ``[]`` brackets, the brackets
+  must contain an integer, and refers always to a sequence index (using this
+  to look up a mapping key will fail).  For example: ``a/[-1]``.
+
+* The path element may also be quoted with balanced single- or double-quotes
+  like ``'a'`` or ``'0'``: ``/'a'/'0'``.  If this path were passed to the
+  previous example document the lookup would fail.  ``/'a'`` succeeds because
+  the root of the document is a mapping with the key ``a``.  But the subsequent
+  ``/'0'`` would fail because it represents the *string* ``0`` not the integer.
+  That is, requires the value at ``/'a'`` to be a mapping.
+
+Unlike JSON Pointer, this syntax does not use ``~`` for escapes, and instead
+supports backslashes.  Characters that must be escaped are ``/{}[].&*\\``.
+However, escaping of these characters is not necessary if inside quotes.
 
 
 Value types

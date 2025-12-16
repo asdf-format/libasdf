@@ -323,10 +323,11 @@ ASDF_EXPORT const char *asdf_error(asdf_file_t *file);
  * For each type that can be read out of the ASDF tree there is an
  * ``asdf_is_<type>`` function which just checks the type and returns a `bool`.
  * Then there is an ``asdf_get_<type>`` function.  Each of these takes the
- * `asdf_file_t *` as their first argument, then a JSON Path expression for the
- * path within the tree to that value, and finally a pointer for the return
- * value's type.  Each of these functions return their value by reference
- * through an input argument.  The return value is always `asdf_value_err_t`.
+ * `asdf_file_t *` as their first argument, then a :ref:`yaml-pointer`
+ * expression for the path within the tree to that value, and finally a
+ * pointer for the return value's type.  Each of these functions return their
+ * value by reference through an input argument.  The return value is always
+ * `asdf_value_err_t`.
  *
  * If the value exists and successfully converts to the requested type the
  * return value is `ASDF_VALUE_OK`.  There are other return values such as
@@ -341,17 +342,13 @@ ASDF_EXPORT const char *asdf_error(asdf_file_t *file);
  * .. todo::
  *
  *   Add support for referencing ASDF schemas.
- *
- * .. todo::
- *
- *   Link documentation for JSON Path
  */
 
 /**
  * Get an arbitrary `asdf_value_t *` out of the tree
  *
  * :param file: The `asdf_file_t *` for the file
- * :param path: The JSON Path to the value
+ * :param path: The :ref:`yaml-pointer` to the value
  * :return: An `asdf_value_t *` wrapping the value, or `NULL` if the path does
  *   not exist in the tree
  */
@@ -361,7 +358,7 @@ ASDF_EXPORT asdf_value_t *asdf_get_value(asdf_file_t *file, const char *path);
  * Check if the value at the given tree path is a YAML mapping
  *
  * :param file: The `asdf_file_t *` for the file
- * :param path: The JSON Path to the value
+ * :param path: The :ref:`yaml-pointer` to the value
  * :return: `true` if the value is a mapping, `false` if it is another
  *   type of value or if no value exists at that path.
  */
@@ -383,7 +380,7 @@ ASDF_EXPORT bool asdf_is_mapping(asdf_file_t *file, const char *path);
  *   explicit.
  *
  * :param file: The `asdf_file_t *` for the file
- * :param path: The JSON Path to the mapping
+ * :param path: The :ref:`yaml-pointer` to the mapping
  * :param value: An `asdf_value_t **` into which to return the mapping
  * :return: `ASDF_VALUE_OK` if the value exists and is a mapping, otherwise
  *   `ASDF_VALUE_ERR_NOT_FOUND` or `ASDF_VALUE_ERR_TYPE_MISMATCH`.
@@ -395,7 +392,7 @@ asdf_get_mapping(asdf_file_t *file, const char *path, asdf_value_t **value);
  * Check if the value at the given tree path is a YAML sequence
  *
  * :param file: The `asdf_file_t *` for the file
- * :param path: The JSON Path to the value
+ * :param path: The :ref:`yaml-pointer` to the value
  * :return: `true` if the value is a sequence, `false` if it is another
  *   type of value or if no value exists at that path.
  */
@@ -418,7 +415,7 @@ ASDF_EXPORT bool asdf_is_sequence(asdf_file_t *file, const char *path);
  *   explicit.
  *
  * :param file: The `asdf_file_t *` for the file
- * :param path: The JSON Path to the sequence
+ * :param path: The :ref:`yaml-pointer` to the sequence
  * :param value: An `asdf_value_t **` into which to return the sequence
  * :return: `ASDF_VALUE_OK` if the value exists and is a sequence, otherwise
  *   `ASDF_VALUE_ERR_NOT_FOUND` or `ASDF_VALUE_ERR_TYPE_MISMATCH`.
@@ -440,7 +437,7 @@ asdf_get_sequence(asdf_file_t *file, const char *path, asdf_value_t **value);
  *
  *
  * :param file: The `asdf_file_t *` for the file
- * :param path: The JSON Path to the string
+ * :param path: The :ref:`yaml-pointer` to the string
  * :return: `true` if the value is a string, `false` if it is another
  *   type of value or if no value exists at that path.
  */
@@ -461,7 +458,7 @@ ASDF_EXPORT bool asdf_is_string(asdf_file_t *file, const char *path);
  *   that returns the raw text of a scalar see `asdf_get_scalar`.
  *
  * :param file: The `asdf_file_t *` for the file
- * :param path: The JSON Path to the string
+ * :param path: The :ref:`yaml-pointer` to the string
  * :param out: A `const char **` into which to return the string as a `const char *`
  * :param out_len: A `size_t *` into which to return the length of the string
  * :return: `ASDF_VALUE_OK` if the value exists and is a string, otherwise
@@ -476,7 +473,7 @@ asdf_get_string(asdf_file_t *file, const char *path, const char **out, size_t *o
  * Like `asdf_get_string` but returns a null-terminated copy of the string.
  *
  * :param file: The `asdf_file_t *` for the file
- * :param path: The JSON Path to the string
+ * :param path: The :ref:`yaml-pointer` to the string
  * :param out: A `const char **` into which to return the string as a `const char *`
  * :return: `ASDF_VALUE_OK` if the value exists and is a string, otherwise
  *   `ASDF_VALUE_ERR_NOT_FOUND` or `ASDF_VALUE_ERR_TYPE_MISMATCH`.
@@ -488,7 +485,7 @@ asdf_get_string0(asdf_file_t *file, const char *path, const char **out);
  * Check if the value at the given tree path is a YAML scalar of any kind
  *
  * :param file: The `asdf_file_t *` for the file
- * :param path: The JSON Path to the value
+ * :param path: The :ref:`yaml-pointer` to the value
  * :return: `true` if the value is a scalar, `false` if it is another
  *   type of value or if no value exists at that path.
  */
@@ -502,7 +499,7 @@ ASDF_EXPORT bool asdf_is_scalar(asdf_file_t *file, const char *path);
  * to process tagged scalars.
  *
  * :param file: The `asdf_file_t *` for the file
- * :param path: The JSON Path to the scalar
+ * :param path: The :ref:`yaml-pointer` to the scalar
  * :param out: A `const char **` into which to return the scalar as a
  *   `const char *`
  * :param out_len: A `size_t *` into which to return the length of the scalar
@@ -516,7 +513,7 @@ asdf_get_scalar(asdf_file_t *file, const char *path, const char **out, size_t *o
  * Like `asdf_get_scalar0` but returns a null-terminated string
  *
  * :param file: The `asdf_file_t *` for the file
- * :param path: The JSON Path to the scalar
+ * :param path: The :ref:`yaml-pointer` to the scalar
  * :param out: A `const char **` into which to return the scalar as a
  *   `const char *`
  * :return: `ASDF_VALUE_OK` if the value exists and is a scalar, otherwise
@@ -533,7 +530,7 @@ asdf_get_scalar0(asdf_file_t *file, const char *path, const char **out);
  * strictly.
  *
  * :param file: The `asdf_file_t *` for the file
- * :param path: The JSON Path to the bool
+ * :param path: The :ref:`yaml-pointer` to the bool
  * :return: `true` if the value is a bool, `false` if it is another
  *   type of value or if no value exists at that path.
  */
@@ -545,7 +542,7 @@ ASDF_EXPORT bool asdf_is_bool(asdf_file_t *file, const char *path);
  * See `asdf_is_bool`.
  *
  * :param file: The `asdf_file_t *` for the file
- * :param path: The JSON Path to the string
+ * :param path: The :ref:`yaml-pointer` to the string
  * :param out: A `bool *` into which to return the bool
  * :return: `ASDF_VALUE_OK` if the value exists and is a bool, otherwise
  *   `ASDF_VALUE_ERR_NOT_FOUND` or `ASDF_VALUE_ERR_TYPE_MISMATCH`.
@@ -562,7 +559,7 @@ ASDF_EXPORT asdf_value_err_t asdf_get_bool(asdf_file_t *file, const char *path, 
  * There is no corresponding ``asdf_get_null`` as it would probably be useless.
  *
  * :param file: The `asdf_file_t *` for the file
- * :param path: The JSON Path to the null value
+ * :param path: The :ref:`yaml-pointer` to the null value
  * :return: `true` if the value is null, `false` if it is another
  *   type of value or if no value exists at that path.
  */
@@ -606,7 +603,7 @@ ASDF_EXPORT bool asdf_is_null(asdf_file_t *file, const char *path);
  * size
  *
  * :param file: The `asdf_file_t *` for the file
- * :param path: The JSON Path to the bool
+ * :param path: The :ref:`yaml-pointer` to the bool
  * :return: `true` if the value is an integer, `false` if it is another
  *   type of value or if no value exists at that path.
  */
