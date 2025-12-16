@@ -1,6 +1,5 @@
 function(submodule_init)
     foreach (path IN ITEMS ${ARGV0})
-        message("${path}")
         message("Update submodule: ${path}")
         execute_process(
                 COMMAND "git config get submodule.${path}.ignore"
