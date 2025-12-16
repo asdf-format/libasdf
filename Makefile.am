@@ -97,7 +97,7 @@ lib_LTLIBRARIES = libasdf.la
 libasdf_la_SOURCES = $(src_files)
 libasdf_la_CFLAGS = $(AM_CFLAGS) $(FYAML_CFLAGS) $(STATGRAB_CFLAGS) $(LZ4_CFLAGS) $(CODE_COVERAGE_CFLAGS)
 libasdf_la_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
-libasdf_la_LIBADD = $(ASDF_LIBS) third_party/libstc.la
+libasdf_la_LIBADD =  third_party/libstc.la $(ASDF_LIBS)
 
 # The asdf command line tool
 if ASDF_BUILD_TOOL
@@ -105,7 +105,7 @@ bin_PROGRAMS = asdf
 asdf_SOURCES = src/main.c
 asdf_CFLAGS = $(AM_CFLAGS) $(FYAML_CFLAGS) $(STATGRAB_CFLAGS) $(LZ4_CFLAGS) $(CODE_COVERAGE_CFLAGS)
 asdf_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
-asdf_LDADD = libasdf.la $(ARGP_LIBS) $(ASDF_LIBS)
+asdf_LDADD =  third_party/libstc.la libasdf.la $(ARGP_LIBS) $(ASDF_LIBS)
 endif # ASDF_BUILD_TOOL
 
 
