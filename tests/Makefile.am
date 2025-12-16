@@ -119,11 +119,12 @@ test_parse_util_unit_SOURCES = \
     $(top_srcdir)/src/context.c \
     $(top_srcdir)/src/error.c \
     $(top_srcdir)/src/log.c \
-    $(top_srcdir)/src/parse_util.c
+    $(top_srcdir)/src/parse_util.c \
+    $(top_srcdir)/src/yaml.c
 test_parse_util_unit_CPPFLAGS = $(unit_test_cppflags)
 test_parse_util_unit_CFLAGS = $(unit_test_cflags)
 test_parse_util_unit_LDFLAGS = $(unit_test_ldflags)
-test_parse_util_unit_LDADD = libmunit.a
+test_parse_util_unit_LDADD = libmunit.a $(FYAML_LIBS)
 
 # test-stream.unit
 test_stream_unit_SOURCES = \
@@ -240,6 +241,7 @@ EXTRA_DIST += \
     shell-test.sh \
     util.h \
     fixtures/255.asdf \
+    fixtures/255-2-blocks.asdf \
     fixtures/255-block-no-index.asdf \
     fixtures/byteorder.asdf \
     fixtures/compressed.asdf \

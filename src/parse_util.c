@@ -6,24 +6,12 @@
 #include "parse_util.h"
 #include "parser.h"
 #include "stream.h"
+#include "yaml.h"
 
 const char *asdf_standard_comment = "#ASDF_STANDARD ";
 const char *asdf_version_comment = "#ASDF ";
 const char *asdf_version_default = "1.0.0";
 const char *asdf_standard_default = "1.6.0";
-
-
-#define ASDF_YAML_DIRECTIVE_PREFIX "%YAML "
-#define ASDF_YAML_DIRECTIVE ASDF_YAML_DIRECTIVE_PREFIX "1.1"
-#define ASDF_YAML_DOCUMENT_BEGIN_MARKER "\n---"
-#define ASDF_YAML_DOCUMENT_END_MARKER "\n..."
-
-
-const char *asdf_yaml_directive_prefix = ASDF_YAML_DIRECTIVE_PREFIX;
-const char *asdf_yaml_directive = ASDF_YAML_DIRECTIVE;
-const char *asdf_yaml_document_end_marker = ASDF_YAML_DOCUMENT_END_MARKER;
-const char *asdf_yaml_empty_document = ASDF_YAML_DIRECTIVE ASDF_YAML_DOCUMENT_BEGIN_MARKER
-    ASDF_YAML_DOCUMENT_END_MARKER;
 
 
 #define TOKEN(t) ((const uint8_t *)(t))
