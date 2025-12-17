@@ -96,7 +96,6 @@ typedef struct {
     asdf_yaml_pc_target_t target;
     const char *key;
     ssize_t index;
-    const char *parent;
 } asdf_yaml_path_component;
 
 
@@ -105,9 +104,6 @@ typedef asdf_yaml_path_component asdf_yaml_path_component_t;
 
 static asdf_yaml_path_component_t asdf_yaml_path_component_clone(
     asdf_yaml_path_component_t component) {
-    if (component.parent)
-        component.parent = strdup(component.parent);
-
     if (component.key)
         component.key = strdup(component.key);
 
@@ -117,7 +113,6 @@ static asdf_yaml_path_component_t asdf_yaml_path_component_clone(
 
 static void asdf_yaml_path_component_drop(asdf_yaml_path_component_t *component) {
     free((char *)component->key);
-    free((char *)component->parent);
 }
 
 

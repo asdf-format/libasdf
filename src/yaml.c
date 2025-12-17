@@ -192,8 +192,6 @@ bool asdf_yaml_path_parse(const char *path, asdf_yaml_path_t *out_path) {
     if (!asdf_yaml_path_reserve(out_path, n_comp))
         return false;
 
-    size_t prev_pos = 0;
-    const char *start = p;
     const char *end = p + len;
     const char *cur = NULL;
     const char *cur_end = NULL;
@@ -301,11 +299,6 @@ bool asdf_yaml_path_parse(const char *path, asdf_yaml_path_t *out_path) {
             break;
         }
 
-        const char *parent = strndup(start, prev_pos);
-
-        if (!parent)
-            goto invalid;
-
         ssize_t index = 0;
         char *key = strndup(cur, (cur_end - cur));
 
@@ -332,11 +325,7 @@ bool asdf_yaml_path_parse(const char *path, asdf_yaml_path_t *out_path) {
         }
 
         asdf_yaml_path_push(
-            out_path,
-            (asdf_yaml_path_component_t){
-                .target = target, .parent = parent, .key = key, .index = index});
-
-        prev_pos = p - start;
+            out_path, (asdf_yaml_path_component_t){.target = target, .key = key, .index = index});
 
         if (p != end)
             p++;
