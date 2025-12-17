@@ -37,7 +37,8 @@ check_PROGRAMS = \
     test-stream.unit \
     test-tests.unit \
     test-value.unit \
-    test-value-util.unit
+    test-value-util.unit \
+    test-yaml.unit
 
 TESTS_ENVIRONMENT = top_builddir=$(top_builddir) top_srcdir=$(top_srcdir)
 TESTS = $(check_PROGRAMS)
@@ -162,6 +163,15 @@ test_value_util_unit_CPPFLAGS = $(unit_test_cppflags)
 test_value_util_unit_CFLAGS = $(unit_test_cflags)
 test_value_util_unit_LDFLAGS = $(unit_test_ldflags)
 test_value_util_unit_LDADD = libmunit.a
+
+# test-yaml.unit
+test_yaml_unit_SOURCES = \
+    test-yaml.c \
+    $(top_srcdir)/src/yaml.c
+test_yaml_unit_CPPFLAGS = $(unit_test_cppflags)
+test_yaml_unit_CFLAGS = $(unit_test_cflags)
+test_yaml_unit_LDFLAGS = $(unit_test_ldflags)
+test_yaml_unit_LDADD = $(unit_test_ldadd)
 
 
 asdf_public_headers = \
