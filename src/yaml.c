@@ -202,6 +202,10 @@ bool asdf_yaml_path_parse(const char *path, asdf_yaml_path_t *out_path) {
         cur_end = NULL;
         brac = *p;
 
+        // Here we check if the path component begins with one of the
+        // recognized opening brackets: [, ", or '
+        // If [ then it *must* be a sequence index, and if a quote it must
+        // be a mapping key.  Otherwise we determine later
         switch (brac) {
         case '[':
             // target had better be a sequence index
@@ -222,6 +226,8 @@ bool asdf_yaml_path_parse(const char *path, asdf_yaml_path_t *out_path) {
 
         switch (target) {
         case ASDF_YAML_PC_TARGET_ANY: {
+            // In the unknown/ambiguous case, just scan until the next /
+            // A '/' is not allowed in a key unless it's in a quoted key
             SKIP_WHITESPACE(p);
             cur = p;
             while (p < end && *p != '/') {
@@ -236,6 +242,9 @@ bool asdf_yaml_path_parse(const char *path, asdf_yaml_path_t *out_path) {
             break;
         }
         case ASDF_YAML_PC_TARGET_MAP:
+            // Definitely a mapping key because we are inside quotes
+            // scan until the matching quote and also check for valid escape
+            // sequences
             if (p == end)
                 goto invalid;
 
@@ -265,6 +274,9 @@ bool asdf_yaml_path_parse(const char *path, asdf_yaml_path_t *out_path) {
 
             break;
         case ASDF_YAML_PC_TARGET_SEQ:
+            // Must be a sequence index (opened with [)
+            // We allow leading and trailing whitespace inside the brackets
+            // like [ 0 ]; this seems to be consistent with libfyaml
             SKIP_WHITESPACE(p);
 
             if (p == end)
@@ -305,6 +317,11 @@ bool asdf_yaml_path_parse(const char *path, asdf_yaml_path_t *out_path) {
         if (!key)
             goto invalid;
 
+        // Determine if the key was a pure integer
+        // If the target is ANY (ambiguous) we store both the string key and the
+        // integer value on the path component.  Otherwise we determine here
+        // that if the path component was not an integer, in which case it should
+        // be treated as a mapping key
         if (target == ASDF_YAML_PC_TARGET_ANY || target == ASDF_YAML_PC_TARGET_SEQ) {
             char *end_idx = NULL;
             index = strtoll(key, &end_idx, 10);
@@ -319,6 +336,7 @@ bool asdf_yaml_path_parse(const char *path, asdf_yaml_path_t *out_path) {
             }
         }
 
+        // For sequence components we don't store the string key at all
         if (target == ASDF_YAML_PC_TARGET_SEQ) {
             free(key);
             key = NULL;
@@ -327,6 +345,7 @@ bool asdf_yaml_path_parse(const char *path, asdf_yaml_path_t *out_path) {
         asdf_yaml_path_push(
             out_path, (asdf_yaml_path_component_t){.target = target, .key = key, .index = index});
 
+        // Advance past the trailing / if any
         if (p != end)
             p++;
     }
