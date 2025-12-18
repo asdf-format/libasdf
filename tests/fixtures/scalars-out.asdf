@@ -3,7 +3,8 @@
 %YAML 1.1
 %TAG ! tag:stsci.edu:asdf/
 ---
-string: string0
+string: string
+string0: string0
 null: null
 false: false
 true: true

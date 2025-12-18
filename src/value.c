@@ -2279,10 +2279,7 @@ asdf_value_err_t asdf_node_insert_at(
         }
 
         if (fy_node_is_mapping(parent)) {
-            // NOTE: We must duplicate the key string because it will be freed
-            // later when the path is destroyed--libfyaml only takes a
-            // reference to the existing string and doesn't duplicate it
-            struct fy_node *key = fy_node_create_scalar(doc, strdup(comp->key), FY_NT);
+            struct fy_node *key = fy_node_create_scalar_copy(doc, comp->key, FY_NT);
 
             if (!key) {
                 err = ASDF_VALUE_ERR_OOM;

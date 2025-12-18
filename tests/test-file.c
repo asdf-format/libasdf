@@ -363,7 +363,7 @@ MU_TEST(test_asdf_set_scalar_type) {
     asdf_file_t *file = asdf_open(filename, "w");
     assert_not_null(file);
     assert_int(asdf_set_string(file, "string", "string", 6), ==, ASDF_VALUE_OK);
-    assert_int(asdf_set_string0(file, "string", "string0"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_string0(file, "string0", "string0"), ==, ASDF_VALUE_OK);
     assert_int(asdf_set_null(file, "null"), ==, ASDF_VALUE_OK);
     assert_int(asdf_set_bool(file, "false", false), ==, ASDF_VALUE_OK);
     assert_int(asdf_set_bool(file, "true", true), ==, ASDF_VALUE_OK);
@@ -417,6 +417,8 @@ MU_TEST(test_asdf_set_path_materialization) {
     // NULL in the pointer sense, not the YAML scalar sense
     assert_not_null(null);
     assert_true(asdf_value_is_null(null));
+    asdf_value_destroy(null);
+    asdf_value_destroy(seq);
     asdf_close(file);
     return MUNIT_OK;
 }
