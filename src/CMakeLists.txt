@@ -63,6 +63,14 @@ target_include_directories(libasdf_objs PUBLIC
     ${CMAKE_CURRENT_BINARY_DIR}
 )
 
+target_include_directories(libasdf_objs SYSTEM PRIVATE
+    ${BZIP2_INCLUDEDIR}
+    ${FYAML_INCLUDEDIR}
+    ${LZ4_INCLUDEDIR}
+    ${STATGRAB_INCLUDEDIR}
+    ${ZLIB_INCLUDEDIR}
+)
+
 # Avoid generating "liblibasdf"
 set_target_properties(libasdf ${PROJECT_NAME} PROPERTIES
     SOVERSION ${PROJECT_SOVERSION}
