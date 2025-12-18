@@ -80,7 +80,6 @@ foreach(source_file ${source_files})
     # and show as undefined at link-time. The object library is used as a workaround.
     target_link_libraries(${test_executable} PRIVATE
         ${FYAML_LIBRARIES}
-        ${ARGP_LIBRARIES}
         ${BZIP2_LIBRARIES}
         ${STATGRAB_LIBRARIES}
         ${LZ4_LIBRARIES}
