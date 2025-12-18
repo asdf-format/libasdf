@@ -61,12 +61,6 @@ foreach(source_file ${source_files})
     endif()
 
     target_include_directories(${test_executable} PRIVATE
-        ${FYAML_INCLUDEDIR}
-        ${ARGP_INCLUDEDIR}
-        ${STATGRAB_INCLUDEDIR}
-        ${LZ4_INCLUDEDIR}
-        ${BZIP2_INCLUDEDIR}
-        ${ZLIB_INCLUDEDIR}
         ${STC_DIR}/include
         ${CMAKE_SOURCE_DIR}/include
         ${CMAKE_SOURCE_DIR}/src
