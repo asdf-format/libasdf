@@ -53,10 +53,12 @@ set_property(TARGET libasdf_objs PROPERTY POSITION_INDEPENDENT_CODE 1)
 
 # Generate a shared library (always)
 add_library(libasdf SHARED $<TARGET_OBJECTS:libasdf_objs>)
+
 target_link_libraries(libasdf PUBLIC
     stc
     ${FYAML_LIBRARIES} ${BZIP2_LIBRARIES} ${ZLIB_LIBRARIES} ${LZ4_LIBRARIES} ${STATGRAB_LIBRARIES}
 )
+
 target_include_directories(libasdf_objs PUBLIC
     ${CMAKE_SOURCE_DIR}/third_party/STC/include
     ${CMAKE_BINARY_DIR}/include
@@ -69,6 +71,22 @@ target_include_directories(libasdf_objs SYSTEM PRIVATE
     ${LZ4_INCLUDEDIR}
     ${STATGRAB_INCLUDEDIR}
     ${ZLIB_INCLUDEDIR}
+)
+
+target_compile_options(libasdf_objs PUBLIC
+    ${BZIP2_CFLAGS}
+    ${FYAML_CFLAGS}
+    ${LZ4_CFLAGS}
+    ${STATGRAB_CFLAGS}
+    ${ZLIB_CFLAGS}
+)
+
+target_link_options(libasdf_objs PUBLIC
+    ${BZIP2_LDFLAGS}
+    ${FYAML_LDFLAGS}
+    ${LZ4_LDFLAGS}
+    ${STATGRAB_LDFLAGS}
+    ${ZLIB_LDFLAGS}
 )
 
 # Avoid generating "liblibasdf"
