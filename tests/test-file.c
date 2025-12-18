@@ -383,6 +383,24 @@ MU_TEST(test_asdf_set_scalar_type) {
 }
 
 
+MU_TEST(test_asdf_set_scalar_overwrite) {
+    const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    asdf_file_t *file = asdf_open(filename, "w");
+    assert_not_null(file);
+    assert_int(asdf_set_string0(file, "string", "string"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_string0(file, "string", "newstring"), ==, ASDF_VALUE_OK);
+    asdf_close(file);
+
+    file = asdf_open(filename, "r");
+    assert_not_null(file);
+    const char *read = NULL;
+    assert_int(asdf_get_string0(file, "string", &read), ==, ASDF_VALUE_OK);
+    assert_string_equal(read, "newstring");
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
 /**
  * When setting a value to a path that doesn't already exist (the intermediat
  * nodes don't exist) the metadata structure is automatically materialized via
@@ -903,6 +921,7 @@ MU_TEST_SUITE(
     MU_RUN_TEST(write_block_no_index),
     MU_RUN_TEST(write_blocks_and_index),
     MU_RUN_TEST(test_asdf_set_scalar_type),
+    MU_RUN_TEST(test_asdf_set_scalar_overwrite),
     MU_RUN_TEST(test_asdf_set_path_materialization),
     MU_RUN_TEST(read_compressed_reference_file, comp_mode_test_params),
     MU_RUN_TEST(read_compressed_block, comp_mode_test_params),

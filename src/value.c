@@ -2151,6 +2151,7 @@ asdf_value_err_t asdf_node_insert_at(
         if (!materialize)
             return ASDF_VALUE_ERR_NOT_FOUND;
     } else {
+        fy_node_free(node);
         return ASDF_VALUE_OK;
     }
 
