@@ -91,6 +91,15 @@ foreach(source_file ${source_files})
         util
         m
     )
+
+    target_link_directories(${test_executable} PRIVATE
+        ${BZIP2_LIBDIR}
+        ${FYAML_LIBDIR}
+        ${LZ4_LIBDIR}
+        ${STATGRAB_LIBDIR}
+        ${ZLIB_LIBDIR}
+    )
+
     add_test(${test_executable} ${test_executable})
     set_tests_properties(${test_executable}
         PROPERTIES TIMEOUT 240)
