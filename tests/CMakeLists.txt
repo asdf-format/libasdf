@@ -1,9 +1,9 @@
 find_program(BASH_PROGRAM bash)
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/tests)
 set(CTEST_BINARY_DIRECTORY ${CMAKE_BINARY_DIR}/tests)
-set(nix_gnu_cflags ${CMAKE_C_FLAGS} -Wall -Wextra)
-set(nix_clang_cflags ${CMAKE_C_FLAGS} -Wall -Wextra)
-set(win_msvc_cflags ${CMAKE_C_FLAGS} /Wall)
+set(nix_gnu_cflags -Wall -Wextra)
+set(nix_clang_cflags -Wall -Wextra)
+set(win_msvc_cflags /Wall)
 
 file(GLOB source_files "test-*.c")
 file(GLOB shell_files "test-*.sh")
@@ -65,16 +65,29 @@ foreach(source_file ${source_files})
         ${ARGP_INCLUDEDIR}
         ${STATGRAB_INCLUDEDIR}
         ${LZ4_INCLUDEDIR}
+        ${BZIP2_INCLUDEDIR}
+        ${ZLIB_INCLUDEDIR}
         ${STC_DIR}/include
         ${CMAKE_SOURCE_DIR}/include
         ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${CMAKE_CURRENT_BINARY_DIR}/include
     )
+
+    # Linking tests to libasdf does not work. Some symbols used by the test(s) are marked "hidden"
+    # and show as undefined at link-time. The object library is used as a workaround.
     target_link_libraries(${test_executable} PRIVATE
-        libasdf
+        ${FYAML_LIBRARIES}
+        ${ARGP_LIBRARIES}
+        ${BZIP2_LIBRARIES}
+        ${STATGRAB_LIBRARIES}
+        ${LZ4_LIBRARIES}
+        ${ZLIB_LIBRARIES}
+        stc
+        $<TARGET_OBJECTS:libasdf_objs>
         munit
         util
+        m
     )
     add_test(${test_executable} ${test_executable})
     set_tests_properties(${test_executable}

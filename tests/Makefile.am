@@ -9,7 +9,7 @@ asdf_standard_dir = $(abs_top_srcdir)/asdf-standard
 asdf_standard_submodule = $(asdf_standard_dir)/.git
 munit_dir = $(top_builddir)/tests/munit
 munit_submodule = $(munit_dir)/.git
-munit_cflags = -I$(top_srcdir)/tests
+munit_cflags = -std=c11 -I$(top_srcdir)/tests
 munit_ldflags = $(builddir)/libmunit.a
 submodules = $(asdf_standard_submodule) $(munit_submodule)
 
@@ -46,7 +46,8 @@ unit_test_cppflags = \
     $(AM_CPPFLAGS) \
     -DREFERENCE_FILES_DIR=\"$(asdf_standard_dir)/reference_files\" \
     -DFIXTURES_DIR=\"$(abs_srcdir)/fixtures\" \
-    -DTEMP_DIR=\"$(abs_builddir)/tmp\"
+    -DTEMP_DIR=\"$(abs_builddir)/tmp\" \
+    -D_GNU_SOURCE
 unit_test_cflags = \
     $(munit_cflags) $(FYAML_CFLAGS) $(STATGRAB_CFLAGS) $(LZ4_CFLAGS) $(CODE_COVERAGE_CFLAGS) $(ASDF_CFLAGS)
 

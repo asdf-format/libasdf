@@ -1,7 +1,6 @@
 project(libasdf)
 
-add_library(libasdf STATIC)
-target_sources(libasdf PUBLIC
+set(libasdf_sources
     compression/bzp2.c
     compression/compressor_registry.c
     compression/compression.c
@@ -34,7 +33,8 @@ target_sources(libasdf PUBLIC
 
 # Add optional gwcs extension sources
 if (WITH_GWCS)
-    target_sources(libasdf PUBLIC
+    set(libasdf_sources
+	${libasdf_sources}
         gwcs/fitswcs_imaging.c
         gwcs/frame2d.c
         gwcs/frame.c
@@ -46,22 +46,43 @@ if (WITH_GWCS)
     )
 endif()
 
+# Generate an object library
+# i.e. build the source code once, and reuse it elsewhere
+add_library(libasdf_objs OBJECT ${libasdf_sources})
+set_property(TARGET libasdf_objs PROPERTY POSITION_INDEPENDENT_CODE 1)
 
+# Generate a shared library (always)
+add_library(libasdf SHARED $<TARGET_OBJECTS:libasdf_objs>)
 target_link_libraries(libasdf PUBLIC
     stc
     ${FYAML_LIBRARIES} ${BZIP2_LIBRARIES} ${ZLIB_LIBRARIES} ${LZ4_LIBRARIES} ${STATGRAB_LIBRARIES}
 )
-target_include_directories(libasdf PUBLIC
+target_include_directories(libasdf_objs PUBLIC
     ${CMAKE_SOURCE_DIR}/third_party/STC/include
     ${CMAKE_BINARY_DIR}/include
     ${CMAKE_CURRENT_BINARY_DIR}
 )
+
 # Avoid generating "liblibasdf"
-set_target_properties(libasdf ${PROJECT_NAME} PROPERTIES OUTPUT_NAME "asdf")
+set_target_properties(libasdf ${PROJECT_NAME} PROPERTIES
+    SOVERSION ${PROJECT_SOVERSION}
+    OUTPUT_NAME "asdf")
+
 install(TARGETS libasdf
     DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
+
+# Optionally generate a static library
+if(ENABLE_STATIC)
+add_library(libasdf_static STATIC $<TARGET_OBJECTS:libasdf_objs>)
+set_target_properties(libasdf_static ${PROJECT_NAME} PROPERTIES OUTPUT_NAME "asdf")
+install(TARGETS libasdf_static
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+endif()
+
+# Generate CLI program
 project(asdf-cli)
 add_executable(asdf-cli main.c)
 target_link_libraries(asdf-cli PRIVATE libasdf stc ${ARGP_LIBRARIES})
@@ -70,6 +91,8 @@ target_include_directories(asdf-cli PRIVATE
     ${CMAKE_BINARY_DIR}/include
     ${CMAKE_CURRENT_BINARY_DIR}
 )
+
+# Set CLI program's name on-disk
 set_target_properties(asdf-cli ${PROJECT_NAME} PROPERTIES OUTPUT_NAME "asdf")
 install(TARGETS asdf-cli
     DESTINATION ${CMAKE_INSTALL_BINDIR}
