@@ -68,7 +68,7 @@
         __VA_ARGS__, \
         __CHECK_NEXT_YAML_EVENT_3, \
         __CHECK_NEXT_YAML_EVENT_2, \
-        __CHECK_NEXT_YAML_EVENT_1 \
+        __CHECK_NEXT_YAML_EVENT_1, \
     )(__VA_ARGS__)
 
 
