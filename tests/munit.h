@@ -16,7 +16,7 @@
 // on in some GCCs.  This would be fine (it's a useful warning), except it
 // causes problems with munit which omits const qualifiers in some of its
 // structs.
-#ifdef __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
 // Seems to be a bug in gcc that the warning diagnostics set by STC are not
 // all restored on #pragma GCC diagnostic pop
 // This makes munit sad, but for the tests we can safely ignore.
