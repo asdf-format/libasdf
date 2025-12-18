@@ -588,12 +588,12 @@ static bool validate_block_index(asdf_parser_t *parser) {
     if (n_blocks < 1)
         return true;
 
-    isize *prev = NULL;
+    off_t *prev = NULL;
     // Ensure that block index offsets are monotonically increasing and have a minimum distance
     // between them
     for (asdf_block_index_iter_t it = asdf_block_index_begin(block_index); it.ref;
          asdf_block_index_next(&it)) {
-        isize *offset = it.ref;
+        off_t *offset = it.ref;
 
         if (prev && (*offset <= *prev || (*offset - *prev) < ASDF_BLOCK_HEADER_FULL_SIZE))
             return false;
@@ -857,7 +857,7 @@ static parse_result_t parse_block(asdf_parser_t *parser, asdf_event_t *event) {
         if (!block_info) {
             // Valid block not found at the index proposed by the block index; for now
             // mark the entry in the block index invalid by setting it to -1
-            isize *offset = asdf_block_index_at_mut(block_index, (isize)block_idx);
+            off_t *offset = asdf_block_index_at_mut(block_index, (isize)block_idx);
             *offset = -1;
         }
     }
@@ -887,7 +887,7 @@ static parse_result_t parse_block(asdf_parser_t *parser, asdf_event_t *event) {
 
     // Update the block index with the correct offset of the block
     if (block_info->header_pos <= PTRDIFF_MAX) {
-        isize *offset = asdf_block_index_at_mut(block_index, (isize)block_idx);
+        off_t *offset = asdf_block_index_at_mut(block_index, (isize)block_idx);
         *offset = (isize)block_info->header_pos;
     }
 

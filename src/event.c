@@ -295,7 +295,7 @@ void asdf_event_print(const asdf_event_t *event, FILE *file, bool verbose) {
         size_t idx = 0;
         for (asdf_block_index_iter_t it = asdf_block_index_begin(block_index); it.ref;
              asdf_block_index_next(&it)) {
-            isize *offset = it.ref;
+            off_t *offset = it.ref;
             if (0 != idx) {
                 fprintf(file, ", ");
             }
