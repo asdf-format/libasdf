@@ -154,7 +154,7 @@ MU_TEST(ndarray) {
     assert_null(ndarray->strides);
 
     size_t size = 0;
-    void *data = asdf_ndarray_data_raw(ndarray, &size);
+    const void *data = asdf_ndarray_data_raw(ndarray, &size);
     assert_not_null(data);
     assert_int(size, ==, sizeof(int64_t) * 8);
     // The actual array in this file is just 64-bit ints 0 through 7
