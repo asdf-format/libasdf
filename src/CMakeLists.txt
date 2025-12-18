@@ -118,6 +118,7 @@ target_include_directories(asdf-cli PRIVATE
     ${CMAKE_BINARY_DIR}/include
     ${CMAKE_CURRENT_BINARY_DIR}
     ${ARGP_INCLUDEDIR}
+    ${FYAML_INCLUDEDIR}
 )
 
 # Set CLI program's name on-disk
