@@ -81,7 +81,7 @@ target_compile_options(libasdf_objs PUBLIC
     ${ZLIB_CFLAGS}
 )
 
-target_link_options(libasdf_objs PUBLIC
+target_link_options(libasdf PUBLIC
     ${BZIP2_LDFLAGS}
     ${FYAML_LDFLAGS}
     ${LZ4_LDFLAGS}
@@ -89,7 +89,7 @@ target_link_options(libasdf_objs PUBLIC
     ${ZLIB_LDFLAGS}
 )
 
-target_link_directories(libasdf_objs PUBLIC
+target_link_directories(libasdf PUBLIC
     ${BZIP2_LIBDIR}
     ${FYAML_LIBDIR}
     ${LZ4_LIBDIR}
