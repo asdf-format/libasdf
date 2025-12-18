@@ -360,7 +360,7 @@ MU_TEST(write_blocks_and_index) {
 
 MU_TEST(test_asdf_set_scalar_type) {
     const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
-    asdf_file_t *file = asdf_open_ex(filename, "w", NULL);
+    asdf_file_t *file = asdf_open(filename, "w");
     assert_not_null(file);
     assert_int(asdf_set_string(file, "string", "string", 6), ==, ASDF_VALUE_OK);
     assert_int(asdf_set_string0(file, "string", "string0"), ==, ASDF_VALUE_OK);
@@ -379,6 +379,45 @@ MU_TEST(test_asdf_set_scalar_type) {
 
     const char *reference = get_fixture_file_path("scalars-out.asdf");
     assert_true(compare_files(filename, reference));
+    return MUNIT_OK;
+}
+
+
+/**
+ * When setting a value to a path that doesn't already exist (the intermediat
+ * nodes don't exist) the metadata structure is automatically materialized via
+ * the path
+ *
+ * This tests a simple case of that.
+ */
+MU_TEST(test_asdf_set_path_materialization) {
+    const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    asdf_file_t *file = asdf_open(filename, "w");
+    assert_not_null(file);
+    const char *val = "val";
+    const char *path = "a/b/c/[1]/d";
+    assert_int(asdf_set_string0(file, path, val), ==, ASDF_VALUE_OK);
+    asdf_close(file);
+
+    // Re-open the file in read mode and check the structure
+    file = asdf_open(filename, "r");
+    assert_not_null(file);
+    const char *read_val = NULL;
+    assert_int(asdf_get_string0(file, path, &read_val), ==, ASDF_VALUE_OK);
+    assert_string_equal(read_val, val);
+
+    // Since the sequence a/b/c didn't exist previously, but we assigned into
+    // its 1-th element, this automatically fills the rest of the sequence with
+    // nulls.  Check that
+    asdf_value_t *seq = NULL;
+    assert_int(asdf_get_sequence(file, "a/b/c", &seq), ==, ASDF_VALUE_OK);
+    assert_true(asdf_value_is_sequence(seq));
+    assert_int(asdf_sequence_size(seq), ==, 2);
+    asdf_value_t *null = asdf_sequence_get(seq, 0);
+    // NULL in the pointer sense, not the YAML scalar sense
+    assert_not_null(null);
+    assert_true(asdf_value_is_null(null));
+    asdf_close(file);
     return MUNIT_OK;
 }
 
@@ -862,6 +901,7 @@ MU_TEST_SUITE(
     MU_RUN_TEST(write_block_no_index),
     MU_RUN_TEST(write_blocks_and_index),
     MU_RUN_TEST(test_asdf_set_scalar_type),
+    MU_RUN_TEST(test_asdf_set_path_materialization),
     MU_RUN_TEST(read_compressed_reference_file, comp_mode_test_params),
     MU_RUN_TEST(read_compressed_block, comp_mode_test_params),
     MU_RUN_TEST(read_compressed_block_to_file, comp_test_params),
