@@ -68,6 +68,14 @@ foreach(source_file ${source_files})
         ${CMAKE_CURRENT_BINARY_DIR}/include
     )
 
+    target_include_directories(${test_executable} SYSTEM PRIVATE
+        ${BZIP2_INCLUDEDIR}
+        ${FYAML_INCLUDEDIR}
+        ${LZ4_INCLUDEDIR}
+        ${STATGRAB_INCLUDEDIR}
+        ${ZLIB_INCLUDEDIR}
+    )
+
     # Linking tests to libasdf does not work. Some symbols used by the test(s) are marked "hidden"
     # and show as undefined at link-time. The object library is used as a workaround.
     target_link_libraries(${test_executable} PRIVATE
