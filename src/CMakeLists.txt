@@ -112,6 +112,7 @@ endif()
 project(asdf-cli)
 add_executable(asdf-cli main.c)
 target_link_libraries(asdf-cli PRIVATE libasdf stc ${ARGP_LIBRARIES})
+target_link_directories(asdf-cli PRIVATE ${ARGP_LIBDIR})
 target_include_directories(asdf-cli PRIVATE
     ${STC_DIR}/include
     ${CMAKE_BINARY_DIR}/include
