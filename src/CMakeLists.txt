@@ -89,6 +89,14 @@ target_link_options(libasdf_objs PUBLIC
     ${ZLIB_LDFLAGS}
 )
 
+target_link_directories(libasdf_objs PUBLIC
+    ${BZIP2_LIBDIR}
+    ${FYAML_LIBDIR}
+    ${LZ4_LIBDIR}
+    ${STATGRAB_LIBDIR}
+    ${ZLIB_LIBDIR}
+)
+
 # Avoid generating "liblibasdf"
 set_target_properties(libasdf ${PROJECT_NAME} PROPERTIES
     SOVERSION ${PROJECT_SOVERSION}
