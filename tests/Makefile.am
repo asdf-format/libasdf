@@ -288,6 +288,7 @@ EXTRA_DIST += \
     fixtures/parse-minimal-extra-comment.asdf \
     fixtures/roman_wcs.asdf \
     fixtures/scalars.asdf \
+    fixtures/scalars-out.asdf \
     fixtures/tagged-scalars.asdf \
     fixtures/tiles.asdf \
     fixtures/trivial-extension.asdf \

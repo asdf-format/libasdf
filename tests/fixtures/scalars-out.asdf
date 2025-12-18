@@ -1,0 +1,18 @@
+#ASDF 1.0.0
+#ASDF_STANDARD 1.6.0
+%YAML 1.1
+%TAG ! tag:stsci.edu:asdf/
+---
+string: string0
+null: null
+false: false
+true: true
+int8: -128
+int16: -32768
+int32: -2147483648
+int64: -9223372036854775808
+uint8: 255
+uint16: 65535
+uint32: 4294967295
+uint64: 18446744073709551615
+...

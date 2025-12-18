@@ -9,6 +9,7 @@
 
 #include <libfyaml.h>
 
+#include "asdf/value.h"
 #include "compression/compression.h"
 #include "context.h"
 #include "emitter.h"
@@ -385,7 +386,7 @@ asdf_value_t *asdf_get_value(asdf_file_t *file, const char *path) {
 
 
 /* asdf_is_(type), asdf_get_(type) shortcuts */
-#define __ASDF_IS_TYPE(type) \
+#define ASDF_IS_TYPE(type) \
     bool asdf_is_##type(asdf_file_t *file, const char *path) { \
         asdf_value_t *value = asdf_get_value(file, path); \
         if (!value) \
@@ -396,23 +397,23 @@ asdf_value_t *asdf_get_value(asdf_file_t *file, const char *path) {
     }
 
 
-__ASDF_IS_TYPE(mapping)
-__ASDF_IS_TYPE(sequence)
-__ASDF_IS_TYPE(string)
-__ASDF_IS_TYPE(scalar)
-__ASDF_IS_TYPE(bool)
-__ASDF_IS_TYPE(null)
-__ASDF_IS_TYPE(int)
-__ASDF_IS_TYPE(int8)
-__ASDF_IS_TYPE(int16)
-__ASDF_IS_TYPE(int32)
-__ASDF_IS_TYPE(int64)
-__ASDF_IS_TYPE(uint8)
-__ASDF_IS_TYPE(uint16)
-__ASDF_IS_TYPE(uint32)
-__ASDF_IS_TYPE(uint64)
-__ASDF_IS_TYPE(float)
-__ASDF_IS_TYPE(double)
+ASDF_IS_TYPE(mapping)
+ASDF_IS_TYPE(sequence)
+ASDF_IS_TYPE(string)
+ASDF_IS_TYPE(scalar)
+ASDF_IS_TYPE(bool)
+ASDF_IS_TYPE(null)
+ASDF_IS_TYPE(int)
+ASDF_IS_TYPE(int8)
+ASDF_IS_TYPE(int16)
+ASDF_IS_TYPE(int32)
+ASDF_IS_TYPE(int64)
+ASDF_IS_TYPE(uint8)
+ASDF_IS_TYPE(uint16)
+ASDF_IS_TYPE(uint32)
+ASDF_IS_TYPE(uint64)
+ASDF_IS_TYPE(float)
+ASDF_IS_TYPE(double)
 
 
 asdf_value_err_t asdf_get_mapping(asdf_file_t *file, const char *path, asdf_value_t **out) {
@@ -497,7 +498,7 @@ asdf_value_err_t asdf_get_scalar0(asdf_file_t *file, const char *path, const cha
 }
 
 
-#define __ASDF_GET_TYPE(type) \
+#define ASDF_GET_TYPE(type) \
     asdf_value_err_t asdf_get_##type(asdf_file_t *file, const char *path, type *out) { \
         asdf_value_t *value = asdf_get_value(file, path); \
         if (!value) \
@@ -508,7 +509,7 @@ asdf_value_err_t asdf_get_scalar0(asdf_file_t *file, const char *path, const cha
     }
 
 
-#define __ASDF_GET_INT_TYPE(type) \
+#define ASDF_GET_INT_TYPE(type) \
     asdf_value_err_t asdf_get_##type(asdf_file_t *file, const char *path, type##_t *out) { \
         asdf_value_t *value = asdf_get_value(file, path); \
         if (!value) \
@@ -519,17 +520,17 @@ asdf_value_err_t asdf_get_scalar0(asdf_file_t *file, const char *path, const cha
     }
 
 
-__ASDF_GET_TYPE(bool);
-__ASDF_GET_INT_TYPE(int8);
-__ASDF_GET_INT_TYPE(int16);
-__ASDF_GET_INT_TYPE(int32);
-__ASDF_GET_INT_TYPE(int64);
-__ASDF_GET_INT_TYPE(uint8);
-__ASDF_GET_INT_TYPE(uint16);
-__ASDF_GET_INT_TYPE(uint32);
-__ASDF_GET_INT_TYPE(uint64);
-__ASDF_GET_TYPE(float);
-__ASDF_GET_TYPE(double);
+ASDF_GET_TYPE(bool);
+ASDF_GET_INT_TYPE(int8);
+ASDF_GET_INT_TYPE(int16);
+ASDF_GET_INT_TYPE(int32);
+ASDF_GET_INT_TYPE(int64);
+ASDF_GET_INT_TYPE(uint8);
+ASDF_GET_INT_TYPE(uint16);
+ASDF_GET_INT_TYPE(uint32);
+ASDF_GET_INT_TYPE(uint64);
+ASDF_GET_TYPE(float);
+ASDF_GET_TYPE(double);
 
 
 bool asdf_is_extension_type(asdf_file_t *file, const char *path, asdf_extension_t *ext) {
@@ -552,6 +553,102 @@ asdf_value_err_t asdf_get_extension_type(
     asdf_value_destroy(value);
     return err;
 }
+
+
+/** Setters */
+static asdf_value_err_t asdf_set_node(asdf_file_t *file, const char *path, struct fy_node *node) {
+    if (file->mode == ASDF_FILE_MODE_READ_ONLY)
+        return ASDF_VALUE_ERR_READ_ONLY;
+
+    struct fy_document *tree = asdf_file_get_tree_document(file);
+
+    if (!tree)
+        return ASDF_VALUE_ERR_OOM;
+
+    return asdf_node_insert_at(tree, path, node, true);
+}
+
+
+asdf_value_err_t asdf_set_string(asdf_file_t *file, const char *path, const char *str, size_t len) {
+    struct fy_document *tree = asdf_file_get_tree_document(file);
+
+    if (!tree)
+        return ASDF_VALUE_ERR_OOM;
+
+    struct fy_node *node = asdf_node_of_string(tree, str, len);
+
+    if (!node)
+        return ASDF_VALUE_ERR_OOM;
+
+    return asdf_set_node(file, path, node);
+}
+
+
+asdf_value_err_t asdf_set_string0(asdf_file_t *file, const char *path, const char *str) {
+    struct fy_document *tree = asdf_file_get_tree_document(file);
+
+    if (!tree)
+        return ASDF_VALUE_ERR_OOM;
+
+    struct fy_node *node = asdf_node_of_string0(tree, str);
+
+    if (!node)
+        return ASDF_VALUE_ERR_OOM;
+
+    return asdf_set_node(file, path, node);
+}
+
+
+asdf_value_err_t asdf_set_null(asdf_file_t *file, const char *path) {
+    struct fy_document *tree = asdf_file_get_tree_document(file);
+
+    if (!tree)
+        return ASDF_VALUE_ERR_OOM;
+
+    struct fy_node *node = asdf_node_of_null(tree);
+
+    if (!node)
+        return ASDF_VALUE_ERR_OOM;
+
+    return asdf_set_node(file, path, node);
+}
+
+
+#define ASDF_SET_TYPE(type) \
+    asdf_value_err_t asdf_set_##type(asdf_file_t *file, const char *path, type value) { \
+        struct fy_document *tree = asdf_file_get_tree_document(file); \
+        if (!tree) \
+            return ASDF_VALUE_ERR_OOM; \
+        struct fy_node *node = asdf_node_of_##type(tree, value); \
+        if (!node) \
+            return ASDF_VALUE_ERR_OOM; \
+        return asdf_set_node(file, path, node); \
+    }
+
+
+#define ASDF_SET_INT_TYPE(type) \
+    asdf_value_err_t asdf_set_##type(asdf_file_t *file, const char *path, type##_t value) { \
+        struct fy_document *tree = asdf_file_get_tree_document(file); \
+        if (!tree) \
+            return ASDF_VALUE_ERR_OOM; \
+        struct fy_node *node = asdf_node_of_##type(tree, value); \
+        if (!node) \
+            return ASDF_VALUE_ERR_OOM; \
+        return asdf_set_node(file, path, node); \
+    }
+
+
+ASDF_SET_TYPE(bool);
+ASDF_SET_INT_TYPE(int8);
+ASDF_SET_INT_TYPE(int16);
+ASDF_SET_INT_TYPE(int32);
+ASDF_SET_INT_TYPE(int64);
+ASDF_SET_INT_TYPE(uint8);
+ASDF_SET_INT_TYPE(uint16);
+ASDF_SET_INT_TYPE(uint32);
+ASDF_SET_INT_TYPE(uint64);
+ASDF_SET_TYPE(float);
+ASDF_SET_TYPE(double);
 
 
 /* User-facing block-related methods */

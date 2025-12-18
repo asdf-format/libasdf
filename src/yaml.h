@@ -121,6 +121,7 @@ static void asdf_yaml_path_component_drop(asdf_yaml_path_component_t *component)
 #define i_keyclass asdf_yaml_path_component
 #include <stc/vec.h>
 typedef asdf_yaml_path asdf_yaml_path_t;
+typedef asdf_yaml_path_iter asdf_yaml_path_iter_t;
 
 
 ASDF_LOCAL bool asdf_yaml_path_parse(const char *path, asdf_yaml_path_t *out_path);

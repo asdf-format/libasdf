@@ -358,6 +358,31 @@ MU_TEST(write_blocks_and_index) {
 }
 
 
+MU_TEST(test_asdf_set_scalar_type) {
+    const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    asdf_file_t *file = asdf_open_ex(filename, "w", NULL);
+    assert_not_null(file);
+    assert_int(asdf_set_string(file, "string", "string", 6), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_string0(file, "string", "string0"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_null(file, "null"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_bool(file, "false", false), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_bool(file, "true", true), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_int8(file, "int8", INT8_MIN), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_int16(file, "int16", INT16_MIN), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_int32(file, "int32", INT32_MIN), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_int64(file, "int64", INT64_MIN), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_uint8(file, "uint8", UINT8_MAX), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_uint16(file, "uint16", UINT16_MAX), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_uint32(file, "uint32", UINT32_MAX), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_uint64(file, "uint64", UINT64_MAX), ==, ASDF_VALUE_OK);
+    asdf_close(file);
+
+    const char *reference = get_fixture_file_path("scalars-out.asdf");
+    assert_true(compare_files(filename, reference));
+    return MUNIT_OK;
+}
+
+
 /**
  * Compression tests
  * =================
@@ -836,6 +861,7 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_block_append_read_only),
     MU_RUN_TEST(write_block_no_index),
     MU_RUN_TEST(write_blocks_and_index),
+    MU_RUN_TEST(test_asdf_set_scalar_type),
     MU_RUN_TEST(read_compressed_reference_file, comp_mode_test_params),
     MU_RUN_TEST(read_compressed_block, comp_mode_test_params),
     MU_RUN_TEST(read_compressed_block_to_file, comp_test_params),
