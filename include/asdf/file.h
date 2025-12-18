@@ -706,6 +706,40 @@ ASDF_EXPORT bool asdf_is_extension_type(asdf_file_t *file, const char *path, asd
 ASDF_EXPORT asdf_value_err_t
 asdf_get_extension_type(asdf_file_t *file, const char *path, asdf_extension_t *ext, void **out);
 
+
+/**
+ * .. _file-value-setters:
+ *
+ * Writing values
+ * --------------
+ *
+ * .. todo::
+ *
+ *   Needs general explanation, to do in #114
+ */
+
+
+ASDF_EXPORT asdf_value_err_t
+asdf_set_string(asdf_file_t *file, const char *path, const char *str, size_t len);
+ASDF_EXPORT asdf_value_err_t asdf_set_string0(asdf_file_t *file, const char *path, const char *str);
+
+ASDF_EXPORT asdf_value_err_t asdf_set_bool(asdf_file_t *file, const char *path, bool val);
+
+ASDF_EXPORT asdf_value_err_t asdf_set_null(asdf_file_t *file, const char *path);
+
+ASDF_EXPORT asdf_value_err_t asdf_set_int8(asdf_file_t *file, const char *path, int8_t val);
+ASDF_EXPORT asdf_value_err_t asdf_set_int16(asdf_file_t *file, const char *path, int16_t val);
+ASDF_EXPORT asdf_value_err_t asdf_set_int32(asdf_file_t *file, const char *path, int32_t val);
+ASDF_EXPORT asdf_value_err_t asdf_set_int64(asdf_file_t *file, const char *path, int64_t val);
+ASDF_EXPORT asdf_value_err_t asdf_set_uint8(asdf_file_t *file, const char *path, uint8_t val);
+ASDF_EXPORT asdf_value_err_t asdf_set_uint16(asdf_file_t *file, const char *path, uint16_t val);
+ASDF_EXPORT asdf_value_err_t asdf_set_uint32(asdf_file_t *file, const char *path, uint32_t val);
+ASDF_EXPORT asdf_value_err_t asdf_set_uint64(asdf_file_t *file, const char *path, uint64_t val);
+
+ASDF_EXPORT asdf_value_err_t asdf_set_float(asdf_file_t *file, const char *path, float val);
+ASDF_EXPORT asdf_value_err_t asdf_set_double(asdf_file_t *file, const char *path, double val);
+
+
 /**
  * Block-related APIs
  * ------------------

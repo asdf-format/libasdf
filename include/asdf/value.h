@@ -157,6 +157,12 @@ typedef enum {
      * object (typically only if the system is out of memory).
      */
     ASDF_VALUE_ERR_OOM,
+
+    /**
+     * Error returned when setting a value on a file or other value set to
+     * read-only/immutable.
+     */
+    ASDF_VALUE_ERR_READ_ONLY
 } asdf_value_err_t;
 
 

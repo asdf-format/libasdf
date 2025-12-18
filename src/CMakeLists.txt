@@ -53,14 +53,40 @@ set_property(TARGET libasdf_objs PROPERTY POSITION_INDEPENDENT_CODE 1)
 
 # Generate a shared library (always)
 add_library(libasdf SHARED $<TARGET_OBJECTS:libasdf_objs>)
+
 target_link_libraries(libasdf PUBLIC
     stc
     ${FYAML_LIBRARIES} ${BZIP2_LIBRARIES} ${ZLIB_LIBRARIES} ${LZ4_LIBRARIES} ${STATGRAB_LIBRARIES}
 )
+
+target_link_directories(libasdf PUBLIC
+    ${BZIP2_LIBDIR}
+    ${FYAML_LIBDIR}
+    ${LZ4_LIBDIR}
+    ${STATGRAB_LIBDIR}
+    ${ZLIB_LIBDIR}
+)
+
 target_include_directories(libasdf_objs PUBLIC
     ${CMAKE_SOURCE_DIR}/third_party/STC/include
     ${CMAKE_BINARY_DIR}/include
     ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+target_include_directories(libasdf_objs SYSTEM PRIVATE
+    ${BZIP2_INCLUDEDIR}
+    ${FYAML_INCLUDEDIR}
+    ${LZ4_INCLUDEDIR}
+    ${STATGRAB_INCLUDEDIR}
+    ${ZLIB_INCLUDEDIR}
+)
+
+target_compile_options(libasdf_objs PUBLIC
+    ${BZIP2_CFLAGS}
+    ${FYAML_CFLAGS}
+    ${LZ4_CFLAGS}
+    ${STATGRAB_CFLAGS}
+    ${ZLIB_CFLAGS}
 )
 
 # Avoid generating "liblibasdf"
@@ -86,10 +112,13 @@ endif()
 project(asdf-cli)
 add_executable(asdf-cli main.c)
 target_link_libraries(asdf-cli PRIVATE libasdf stc ${ARGP_LIBRARIES})
+target_link_directories(asdf-cli PRIVATE ${ARGP_LIBDIR})
 target_include_directories(asdf-cli PRIVATE
     ${STC_DIR}/include
     ${CMAKE_BINARY_DIR}/include
     ${CMAKE_CURRENT_BINARY_DIR}
+    ${ARGP_INCLUDEDIR}
+    ${FYAML_INCLUDEDIR}
 )
 
 # Set CLI program's name on-disk

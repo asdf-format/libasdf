@@ -12,6 +12,9 @@
 #include "config.h"
 #endif
 
+#include <stdbool.h>
+#include <stdlib.h>
+
 #include <libfyaml.h>
 
 #include "asdf/file.h"
@@ -66,3 +69,59 @@ extern ASDF_LOCAL const char *asdf_yaml_empty_document;
 
 
 ASDF_LOCAL struct fy_document *asdf_yaml_create_empty_document(asdf_config_t *config);
+
+
+/**
+ * Utilities for parsing and iterating over YAML Pointer paths
+ */
+typedef enum {
+    /**
+     * The target can be a mapping or a sequence depending on context
+     *
+     * This is the one 'ambiguous' case when we have a positive integer which
+     * could be a mapping key or a sequence index.  If the parent value does
+     * not already exist then it is assumed to be a sequence index, but if the
+     * parent does exist and is a mapping, then it can be taken as a mapping
+     * key.
+     */
+    ASDF_YAML_PC_TARGET_ANY,
+    /** A key in a mapping */
+    ASDF_YAML_PC_TARGET_MAP,
+    /** An index in a sequence */
+    ASDF_YAML_PC_TARGET_SEQ,
+} asdf_yaml_pc_target_t;
+
+
+typedef struct {
+    asdf_yaml_pc_target_t target;
+    const char *key;
+    ssize_t index;
+} asdf_yaml_path_component;
+
+
+typedef asdf_yaml_path_component asdf_yaml_path_component_t;
+
+
+static asdf_yaml_path_component_t asdf_yaml_path_component_clone(
+    asdf_yaml_path_component_t component) {
+    if (component.key)
+        component.key = strdup(component.key);
+
+    return component;
+}
+
+
+static void asdf_yaml_path_component_drop(asdf_yaml_path_component_t *component) {
+    free((char *)component->key);
+}
+
+
+// NOLINTNEXTLINE(readability-identifier-naming)
+#define i_type asdf_yaml_path
+#define i_keyclass asdf_yaml_path_component
+#include <stc/vec.h>
+typedef asdf_yaml_path asdf_yaml_path_t;
+typedef asdf_yaml_path_iter asdf_yaml_path_iter_t;
+
+
+ASDF_LOCAL bool asdf_yaml_path_parse(const char *path, asdf_yaml_path_t *out_path);

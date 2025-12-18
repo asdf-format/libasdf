@@ -1,5 +1,7 @@
 #pragma once
 
+#include <limits.h>
+#include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -113,3 +115,72 @@ typedef struct _asdf_find_iter_impl {
 typedef _asdf_find_iter_impl_t *asdf_find_iter_t;
 
 typedef struct _asdf_find_iter_impl asdf_find_item_t;
+
+
+/**
+ * Inline functions pertaining to creating / writing values (specifically for
+ * building scalar nodes)
+ */
+static inline struct fy_node *asdf_node_of_string(
+    struct fy_document *doc, const char *str, size_t len) {
+    if (len > INT_MAX)
+        return NULL;
+
+    return fy_node_create_scalarf(doc, "%.*s", (int)len, str);
+}
+
+
+static inline struct fy_node *asdf_node_of_string0(struct fy_document *doc, const char *str) {
+    return fy_node_create_scalarf(doc, "%s", str);
+}
+
+
+static inline struct fy_node *asdf_node_of_bool(struct fy_document *doc, bool val) {
+    return fy_node_create_scalarf(doc, "%s", val ? "true" : "false");
+}
+
+
+static inline struct fy_node *asdf_node_of_null(struct fy_document *doc) {
+    return fy_node_create_scalarf(doc, "%s", "null");
+}
+
+
+/** Helper macro to produce asdf_node_of_<typ> functions for different scalar types */
+#define ASDF_NODE_OF_VALUE_TYPE(typ, value_type, fmt) \
+    static inline struct fy_node *asdf_node_of_##typ(struct fy_document *doc, value_type val) { \
+        return fy_node_create_scalarf((doc), (fmt), (val)); \
+    }
+
+
+ASDF_NODE_OF_VALUE_TYPE(int8, int8_t, "%" PRIi8)
+ASDF_NODE_OF_VALUE_TYPE(int16, int16_t, "%" PRIi16)
+ASDF_NODE_OF_VALUE_TYPE(int32, int32_t, "%" PRIi32)
+ASDF_NODE_OF_VALUE_TYPE(int64, int64_t, "%" PRIi64)
+ASDF_NODE_OF_VALUE_TYPE(uint8, uint8_t, "%" PRIu8)
+ASDF_NODE_OF_VALUE_TYPE(uint16, uint16_t, "%" PRIu16)
+ASDF_NODE_OF_VALUE_TYPE(uint32, uint32_t, "%" PRIu32)
+ASDF_NODE_OF_VALUE_TYPE(uint64, uint64_t, "%" PRIu64)
+
+// Here there be Dragons!
+// TODO: For now we pick some reasonable defaults to get up and running with,
+// though it might be better to use something like dtoa.c https://netlib.sandia.gov/fp/dtoa.c
+// which also happens to be what CPython uses
+#define ASDF_NODE_OF_FLOAT_VALUE_TYPE(typ, value_type, fmt) \
+    static inline struct fy_node *asdf_node_of_##typ(struct fy_document *doc, value_type val) { \
+        if (isnan(val)) \
+            return fy_node_create_scalarf(doc, ".nan"); \
+        if (isinf(val)) { \
+            if (signbit(val)) \
+                return fy_node_create_scalarf(doc, "-.inf"); \
+            return fy_node_create_scalarf(doc, ".inf"); \
+        } \
+        return fy_node_create_scalarf((doc), (fmt), (val)); \
+    }
+
+
+ASDF_NODE_OF_FLOAT_VALUE_TYPE(float, float, "%.9g")
+ASDF_NODE_OF_FLOAT_VALUE_TYPE(double, double, "%.17g")
+
+
+ASDF_LOCAL asdf_value_err_t asdf_node_insert_at(
+    struct fy_document *doc, const char *path, struct fy_node *node, bool materialize);

@@ -1,3 +1,4 @@
+#include <limits.h>
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -18,6 +19,7 @@
 #include "util.h"
 #include "value.h"
 #include "value_util.h"
+#include "yaml.h"
 
 
 static asdf_value_type_t asdf_value_type_from_node(struct fy_node *node) {
@@ -1046,7 +1048,7 @@ const char *asdf_value_type_string(asdf_value_type_t type) {
 
 
 /* Helper to define the asdf_value_is_(type) checkers */
-#define __ASDF_VALUE_IS_SCALAR_TYPE(typ, value_type) \
+#define ASDF_VALUE_IS_SCALAR_TYPE(typ, value_type) \
     bool asdf_value_is_##typ(asdf_value_t *value) { \
         if (asdf_value_infer_scalar_type(value) != ASDF_VALUE_OK) \
             return false; \
@@ -1054,7 +1056,7 @@ const char *asdf_value_type_string(asdf_value_type_t type) {
     }
 
 
-__ASDF_VALUE_IS_SCALAR_TYPE(string, ASDF_VALUE_STRING)
+ASDF_VALUE_IS_SCALAR_TYPE(string, ASDF_VALUE_STRING)
 
 
 asdf_value_err_t asdf_value_as_string(asdf_value_t *value, const char **out, size_t *len) {
@@ -1172,7 +1174,7 @@ asdf_value_err_t asdf_value_as_bool(asdf_value_t *value, bool *out) {
 }
 
 
-__ASDF_VALUE_IS_SCALAR_TYPE(null, ASDF_VALUE_NULL)
+ASDF_VALUE_IS_SCALAR_TYPE(null, ASDF_VALUE_NULL)
 
 
 bool asdf_value_is_int(asdf_value_t *value) {
@@ -1689,7 +1691,7 @@ asdf_value_err_t asdf_value_as_float(asdf_value_t *value, float *out) {
 }
 
 
-__ASDF_VALUE_IS_SCALAR_TYPE(double, ASDF_VALUE_DOUBLE)
+ASDF_VALUE_IS_SCALAR_TYPE(double, ASDF_VALUE_DOUBLE)
 
 
 asdf_value_err_t asdf_value_as_double(asdf_value_t *value, double *out) {
@@ -2074,4 +2076,237 @@ const char *asdf_find_item_path(asdf_find_item_t *item) {
 
 asdf_value_t *asdf_find_item_value(asdf_find_item_t *item) {
     return item->value;
+}
+
+
+/** Value insertions */
+
+
+static inline struct fy_node *asdf_node_sequence_get_by_index(
+    struct fy_node *sequence, ssize_t index) {
+    // libfyaml only supports ``int`` for sequence indices so to be on the safe
+    // side return NULL if the index is too large
+    if (index > INT_MAX)
+        return NULL;
+
+    return fy_node_sequence_get_by_index(sequence, (int)index);
+}
+
+
+static bool asdf_node_sequence_materialize(
+    struct fy_document *doc, struct fy_node *sequence, ssize_t size) {
+    int cur_size = fy_node_sequence_item_count(sequence);
+
+    if (cur_size >= size)
+        return true;
+
+    for (int idx = 0; idx < (size - cur_size); idx++) {
+        struct fy_node *null = fy_node_create_scalar(doc, "null", FY_NT);
+
+        if (!null)
+            return false;
+
+        if (fy_node_sequence_append(sequence, null) != 0)
+            return false;
+    }
+
+    return true;
+}
+
+
+static bool asdf_node_is_null(struct fy_node *node) {
+    if (!node)
+        return false;
+
+    if (fy_node_get_type(node) != FYNT_SCALAR)
+        return false;
+
+    size_t len = 0;
+    fy_node_get_scalar(node, &len);
+    return len == 0;
+}
+
+
+/**
+ * Insert a `struct fy_node` into the document at the given (root-anchored) path
+ *
+ * If there is already a node at the given path that's the easy path--it is
+ * just replaced with the new node.  Otherwise, if ``materalize=false`` we
+ * return `ASDF_VALUE_ERR_NOT_FOUND`.
+ *
+ * But if ``materialize=true`` the full path structure is materialized into
+ * the document including all intermediate mappings and sequences represented
+ * on the path.
+ */
+asdf_value_err_t asdf_node_insert_at(
+    struct fy_document *doc, const char *path, struct fy_node *node, bool materialize) {
+
+    // Happy path--node already exists at the path
+    // NOTE: Don't use fy_document_insert_at for this because it frees the
+    // node after calling, even if unsuccessful!  It's very weird
+    struct fy_node *root = fy_document_root(doc);
+    struct fy_node *target = fy_node_by_path(root, path, FY_NT, FYNWF_PTR_YAML);
+
+    if (!target || fy_node_insert(target, node) != 0) {
+        if (!materialize)
+            return ASDF_VALUE_ERR_NOT_FOUND;
+    } else {
+        fy_node_free(node);
+        return ASDF_VALUE_OK;
+    }
+
+    asdf_value_err_t err = ASDF_VALUE_OK;
+
+    // Parse the full path and try to materialize it
+    asdf_yaml_path_t yaml_path = asdf_yaml_path_init();
+
+    if (!(asdf_yaml_path_parse(path, &yaml_path))) {
+        // We return this also in the case of a simply invalid path
+        err = ASDF_VALUE_ERR_NOT_FOUND;
+        goto cleanup;
+    }
+
+    if (asdf_yaml_path_size(&yaml_path) < 1) {
+        // Strange case--shouldn't happen
+        err = ASDF_VALUE_ERR_NOT_FOUND;
+        goto cleanup;
+    }
+
+    const asdf_yaml_path_component_t *comp = asdf_yaml_path_at(&yaml_path, 0);
+
+    if (!comp) {
+        err = ASDF_VALUE_ERR_NOT_FOUND;
+        goto cleanup;
+    }
+
+    // Special case--if the first path element is of type MAP and its key is
+    // the empty string, the node is *replacing* the entire document root
+    if (comp->target == ASDF_YAML_PC_TARGET_MAP && strlen(comp->key) == 0) {
+        if (!fy_document_set_root(doc, node))
+            err = ASDF_VALUE_ERR_NOT_FOUND;
+
+        goto cleanup;
+    }
+
+    // If no root, create it!  The root will *always* default to a mapping
+    // unless the path absolutely insists it not be.
+    if (!root || asdf_node_is_null(root)) {
+        if (comp->target == ASDF_YAML_PC_TARGET_SEQ)
+            root = fy_node_create_sequence(doc);
+        else
+            root = fy_node_create_mapping(doc);
+
+        if (fy_document_set_root(doc, root) != 0) {
+            err = ASDF_VALUE_ERR_OOM;
+            goto cleanup;
+        }
+    }
+
+    if (!root) {
+        err = ASDF_VALUE_ERR_OOM;
+        goto cleanup;
+    }
+
+    struct fy_node *parent = root;
+    struct fy_node *current = NULL;
+    isize n_components = asdf_yaml_path_size(&yaml_path);
+    const asdf_yaml_path_component_t *next = comp;
+
+    for (isize idx = 0; idx < n_components; idx++) {
+        assert(parent);
+        comp = next;
+
+        if (idx == n_components - 1) {
+            next = NULL;
+        } else {
+            next = asdf_yaml_path_at(&yaml_path, idx + 1);
+            assert(next);
+        }
+
+        switch (comp->target) {
+        case ASDF_YAML_PC_TARGET_ANY:
+            // Ambiguous case--if the parent node exists and is a sequence,
+            // treat as a sequence insertion; if it exists and is a mapping
+            // treat as a mapping insertion, otherwise create a new sequence
+            if (fy_node_is_mapping(parent)) {
+                current = fy_node_mapping_lookup_by_string(parent, comp->key, FY_NT);
+            } else if (fy_node_is_sequence(parent)) {
+                current = asdf_node_sequence_get_by_index(parent, comp->index);
+            }
+            break;
+        case ASDF_YAML_PC_TARGET_MAP:
+            if (fy_node_is_mapping(parent))
+                current = fy_node_mapping_lookup_by_string(parent, comp->key, FY_NT);
+            else {
+                err = ASDF_VALUE_ERR_NOT_FOUND;
+                goto cleanup;
+            }
+            break;
+        case ASDF_YAML_PC_TARGET_SEQ:
+            if (fy_node_is_sequence(parent))
+                current = asdf_node_sequence_get_by_index(parent, comp->index);
+            else {
+                err = ASDF_VALUE_ERR_NOT_FOUND;
+                goto cleanup;
+            }
+            break;
+        }
+
+        if (!current) {
+            if (!next) {
+                // The node to insert
+                current = node;
+            } else {
+                switch (next->target) {
+                case ASDF_YAML_PC_TARGET_ANY:
+                    if (parent == root)
+                        current = fy_node_create_mapping(doc);
+                    else
+                        current = fy_node_create_sequence(doc);
+                    break;
+                case ASDF_YAML_PC_TARGET_MAP:
+                    current = fy_node_create_mapping(doc);
+                    break;
+                case ASDF_YAML_PC_TARGET_SEQ:
+                    current = fy_node_create_sequence(doc);
+                    break;
+                }
+
+                if (!current) {
+                    err = ASDF_VALUE_ERR_NOT_FOUND;
+                    goto cleanup;
+                }
+            }
+        }
+
+        if (fy_node_is_mapping(parent)) {
+            struct fy_node *key = fy_node_create_scalar_copy(doc, comp->key, FY_NT);
+
+            if (!key) {
+                err = ASDF_VALUE_ERR_OOM;
+                goto cleanup;
+            }
+
+            if (fy_node_mapping_append(parent, key, current) != 0) {
+                err = ASDF_VALUE_ERR_OOM;
+                goto cleanup;
+            }
+        } else if (fy_node_is_sequence(parent)) {
+            if (!asdf_node_sequence_materialize(doc, parent, comp->index)) {
+                err = ASDF_VALUE_ERR_OOM;
+                goto cleanup;
+            }
+
+            if (fy_node_sequence_append(parent, current) != 0) {
+                err = ASDF_VALUE_ERR_OOM;
+                goto cleanup;
+            }
+        }
+
+        parent = current;
+    }
+
+cleanup:
+    asdf_yaml_path_drop(&yaml_path);
+    return err;
 }
