@@ -15,7 +15,7 @@
 static asdf_value_err_t get_coordinates_prop(asdf_value_t *value, const char *name, double *out) {
     asdf_value_err_t err = ASDF_VALUE_ERR_PARSE_FAILURE;
     asdf_ndarray_t *ndarray = NULL;
-    void *data = NULL;
+    const void *data = NULL;
     size_t size = 0;
 
     assert(value);
@@ -59,7 +59,7 @@ failure:
 static asdf_value_err_t get_matrix_prop(asdf_value_t *value, const char *name, double *out) {
     asdf_value_err_t err = ASDF_VALUE_ERR_PARSE_FAILURE;
     asdf_ndarray_t *ndarray = NULL;
-    void *data = NULL;
+    const void *data = NULL;
     size_t size = 0;
 
     assert(value);

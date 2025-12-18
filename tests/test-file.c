@@ -193,7 +193,7 @@ static int test_multi_block_asdf_content(asdf_file_t *file) {
         assert_int(asdf_get_ndarray(file, key, &ndarray), ==, ASDF_VALUE_OK);
         assert_not_null(ndarray);
         size_t size = 0;
-        uint8_t *data = asdf_ndarray_data_raw(ndarray, &size);
+        const uint8_t *data = asdf_ndarray_data_raw(ndarray, &size);
         assert_not_null(data);
         assert_int(size, ==, 128);
         for (int jdx = 0; jdx < 128; jdx++) {
@@ -431,7 +431,7 @@ MU_TEST(read_compressed_reference_file) {
         expected[idx] = idx;
 
     size_t size = 0;
-    int64_t *dst = asdf_ndarray_data_raw(ndarray, &size);
+    const int64_t *dst = asdf_ndarray_data_raw(ndarray, &size);
     assert_int(size, ==, sizeof(int64_t) * 128);
     assert_memory_equal(size, dst, expected);
     asdf_ndarray_destroy(ndarray);
@@ -484,7 +484,7 @@ static int test_compressed_file(
     }
 
     size_t size = 0;
-    uint8_t *dst = asdf_ndarray_data_raw(ndarray, &size);
+    const uint8_t *dst = asdf_ndarray_data_raw(ndarray, &size);
     // Check for errors and log it if there was one (useful for debugging failures in this test)
     const char *error = asdf_error(file);
     if (error)
@@ -675,7 +675,7 @@ MU_TEST(compressed_block_no_hang_on_segfault) {
     asdf_value_err_t err = asdf_get_ndarray(file, comp, &ndarray);
     assert_int(err, ==, ASDF_VALUE_OK);
     assert_not_null(ndarray);
-    uint8_t *data = asdf_ndarray_data_raw(ndarray, NULL);
+    const uint8_t *data = asdf_ndarray_data_raw(ndarray, NULL);
     // Check for errors and log it if there was one (useful for debugging failures in this test)
     const char *error = asdf_error(file);
     if (error)
@@ -763,7 +763,7 @@ MU_TEST(write_empty) {
     size_t len = SIZE_MAX;
     const char *contents = read_file(filename, &len);
     assert_int(len, ==, 0);
-    free(contents);
+    free((char *)contents);
     return MUNIT_OK;
 }
 
