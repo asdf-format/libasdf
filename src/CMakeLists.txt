@@ -59,6 +59,14 @@ target_link_libraries(libasdf PUBLIC
     ${FYAML_LIBRARIES} ${BZIP2_LIBRARIES} ${ZLIB_LIBRARIES} ${LZ4_LIBRARIES} ${STATGRAB_LIBRARIES}
 )
 
+target_link_directories(libasdf PUBLIC
+    ${BZIP2_LIBDIR}
+    ${FYAML_LIBDIR}
+    ${LZ4_LIBDIR}
+    ${STATGRAB_LIBDIR}
+    ${ZLIB_LIBDIR}
+)
+
 target_include_directories(libasdf_objs PUBLIC
     ${CMAKE_SOURCE_DIR}/third_party/STC/include
     ${CMAKE_BINARY_DIR}/include
@@ -79,22 +87,6 @@ target_compile_options(libasdf_objs PUBLIC
     ${LZ4_CFLAGS}
     ${STATGRAB_CFLAGS}
     ${ZLIB_CFLAGS}
-)
-
-target_link_options(libasdf PUBLIC
-    ${BZIP2_LDFLAGS}
-    ${FYAML_LDFLAGS}
-    ${LZ4_LDFLAGS}
-    ${STATGRAB_LDFLAGS}
-    ${ZLIB_LDFLAGS}
-)
-
-target_link_directories(libasdf PUBLIC
-    ${BZIP2_LIBDIR}
-    ${FYAML_LIBDIR}
-    ${LZ4_LIBDIR}
-    ${STATGRAB_LIBDIR}
-    ${ZLIB_LIBDIR}
 )
 
 # Avoid generating "liblibasdf"
