@@ -41,6 +41,11 @@ typedef struct asdf_value {
 } asdf_value_t;
 
 
+typedef struct asdf_mapping {
+    asdf_value_t value;
+} asdf_mapping_t;
+
+
 typedef struct _asdf_mapping_iter_impl {
     const char *key;
     asdf_value_t *value;
@@ -53,6 +58,9 @@ typedef _asdf_mapping_iter_impl_t *asdf_mapping_iter_t;
 
 typedef struct _asdf_mapping_iter_impl asdf_mapping_item_t;
 
+typedef struct asdf_sequence {
+    asdf_value_t value;
+} asdf_sequence_t;
 
 typedef struct _asdf_sequence_iter_impl {
     asdf_value_t *value;

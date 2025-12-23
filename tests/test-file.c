@@ -134,12 +134,11 @@ MU_TEST(test_asdf_get_mapping) {
     assert_not_null(file);
     assert_true(asdf_is_mapping(file, "mapping"));
     assert_false(asdf_is_mapping(file, "scalar"));
-    asdf_value_t *value = NULL;
-    asdf_value_err_t err = asdf_get_mapping(file, "mapping", &value);
+    asdf_mapping_t *mapping = NULL;
+    asdf_value_err_t err = asdf_get_mapping(file, "mapping", &mapping);
     assert_int(err, ==, ASDF_VALUE_OK);
-    assert_true(asdf_value_is_mapping(value));
-    asdf_value_destroy(value);
-    err = asdf_get_mapping(file, "scalar", &value);
+    asdf_mapping_destroy(mapping);
+    err = asdf_get_mapping(file, "scalar", &mapping);
     assert_int(err, ==, ASDF_VALUE_ERR_TYPE_MISMATCH);
     asdf_close(file);
     return MUNIT_OK;
@@ -152,12 +151,11 @@ MU_TEST(test_asdf_get_sequence) {
     assert_not_null(file);
     assert_true(asdf_is_sequence(file, "sequence"));
     assert_false(asdf_is_sequence(file, "scalar"));
-    asdf_value_t *value = NULL;
-    asdf_value_err_t err = asdf_get_sequence(file, "sequence", &value);
+    asdf_sequence_t *sequence = NULL;
+    asdf_value_err_t err = asdf_get_sequence(file, "sequence", &sequence);
     assert_int(err, ==, ASDF_VALUE_OK);
-    assert_true(asdf_value_is_sequence(value));
-    asdf_value_destroy(value);
-    err = asdf_get_sequence(file, "scalar", &value);
+    asdf_sequence_destroy(sequence);
+    err = asdf_get_sequence(file, "scalar", &sequence);
     assert_int(err, ==, ASDF_VALUE_ERR_TYPE_MISMATCH);
     asdf_close(file);
     return MUNIT_OK;
@@ -427,16 +425,15 @@ MU_TEST(test_asdf_set_path_materialization) {
     // Since the sequence a/b/c didn't exist previously, but we assigned into
     // its 1-th element, this automatically fills the rest of the sequence with
     // nulls.  Check that
-    asdf_value_t *seq = NULL;
+    asdf_sequence_t *seq = NULL;
     assert_int(asdf_get_sequence(file, "a/b/c", &seq), ==, ASDF_VALUE_OK);
-    assert_true(asdf_value_is_sequence(seq));
     assert_int(asdf_sequence_size(seq), ==, 2);
     asdf_value_t *null = asdf_sequence_get(seq, 0);
     // NULL in the pointer sense, not the YAML scalar sense
     assert_not_null(null);
     assert_true(asdf_value_is_null(null));
     asdf_value_destroy(null);
-    asdf_value_destroy(seq);
+    asdf_sequence_destroy(seq);
     asdf_close(file);
     return MUNIT_OK;
 }

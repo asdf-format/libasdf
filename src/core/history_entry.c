@@ -3,7 +3,6 @@
 #endif
 
 #include <stdbool.h>
-#include <string.h>
 #include <time.h>
 
 #include "../error.h"
@@ -102,10 +101,12 @@ static int asdf_parse_datetime(UNUSED(const char *s), struct timespec *out) {
 
 
 static asdf_software_t **asdf_history_entry_deserialize_software(asdf_value_t *value) {
-    if (!asdf_value_is_sequence(value)) {
+    asdf_sequence_t *software_seq = NULL;
+
+    if (asdf_value_as_sequence(value, &software_seq) != ASDF_VALUE_OK) {
         // Optimistically allocate enough for one entry and the NULL terminator, though if the
         // software entry is invalid the first entry will also be NULL
-        asdf_software_t **software = calloc(2, sizeof(asdf_software_t *));
+        asdf_software_t **software = (asdf_software_t **)calloc(2, sizeof(asdf_software_t *));
 
         if (!software) {
             ASDF_ERROR_OOM(value->file);
@@ -119,12 +120,13 @@ static asdf_software_t **asdf_history_entry_deserialize_software(asdf_value_t *v
     }
 
     // Case where it's an array
-    int n_entries = asdf_sequence_size(value);
+    int n_entries = asdf_sequence_size(software_seq);
 
     if (n_entries < 0)
         return NULL;
 
-    asdf_software_t **software = calloc(n_entries + 1, sizeof(asdf_software_t *));
+    asdf_software_t **software = (asdf_software_t **)calloc(
+        n_entries + 1, sizeof(asdf_software_t *));
 
     if (!software) {
         ASDF_ERROR_OOM(value->file);
@@ -133,9 +135,9 @@ static asdf_software_t **asdf_history_entry_deserialize_software(asdf_value_t *v
 
     asdf_software_t **software_p = software;
     asdf_sequence_iter_t iter = asdf_sequence_iter_init();
-    asdf_value_t *it = NULL;
-    while (NULL != (it = asdf_sequence_iter(value, &iter))) {
-        if (ASDF_VALUE_OK == asdf_value_as_software(it, software_p))
+    asdf_value_t *val = NULL;
+    while (NULL != (val = asdf_sequence_iter(software_seq, &iter))) {
+        if (ASDF_VALUE_OK == asdf_value_as_software(val, software_p))
             software_p++;
         else
             ASDF_LOG(
@@ -154,12 +156,13 @@ static asdf_value_err_t asdf_history_entry_deserialize(
     const char *time_str = NULL;
     struct timespec time = {0};
     asdf_software_t **software = NULL;
+    asdf_mapping_t *entry_map = NULL;
 
-    if (!asdf_value_is_mapping(value))
+    if (asdf_value_as_mapping(value, &entry_map) != ASDF_VALUE_OK)
         goto failure;
 
     /* The description field is the only required */
-    if (!(prop = asdf_mapping_get(value, "description")))
+    if (!(prop = asdf_mapping_get(entry_map, "description")))
         goto failure;
 
 
@@ -168,7 +171,7 @@ static asdf_value_err_t asdf_history_entry_deserialize(
 
     asdf_value_destroy(prop);
 
-    prop = asdf_mapping_get(value, "time");
+    prop = asdf_mapping_get(entry_map, "time");
 
     if (prop) {
         bool valid_time = false;
@@ -193,7 +196,7 @@ static asdf_value_err_t asdf_history_entry_deserialize(
     /* Software can be either an array of software or a single entry, but here it is always
      * returned as a NULL-terminated array of asdf_software_t *
      */
-    prop = asdf_mapping_get(value, "software");
+    prop = asdf_mapping_get(entry_map, "software");
 
     if (prop) {
         software = asdf_history_entry_deserialize_software(prop);
@@ -227,7 +230,7 @@ static void asdf_history_entry_dealloc(void *value) {
         for (asdf_software_t **sp = (asdf_software_t **)entry->software; *sp; ++sp) {
             asdf_software_destroy(*sp);
         }
-        free(entry->software);
+        free((void *)entry->software);
     }
 
     free(entry);

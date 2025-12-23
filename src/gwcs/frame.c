@@ -49,84 +49,87 @@ static inline void warn_invalid_frame_axes_param(
 
 
 static asdf_value_err_t get_frame_axes_string_param(
-    asdf_value_t *value,
+    asdf_mapping_t *value,
     const char *propname,
     char **strings,
     uint32_t min_axes,
     uint32_t max_axes) {
-    asdf_value_t *prop = NULL;
+    asdf_sequence_t *frames_seq = NULL;
     asdf_value_err_t err = ASDF_VALUE_ERR_PARSE_FAILURE;
 
-    err = asdf_get_optional_property(value, propname, ASDF_VALUE_SEQUENCE, NULL, (void *)&prop);
+    err = asdf_get_optional_property(
+        value, propname, ASDF_VALUE_SEQUENCE, NULL, (void *)&frames_seq);
 
     if (!ASDF_IS_OPTIONAL_OK(err))
-        goto failure;
+        goto cleanup;
 
-    uint32_t size = (uint32_t)asdf_sequence_size(prop);
+    uint32_t size = (uint32_t)asdf_sequence_size(frames_seq);
 
     if (size < min_axes || size > max_axes) {
-        warn_invalid_frame_axes_param(value, propname, ASDF_VALUE_STRING, min_axes, max_axes);
-        goto failure;
+        warn_invalid_frame_axes_param(
+            &value->value, propname, ASDF_VALUE_STRING, min_axes, max_axes);
+        goto cleanup;
     }
 
     asdf_sequence_iter_t iter = asdf_sequence_iter_init();
     asdf_value_t *item = NULL;
     char **str_tmp = strings;
-    while ((item = asdf_sequence_iter(prop, &iter)) != NULL) {
+    while ((item = asdf_sequence_iter(frames_seq, &iter)) != NULL) {
         if (!ASDF_IS_OK(asdf_value_as_string0(item, (const char **)str_tmp))) {
-            warn_invalid_frame_axes_param(value, propname, ASDF_VALUE_STRING, min_axes, max_axes);
-            goto failure;
+            warn_invalid_frame_axes_param(
+                &value->value, propname, ASDF_VALUE_STRING, min_axes, max_axes);
+            goto cleanup;
         }
         str_tmp++;
     }
 
-    asdf_value_destroy(prop);
-    return ASDF_VALUE_OK;
-failure:
-    asdf_value_destroy(prop);
+    err = ASDF_VALUE_OK;
+cleanup:
+    asdf_sequence_destroy(frames_seq);
     return err;
 }
 
 
 static asdf_value_err_t get_frame_axes_order_param(
-    asdf_value_t *value, uint32_t *ints, uint32_t min_axes, uint32_t max_axes) {
-    asdf_value_t *prop = NULL;
+    asdf_mapping_t *value, uint32_t *ints, uint32_t min_axes, uint32_t max_axes) {
     asdf_value_err_t err = ASDF_VALUE_ERR_PARSE_FAILURE;
-    err = asdf_get_optional_property(value, "axes_order", ASDF_VALUE_SEQUENCE, NULL, (void *)&prop);
+    asdf_sequence_t *axes_seq = NULL;
+    err = asdf_get_optional_property(
+        value, "axes_order", ASDF_VALUE_SEQUENCE, NULL, (void *)&axes_seq);
 
     if (!ASDF_IS_OPTIONAL_OK(err))
-        goto failure;
+        goto cleanup;
 
-    uint32_t size = (uint32_t)asdf_sequence_size(prop);
+    uint32_t size = (uint32_t)asdf_sequence_size(axes_seq);
 
     if (size < min_axes || size > max_axes) {
-        warn_invalid_frame_axes_param(value, "axes_order", ASDF_VALUE_UINT32, min_axes, max_axes);
-        goto failure;
+        warn_invalid_frame_axes_param(
+            &value->value, "axes_order", ASDF_VALUE_UINT32, min_axes, max_axes);
+        goto cleanup;
     }
 
     asdf_sequence_iter_t iter = asdf_sequence_iter_init();
     asdf_value_t *item = NULL;
     uint32_t *int_tmp = ints;
-    while ((item = asdf_sequence_iter(prop, &iter)) != NULL) {
+    while ((item = asdf_sequence_iter(axes_seq, &iter)) != NULL) {
         if (ASDF_VALUE_OK != asdf_value_as_uint32(item, int_tmp)) {
             warn_invalid_frame_axes_param(
-                value, "axes_order", ASDF_VALUE_UINT32, min_axes, max_axes);
-            goto failure;
+                &value->value, "axes_order", ASDF_VALUE_UINT32, min_axes, max_axes);
+            goto cleanup;
         }
 
         if (*int_tmp >= max_axes) {
             warn_invalid_frame_axes_param(
-                value, "axes_order", ASDF_VALUE_UINT32, min_axes, max_axes);
-            goto failure;
+                &value->value, "axes_order", ASDF_VALUE_UINT32, min_axes, max_axes);
+            goto cleanup;
         }
 
         int_tmp++;
     }
 
-    asdf_value_destroy(prop);
-    return ASDF_VALUE_OK;
-failure:
-    asdf_value_destroy(prop);
+    err = ASDF_VALUE_OK;
+cleanup:
+    asdf_sequence_destroy(axes_seq);
     return err;
 }
 
@@ -136,26 +139,28 @@ asdf_value_err_t asdf_gwcs_frame_parse(
     assert(value);
     assert(frame);
     assert(params);
+    asdf_mapping_t *frame_map = NULL;
     asdf_value_err_t err = ASDF_VALUE_ERR_PARSE_FAILURE;
 
-    if (!asdf_value_is_mapping(value))
+    if (asdf_value_as_mapping(value, &frame_map) != ASDF_VALUE_OK)
         goto failure;
 
-    err = asdf_get_required_property(value, "name", ASDF_VALUE_STRING, NULL, (void *)&frame->name);
+    err = asdf_get_required_property(
+        frame_map, "name", ASDF_VALUE_STRING, NULL, (void *)&frame->name);
 
     if (ASDF_IS_ERR(err))
         goto failure;
 
     if (!ASDF_IS_OPTIONAL_OK(get_frame_axes_string_param(
-            value, "axes_names", params->axes_names, params->min_axes, params->max_axes)))
+            frame_map, "axes_names", params->axes_names, params->min_axes, params->max_axes)))
         goto failure;
 
     if (!ASDF_IS_OPTIONAL_OK(get_frame_axes_string_param(
-            value, "unit", params->unit, params->min_axes, params->max_axes)))
+            frame_map, "unit", params->unit, params->min_axes, params->max_axes)))
         goto failure;
 
     if (!ASDF_IS_OPTIONAL_OK(get_frame_axes_string_param(
-            value,
+            frame_map,
             "axis_physical_types",
             params->axis_physical_types,
             params->min_axes,
@@ -163,7 +168,7 @@ asdf_value_err_t asdf_gwcs_frame_parse(
         goto failure;
 
     if (!(ASDF_IS_OPTIONAL_OK(get_frame_axes_order_param(
-            value, params->axes_order, params->min_axes, params->max_axes))))
+            frame_map, params->axes_order, params->min_axes, params->max_axes))))
         goto failure;
 
     return ASDF_VALUE_OK;
@@ -176,7 +181,6 @@ static asdf_value_err_t asdf_gwcs_base_frame_deserialize(
     asdf_value_t *value, UNUSED(const void *userdata), void **out) {
     asdf_gwcs_frame_t *frame = NULL;
     asdf_value_err_t err = ASDF_VALUE_ERR_PARSE_FAILURE;
-    asdf_value_t *prop = NULL;
 
     frame = calloc(1, sizeof(asdf_gwcs_frame_t));
 
@@ -193,7 +197,6 @@ static asdf_value_err_t asdf_gwcs_base_frame_deserialize(
     *out = frame;
     return ASDF_VALUE_OK;
 failure:
-    asdf_value_destroy(prop);
     asdf_gwcs_base_frame_destroy(frame);
     return err;
 }

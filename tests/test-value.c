@@ -509,7 +509,7 @@ MU_TEST(test_asdf_mapping_iter) {
     const char *path = get_fixture_file_path("value-types.asdf");
     asdf_file_t *file = asdf_open_file(path, "r");
     assert_not_null(file);
-    asdf_value_t *mapping = NULL;
+    asdf_mapping_t *mapping = NULL;
     asdf_value_err_t err = asdf_get_mapping(file, "mapping", &mapping);
     assert_int(err, ==, ASDF_VALUE_OK);
     assert_int(asdf_mapping_size(mapping), ==, 2);
@@ -537,7 +537,7 @@ MU_TEST(test_asdf_mapping_iter) {
 
     assert_null(asdf_mapping_iter(mapping, &iter));
     assert_null((void *)iter);
-    asdf_value_destroy(mapping);
+    asdf_mapping_destroy(mapping);
     asdf_close(file);
     return MUNIT_OK;
 }
@@ -547,7 +547,7 @@ MU_TEST(test_asdf_mapping_get) {
     const char *path = get_fixture_file_path("value-types.asdf");
     asdf_file_t *file = asdf_open_file(path, "r");
     assert_not_null(file);
-    asdf_value_t *mapping = NULL;
+    asdf_mapping_t *mapping = NULL;
     asdf_value_err_t err = asdf_get_mapping(file, "mapping", &mapping);
     assert_int(err, ==, ASDF_VALUE_OK);
     assert_not_null(mapping);
@@ -571,7 +571,7 @@ MU_TEST(test_asdf_mapping_get) {
     asdf_value_t *null = asdf_mapping_get(mapping, "does-not-exist");
     assert_null(null);
 
-    asdf_value_destroy(mapping);
+    asdf_mapping_destroy(mapping);
     asdf_close(file);
     return MUNIT_OK;
 }
@@ -581,7 +581,7 @@ MU_TEST(test_asdf_sequence_iter) {
     const char *path = get_fixture_file_path("value-types.asdf");
     asdf_file_t *file = asdf_open_file(path, "r");
     assert_not_null(file);
-    asdf_value_t *sequence = NULL;
+    asdf_sequence_t *sequence = NULL;
     asdf_value_err_t err = asdf_get_sequence(file, "sequence", &sequence);
     assert_int(err, ==, ASDF_VALUE_OK);
     assert_int(asdf_sequence_size(sequence), ==, 2);
@@ -600,7 +600,7 @@ MU_TEST(test_asdf_sequence_iter) {
 
     assert_null(asdf_sequence_iter(sequence, &iter));
     assert_null((void *)iter);
-    asdf_value_destroy(sequence);
+    asdf_sequence_destroy(sequence);
     asdf_close(file);
     return MUNIT_OK;
 }
@@ -610,7 +610,7 @@ MU_TEST(test_asdf_sequence_get) {
     const char *path = get_fixture_file_path("value-types.asdf");
     asdf_file_t *file = asdf_open_file(path, "r");
     assert_not_null(file);
-    asdf_value_t *sequence = NULL;
+    asdf_sequence_t *sequence = NULL;
     asdf_value_err_t err = asdf_get_sequence(file, "sequence", &sequence);
     assert_int(err, ==, ASDF_VALUE_OK);
     assert_not_null(sequence);
@@ -642,7 +642,7 @@ MU_TEST(test_asdf_sequence_get) {
     asdf_value_t *third = asdf_sequence_get(sequence, 2);
     assert_null(third);
 
-    asdf_value_destroy(sequence);
+    asdf_sequence_destroy(sequence);
     asdf_close(file);
     return MUNIT_OK;
 }
@@ -652,9 +652,7 @@ MU_TEST(test_asdf_container_iter) {
     const char *path = get_fixture_file_path("value-types.asdf");
     asdf_file_t *file = asdf_open_file(path, "r");
     assert_not_null(file);
-    asdf_value_t *container = NULL;
-    asdf_value_err_t err = asdf_get_sequence(file, "sequence", &container);
-    assert_int(err, ==, ASDF_VALUE_OK);
+    asdf_value_t *container = asdf_get_value(file, "sequence");
     assert_not_null(container);
 
     asdf_container_iter_t iter = asdf_container_iter_init();
@@ -673,8 +671,7 @@ MU_TEST(test_asdf_container_iter) {
     asdf_value_destroy(container);
 
     // Test on a mapping now
-    err = asdf_get_mapping(file, "mapping", &container);
-    assert_int(err, ==, ASDF_VALUE_OK);
+    container = asdf_get_value(file, "mapping");
     assert_not_null(container);
     const char *s = NULL;
     const char *expected[] = {"foo", "bar"};
@@ -702,14 +699,18 @@ MU_TEST(test_value_copy_with_parent_path) {
     assert_not_null(value);
     assert_true(asdf_value_is_mapping(value));
 
-    asdf_value_t *ext_uri = asdf_mapping_get(value, "extension_uri");
+    asdf_mapping_t *map = (asdf_mapping_t *)value;
+    asdf_value_t *ext_uri = asdf_mapping_get(map, "extension_uri");
     assert_not_null(ext_uri);
 
     // The test: Cloned values should still retain their original path, as should any
     // child values retrieved from them.
     asdf_value_t *value_clone = asdf_value_clone(value);
     assert_string_equal(asdf_value_path(value_clone), "/history/extensions/0");
-    asdf_value_t *ext_uri_clone = asdf_mapping_get(value_clone, "extension_uri");
+    asdf_mapping_t *value_clone_map = NULL;
+    asdf_value_as_mapping(value_clone, &value_clone_map);
+    assert_not_null(value_clone_map);
+    asdf_value_t *ext_uri_clone = asdf_mapping_get(value_clone_map, "extension_uri");
     assert_string_equal(asdf_value_path(ext_uri_clone), "/history/extensions/0/extension_uri");
 
     // Crucially, it has the full path; this is just the control case
@@ -1011,8 +1012,10 @@ MU_TEST(test_raw_value_type_preserved_after_type_resolution) {
     assert_true(asdf_value_is_container(root));
 
     // It can still be iterated over too, etc
+    asdf_mapping_t *root_map = NULL;
+    assert_int(asdf_value_as_mapping(root, &root_map), ==, ASDF_VALUE_OK);
     asdf_mapping_iter_t iter = asdf_mapping_iter_init();
-    asdf_mapping_item_t *item = asdf_mapping_iter(root, &iter);
+    asdf_mapping_item_t *item = asdf_mapping_iter(root_map, &iter);
     assert_not_null(item);
     asdf_value_t *a = asdf_mapping_item_value(item);
     assert_string_equal(asdf_value_path(a), "/a");

@@ -12,7 +12,7 @@ ASDF_BEGIN_DECLS
 typedef struct {
     const char *extension_class;
     const asdf_software_t *package;
-    asdf_value_t *metadata;
+    asdf_mapping_t *metadata;
 } asdf_extension_metadata_t;
 
 

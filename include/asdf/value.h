@@ -203,9 +203,23 @@ typedef struct asdf_file asdf_file_t;
 /** Get the `asdf_file_t *` handle to the file to which a value belongs */
 ASDF_EXPORT const asdf_file_t *asdf_value_file(asdf_value_t *value);
 
-/* Mapping-related definitions */
+/** Mappings */
+
+/**
+ * Opaque struct represening a mapping value
+ *
+ * .. note::
+ *
+ *   By design, it is safe to cast a an `asdf_value_t *` to
+ *   `asdf_mapping_t *` so long as the value has been checked to be a
+ *   sequence.
+ */
+typedef struct asdf_mapping asdf_mapping_t;
+
 ASDF_EXPORT bool asdf_value_is_mapping(asdf_value_t *value);
-ASDF_EXPORT int asdf_mapping_size(asdf_value_t *mapping);
+ASDF_EXPORT int asdf_mapping_size(asdf_mapping_t *mapping);
+ASDF_EXPORT asdf_value_err_t asdf_value_as_mapping(asdf_value_t *value, asdf_mapping_t **out);
+ASDF_EXPORT void asdf_mapping_destroy(asdf_mapping_t *mapping);
 
 /**
  * Return an `asdf_value_t` from the given mapping at a given key
@@ -213,12 +227,12 @@ ASDF_EXPORT int asdf_mapping_size(asdf_value_t *mapping);
  * If the key does not exist in the mapping, or the first argument is not a
  * mapping at all, returns `NULL`
  *
- * :param mapping: An `asdf_value_t *` containing a mapping
+ * :param mapping: An `asdf_mapping_t *` containing a mapping
  * :param key: The key into the mapping
  * :return: The `asdf_value_t *` wrapping the value at that key, if any.
  *   Make sure to release it with `asdf_value_destroy` when no-longer needed.
  */
-ASDF_EXPORT asdf_value_t *asdf_mapping_get(asdf_value_t *mapping, const char *key);
+ASDF_EXPORT asdf_value_t *asdf_mapping_get(asdf_mapping_t *mapping, const char *key);
 
 typedef struct _asdf_mapping_iter_impl _asdf_mapping_iter_impl_t;
 
@@ -248,7 +262,7 @@ ASDF_EXPORT asdf_value_t *asdf_mapping_item_value(asdf_mapping_item_t *item);
  *   Finish documenting me.
  */
 ASDF_EXPORT asdf_mapping_item_t *asdf_mapping_iter(
-    asdf_value_t *mapping, asdf_mapping_iter_t *iter);
+    asdf_mapping_t *mapping, asdf_mapping_iter_t *iter);
 
 /**
  * Release memory resources used by `asdf_mapping_item_t`
@@ -265,10 +279,24 @@ ASDF_EXPORT asdf_mapping_item_t *asdf_mapping_iter(
 ASDF_EXPORT void asdf_mapping_item_destroy(asdf_mapping_item_t *item);
 
 
-/** Sequence-related functions */
+/** Sequences */
+
+/**
+ * Opaque struct representing a sequence value
+ *
+ * .. note::
+ *
+ *   By design, it is safe to cast a an `asdf_value_t *` to
+ *   `asdf_sequence_t *` so long as the value has been checked to be a
+ *   sequence.
+ */
+typedef struct asdf_sequence asdf_sequence_t;
+
 ASDF_EXPORT bool asdf_value_is_sequence(asdf_value_t *value);
-ASDF_EXPORT int asdf_sequence_size(asdf_value_t *sequence);
-ASDF_EXPORT asdf_value_t *asdf_sequence_get(asdf_value_t *sequence, int index);
+ASDF_EXPORT int asdf_sequence_size(asdf_sequence_t *sequence);
+ASDF_EXPORT asdf_value_t *asdf_sequence_get(asdf_sequence_t *sequence, int index);
+ASDF_EXPORT asdf_value_err_t asdf_value_as_sequence(asdf_value_t *value, asdf_sequence_t **out);
+ASDF_EXPORT void asdf_sequence_destroy(asdf_sequence_t *sequence);
 
 typedef struct _asdf_sequence_iter_impl _asdf_sequence_iter_impl_t;
 
@@ -285,7 +313,7 @@ ASDF_EXPORT asdf_sequence_iter_t asdf_sequence_iter_init(void);
  *
  *   Finish documenting me.
  */
-ASDF_EXPORT asdf_value_t *asdf_sequence_iter(asdf_value_t *sequence, asdf_sequence_iter_t *iter);
+ASDF_EXPORT asdf_value_t *asdf_sequence_iter(asdf_sequence_t *sequence, asdf_sequence_iter_t *iter);
 
 
 /**

@@ -23,36 +23,39 @@ static asdf_value_err_t asdf_gwcs_deserialize(
     asdf_value_t *value, UNUSED(const void *userdata), void **out) {
     asdf_gwcs_t *gwcs = NULL;
     asdf_value_err_t err = ASDF_VALUE_ERR_PARSE_FAILURE;
-    asdf_value_t *prop = NULL;
+    asdf_mapping_t *gwcs_map = NULL;
+    asdf_sequence_t *steps_seq = NULL;
 
-    if (!asdf_value_is_mapping(value))
-        goto failure;
+    if (asdf_value_as_mapping(value, &gwcs_map) != ASDF_VALUE_OK)
+        goto cleanup;
 
     gwcs = calloc(1, sizeof(asdf_gwcs_t));
 
     if (!gwcs) {
         err = ASDF_VALUE_ERR_OOM;
-        goto failure;
+        goto cleanup;
     }
 
     // The name property is required
-    err = asdf_get_required_property(value, "name", ASDF_VALUE_STRING, NULL, (void *)&gwcs->name);
+    err = asdf_get_required_property(
+        gwcs_map, "name", ASDF_VALUE_STRING, NULL, (void *)&gwcs->name);
 
     if (ASDF_IS_ERR(err))
-        goto failure;
+        goto cleanup;
 
     // TODO: Implement pixel_shape parsing
 
     // Parse steps
-    err = asdf_get_required_property(value, "steps", ASDF_VALUE_SEQUENCE, NULL, (void *)&prop);
+    err = asdf_get_required_property(
+        gwcs_map, "steps", ASDF_VALUE_SEQUENCE, NULL, (void *)&steps_seq);
 
     if (ASDF_IS_ERR(err))
-        goto failure;
+        goto cleanup;
 
-    int n_steps = asdf_sequence_size(prop);
+    int n_steps = asdf_sequence_size(steps_seq);
 
     if (n_steps < 0)
-        goto failure;
+        goto cleanup;
 
     gwcs->n_steps = (uint32_t)n_steps;
 
@@ -60,7 +63,7 @@ static asdf_value_err_t asdf_gwcs_deserialize(
 
     if (!steps) {
         err = ASDF_VALUE_ERR_OOM;
-        goto failure;
+        goto cleanup;
     }
 
     gwcs->steps = steps;
@@ -68,14 +71,12 @@ static asdf_value_err_t asdf_gwcs_deserialize(
     asdf_sequence_iter_t iter = asdf_sequence_iter_init();
     asdf_value_t *item = NULL;
     asdf_gwcs_step_t *step_tmp = steps;
-    while ((item = asdf_sequence_iter(prop, &iter)) != NULL) {
+    while ((item = asdf_sequence_iter(steps_seq, &iter)) != NULL) {
         if (ASDF_VALUE_OK != asdf_value_as_gwcs_step(item, &step_tmp))
-            goto failure;
+            goto cleanup;
 
         step_tmp++;
     }
-
-    asdf_value_destroy(prop);
 
     // Special finalization step in the case of a FITS WCS, to fill in the
     // ctype parameters.  Maybe useful to have such hooks for other GWCS
@@ -97,10 +98,13 @@ static asdf_value_err_t asdf_gwcs_deserialize(
     }
 
     *out = gwcs;
-    return ASDF_VALUE_OK;
-failure:
-    asdf_value_destroy(prop);
-    asdf_gwcs_destroy(gwcs);
+    err = ASDF_VALUE_OK;
+cleanup:
+    asdf_sequence_destroy(steps_seq);
+
+    if (err != ASDF_VALUE_OK)
+        asdf_gwcs_destroy(gwcs);
+
     return err;
 }
 

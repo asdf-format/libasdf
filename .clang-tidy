@@ -27,3 +27,5 @@ CheckOptions:
     value: lower_case
   - key: readability-identifier-naming.EnumCase
     value: lower_case
+  - key: readability-function-cognitive-complexity.IgnoreMacros
+    value: true

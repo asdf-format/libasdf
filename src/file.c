@@ -17,7 +17,6 @@
 #include "event.h"
 #include "file.h"
 #include "log.h"
-#include "parse_util.h"
 #include "parser.h"
 #include "types/asdf_block_info_vec.h"
 #include "util.h"
@@ -42,8 +41,8 @@ static const asdf_config_t asdf_config_default = {
  */
 #define ASDF_CONFIG_OVERRIDE(config, user_config, option, default) \
     do { \
-        if (user_config->option != default) \
-            config->option = user_config->option; \
+        if ((user_config)->option != default) \
+            (config)->option = (user_config)->option; \
     } while (0)
 
 
@@ -416,7 +415,7 @@ ASDF_IS_TYPE(float)
 ASDF_IS_TYPE(double)
 
 
-asdf_value_err_t asdf_get_mapping(asdf_file_t *file, const char *path, asdf_value_t **out) {
+asdf_value_err_t asdf_get_mapping(asdf_file_t *file, const char *path, asdf_mapping_t **out) {
     asdf_value_t *value = asdf_get_value(file, path);
 
     if (!value)
@@ -427,12 +426,12 @@ asdf_value_err_t asdf_get_mapping(asdf_file_t *file, const char *path, asdf_valu
         return ASDF_VALUE_ERR_TYPE_MISMATCH;
     }
 
-    *out = value;
+    *out = (asdf_mapping_t *)value;
     return ASDF_VALUE_OK;
 }
 
 
-asdf_value_err_t asdf_get_sequence(asdf_file_t *file, const char *path, asdf_value_t **out) {
+asdf_value_err_t asdf_get_sequence(asdf_file_t *file, const char *path, asdf_sequence_t **out) {
     asdf_value_t *value = asdf_get_value(file, path);
 
     if (!value)
@@ -443,7 +442,7 @@ asdf_value_err_t asdf_get_sequence(asdf_file_t *file, const char *path, asdf_val
         return ASDF_VALUE_ERR_TYPE_MISMATCH;
     }
 
-    *out = value;
+    *out = (asdf_sequence_t *)value;
     return ASDF_VALUE_OK;
 }
 
