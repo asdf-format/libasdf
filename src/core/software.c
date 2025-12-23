@@ -11,14 +11,15 @@ static asdf_value_err_t asdf_software_deserialize(
     const char *version = NULL;
     const char *homepage = NULL;
     const char *author = NULL;
+    asdf_mapping_t *software_map = NULL;
     asdf_value_t *prop = NULL;
     asdf_value_err_t err = ASDF_VALUE_ERR_PARSE_FAILURE;
 
-    if (!asdf_value_is_mapping(value))
+    if (asdf_value_as_mapping(value, &software_map) != ASDF_VALUE_OK)
         goto failure;
 
     /* name and version are required; if missing or the wrong type return parse failure */
-    if (!(prop = asdf_mapping_get(value, "name")))
+    if (!(prop = asdf_mapping_get(software_map, "name")))
         goto failure;
 
     if (ASDF_VALUE_OK != asdf_value_as_string0(prop, &name))
@@ -26,7 +27,7 @@ static asdf_value_err_t asdf_software_deserialize(
 
     asdf_value_destroy(prop);
 
-    if (!(prop = asdf_mapping_get(value, "version")))
+    if (!(prop = asdf_mapping_get(software_map, "version")))
         goto failure;
 
     if (ASDF_VALUE_OK != asdf_value_as_string0(prop, &version))
@@ -34,14 +35,14 @@ static asdf_value_err_t asdf_software_deserialize(
 
     asdf_value_destroy(prop);
 
-    prop = asdf_mapping_get(value, "homepage");
+    prop = asdf_mapping_get(software_map, "homepage");
     if (ASDF_VALUE_OK != asdf_value_as_string0(prop, &homepage))
         ASDF_LOG(
             value->file, ASDF_LOG_WARN, "ignoring invalid value for for homepage in software tag");
 
     asdf_value_destroy(prop);
 
-    prop = asdf_mapping_get(value, "author");
+    prop = asdf_mapping_get(software_map, "author");
     if (ASDF_VALUE_OK != asdf_value_as_string0(prop, &author))
         ASDF_LOG(
             value->file, ASDF_LOG_WARN, "ignoring invalid value for for author in software tag");
@@ -50,8 +51,10 @@ static asdf_value_err_t asdf_software_deserialize(
 
     asdf_software_t *software = calloc(1, sizeof(asdf_software_t));
 
-    if (!software)
-        return ASDF_VALUE_ERR_OOM;
+    if (!software) {
+        err = ASDF_VALUE_ERR_OOM;
+        goto failure;
+    }
 
     software->name = name;
     software->version = version;

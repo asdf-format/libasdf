@@ -381,12 +381,12 @@ ASDF_EXPORT bool asdf_is_mapping(asdf_file_t *file, const char *path);
  *
  * :param file: The `asdf_file_t *` for the file
  * :param path: The :ref:`yaml-pointer` to the mapping
- * :param value: An `asdf_value_t **` into which to return the mapping
+ * :param value: An `asdf_mapping_t **` into which to return the mapping
  * :return: `ASDF_VALUE_OK` if the value exists and is a mapping, otherwise
  *   `ASDF_VALUE_ERR_NOT_FOUND` or `ASDF_VALUE_ERR_TYPE_MISMATCH`.
  */
 ASDF_EXPORT asdf_value_err_t
-asdf_get_mapping(asdf_file_t *file, const char *path, asdf_value_t **value);
+asdf_get_mapping(asdf_file_t *file, const char *path, asdf_mapping_t **out);
 
 /**
  * Check if the value at the given tree path is a YAML sequence
@@ -416,12 +416,12 @@ ASDF_EXPORT bool asdf_is_sequence(asdf_file_t *file, const char *path);
  *
  * :param file: The `asdf_file_t *` for the file
  * :param path: The :ref:`yaml-pointer` to the sequence
- * :param value: An `asdf_value_t **` into which to return the sequence
+ * :param value: An `asdf_sequence_t **` into which to return the sequence
  * :return: `ASDF_VALUE_OK` if the value exists and is a sequence, otherwise
  *   `ASDF_VALUE_ERR_NOT_FOUND` or `ASDF_VALUE_ERR_TYPE_MISMATCH`.
  */
 ASDF_EXPORT asdf_value_err_t
-asdf_get_sequence(asdf_file_t *file, const char *path, asdf_value_t **value);
+asdf_get_sequence(asdf_file_t *file, const char *path, asdf_sequence_t **out);
 
 /**
  * Check if the value at the given tree path is a string scalar

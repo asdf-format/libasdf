@@ -16,10 +16,11 @@ static asdf_value_err_t asdf_gwcs_step_deserialize(
     asdf_gwcs_step_t *step = NULL;
     asdf_value_err_t err = ASDF_VALUE_ERR_PARSE_FAILURE;
     asdf_value_t *prop = NULL;
+    asdf_mapping_t *step_map = NULL;
     asdf_gwcs_frame_t *frame = NULL;
     asdf_gwcs_transform_t *transform = NULL;
 
-    if (!asdf_value_is_mapping(value))
+    if (asdf_value_as_mapping(value, &step_map) != ASDF_VALUE_OK)
         goto failure;
 
     // gwcs_step is usually not found on its own, but as a sequence of steps
@@ -38,7 +39,7 @@ static asdf_value_err_t asdf_gwcs_step_deserialize(
         goto failure;
     }
 
-    err = asdf_get_required_property(value, "frame", ASDF_VALUE_UNKNOWN, NULL, (void *)&prop);
+    err = asdf_get_required_property(step_map, "frame", ASDF_VALUE_UNKNOWN, NULL, (void *)&prop);
 
     if (ASDF_IS_OK(err)) {
         err = asdf_value_as_gwcs_frame(prop, &frame);
@@ -55,7 +56,8 @@ static asdf_value_err_t asdf_gwcs_step_deserialize(
 
     step->frame = frame;
 
-    err = asdf_get_optional_property(value, "transform", ASDF_VALUE_UNKNOWN, NULL, (void *)&prop);
+    err = asdf_get_optional_property(
+        step_map, "transform", ASDF_VALUE_UNKNOWN, NULL, (void *)&prop);
 
     if (ASDF_IS_OK(err)) {
         // transform may be null

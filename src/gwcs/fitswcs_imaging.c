@@ -12,7 +12,7 @@
 
 
 /** Helper to read crpix, crval, etc. */
-static asdf_value_err_t get_coordinates_prop(asdf_value_t *value, const char *name, double *out) {
+static asdf_value_err_t get_coordinates_prop(asdf_mapping_t *value, const char *name, double *out) {
     asdf_value_err_t err = ASDF_VALUE_ERR_PARSE_FAILURE;
     asdf_ndarray_t *ndarray = NULL;
     const void *data = NULL;
@@ -31,8 +31,8 @@ static asdf_value_err_t get_coordinates_prop(asdf_value_t *value, const char *na
     if (ndarray->ndim != 1 || ndarray->shape[0] != 2 ||
         ndarray->datatype.type != ASDF_DATATYPE_FLOAT64) {
 #ifdef ASDF_LOG_ENABLED
-        const char *path = asdf_value_path(value);
-        ASDF_LOG(value->file, ASDF_LOG_ERROR, "invalid %s array in %s", name, path);
+        const char *path = asdf_value_path(&value->value);
+        ASDF_LOG(value->value.file, ASDF_LOG_ERROR, "invalid %s array in %s", name, path);
 #endif
         goto failure;
     }
@@ -41,8 +41,8 @@ static asdf_value_err_t get_coordinates_prop(asdf_value_t *value, const char *na
 
     if (size != 2 * sizeof(double)) {
 #ifdef ASDF_LOG_ENABLED
-        const char *path = asdf_value_path(value);
-        ASDF_LOG(value->file, ASDF_LOG_ERROR, "invalid array data for %s in %s", name, path);
+        const char *path = asdf_value_path(&value->value);
+        ASDF_LOG(value->value.file, ASDF_LOG_ERROR, "invalid array data for %s in %s", name, path);
 #endif
         goto failure;
     }
@@ -56,7 +56,7 @@ failure:
 
 
 /** Helper to read the pc matrix */
-static asdf_value_err_t get_matrix_prop(asdf_value_t *value, const char *name, double *out) {
+static asdf_value_err_t get_matrix_prop(asdf_mapping_t *value, const char *name, double *out) {
     asdf_value_err_t err = ASDF_VALUE_ERR_PARSE_FAILURE;
     asdf_ndarray_t *ndarray = NULL;
     const void *data = NULL;
@@ -73,8 +73,8 @@ static asdf_value_err_t get_matrix_prop(asdf_value_t *value, const char *name, d
     if (ndarray->ndim != 2 || ndarray->shape[0] != 2 || ndarray->shape[1] != 2 ||
         ndarray->datatype.type != ASDF_DATATYPE_FLOAT64) {
 #ifdef ASDF_LOG_ENABLED
-        const char *path = asdf_value_path(value);
-        ASDF_LOG(value->file, ASDF_LOG_ERROR, "invalid %s array in %s", name, path);
+        const char *path = asdf_value_path(&value->value);
+        ASDF_LOG(value->value.file, ASDF_LOG_ERROR, "invalid %s array in %s", name, path);
 #endif
         goto failure;
     }
@@ -83,8 +83,8 @@ static asdf_value_err_t get_matrix_prop(asdf_value_t *value, const char *name, d
 
     if (size != 2 * 2 * sizeof(double)) {
 #ifdef ASDF_LOG_ENABLED
-        const char *path = asdf_value_path(value);
-        ASDF_LOG(value->file, ASDF_LOG_ERROR, "invalid array data for %s in %s", name, path);
+        const char *path = asdf_value_path(&value->value);
+        ASDF_LOG(value->value.file, ASDF_LOG_ERROR, "invalid array data for %s in %s", name, path);
 #endif
         goto failure;
     }
@@ -101,46 +101,48 @@ static asdf_value_err_t asdf_gwcs_fits_deserialize(
     asdf_value_t *value, UNUSED(const void *userdata), void **out) {
     asdf_gwcs_fits_t *fits = NULL;
     asdf_value_err_t err = ASDF_VALUE_ERR_PARSE_FAILURE;
-    asdf_value_t *prop = NULL;
+    asdf_mapping_t *transform_map = NULL;
+    asdf_value_t *projection = NULL;
     asdf_ndarray_t *crpix = NULL;
     asdf_ndarray_t *crval = NULL;
 
-    if (!asdf_value_is_mapping(value))
-        goto failure;
+    if (asdf_value_as_mapping(value, &transform_map) != ASDF_VALUE_OK)
+        goto cleanup;
 
     fits = calloc(1, sizeof(asdf_gwcs_fits_t));
 
     if (!fits) {
         err = ASDF_VALUE_ERR_OOM;
-        goto failure;
+        goto cleanup;
     }
 
     err = asdf_gwcs_transform_parse(value, &fits->base);
 
     if (ASDF_IS_ERR(err))
-        goto failure;
+        goto cleanup;
 
-    err = get_coordinates_prop(value, "crpix", (double *)fits->crpix);
-
-    if (ASDF_IS_ERR(err))
-        goto failure;
-
-    err = get_coordinates_prop(value, "crval", (double *)fits->crval);
+    err = get_coordinates_prop(transform_map, "crpix", (double *)fits->crpix);
 
     if (ASDF_IS_ERR(err))
-        goto failure;
+        goto cleanup;
 
-    err = get_coordinates_prop(value, "cdelt", (double *)fits->cdelt);
-
-    if (ASDF_IS_ERR(err))
-        goto failure;
-
-    err = get_matrix_prop(value, "pc", (double *)fits->pc);
+    err = get_coordinates_prop(transform_map, "crval", (double *)fits->crval);
 
     if (ASDF_IS_ERR(err))
-        goto failure;
+        goto cleanup;
 
-    err = asdf_get_required_property(value, "projection", ASDF_VALUE_UNKNOWN, NULL, &prop);
+    err = get_coordinates_prop(transform_map, "cdelt", (double *)fits->cdelt);
+
+    if (ASDF_IS_ERR(err))
+        goto cleanup;
+
+    err = get_matrix_prop(transform_map, "pc", (double *)fits->pc);
+
+    if (ASDF_IS_ERR(err))
+        goto cleanup;
+
+    err = asdf_get_required_property(
+        transform_map, "projection", ASDF_VALUE_UNKNOWN, NULL, &projection);
     // projection must be a transform; in fact it can't even be just any arbitrary
     // transform according to the schema, but one matching any of the base transform
     // schemas
@@ -160,22 +162,23 @@ static asdf_value_err_t asdf_gwcs_fits_deserialize(
     // For present purposes just allow any of the currently hard-coded transforms (most
     // of which currently *are* projection types associated with FITS WCS)
     if (ASDF_IS_ERR(err))
-        goto failure;
+        goto cleanup;
 
-    err = asdf_gwcs_transform_parse(prop, &fits->projection);
+    err = asdf_gwcs_transform_parse(projection, &fits->projection);
 
     if (ASDF_IS_ERR(err))
-        goto failure;
-
-    asdf_value_destroy(prop);
+        goto cleanup;
 
     *out = fits;
-    return ASDF_VALUE_OK;
-failure:
+    err = ASDF_VALUE_OK;
+cleanup:
     asdf_ndarray_destroy(crpix);
     asdf_ndarray_destroy(crval);
-    asdf_value_destroy(prop);
-    asdf_gwcs_fits_destroy(fits);
+    asdf_value_destroy(projection);
+
+    if (err != ASDF_VALUE_OK)
+        asdf_gwcs_fits_destroy(fits);
+
     return err;
 }
 

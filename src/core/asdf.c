@@ -23,16 +23,17 @@ asdf_software_t libasdf_software = {
 // TODO: Seems useful to package this as a macro; a common helper to build an array of some
 // extension values...
 static asdf_extension_metadata_t **asdf_meta_extensions_deserialize(asdf_value_t *value) {
-    if (UNLIKELY(!asdf_value_is_sequence(value)))
+    asdf_sequence_t *extensions_seq = NULL;
+
+    if (UNLIKELY(asdf_value_as_sequence(value, &extensions_seq) != ASDF_VALUE_OK))
         goto failure;
 
-
-    int extensions_size = asdf_sequence_size(value);
+    int extensions_size = asdf_sequence_size(extensions_seq);
 
     if (UNLIKELY(extensions_size < 0))
         goto failure;
 
-    asdf_extension_metadata_t **extensions = calloc(
+    asdf_extension_metadata_t **extensions = (asdf_extension_metadata_t **)calloc(
         extensions_size + 1, sizeof(asdf_extension_metadata_t *));
 
     if (!extensions) {
@@ -42,9 +43,9 @@ static asdf_extension_metadata_t **asdf_meta_extensions_deserialize(asdf_value_t
 
     asdf_extension_metadata_t **extension_p = extensions;
     asdf_sequence_iter_t iter = asdf_sequence_iter_init();
-    asdf_value_t *it = NULL;
-    while ((it = asdf_sequence_iter(value, &iter))) {
-        if (ASDF_VALUE_OK == asdf_value_as_extension_metadata(it, extension_p))
+    asdf_value_t *val = NULL;
+    while ((val = asdf_sequence_iter(extensions_seq, &iter))) {
+        if (ASDF_VALUE_OK == asdf_value_as_extension_metadata(val, extension_p))
             extension_p++;
         else
             ASDF_LOG(value->file, ASDF_LOG_WARN, "ignoring invalid extension_metadata");
@@ -59,16 +60,18 @@ failure:
 
 
 static asdf_history_entry_t **asdf_meta_history_entries_deserialize(asdf_value_t *value) {
-    if (UNLIKELY(!asdf_value_is_sequence(value)))
+    asdf_sequence_t *history_seq = NULL;
+
+    if (UNLIKELY(asdf_value_as_sequence(value, &history_seq) != ASDF_VALUE_OK))
         goto failure;
 
-
-    int history_size = asdf_sequence_size(value);
+    int history_size = asdf_sequence_size(history_seq);
 
     if (UNLIKELY(history_size < 0))
         goto failure;
 
-    asdf_history_entry_t **entries = calloc(history_size + 1, sizeof(asdf_history_entry_t *));
+    asdf_history_entry_t **entries = (asdf_history_entry_t **)calloc(
+        history_size + 1, sizeof(asdf_history_entry_t *));
 
     if (!entries) {
         ASDF_ERROR_OOM(value->file);
@@ -77,9 +80,9 @@ static asdf_history_entry_t **asdf_meta_history_entries_deserialize(asdf_value_t
 
     asdf_history_entry_t **entry_p = entries;
     asdf_sequence_iter_t iter = asdf_sequence_iter_init();
-    asdf_value_t *it = NULL;
-    while ((it = asdf_sequence_iter(value, &iter))) {
-        if (ASDF_VALUE_OK == asdf_value_as_history_entry(it, entry_p))
+    asdf_value_t *val = NULL;
+    while ((val = asdf_sequence_iter(history_seq, &iter))) {
+        if (ASDF_VALUE_OK == asdf_value_as_history_entry(val, entry_p))
             entry_p++;
         else
             ASDF_LOG(value->file, ASDF_LOG_WARN, "ignoring invalid history_entry");
@@ -95,31 +98,33 @@ failure:
 
 static asdf_meta_history_t asdf_meta_history_deserialize(asdf_value_t *value) {
     asdf_meta_history_t history = {0};
-    asdf_value_t *history_sequence = NULL;
-    asdf_value_t *extension_sequence = NULL;
+    asdf_value_t *history_seq = NULL;
+    asdf_value_t *extension_seq = NULL;
     asdf_extension_metadata_t **extensions = NULL;
     asdf_history_entry_t **history_entries = NULL;
 
     if (asdf_value_is_sequence(value)) {
         // Old-style history
-        history_sequence = value;
+        history_seq = value;
     } else if (asdf_value_is_mapping(value)) {
-        extension_sequence = asdf_mapping_get(value, "extensions");
-        history_sequence = asdf_mapping_get(value, "entries");
+        asdf_mapping_t *history_map = NULL;
+        asdf_value_as_mapping(value, &history_map);
+        extension_seq = asdf_mapping_get(history_map, "extensions");
+        history_seq = asdf_mapping_get(history_map, "entries");
     } else {
         ASDF_LOG(value->file, ASDF_LOG_WARN, "ignoring invalid \"history\" property");
     }
 
-    if (extension_sequence)
-        extensions = asdf_meta_extensions_deserialize(extension_sequence);
+    if (extension_seq)
+        extensions = asdf_meta_extensions_deserialize(extension_seq);
 
-    if (history_sequence)
-        history_entries = asdf_meta_history_entries_deserialize(history_sequence);
+    if (history_seq)
+        history_entries = asdf_meta_history_entries_deserialize(history_seq);
 
     history.extensions = extensions;
     history.entries = history_entries;
-    asdf_value_destroy(history_sequence);
-    asdf_value_destroy(extension_sequence);
+    asdf_value_destroy(history_seq);
+    asdf_value_destroy(extension_seq);
     return history;
 }
 
@@ -130,18 +135,19 @@ static asdf_value_err_t asdf_meta_deserialize(
     asdf_value_t *prop = NULL;
     asdf_software_t *asdf_library = NULL;
     asdf_meta_history_t history = {0};
+    asdf_mapping_t *meta_map = NULL;
 
-    if (!asdf_value_is_mapping(value))
+    if (asdf_value_as_mapping(value, &meta_map) != ASDF_VALUE_OK)
         goto failure;
 
-    if ((prop = asdf_mapping_get(value, "asdf_library"))) {
+    if ((prop = asdf_mapping_get(meta_map, "asdf_library"))) {
         if (ASDF_VALUE_OK != asdf_value_as_software(prop, &asdf_library))
             ASDF_LOG(value->file, ASDF_LOG_WARN, "ignoring invalid asdf_library software");
     }
 
     asdf_value_destroy(prop);
 
-    if ((prop = asdf_mapping_get(value, "history"))) {
+    if ((prop = asdf_mapping_get(meta_map, "history"))) {
         history = asdf_meta_history_deserialize(prop);
     }
 
@@ -176,14 +182,14 @@ static void asdf_meta_dealloc(void *value) {
         for (asdf_extension_metadata_t **ep = meta->history.extensions; *ep; ++ep) {
             asdf_extension_metadata_destroy(*ep);
         }
-        free(meta->history.extensions);
+        free((void *)meta->history.extensions);
     }
 
     if (meta->history.entries) {
         for (asdf_history_entry_t **ep = meta->history.entries; *ep; ++ep) {
             asdf_history_entry_destroy(*ep);
         }
-        free(meta->history.entries);
+        free((void *)meta->history.entries);
     }
 
     free(meta);

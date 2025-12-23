@@ -28,8 +28,7 @@ MU_TEST(extension_metadata) {
     assert_string_equal(metadata->extension_class, "asdf.extension._manifest.ManifestExtension");
     assert_null(metadata->package);
     assert_not_null(metadata->metadata);
-    assert_true(asdf_value_is_mapping(metadata->metadata));
-    
+
     asdf_value_t *prop = asdf_mapping_get(metadata->metadata, "extension_uri");
     assert_not_null(prop);
     const char *s = NULL;

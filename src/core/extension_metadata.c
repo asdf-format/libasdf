@@ -14,12 +14,13 @@ static asdf_value_err_t asdf_extension_metadata_deserialize(
     asdf_software_t *package = NULL;
     asdf_value_t *prop = NULL;
     asdf_value_err_t err = ASDF_VALUE_ERR_PARSE_FAILURE;
+    asdf_mapping_t *extension_map = NULL;
 
-    if (!asdf_value_is_mapping(value))
+    if (asdf_value_as_mapping(value, &extension_map) != ASDF_VALUE_OK)
         goto failure;
 
     /* extension_class at a minimum is required by the schema; is absent fail to parse */
-    if (!(prop = asdf_mapping_get(value, "extension_class")))
+    if (!(prop = asdf_mapping_get(extension_map, "extension_class")))
         goto failure;
 
     if (ASDF_VALUE_OK != asdf_value_as_string0(prop, &extension_class))
@@ -27,7 +28,7 @@ static asdf_value_err_t asdf_extension_metadata_deserialize(
 
     asdf_value_destroy(prop);
 
-    prop = asdf_mapping_get(value, "package");
+    prop = asdf_mapping_get(extension_map, "package");
 
     if (prop) {
         if (ASDF_VALUE_OK != asdf_value_as_software(prop, &package)) {
@@ -47,7 +48,7 @@ static asdf_value_err_t asdf_extension_metadata_deserialize(
     metadata->package = package;
     // Clone the mapping value into the metadata so that additional properties can be looked up on
     // it
-    metadata->metadata = asdf_value_clone(value);
+    metadata->metadata = (asdf_mapping_t *)asdf_value_clone(value);
     *out = metadata;
     return ASDF_VALUE_OK;
 failure:
@@ -66,7 +67,7 @@ static void asdf_extension_metadata_dealloc(void *value) {
         asdf_software_destroy((asdf_software_t *)metadata->package);
 
     if (metadata->metadata)
-        asdf_value_destroy(metadata->metadata);
+        asdf_mapping_destroy(metadata->metadata);
 
     free(metadata);
 }

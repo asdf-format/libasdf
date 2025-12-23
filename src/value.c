@@ -252,28 +252,49 @@ bool asdf_value_is_mapping(asdf_value_t *value) {
 }
 
 
-int asdf_mapping_size(asdf_value_t *mapping) {
-    if (UNLIKELY(!mapping) || !asdf_value_is_mapping(mapping))
+int asdf_mapping_size(asdf_mapping_t *mapping) {
+    if (UNLIKELY(!mapping) || !asdf_value_is_mapping(&mapping->value))
         return -1;
 
-    return fy_node_mapping_item_count(mapping->node);
+    return fy_node_mapping_item_count(mapping->value.node);
 }
 
 
-asdf_value_t *asdf_mapping_get(asdf_value_t *mapping, const char *key) {
-    if (mapping->raw_type != ASDF_VALUE_MAPPING) {
+asdf_value_t *asdf_mapping_get(asdf_mapping_t *mapping, const char *key) {
+    if (mapping->value.raw_type != ASDF_VALUE_MAPPING) {
 #ifdef ASDF_LOG_ENABLED
-        ASDF_LOG(mapping->file, ASDF_LOG_WARN, "%s is not a mapping", asdf_value_path(mapping));
+        ASDF_LOG(
+            mapping->value.file,
+            ASDF_LOG_WARN,
+            "%s is not a mapping",
+            asdf_value_path(&mapping->value));
 #endif
         return NULL;
     }
 
-    struct fy_node *value = fy_node_mapping_lookup_value_by_simple_key(mapping->node, key, -1);
+    struct fy_node *node = fy_node_mapping_lookup_value_by_simple_key(mapping->value.node, key, -1);
 
-    if (!value)
+    if (!node)
         return NULL;
 
-    return asdf_value_create_ex(mapping->file, value, mapping, key, -1);
+    return asdf_value_create_ex(mapping->value.file, node, &mapping->value, key, -1);
+}
+
+
+asdf_value_err_t asdf_value_as_mapping(asdf_value_t *value, asdf_mapping_t **out) {
+    if (!value)
+        return ASDF_VALUE_ERR_UNKNOWN;
+
+    if (value->raw_type != ASDF_VALUE_MAPPING)
+        return ASDF_VALUE_ERR_TYPE_MISMATCH;
+
+    *out = (asdf_mapping_t *)value;
+    return ASDF_VALUE_OK;
+}
+
+
+void asdf_mapping_destroy(asdf_mapping_t *mapping) {
+    asdf_value_destroy(&mapping->value);
 }
 
 
@@ -303,10 +324,14 @@ void asdf_mapping_item_destroy(asdf_mapping_item_t *item) {
 }
 
 
-asdf_mapping_item_t *asdf_mapping_iter(asdf_value_t *mapping, asdf_mapping_iter_t *iter) {
-    if (mapping->raw_type != ASDF_VALUE_MAPPING) {
+asdf_mapping_item_t *asdf_mapping_iter(asdf_mapping_t *mapping, asdf_mapping_iter_t *iter) {
+    if (mapping->value.raw_type != ASDF_VALUE_MAPPING) {
 #ifdef ASDF_LOG_ENABLED
-        ASDF_LOG(mapping->file, ASDF_LOG_WARN, "%s is not a mapping", asdf_value_path(mapping));
+        ASDF_LOG(
+            mapping->value.file,
+            ASDF_LOG_WARN,
+            "%s is not a mapping",
+            asdf_value_path(&mapping->value));
 #endif
         return NULL;
     }
@@ -317,14 +342,14 @@ asdf_mapping_item_t *asdf_mapping_iter(asdf_value_t *mapping, asdf_mapping_iter_
         impl = calloc(1, sizeof(_asdf_mapping_iter_impl_t));
 
         if (!impl) {
-            ASDF_ERROR_OOM(mapping->file);
+            ASDF_ERROR_OOM(mapping->value.file);
             return false;
         }
 
         *iter = impl;
     }
 
-    struct fy_node_pair *pair = fy_node_mapping_iterate(mapping->node, &impl->iter);
+    struct fy_node_pair *pair = fy_node_mapping_iterate(mapping->value.node, &impl->iter);
 
     if (!pair) {
         /* Cleanup and end iteration */
@@ -336,12 +361,12 @@ asdf_mapping_item_t *asdf_mapping_iter(asdf_value_t *mapping, asdf_mapping_iter_
     if (UNLIKELY(fy_node_get_type(key_node) != FYNT_SCALAR)) {
 #ifdef ASDF_LOG_ENABLED
         ASDF_LOG(
-            mapping->file,
+            mapping->value.file,
             ASDF_LOG_WARN,
             "non-scalar key found in mapping %s; non-scalar "
             "keys are not allowed in ASDF; the value will be returned but the key will "
             "be set to NULL",
-            asdf_value_path(mapping));
+            asdf_value_path(&mapping->value));
 #endif
         impl->key = NULL;
     } else {
@@ -349,7 +374,8 @@ asdf_mapping_item_t *asdf_mapping_iter(asdf_value_t *mapping, asdf_mapping_iter_
     }
 
     struct fy_node *value_node = fy_node_pair_value(pair);
-    asdf_value_t *value = asdf_value_create_ex(mapping->file, value_node, mapping, impl->key, -1);
+    asdf_value_t *value = asdf_value_create_ex(
+        mapping->value.file, value_node, &mapping->value, impl->key, -1);
 
     if (!value) {
         goto cleanup;
@@ -373,32 +399,57 @@ bool asdf_value_is_sequence(asdf_value_t *value) {
 }
 
 
-int asdf_sequence_size(asdf_value_t *sequence) {
-    if (UNLIKELY(!sequence) || !asdf_value_is_sequence(sequence)) {
+int asdf_sequence_size(asdf_sequence_t *sequence) {
+    if (UNLIKELY(!sequence) || !asdf_value_is_sequence(&sequence->value)) {
 #ifdef ASDF_LOG_ENABLED
-        ASDF_LOG(sequence->file, ASDF_LOG_WARN, "%s is not a sequence", asdf_value_path(sequence));
+        ASDF_LOG(
+            sequence->value.file,
+            ASDF_LOG_WARN,
+            "%s is not a sequence",
+            asdf_value_path(&sequence->value));
 #endif
         return -1;
     }
 
-    return fy_node_sequence_item_count(sequence->node);
+    return fy_node_sequence_item_count(sequence->value.node);
 }
 
 
-asdf_value_t *asdf_sequence_get(asdf_value_t *sequence, int index) {
-    if (UNLIKELY(!sequence) || !asdf_value_is_sequence(sequence)) {
+asdf_value_t *asdf_sequence_get(asdf_sequence_t *sequence, int index) {
+    if (UNLIKELY(!sequence || !asdf_value_is_sequence(&sequence->value))) {
 #ifdef ASDF_LOG_ENABLED
-        ASDF_LOG(sequence->file, ASDF_LOG_WARN, "%s is not a sequence", asdf_value_path(sequence));
+        ASDF_LOG(
+            sequence->value.file,
+            ASDF_LOG_WARN,
+            "%s is not a sequence",
+            asdf_value_path(&sequence->value));
 #endif
         return NULL;
     }
 
-    struct fy_node *value = fy_node_sequence_get_by_index(sequence->node, index);
+    struct fy_node *value = fy_node_sequence_get_by_index(sequence->value.node, index);
 
     if (!value)
         return NULL;
 
-    return asdf_value_create_ex(sequence->file, value, sequence, NULL, index);
+    return asdf_value_create_ex(sequence->value.file, value, &sequence->value, NULL, index);
+}
+
+
+asdf_value_err_t asdf_value_as_sequence(asdf_value_t *value, asdf_sequence_t **out) {
+    if (!value)
+        return ASDF_VALUE_ERR_UNKNOWN;
+
+    if (value->raw_type != ASDF_VALUE_SEQUENCE)
+        return ASDF_VALUE_ERR_TYPE_MISMATCH;
+
+    *out = (asdf_sequence_t *)value;
+    return ASDF_VALUE_OK;
+}
+
+
+void asdf_sequence_destroy(asdf_sequence_t *sequence) {
+    asdf_value_destroy(&sequence->value);
 }
 
 
@@ -407,10 +458,14 @@ asdf_sequence_iter_t asdf_sequence_iter_init() {
 }
 
 
-asdf_value_t *asdf_sequence_iter(asdf_value_t *sequence, asdf_sequence_iter_t *iter) {
-    if (sequence->raw_type != ASDF_VALUE_SEQUENCE) {
+asdf_value_t *asdf_sequence_iter(asdf_sequence_t *sequence, asdf_sequence_iter_t *iter) {
+    if (UNLIKELY(sequence->value.raw_type != ASDF_VALUE_SEQUENCE)) {
 #ifdef ASDF_LOG_ENABLED
-        ASDF_LOG(sequence->file, ASDF_LOG_WARN, "%s is not a sequence", asdf_value_path(sequence));
+        ASDF_LOG(
+            sequence->value.file,
+            ASDF_LOG_WARN,
+            "%s is not a sequence",
+            asdf_value_path(&sequence->value));
 #endif
         return NULL;
     }
@@ -420,8 +475,8 @@ asdf_value_t *asdf_sequence_iter(asdf_value_t *sequence, asdf_sequence_iter_t *i
     if (NULL == impl) {
         impl = calloc(1, sizeof(_asdf_sequence_iter_impl_t));
 
-        if (!impl) {
-            ASDF_ERROR_OOM(sequence->file);
+        if (UNLIKELY(!impl)) {
+            ASDF_ERROR_OOM(sequence->value.file);
             return false;
         }
 
@@ -429,15 +484,16 @@ asdf_value_t *asdf_sequence_iter(asdf_value_t *sequence, asdf_sequence_iter_t *i
         *iter = impl;
     }
 
-    struct fy_node *value_node = fy_node_sequence_iterate(sequence->node, &impl->iter);
+    struct fy_node *value_node = fy_node_sequence_iterate(sequence->value.node, &impl->iter);
 
-    if (!value_node) {
+    if (UNLIKELY(!value_node)) {
         /* Cleanup and end iteration */
         goto cleanup;
     }
 
     int index = ++impl->index;
-    asdf_value_t *value = asdf_value_create_ex(sequence->file, value_node, sequence, NULL, index);
+    asdf_value_t *value = asdf_value_create_ex(
+        sequence->value.file, value_node, &sequence->value, NULL, index);
 
     if (!value) {
         goto cleanup;
@@ -528,7 +584,8 @@ asdf_container_item_t *asdf_container_iter(asdf_value_t *container, asdf_contain
     }
 
     if (impl->is_mapping) {
-        asdf_mapping_item_t *item = asdf_mapping_iter(container, &impl->iter.mapping);
+        asdf_mapping_item_t *item = asdf_mapping_iter(
+            (asdf_mapping_t *)container, &impl->iter.mapping);
 
         if (!item)
             goto cleanup;
@@ -539,7 +596,7 @@ asdf_container_item_t *asdf_container_iter(asdf_value_t *container, asdf_contain
     }
 
     // Sequence case
-    asdf_value_t *value = asdf_sequence_iter(container, &impl->iter.sequence);
+    asdf_value_t *value = asdf_sequence_iter((asdf_sequence_t *)container, &impl->iter.sequence);
 
     if (!value)
         goto cleanup;

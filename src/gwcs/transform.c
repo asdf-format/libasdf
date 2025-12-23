@@ -6,12 +6,13 @@
 #include "types/asdf_gwcs_transform_map.h"
 
 
-static asdf_gwcs_transform_map_t transform_map = {0};
-static atomic_bool transform_map_initialized = false;
+static asdf_gwcs_transform_map_t global_transform_map = {0};
+static atomic_bool global_transform_map_initialized = false;
 
 
 static asdf_gwcs_transform_type_t asdf_gwcs_transform_type_get(const char *tagstr) {
-    const asdf_gwcs_transform_map_value *item = asdf_gwcs_transform_map_get(&transform_map, tagstr);
+    const asdf_gwcs_transform_map_value *item = asdf_gwcs_transform_map_get(
+        &global_transform_map, tagstr);
 
     if (!item)
         return ASDF_GWCS_TRANSFORM_INVALID;
@@ -23,9 +24,10 @@ static asdf_gwcs_transform_type_t asdf_gwcs_transform_type_get(const char *tagst
 asdf_value_err_t asdf_gwcs_transform_parse(asdf_value_t *value, asdf_gwcs_transform_t *transform) {
 
     asdf_value_err_t err = ASDF_VALUE_ERR_PARSE_FAILURE;
+    asdf_mapping_t *transform_map = NULL;
     asdf_tag_t *parsed_tag = NULL;
 
-    if (!asdf_value_is_mapping(value))
+    if (asdf_value_as_mapping(value, &transform_map) != ASDF_VALUE_OK)
         goto failure;
 
     const char *tag = asdf_value_tag(value);
@@ -53,13 +55,13 @@ asdf_value_err_t asdf_gwcs_transform_parse(asdf_value_t *value, asdf_gwcs_transf
     transform->type = type;
 
     err = asdf_get_optional_property(
-        value, "name", ASDF_VALUE_STRING, NULL, (void *)&transform->name);
+        transform_map, "name", ASDF_VALUE_STRING, NULL, (void *)&transform->name);
 
     if (!ASDF_IS_OPTIONAL_OK(err))
         goto failure;
 
     err = asdf_get_optional_property(
-        value,
+        transform_map,
         "bounding_box",
         ASDF_VALUE_EXTENSION,
         ASDF_GWCS_BOUNDING_BOX_TAG,
@@ -147,10 +149,10 @@ void asdf_gwcs_transform_destroy(asdf_gwcs_transform_t *transform) {
  *   better support different schema versions.
  */
 ASDF_CONSTRUCTOR static void asdf_gwcs_transform_map_create() {
-    if (atomic_load_explicit(&transform_map_initialized, memory_order_acquire))
+    if (atomic_load_explicit(&global_transform_map_initialized, memory_order_acquire))
         return;
 
-    transform_map = c_make(
+    global_transform_map = c_make(
         asdf_gwcs_transform_map,
         {{ASDF_GWCS_TRANSFORM_TAG_PREFIX "transform", ASDF_GWCS_TRANSFORM_GENERIC},
          {ASDF_GWCS_TRANSFORM_TAG_PREFIX "airy", ASDF_GWCS_TRANSFORM_AIRY},
@@ -193,13 +195,13 @@ ASDF_CONSTRUCTOR static void asdf_gwcs_transform_map_create() {
          {ASDF_GWCS_TRANSFORM_TAG_PREFIX "zenithal_perspective",
           ASDF_GWCS_TRANSFORM_ZENITHAL_PERSPECTIVE}});
 
-    atomic_store_explicit(&transform_map_initialized, true, memory_order_release);
+    atomic_store_explicit(&global_transform_map_initialized, true, memory_order_release);
 }
 
 
 ASDF_DESTRUCTOR static void asdf_gwcs_transform_map_destroy(void) {
-    if (atomic_load_explicit(&transform_map_initialized, memory_order_acquire)) {
-        asdf_gwcs_transform_map_drop(&transform_map);
-        atomic_store_explicit(&transform_map_initialized, false, memory_order_release);
+    if (atomic_load_explicit(&global_transform_map_initialized, memory_order_acquire)) {
+        asdf_gwcs_transform_map_drop(&global_transform_map);
+        atomic_store_explicit(&global_transform_map_initialized, false, memory_order_release);
     }
 }
