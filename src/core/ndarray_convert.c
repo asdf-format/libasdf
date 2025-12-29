@@ -227,6 +227,7 @@ static atomic_bool conversion_table_initialized = false;
  */
 
 /** Conversions from int8 */
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
 DEFINE_IDENTITY_CONVERSION(int8, int8_t)
 DEFINE_CONVERSION(int8, int8_t, int16, int16_t)
 DEFINE_CONVERSION(int8, int8_t, int32, int32_t)
@@ -345,6 +346,7 @@ DEFINE_CLAMP_CONVERSION(float64, double, int32, int32_t, INT32_MIN, INT32_MAX)
 DEFINE_CLAMP_CONVERSION(float64, double, uint32, uint32_t, 0, UINT32_MAX)
 DEFINE_CLAMP_CONVERSION(float64, double, int64, int64_t, INT64_MIN, INT64_MAX)
 DEFINE_CLAMP_CONVERSION(float64, double, uint64, uint64_t, 0, UINT64_MAX)
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 
 /** I am very sorry in advance to anyone who has to read this */

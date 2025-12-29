@@ -33,13 +33,13 @@ static asdf_compressor_userdata_t *asdf_compressor_zlib_init(
         return NULL;
     }
 
-    z_stream *z = &userdata->z;
-    z->next_in = (Bytef *)block->data;
-    z->avail_in = block->avail_size;
-    z->next_out = (Bytef *)dest;
-    z->avail_out = dest_size;
+    z_stream *stream = &userdata->z;
+    stream->next_in = (Bytef *)block->data;
+    stream->avail_in = block->avail_size;
+    stream->next_out = (Bytef *)dest;
+    stream->avail_out = dest_size;
 
-    int ret = inflateInit2(z, ASDF_ZLIB_FORMAT + ASDF_ZLIB_AUTODETECT);
+    int ret = inflateInit2(stream, ASDF_ZLIB_FORMAT + ASDF_ZLIB_AUTODETECT);
 
     if (ret != Z_OK) {
         ASDF_LOG(block->file, ASDF_LOG_ERROR, "error initializing zlib stream: %d", ret);
@@ -76,8 +76,8 @@ static int asdf_compressor_zlib_decomp(
     asdf_compressor_userdata_t *userdata,
     uint8_t *buf,
     size_t buf_size,
-    size_t offset_hint,
-    size_t *offset_out) {
+    size_t *offset_out,
+    size_t offset_hint) {
     assert(userdata);
     asdf_compressor_zlib_userdata_t *zlib = userdata;
     zlib->info.status = ASDF_COMPRESSOR_IN_PROGRESS;

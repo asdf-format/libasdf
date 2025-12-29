@@ -74,25 +74,25 @@ static int asdf_create_temp_file(size_t data_size, const char *tmp_dir, int *out
 
 
 static int asdf_block_decomp_offset(
-    asdf_block_comp_state_t *cs, size_t offset_hint, size_t *offset_out) {
-    assert(cs);
-    assert(cs->work_buf);
-    assert(cs->compressor);
-    assert(cs->userdata);
-    return cs->compressor->decomp(
-        cs->userdata, cs->work_buf, cs->work_buf_size, offset_hint, offset_out);
+    asdf_block_comp_state_t *state, size_t *offset_out, size_t offset_hint) {
+    assert(state);
+    assert(state->work_buf);
+    assert(state->compressor);
+    assert(state->userdata);
+    return state->compressor->decomp(
+        state->userdata, state->work_buf, state->work_buf_size, offset_out, offset_hint);
 }
 
 
-static int asdf_block_decomp_eager(asdf_block_comp_state_t *cs) {
-    cs->work_buf = cs->dest;
-    cs->work_buf_size = cs->dest_size;
+static int asdf_block_decomp_eager(asdf_block_comp_state_t *state) {
+    state->work_buf = state->dest;
+    state->work_buf_size = state->dest_size;
     // Decompress the full range
     size_t offset = 0;
-    int ret = asdf_block_decomp_offset(cs, 0, &offset);
+    int ret = asdf_block_decomp_offset(state, &offset, 0);
     // After decompression set PROT_READ for now (later this should depend on the mode flag the
     // file was opened with)
-    mprotect(cs->dest, cs->dest_size, PROT_READ);
+    mprotect(state->dest, state->dest_size, PROT_READ);
     return ret;
 }
 
@@ -186,7 +186,7 @@ static void *asdf_block_comp_userfaultfd_handler(void *arg) {
         while (!atomic_load(&uffd->stop)) {
             size_t got_offset = 0;
             memset(cs->work_buf, 0, chunk_size);
-            ret = asdf_block_decomp_offset(cs, offset, &got_offset);
+            ret = asdf_block_decomp_offset(cs, &got_offset, offset);
 
             // TODO: Better handling or at least logging of error in decompressor
             if (ret != 0)

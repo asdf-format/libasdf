@@ -42,8 +42,8 @@ typedef int (*asdf_compressor_decomp_fn)(
     asdf_compressor_userdata_t *userdata,
     uint8_t *buf,
     size_t buf_size,
-    size_t offset_hint,
-    size_t *offset_out);
+    size_t *offset_out,
+    size_t offset_hint);
 typedef void (*asdf_compressor_destroy_fn)(asdf_compressor_userdata_t *userdata);
 
 
@@ -58,7 +58,7 @@ typedef struct {
 
 
 // Forward-declaration
-typedef struct _asdf_block_comp_state_t asdf_block_comp_state_t;
+typedef struct asdf_block_comp_state asdf_block_comp_state_t;
 
 #ifdef HAVE_USERFAULTFD
 /** Additional state for lazy decompression with userfaultfd */
@@ -85,7 +85,7 @@ typedef struct {
 /**
  * Stores state and info for block decompression
  */
-typedef struct _asdf_block_comp_state_t {
+typedef struct asdf_block_comp_state {
     asdf_file_t *file;
     asdf_block_decomp_mode_t mode;
     int fd;

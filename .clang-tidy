@@ -29,7 +29,7 @@ CheckOptions:
     value: UPPER_CASE
 # Ignore specific macros used for STC type declarations
   - key: readability-identifier-naming.MacroDefinitionIgnoredRegexp
-    value: '^i_(keyclass)$'
+    value: '^i_(keyclass|keypro|type|val)$'
   - key: readability-identifier-naming.StructCase
     value: lower_case
   - key: readability-identifier-naming.VariableCase

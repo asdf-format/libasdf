@@ -235,8 +235,8 @@ static int asdf_compressor_lz4_decomp(
     asdf_compressor_userdata_t *userdata,
     uint8_t *buf,
     size_t buf_size,
-    size_t offset_hint,
-    size_t *offset_out) {
+    size_t *offset_out,
+    size_t offset_hint) {
     assert(userdata);
     asdf_compressor_lz4_userdata_t *lz4 = userdata;
     lz4->info.status = ASDF_COMPRESSOR_IN_PROGRESS;
