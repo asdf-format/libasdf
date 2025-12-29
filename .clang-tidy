@@ -15,17 +15,24 @@ Checks: >
 WarningsAsErrors: ''
 HeaderFilterRegex: 'src/.*'
 CheckOptions:
-  - key: readability-identifier-naming.VariableCase
+  - key: readability-identifier-length.IgnoredLoopCounterNames
+    value: '^p|q$'
+  - key: readability-identifier-length.IgnoredVariableNames
+    value: '^p|q$'
+  - key: readability-identifier-naming.EnumCase
+    value: lower_case
+  - key: readability-identifier-naming.FunctionCase
     value: lower_case
   - key: readability-identifier-naming.GlobalConstantCase
     value: lower_case
   - key: readability-identifier-naming.MacroDefinitionCase
     value: UPPER_CASE
-  - key: readability-identifier-naming.FunctionCase
-    value: lower_case
+# Ignore specific macros used for STC type declarations
+  - key: readability-identifier-naming.MacroDefinitionIgnoredRegexp
+    value: '^i_(keyclass)$'
   - key: readability-identifier-naming.StructCase
     value: lower_case
-  - key: readability-identifier-naming.EnumCase
+  - key: readability-identifier-naming.VariableCase
     value: lower_case
   - key: readability-function-cognitive-complexity.IgnoreMacros
     value: true
