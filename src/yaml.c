@@ -92,48 +92,57 @@ const char *asdf_yaml_event_tag(const asdf_event_t *event, size_t *lenp) {
 }
 
 
+static bool asdf_yaml_document_add_tag_handles(
+    struct fy_document *doc, const asdf_yaml_tag_handle_t *handles) {
+    assert(doc);
+    assert(handles);
+    const asdf_yaml_tag_handle_t *handle = handles;
+    bool has_default_tag_handle = false;
+
+    while (handle && handle->handle) {
+        if (strcmp(handle->handle, ASDF_YAML_DEFAULT_TAG_HANDLE) == 0) {
+            has_default_tag_handle = true;
+            break;
+        }
+        handle++;
+    }
+
+    if (!has_default_tag_handle) {
+        if (fy_document_tag_directive_lookup(doc, ASDF_YAML_DEFAULT_TAG_HANDLE) != NULL) {
+            if (fy_document_tag_directive_remove(doc, ASDF_YAML_DEFAULT_TAG_HANDLE) != 0)
+                return false;
+        }
+
+        if (fy_document_tag_directive_add(
+                doc, ASDF_YAML_DEFAULT_TAG_HANDLE, ASDF_STANDARD_TAG_PREFIX) != 0)
+            return false;
+    }
+
+    handle = handles;
+    while (handle && handle->handle) {
+        if (fy_document_tag_directive_lookup(doc, handle->handle) != NULL) {
+            if (fy_document_tag_directive_remove(doc, handle->handle) != 0)
+                return false;
+        }
+        if (fy_document_tag_directive_add(doc, handle->handle, handle->prefix) != 0)
+            return false;
+        handle++;
+    }
+
+    return true;
+}
+
 // TODO: Could maybe cache the default empty document and use fy_document_clone on it
 // but I don't think this is a very expensive operation to begin with.
 struct fy_document *asdf_yaml_create_empty_document(asdf_config_t *config) {
-    bool has_default_tag_handle = false;
     struct fy_document *doc = fy_document_build_from_string(NULL, asdf_yaml_empty_document, FY_NT);
 
     if (!doc)
         return NULL;
 
     if (config && config->emitter.tag_handles) {
-        // One loop over to see if we actually have the ! handle defined, if not
-        // set it to the default
-        asdf_yaml_tag_handle_t *handle = config->emitter.tag_handles;
-        while (handle && handle->handle) {
-            if (strcmp(handle->handle, ASDF_YAML_DEFAULT_TAG_HANDLE) == 0) {
-                has_default_tag_handle = true;
-                break;
-            }
-            handle++;
-        }
-
-        if (!has_default_tag_handle) {
-            if (fy_document_tag_directive_lookup(doc, ASDF_YAML_DEFAULT_TAG_HANDLE) != NULL) {
-                if (fy_document_tag_directive_remove(doc, ASDF_YAML_DEFAULT_TAG_HANDLE) != 0)
-                    goto error;
-            }
-
-            if (fy_document_tag_directive_add(
-                    doc, ASDF_YAML_DEFAULT_TAG_HANDLE, ASDF_STANDARD_TAG_PREFIX) != 0)
-                goto error;
-        }
-
-        handle = config->emitter.tag_handles;
-        while (handle && handle->handle) {
-            if (fy_document_tag_directive_lookup(doc, handle->handle) != NULL) {
-                if (fy_document_tag_directive_remove(doc, handle->handle) != 0)
-                    goto error;
-            }
-            if (fy_document_tag_directive_add(doc, handle->handle, handle->prefix) != 0)
-                goto error;
-            handle++;
-        }
+        if (!asdf_yaml_document_add_tag_handles(doc, config->emitter.tag_handles))
+            goto error;
     }
 
     return doc;
