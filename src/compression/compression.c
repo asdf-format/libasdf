@@ -502,9 +502,9 @@ static void asdf_block_decomp_lazy_shutdown(asdf_block_comp_state_t *state) {
     // Set the stop flag then signal the thread to stop
     atomic_store(&uffd->stop, true);
     uint64_t one = 1;
-    ssize_t n = write(uffd->evtfd, &one, sizeof(one));
+    ssize_t n_wrote = write(uffd->evtfd, &one, sizeof(one));
 
-    if (n < 0) {
+    if (n_wrote < 0) {
         ASDF_LOG(
             state->file,
             ASDF_LOG_ERROR,

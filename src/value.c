@@ -1,10 +1,10 @@
-#include <limits.h>
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 
 #include <assert.h>
 #include <errno.h>
+#include <limits.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -470,10 +470,10 @@ asdf_value_t *asdf_sequence_iter(asdf_sequence_t *sequence, asdf_sequence_iter_t
         return NULL;
     }
 
-    _asdf_sequence_iter_impl_t *impl = *iter;
+    asdf_sequence_iter_impl_t *impl = *iter;
 
     if (NULL == impl) {
-        impl = calloc(1, sizeof(_asdf_sequence_iter_impl_t));
+        impl = calloc(1, sizeof(asdf_sequence_iter_impl_t));
 
         if (UNLIKELY(!impl)) {
             ASDF_ERROR_OOM(sequence->value.file);
@@ -560,10 +560,10 @@ asdf_container_item_t *asdf_container_iter(asdf_value_t *container, asdf_contain
         return NULL;
     }
 
-    _asdf_container_iter_impl_t *impl = *iter;
+    asdf_container_item_t *impl = *iter;
 
     if (NULL == impl) {
-        impl = calloc(1, sizeof(_asdf_container_iter_impl_t));
+        impl = calloc(1, sizeof(asdf_container_item_t));
 
         if (!impl) {
             ASDF_ERROR_OOM(container->file);
@@ -870,9 +870,9 @@ static asdf_value_err_t asdf_value_infer_null(asdf_value_t *value, const char *s
 }
 
 
-static asdf_value_err_t asdf_value_infer_bool(asdf_value_t *value, const char *s, size_t len) {
+static asdf_value_err_t asdf_value_infer_bool(asdf_value_t *value, const char *scalar, size_t len) {
     bool b_val = false;
-    if (is_yaml_bool(s, len, &b_val)) {
+    if (is_yaml_bool(scalar, len, &b_val)) {
         value->type = ASDF_VALUE_BOOL;
         value->scalar.b = b_val;
         value->err = ASDF_VALUE_OK;
@@ -885,17 +885,17 @@ static asdf_value_err_t asdf_value_infer_bool(asdf_value_t *value, const char *s
 }
 
 
-static asdf_value_err_t asdf_value_infer_int(asdf_value_t *value, const char *s, size_t len) {
+static asdf_value_err_t asdf_value_infer_int(asdf_value_t *value, const char *scalar, size_t len) {
     uint64_t u_val = 0;
     asdf_value_type_t type = ASDF_VALUE_UNKNOWN;
-    asdf_value_err_t err = is_yaml_unsigned_int(s, len, &u_val, &type);
+    asdf_value_err_t err = is_yaml_unsigned_int(scalar, len, &u_val, &type);
 
     if (ASDF_VALUE_OK == err) {
         value->type = type;
         value->scalar.u = u_val;
     } else {
         int64_t i_val = 0;
-        err = is_yaml_signed_int(s, len, &i_val, &type);
+        err = is_yaml_signed_int(scalar, len, &i_val, &type);
 
         if (ASDF_VALUE_OK == err) {
             value->type = type;
@@ -909,10 +909,11 @@ static asdf_value_err_t asdf_value_infer_int(asdf_value_t *value, const char *s,
 }
 
 
-static asdf_value_err_t asdf_value_infer_float(asdf_value_t *value, const char *s, size_t len) {
+static asdf_value_err_t asdf_value_infer_float(
+    asdf_value_t *value, const char *scalar, size_t len) {
     double d_val = 0.0;
     asdf_value_type_t type = ASDF_VALUE_UNKNOWN;
-    asdf_value_err_t err = is_yaml_float(s, len, &d_val, &type);
+    asdf_value_err_t err = is_yaml_float(scalar, len, &d_val, &type);
     if (ASDF_VALUE_OK == err || ASDF_VALUE_ERR_OVERFLOW == err) {
         value->type = type;
         value->scalar.d = d_val;
@@ -936,12 +937,12 @@ static asdf_value_err_t asdf_value_infer_scalar_type(asdf_value_t *value) {
         break;
     }
 
-    if (value->type != ASDF_VALUE_SCALAR) {
+    if (value->type != ASDF_VALUE_SCALAR)
         /* Has already been inferred */
         return ASDF_VALUE_OK;
-    } else if (!((ASDF_VALUE_ERR_UNKNOWN == value->err) || (ASDF_VALUE_OK == value->err))) {
+
+    if (!((ASDF_VALUE_ERR_UNKNOWN == value->err) || (ASDF_VALUE_OK == value->err)))
         return value->err;
-    }
 
     enum fy_node_style style = fy_node_get_style(value->node);
 
@@ -959,7 +960,7 @@ static asdf_value_err_t asdf_value_infer_scalar_type(asdf_value_t *value) {
     }
 
     size_t len = 0;
-    const char *s = fy_node_get_scalar(value->node, &len);
+    const char *scalar = fy_node_get_scalar(value->node, &len);
     const char *tag_str = asdf_value_tag(value);
 
     /* If Common Schema tag explicitly present, honor it (but verify) */
@@ -981,18 +982,18 @@ static asdf_value_err_t asdf_value_infer_scalar_type(asdf_value_t *value) {
         case ASDF_YAML_COMMON_TAG_UNKNOWN:
             break;
         case ASDF_YAML_COMMON_TAG_NULL:
-            err = asdf_value_infer_null(value, s, len);
+            err = asdf_value_infer_null(value, scalar, len);
             break;
         case ASDF_YAML_COMMON_TAG_BOOL: {
-            err = asdf_value_infer_bool(value, s, len);
+            err = asdf_value_infer_bool(value, scalar, len);
             break;
         }
         case ASDF_YAML_COMMON_TAG_INT: {
-            err = asdf_value_infer_int(value, s, len);
+            err = asdf_value_infer_int(value, scalar, len);
             break;
         }
         case ASDF_YAML_COMMON_TAG_FLOAT: {
-            err = asdf_value_infer_float(value, s, len);
+            err = asdf_value_infer_float(value, scalar, len);
             break;
         }
         case ASDF_YAML_COMMON_TAG_STR:
@@ -1007,42 +1008,44 @@ static asdf_value_err_t asdf_value_infer_scalar_type(asdf_value_t *value) {
     }
 
     /* Untagged -> core schema heuristics (plain style only) */
-    if (ASDF_VALUE_OK == asdf_value_infer_null(value, s, len)) {
-        ASDF_LOG(value->file, ASDF_LOG_DEBUG, "inferred %.*s as null", len, s);
+    if (ASDF_VALUE_OK == asdf_value_infer_null(value, scalar, len)) {
+        ASDF_LOG(value->file, ASDF_LOG_DEBUG, "inferred %.*s as null", len, scalar);
         return ASDF_VALUE_OK;
     }
 
-    asdf_value_err_t err = asdf_value_infer_int(value, s, len);
+    asdf_value_err_t err = asdf_value_infer_int(value, scalar, len);
 
     if (ASDF_VALUE_OK == err || ASDF_VALUE_ERR_OVERFLOW == err) {
 #ifdef ASDF_LOG_ENABLED
         if (ASDF_VALUE_ERR_OVERFLOW == err)
-            ASDF_LOG(value->file, ASDF_LOG_DEBUG, "inferred %.*s as int (with overflow)", len, s);
+            ASDF_LOG(
+                value->file, ASDF_LOG_DEBUG, "inferred %.*s as int (with overflow)", len, scalar);
         else
-            ASDF_LOG(value->file, ASDF_LOG_DEBUG, "inferred %.*s as int", len, s);
+            ASDF_LOG(value->file, ASDF_LOG_DEBUG, "inferred %.*s as int", len, scalar);
 #endif
         return err;
     }
 
-    if (ASDF_VALUE_OK == asdf_value_infer_bool(value, s, len)) {
-        ASDF_LOG(value->file, ASDF_LOG_DEBUG, "inferred %.*s as bool", len, s);
+    if (ASDF_VALUE_OK == asdf_value_infer_bool(value, scalar, len)) {
+        ASDF_LOG(value->file, ASDF_LOG_DEBUG, "inferred %.*s as bool", len, scalar);
         return ASDF_VALUE_OK;
     }
 
-    err = asdf_value_infer_float(value, s, len);
+    err = asdf_value_infer_float(value, scalar, len);
 
     if (ASDF_VALUE_OK == err || ASDF_VALUE_ERR_OVERFLOW == err) {
 #ifdef ASDF_LOG_ENABLED
         if (ASDF_VALUE_ERR_OVERFLOW == err)
-            ASDF_LOG(value->file, ASDF_LOG_DEBUG, "inferred %.*s as float (with overflow)", len, s);
+            ASDF_LOG(
+                value->file, ASDF_LOG_DEBUG, "inferred %.*s as float (with overflow)", len, scalar);
         else
-            ASDF_LOG(value->file, ASDF_LOG_DEBUG, "inferred %.*s as float", len, s);
+            ASDF_LOG(value->file, ASDF_LOG_DEBUG, "inferred %.*s as float", len, scalar);
 #endif
         return err;
     }
 
     /* Otherwise treat as a string */
-    ASDF_LOG(value->file, ASDF_LOG_DEBUG, "inferred %.*s as string", len, s);
+    ASDF_LOG(value->file, ASDF_LOG_DEBUG, "inferred %.*s as string", len, scalar);
     value->type = ASDF_VALUE_STRING;
     value->err = ASDF_VALUE_OK;
     return ASDF_VALUE_OK;
@@ -1117,8 +1120,9 @@ ASDF_VALUE_IS_SCALAR_TYPE(string, ASDF_VALUE_STRING)
 
 
 asdf_value_err_t asdf_value_as_string(asdf_value_t *value, const char **out, size_t *len) {
-    asdf_value_err_t err = ASDF_VALUE_ERR_UNKNOWN;
-    if ((err = asdf_value_infer_scalar_type(value)) != ASDF_VALUE_OK)
+    asdf_value_err_t err = asdf_value_infer_scalar_type(value);
+
+    if (err != ASDF_VALUE_OK)
         return err;
 
     if (value->type != ASDF_VALUE_STRING)
@@ -1130,8 +1134,9 @@ asdf_value_err_t asdf_value_as_string(asdf_value_t *value, const char **out, siz
 
 
 asdf_value_err_t asdf_value_as_string0(asdf_value_t *value, const char **out) {
-    asdf_value_err_t err = ASDF_VALUE_ERR_UNKNOWN;
-    if ((err = asdf_value_infer_scalar_type(value)) != ASDF_VALUE_OK)
+    asdf_value_err_t err = asdf_value_infer_scalar_type(value);
+
+    if (err != ASDF_VALUE_OK)
         return err;
 
     if (value->type != ASDF_VALUE_STRING)
@@ -1209,16 +1214,13 @@ bool asdf_value_is_bool(asdf_value_t *value) {
 
 
 asdf_value_err_t asdf_value_as_bool(asdf_value_t *value, bool *out) {
-    asdf_value_err_t err = ASDF_VALUE_ERR_UNKNOWN;
-    if ((err = asdf_value_infer_scalar_type(value)) != ASDF_VALUE_OK)
+    asdf_value_err_t err = asdf_value_infer_scalar_type(value);
+    if (err != ASDF_VALUE_OK)
         return err;
 
     /* Allow casting plain 0/1 (strictly) to bool */
     if (value->type == ASDF_VALUE_UINT8) {
-        if (value->scalar.u == 0) {
-            *out = value->scalar.b;
-            return ASDF_VALUE_OK;
-        } else if (value->scalar.u == 1) {
+        if (value->scalar.u == 0 || value->scalar.u == 1) {
             *out = value->scalar.b;
             return ASDF_VALUE_OK;
         }
@@ -1870,9 +1872,9 @@ asdf_value_err_t asdf_value_as_type(asdf_value_t *value, asdf_value_type_t type,
  * for all the other variants (`asdf_value_find_iter`, `asdf_value_find_ex`,
  * `asdf_value_find`)
  */
-static _asdf_find_iter_impl_t *asdf_value_find_iter_create(
+static asdf_find_item_t *asdf_value_find_iter_create(
     bool depth_first, asdf_value_pred_t descend_pred, ssize_t max_depth) {
-    _asdf_find_iter_impl_t *it = calloc(1, sizeof(_asdf_find_iter_impl_t));
+    asdf_find_item_t *it = calloc(1, sizeof(asdf_find_item_t));
 
     if (!it)
         return NULL;
@@ -1884,42 +1886,43 @@ static _asdf_find_iter_impl_t *asdf_value_find_iter_create(
     // Initial small frame stack, though we can also use max_depth as a
     // heuristic
     it->frame_cap = (max_depth < 0) ? 8 : ((max_depth > 256) ? 256 : max_depth + 1);
-    it->frames = calloc(it->frame_cap, sizeof(_asdf_find_frame_t));
+    it->frames = calloc(it->frame_cap, sizeof(asdf_find_frame_t));
     return it;
 }
 
 
 /** Just doubles the frame capacity */
-static inline void asdf_find_iter_push_frame(
-    _asdf_find_iter_impl_t *it, asdf_value_t *container, ssize_t depth) {
+static inline asdf_find_frame_t *asdf_find_iter_push_frame(
+    asdf_find_item_t *iter, asdf_value_t *container, ssize_t depth) {
     // Refuse to push a new frame if we are already at max-depth or the new
     // container doesn't match the descend predicate
     // Always allow push though if frame_count == 0; that is, the root node is
     // always searched through regardless of descend_prod
-    if ((it->max_depth >= 0 && depth > it->max_depth) ||
-        (it->frame_count > 0 && it->descend_pred && !it->descend_pred(container)))
-        return;
+    if ((iter->max_depth >= 0 && depth > iter->max_depth) ||
+        (iter->frame_count > 0 && iter->descend_pred && !iter->descend_pred(container)))
+        return NULL;
 
-    if (it->frame_count == it->frame_cap) {
-        size_t new_frame_cap = it->frame_cap * 2;
-        _asdf_find_frame_t *new_frames = realloc(
-            it->frames, new_frame_cap * sizeof(_asdf_find_frame_t));
+    if (iter->frame_count == iter->frame_cap) {
+        size_t new_frame_cap = iter->frame_cap * 2;
+        asdf_find_frame_t *new_frames = realloc(
+            iter->frames, new_frame_cap * sizeof(asdf_find_frame_t));
 
         if (!new_frames) {
             ASDF_ERROR_OOM(container->file);
-            return;
+            return NULL;
         }
 
-        it->frames = new_frames;
-        it->frame_cap = new_frame_cap;
+        iter->frames = new_frames;
+        iter->frame_cap = new_frame_cap;
     }
 
-    _asdf_find_frame_t *frame = &it->frames[it->frame_count++];
-    ZERO_MEMORY(frame, sizeof(_asdf_find_frame_t));
+    asdf_find_frame_t *frame = &iter->frames[iter->frame_count++];
+    ZERO_MEMORY(frame, sizeof(asdf_find_frame_t));
     frame->container = container;
     frame->iter = asdf_container_iter_init();
     frame->is_mapping = container->raw_type == ASDF_VALUE_MAPPING;
     frame->depth = depth;
+    return frame;
 }
 
 
@@ -1929,8 +1932,8 @@ static inline void asdf_find_iter_push_frame(
  * Breadth-first traversal can be slightly more expensive here since we have
  * to shift all the frames down
  */
-static inline void asdf_find_iter_pop_frame(_asdf_find_iter_impl_t *it, size_t idx) {
-    _asdf_find_frame_t *frame = &it->frames[idx];
+static inline void asdf_find_iter_pop_frame(asdf_find_item_t *iter, size_t idx) {
+    asdf_find_frame_t *frame = &iter->frames[idx];
 
     asdf_container_item_destroy(frame->iter);
 
@@ -1939,25 +1942,25 @@ static inline void asdf_find_iter_pop_frame(_asdf_find_iter_impl_t *it, size_t i
     if (frame->owns_container)
         asdf_value_destroy(frame->container);
 
-    memset(frame, 0, sizeof(_asdf_find_frame_t));
+    ZERO_MEMORY(frame, sizeof(asdf_find_frame_t));
 
-    if (idx != it->frame_count - 1) {
+    if (idx != iter->frame_count - 1) {
         // Normally we only pop from the bottom in BFS (idx == 0), but let's
         // handle generic idx
         memmove(
-            &it->frames[idx],
-            &it->frames[idx + 1],
-            (it->frame_count - idx - 1) * sizeof(_asdf_find_frame_t));
+            &iter->frames[idx],
+            &iter->frames[idx + 1],
+            (iter->frame_count - idx - 1) * sizeof(asdf_find_frame_t));
     }
 
-    it->frame_count--;
+    iter->frame_count--;
 }
 
 
 /** DFS strategy for `asdf_find_iter_next` */
-static asdf_value_t *asdf_find_iter_next_dfs(_asdf_find_iter_impl_t *it) {
-    assert(it->frame_count > 0);
-    _asdf_find_frame_t *frame = &it->frames[it->frame_count - 1];
+static asdf_value_t *asdf_find_iter_next_dfs(asdf_find_item_t *iter) {
+    assert(iter->frame_count > 0);
+    asdf_find_frame_t *frame = &iter->frames[iter->frame_count - 1];
 
     if (!frame->visited) {
         frame->visited = true;
@@ -1967,21 +1970,21 @@ static asdf_value_t *asdf_find_iter_next_dfs(_asdf_find_iter_impl_t *it) {
     asdf_container_item_t *item = NULL;
     while ((item = asdf_container_iter(frame->container, &frame->iter))) {
         if (asdf_value_is_container(item->value)) {
-            asdf_find_iter_push_frame(it, item->value, frame->depth + 1);
+            asdf_find_iter_push_frame(iter, item->value, frame->depth + 1);
             return NULL;
         }
 
         return item->value;
     }
-    asdf_find_iter_pop_frame(it, it->frame_count - 1);
+    asdf_find_iter_pop_frame(iter, iter->frame_count - 1);
     return NULL;
 }
 
 
 /** BFS strategy for `asdf_find_iter_next` */
-static asdf_value_t *asdf_find_iter_next_bfs(_asdf_find_iter_impl_t *it) {
-    assert(it->frame_count > 0);
-    _asdf_find_frame_t *frame = &it->frames[0];
+static asdf_value_t *asdf_find_iter_next_bfs(asdf_find_item_t *iter) {
+    assert(iter->frame_count > 0);
+    asdf_find_frame_t *frame = &iter->frames[0];
 
     if (!frame->visited) {
         frame->visited = true;
@@ -1997,14 +2000,19 @@ static asdf_value_t *asdf_find_iter_next_bfs(_asdf_find_iter_impl_t *it) {
             // choice that makes sense most of the time but is a foot-gun
             // here.  Would be better if we boxed values with reference
             // counting
-            asdf_find_iter_push_frame(it, asdf_value_clone(item->value), frame->depth + 1);
-            it->frames[it->frame_count - 1].visited = true;
-            it->frames[it->frame_count - 1].owns_container = true;
+            asdf_find_frame_t *new_frame = asdf_find_iter_push_frame(
+                iter, asdf_value_clone(item->value), frame->depth + 1);
+
+            if (!new_frame)
+                return NULL;
+
+            new_frame->visited = true;
+            new_frame->owns_container = true;
         }
 
         return item->value;
     }
-    asdf_find_iter_pop_frame(it, 0);
+    asdf_find_iter_pop_frame(iter, 0);
     return NULL;
 }
 
@@ -2022,27 +2030,27 @@ static asdf_value_t *asdf_find_iter_next_bfs(_asdf_find_iter_impl_t *it) {
  * if possible. `asdf_info` was written very early in the project when I was
  * just trying to get a handle on libfyaml.
  */
-static asdf_value_t *asdf_find_iter_next(_asdf_find_iter_impl_t *it) {
-    if (it->value && !asdf_value_is_container(it->value))
-        return it->value;
+static asdf_value_t *asdf_find_iter_next(asdf_find_item_t *iter) {
+    if (iter->value && !asdf_value_is_container(iter->value))
+        return iter->value;
 
-    if (!it->frame_count)
+    if (!iter->frame_count)
         return NULL;
 
     // Originally had this all combined together, but I think the logic is
     // clearer if we split the DFS and BFS versions into separate subroutines
     // even though there's a lot of overlap.
-    if (it->depth_first)
-        return asdf_find_iter_next_dfs(it);
+    if (iter->depth_first)
+        return asdf_find_iter_next_dfs(iter);
 
-    return asdf_find_iter_next_bfs(it);
+    return asdf_find_iter_next_bfs(iter);
 }
 
 
 asdf_find_iter_t asdf_find_iter_init_ex(
     bool depth_first, asdf_value_pred_t descend_pred, ssize_t max_depth) {
-    _asdf_find_iter_impl_t *it = asdf_value_find_iter_create(depth_first, descend_pred, max_depth);
-    return it;
+    asdf_find_item_t *iter = asdf_value_find_iter_create(depth_first, descend_pred, max_depth);
+    return iter;
 }
 
 
@@ -2071,38 +2079,38 @@ void asdf_find_item_destroy(asdf_find_item_t *item) {
 asdf_find_item_t *asdf_value_find_iter(
     asdf_value_t *root, asdf_value_pred_t pred, asdf_find_iter_t *iter) {
 
-    _asdf_find_iter_impl_t *it = *iter;
+    asdf_find_item_t *item = *iter;
 
-    if (!it) {
+    if (!item) {
         ASDF_ERROR_OOM(root->file);
         return NULL;
     }
 
-    if (it->frame_count == 0) {
+    if (item->frame_count == 0) {
         // Subsequent calls with the same iterator but a different root result
         // in undefined behavior.  Push the root node onto the stack to begin
         if (asdf_value_is_container(root))
-            asdf_find_iter_push_frame(it, root, 0);
+            asdf_find_iter_push_frame(item, root, 0);
         else
             // Special case when we are given a scalar "root" value
-            it->value = root;
+            item->value = root;
     } else {
-        it->value = NULL;
+        item->value = NULL;
     }
 
     asdf_value_t *current = NULL;
 
-    while (it->frame_count > 0 || it->value) {
-        current = asdf_find_iter_next(it);
+    while (item->frame_count > 0 || item->value) {
+        current = asdf_find_iter_next(item);
         if (current && (!pred || pred(current))) {
             // wrap in find_item_t and return
-            it->value = current;
+            item->value = current;
             // TODO: Build path
-            return (asdf_find_item_t *)it;
+            return item;
         }
-        it->value = NULL;
+        item->value = NULL;
     }
-    asdf_find_item_destroy(it);
+    asdf_find_item_destroy(item);
     return NULL;
 }
 
