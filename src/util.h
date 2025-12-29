@@ -1,8 +1,11 @@
 #pragma once
 
 #include <assert.h>
+#include <limits.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
+#include <sys/types.h>
 
 #include "asdf/util.h" // IWYU pragma: export
 
@@ -44,3 +47,10 @@
 
 
 ASDF_LOCAL size_t asdf_util_get_total_memory(void);
+
+
+// Portable-enough way to get the maximum off_t on the system
+// Very weird that POSIX does not just define this
+static inline size_t asdf_off_max(void) {
+    return (size_t)(((uintmax_t)1 << (sizeof(off_t) * CHAR_BIT - 1)) - 1);
+}

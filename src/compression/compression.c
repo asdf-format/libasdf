@@ -63,7 +63,12 @@ static int asdf_create_temp_file(size_t data_size, const char *tmp_dir, int *out
     // unlink so it deletes on close
     unlink(path);
 
-    if (ftruncate(fd, data_size) != 0) {
+    if (data_size > asdf_off_max()) {
+        close(fd);
+        return -1;
+    }
+
+    if (ftruncate(fd, (off_t)data_size) != 0) {
         close(fd);
         return -1;
     }
@@ -118,13 +123,138 @@ static bool asdf_block_decomp_lazy_available(
 static void asdf_block_decomp_lazy_shutdown(UNUSED(asdf_block_comp_state_t *cs)) {
 }
 #else
+
+typedef enum {
+    ASDF_BLOCK_COMP_UFFD_EVT_ERROR = -1,
+    ASDF_BLOCK_COMP_UFFD_EVT_NOT_READY,
+    ASDF_BLOCK_COMP_UFFD_EVT_EXIT,
+    ASDF_BLOCK_COMP_UFFD_EVT_PAGEFAULT,
+
+} asdf_block_comp_uffd_evt_t;
+
+
+static inline asdf_block_comp_uffd_evt_t read_event_fd(struct pollfd *fd) {
+    if ((fd->revents & POLLIN) == 0)
+        return ASDF_BLOCK_COMP_UFFD_EVT_NOT_READY;
+
+    uint64_t val = 0;
+    ssize_t n_read = read(fd->fd, &val, sizeof(val));
+
+    if (n_read <= 0) {
+        if (errno == EINTR)
+            return ASDF_BLOCK_COMP_UFFD_EVT_NOT_READY;
+
+        return ASDF_BLOCK_COMP_UFFD_EVT_ERROR;
+    }
+
+    // The only type of event returned from the eventfd
+    return ASDF_BLOCK_COMP_UFFD_EVT_EXIT;
+}
+
+static inline asdf_block_comp_uffd_evt_t read_userfault_fd(
+    struct pollfd *fd, struct uffd_msg *msg_out) {
+    if ((fd->revents & POLLIN) == 0)
+        return ASDF_BLOCK_COMP_UFFD_EVT_NOT_READY;
+
+    ssize_t n_read = read(fd->fd, msg_out, sizeof(*msg_out));
+
+    if (n_read <= 0) {
+        if (errno == EINTR)
+            return ASDF_BLOCK_COMP_UFFD_EVT_NOT_READY;
+
+        return ASDF_BLOCK_COMP_UFFD_EVT_ERROR;
+    }
+
+    if (msg_out->event != UFFD_EVENT_PAGEFAULT)
+        return ASDF_BLOCK_COMP_UFFD_EVT_NOT_READY;
+
+    return ASDF_BLOCK_COMP_UFFD_EVT_PAGEFAULT;
+}
+
+
+static inline asdf_block_comp_uffd_evt_t wait_for_event(
+    struct pollfd *fds, struct uffd_msg *msg_out) {
+    struct pollfd *poll_uffd = &fds[0];
+    struct pollfd *poll_evtfd = &fds[1];
+    asdf_block_comp_uffd_evt_t evt = ASDF_BLOCK_COMP_UFFD_EVT_ERROR;
+
+    int nready = poll(fds, 2, -1);
+
+    if (nready == -1) {
+        if (errno == EINTR)
+            return ASDF_BLOCK_COMP_UFFD_EVT_NOT_READY;
+
+        return ASDF_BLOCK_COMP_UFFD_EVT_ERROR;
+    }
+
+    evt = read_event_fd(poll_evtfd);
+
+    if (evt != ASDF_BLOCK_COMP_UFFD_EVT_NOT_READY)
+        return evt;
+
+    evt = read_userfault_fd(poll_uffd, msg_out);
+    return evt;
+}
+
+
+static int handle_pagefault(
+    asdf_block_comp_userfaultfd_t *uffd, struct uffd_msg *msg, size_t page_size) {
+    asdf_block_comp_state_t *state = uffd->comp_state;
+    size_t page_mask = page_size - 1;
+    size_t fault_addr = msg->arg.pagefault.address & ~page_mask;
+    size_t chunk_size = state->work_buf_size;
+    // Align to page offset
+    size_t offset = (fault_addr - (uintptr_t)state->dest) & ~page_mask;
+    int ret = 0;
+
+    while (!atomic_load(&uffd->stop)) {
+        size_t got_offset = 0;
+        memset(state->work_buf, 0, chunk_size);
+        ret = asdf_block_decomp_offset(state, &got_offset, offset);
+
+        // TODO: Better handling or at least logging of error in decompressor
+        if (ret != 0)
+            return ret;
+
+        size_t dst = (uintptr_t)state->dest + got_offset;
+        size_t src = (size_t)uffd->work_buf;
+        size_t len =
+            ((got_offset + chunk_size) > state->dest_size ? (state->dest_size - got_offset)
+                                                          : chunk_size);
+        len = (len + page_size - 1) & ~page_mask;
+        uint64_t mode = (got_offset == offset) ? 0 : UFFDIO_COPY_MODE_DONTWAKE;
+
+        struct uffdio_copy uffd_copy = {
+            // Copy back to the (page-aligned) destination in the user's mmap
+            .dst = dst,
+            // From our lazy decompression buffer
+            .src = src,
+            .len = len,
+            .mode = mode};
+
+        // TODO: Allow PROT_WRITE if we are running in updatable mode
+        mprotect(state->dest + got_offset, len, PROT_READ);
+
+        ret = ioctl(uffd->uffd, UFFDIO_COPY, &uffd_copy);
+
+        if (ret != 0)
+            return ret;
+
+        if (got_offset == offset)
+            break;
+    }
+
+    return ret;
+}
+
+
 static void *asdf_block_comp_userfaultfd_handler(void *arg) {
     asdf_block_comp_userfaultfd_t *uffd = arg;
-    asdf_block_comp_state_t *cs = uffd->comp_state;
+    asdf_block_comp_state_t *state = uffd->comp_state;
     const asdf_compressor_info_t *info = NULL;
     struct uffd_msg msg;
     size_t page_size = sysconf(_SC_PAGE_SIZE);
-    size_t page_mask = page_size - 1;
+    asdf_block_comp_uffd_evt_t evt = ASDF_BLOCK_COMP_UFFD_EVT_NOT_READY;
 
     struct pollfd fds[2] = {0};
     fds[0].fd = uffd->uffd;
@@ -132,106 +262,41 @@ static void *asdf_block_comp_userfaultfd_handler(void *arg) {
     fds[1].fd = uffd->evtfd;
     fds[1].events = POLLIN;
 
-    struct pollfd *poll_uffd = &fds[0];
-    struct pollfd *poll_evtfd = &fds[1];
-
+    // Wait for an event, exiting if we get a stop signal or a ready event (or error)
     while (!atomic_load(&uffd->stop)) {
-        info = cs->compressor->info(cs->userdata);
+        info = state->compressor->info(state->userdata);
         if (!info || info->status == ASDF_COMPRESSOR_DONE)
             break;
 
-        int nready = poll(fds, 2, -1);
+        evt = wait_for_event(fds, &msg);
 
-        if (nready == -1) {
-            if (errno == EINTR)
-                continue;
-
-            ASDF_ERROR_ERRNO(cs->file, errno);
+        switch (evt) {
+        case ASDF_BLOCK_COMP_UFFD_EVT_ERROR:
+            ASDF_ERROR_ERRNO(state->file, errno);
             break;
-        }
-
-        if ((poll_evtfd->revents & POLLIN) != 0) {
-            uint64_t val = 0;
-            ssize_t n = read(uffd->evtfd, &val, sizeof(val));
-
-            if (n <= 0) {
-                if (errno == EINTR)
-                    continue;
-            }
+        case ASDF_BLOCK_COMP_UFFD_EVT_NOT_READY:
+            continue;
+        case ASDF_BLOCK_COMP_UFFD_EVT_EXIT:
             break;
-        }
-
-        if ((poll_uffd->revents & POLLIN) != 0) {
-            ssize_t n = read(uffd->uffd, &msg, sizeof(msg));
-
-            if (n <= 0) {
-                if (errno == EINTR)
-                    continue;
-
+        case ASDF_BLOCK_COMP_UFFD_EVT_PAGEFAULT:
+            if (handle_pagefault(uffd, &msg, page_size)) {
+                ASDF_ERROR_ERRNO(state->file, errno);
                 break;
             }
 
-            if (msg.event != UFFD_EVENT_PAGEFAULT)
-                continue;
-        } else {
             continue;
         }
 
-        size_t fault_addr = msg.arg.pagefault.address & ~page_mask;
-        size_t chunk_size = cs->work_buf_size;
-        // Align to page offset
-        size_t offset = (fault_addr - (uintptr_t)cs->dest) & ~page_mask;
-        int ret = 0;
-
-        while (!atomic_load(&uffd->stop)) {
-            size_t got_offset = 0;
-            memset(cs->work_buf, 0, chunk_size);
-            ret = asdf_block_decomp_offset(cs, &got_offset, offset);
-
-            // TODO: Better handling or at least logging of error in decompressor
-            if (ret != 0)
-                break;
-
-            size_t dst = (uintptr_t)cs->dest + got_offset;
-            size_t src = (size_t)uffd->work_buf;
-            size_t len =
-                ((got_offset + chunk_size) > cs->dest_size ? (cs->dest_size - got_offset)
-                                                           : chunk_size);
-            len = (len + page_size - 1) & ~page_mask;
-            uint64_t mode = (got_offset == offset) ? 0 : UFFDIO_COPY_MODE_DONTWAKE;
-
-            struct uffdio_copy uffd_copy = {
-                // Copy back to the (page-aligned) destination in the user's mmap
-                .dst = dst,
-                // From our lazy decompression buffer
-                .src = src,
-                .len = len,
-                .mode = mode};
-
-            // TODO: Allow PROT_WRITE if we are running in updatable mode
-            mprotect(cs->dest + got_offset, len, PROT_READ);
-
-            ret = ioctl(uffd->uffd, UFFDIO_COPY, &uffd_copy);
-            if (ret != 0) {
-                // TODO: Error handling
-                break;
-            }
-
-            if (got_offset == offset) {
-                break;
-            }
-        }
-
-        if (ret != 0) {
-            break;
-        }
+        // If we got here the loop should be exited either due to an error
+        // or EVT_EXIT
+        break;
     }
 
     // If the thread exits for any reason make sure to deregister UFFD for
     // for the range handled; of course if the thread crashes we're in deep
     // water (main thread may hang)
     if (ioctl(uffd->uffd, UFFDIO_UNREGISTER, &uffd->range) == -1) {
-        ASDF_ERROR_ERRNO(cs->file, errno);
+        ASDF_ERROR_ERRNO(state->file, errno);
     }
 
     return NULL;
