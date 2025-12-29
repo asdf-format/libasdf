@@ -114,7 +114,7 @@ static int asdf_compressor_lz4_read_header(asdf_compressor_lz4_userdata_t *lz4) 
 
 
 static asdf_compressor_userdata_t *asdf_compressor_lz4_init(
-    asdf_block_t *block, UNUSED(const void *dest), UNUSED(size_t dest_size)) {
+    const asdf_block_t *block, UNUSED(const void *dest), UNUSED(size_t dest_size)) {
     asdf_compressor_lz4_userdata_t *userdata = NULL;
 
     userdata = calloc(1, sizeof(asdf_compressor_lz4_userdata_t));

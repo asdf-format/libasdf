@@ -312,15 +312,16 @@ static void *asdf_block_comp_userfaultfd_handler(void *arg) {
  * same operations then to set up lazy decompression.  We can probably do this
  * just once per library initialization.
  */
-static bool asdf_block_decomp_lazy_available(asdf_block_comp_state_t *cs, bool use_file_backing) {
+static bool asdf_block_decomp_lazy_available(
+    asdf_block_comp_state_t *state, bool use_file_backing) {
     // Probe UFFD features
     // TODO: I Think we only need to do this once, we need to make runtime checks for what's
     // actually supported anyways before enabling this feature
-    int uffd = syscall(SYS_userfaultfd, O_CLOEXEC | O_NONBLOCK | UFFD_USER_MODE_ONLY);
+    long maybe_fd = syscall(SYS_userfaultfd, O_CLOEXEC | O_NONBLOCK | UFFD_USER_MODE_ONLY);
 
-    if (uffd < 0) {
+    if (maybe_fd < 0) {
         ASDF_LOG(
-            cs->file,
+            state->file,
             ASDF_LOG_DEBUG,
             "userfaultfd syscall failed: %s; lazy decompression with userfaultfd not "
             "available",
@@ -328,10 +329,12 @@ static bool asdf_block_decomp_lazy_available(asdf_block_comp_state_t *cs, bool u
         return false;
     }
 
+    int uffd = (int)maybe_fd;
     struct uffdio_api uffd_api = {.api = UFFD_API};
+
     if (ioctl(uffd, UFFDIO_API, &uffd_api) == -1) {
         ASDF_LOG(
-            cs->file,
+            state->file,
             ASDF_LOG_DEBUG,
             "UFFDIO_API ioctl failed: %s; lazy decompression with userfaultfd not "
             "available",
@@ -342,7 +345,7 @@ static bool asdf_block_decomp_lazy_available(asdf_block_comp_state_t *cs, bool u
 
     if (!FEATURE_IS_SET(uffd_api.ioctls, _UFFDIO_REGISTER)) {
         ASDF_LOG(
-            cs->file,
+            state->file,
             ASDF_LOG_DEBUG,
             "UFFDIO_REGISTER ioctl is not supported: lazy decompression with userfaultfd not "
             "available");
@@ -361,11 +364,11 @@ static bool asdf_block_decomp_lazy_available(asdf_block_comp_state_t *cs, bool u
          *   it, and register it
          */
         size_t page_size = sysconf(_SC_PAGESIZE);
-        asdf_config_t *config = cs->file->config;
+        asdf_config_t *config = state->file->config;
         int fd = -1;
         if (asdf_create_temp_file(page_size, config->decomp.tmp_dir, &fd) != 0) {
             // Could not even create temp file so I guess false
-            ASDF_ERROR_ERRNO(cs->file, errno);
+            ASDF_ERROR_ERRNO(state->file, errno);
             return false;
         }
 
@@ -377,7 +380,7 @@ static bool asdf_block_decomp_lazy_available(asdf_block_comp_state_t *cs, bool u
             .mode = UFFDIO_REGISTER_MODE_MISSING};
         if (ioctl(uffd, UFFDIO_REGISTER, &uffd_reg) == -1) {
             ASDF_LOG(
-                cs->file,
+                state->file,
                 ASDF_LOG_WARN,
                 "failed registering memory range for userfaultfd handling; file-backed lazy "
                 "decompression not possible");
@@ -395,16 +398,16 @@ static bool asdf_block_decomp_lazy_available(asdf_block_comp_state_t *cs, bool u
 #define ASDF_BLOCK_DECOMP_DEFAULT_PAGES_PER_CHUNK 1024
 
 
-static int asdf_block_decomp_lazy(asdf_block_comp_state_t *cs) {
+static int asdf_block_decomp_lazy(asdf_block_comp_state_t *state) {
     asdf_block_comp_userfaultfd_t *uffd = calloc(1, sizeof(asdf_block_comp_userfaultfd_t));
 
     if (!uffd) {
-        ASDF_ERROR_OOM(cs->file);
+        ASDF_ERROR_OOM(state->file);
         return -1;
     }
 
-    uffd->comp_state = cs;
-    cs->lazy.userfaultfd = uffd;
+    uffd->comp_state = state;
+    state->lazy.userfaultfd = uffd;
 
     // Determine the chunk size--if not specified in the settings set to _SC_PAGESIZE,
     // but otherwise align to a multiple of page size
@@ -413,57 +416,62 @@ static int asdf_block_decomp_lazy(asdf_block_comp_state_t *cs) {
 
     // Check the compressor info in case it reports an optimal chunk size preferred by
     // the compressor
-    const asdf_compressor_info_t *info = cs->compressor->info(cs->userdata);
+    const asdf_compressor_info_t *info = state->compressor->info(state->userdata);
 
     if (info->optimal_chunk_size > 0)
         chunk_size = info->optimal_chunk_size;
 
-    if (cs->file->config->decomp.chunk_size > 0)
-        chunk_size = cs->file->config->decomp.chunk_size;
+    if (state->file->config->decomp.chunk_size > 0)
+        chunk_size = state->file->config->decomp.chunk_size;
 
     chunk_size = (chunk_size + page_size - 1) & ~(page_size - 1);
-    ASDF_LOG(cs->file, ASDF_LOG_DEBUG, "lazy decompression chunk size: %ld", chunk_size);
+    ASDF_LOG(state->file, ASDF_LOG_DEBUG, "lazy decompression chunk size: %ld", chunk_size);
 
     uffd->work_buf = aligned_alloc(page_size, chunk_size);
 
     if (!uffd->work_buf) {
         if (errno == ENOMEM)
-            ASDF_ERROR_OOM(cs->file);
+            ASDF_ERROR_OOM(state->file);
         else
-            ASDF_ERROR_ERRNO(cs->file, errno);
+            ASDF_ERROR_ERRNO(state->file, errno);
         return -1;
     }
 
     uffd->work_buf_size = chunk_size;
-    cs->work_buf = uffd->work_buf;
-    cs->work_buf_size = uffd->work_buf_size;
+    state->work_buf = uffd->work_buf;
+    state->work_buf_size = uffd->work_buf_size;
 
     // Create userfaultfd
-    uffd->uffd = syscall(SYS_userfaultfd, O_CLOEXEC | O_NONBLOCK | UFFD_USER_MODE_ONLY);
-    if (uffd->uffd < 0) {
-        ASDF_ERROR_ERRNO(cs->file, errno);
+    long maybe_fd = syscall(SYS_userfaultfd, O_CLOEXEC | O_NONBLOCK | UFFD_USER_MODE_ONLY);
+
+    if (maybe_fd < 0) {
+        ASDF_ERROR_ERRNO(state->file, errno);
         return -1;
     }
+
+    uffd->uffd = (int)maybe_fd;
 
     struct uffdio_api uffd_api = {
         .api = UFFD_API,
     };
     if (ioctl(uffd->uffd, UFFDIO_API, &uffd_api) == -1) {
-        ASDF_ERROR_ERRNO(cs->file, errno);
+        ASDF_ERROR_ERRNO(state->file, errno);
         return -1;
     }
 
     // Register the memory range
     // Per careful reading of the man page, the length of the range must also be page-aligned
-    size_t range_len = (cs->dest_size + page_size - 1) & ~(page_size - 1);
-    uffd->range.start = (uintptr_t)cs->dest;
+    size_t range_len = (state->dest_size + page_size - 1) & ~(page_size - 1);
+    uffd->range.start = (uintptr_t)state->dest;
     uffd->range.len = range_len;
     struct uffdio_register uffd_reg = {.range = uffd->range, .mode = UFFDIO_REGISTER_MODE_MISSING};
 
     if (ioctl(uffd->uffd, UFFDIO_REGISTER, &uffd_reg) == -1) {
         ASDF_LOG(
-            cs->file, ASDF_LOG_ERROR, "failed registering memory range for userfaultfd handling");
-        ASDF_ERROR_ERRNO(cs->file, errno);
+            state->file,
+            ASDF_LOG_ERROR,
+            "failed registering memory range for userfaultfd handling");
+        ASDF_ERROR_ERRNO(state->file, errno);
         return -1;
     }
 
@@ -471,7 +479,7 @@ static int asdf_block_decomp_lazy(asdf_block_comp_state_t *cs) {
     uffd->evtfd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
 
     if (uffd->evtfd < 0) {
-        ASDF_ERROR_ERRNO(cs->file, errno);
+        ASDF_ERROR_ERRNO(state->file, errno);
         return -1;
     }
 
@@ -482,11 +490,11 @@ static int asdf_block_decomp_lazy(asdf_block_comp_state_t *cs) {
 }
 
 
-static void asdf_block_decomp_lazy_shutdown(asdf_block_comp_state_t *cs) {
-    if (!cs)
+static void asdf_block_decomp_lazy_shutdown(asdf_block_comp_state_t *state) {
+    if (!state)
         return;
 
-    asdf_block_comp_userfaultfd_t *uffd = cs->lazy.userfaultfd;
+    asdf_block_comp_userfaultfd_t *uffd = state->lazy.userfaultfd;
 
     if (!uffd)
         return;
@@ -498,11 +506,11 @@ static void asdf_block_decomp_lazy_shutdown(asdf_block_comp_state_t *cs) {
 
     if (n < 0) {
         ASDF_LOG(
-            cs->file,
+            state->file,
             ASDF_LOG_ERROR,
             "failed to write the shutdown event to the lazy decompression handler: %s",
             strerror(errno));
-        ASDF_ERROR_ERRNO(cs->file, errno);
+        ASDF_ERROR_ERRNO(state->file, errno);
     }
 
     pthread_join(uffd->handler_thread, NULL);
@@ -516,92 +524,55 @@ static void asdf_block_decomp_lazy_shutdown(asdf_block_comp_state_t *cs) {
 
 void asdf_block_comp_close(asdf_block_t *block) {
     assert(block);
-    asdf_block_comp_state_t *cs = block->comp_state;
+    asdf_block_comp_state_t *state = block->comp_state;
 
-    if (!cs)
+    if (!state)
         return;
 
-    if (cs->mode == ASDF_BLOCK_DECOMP_MODE_LAZY)
-        asdf_block_decomp_lazy_shutdown(cs);
+    if (state->mode == ASDF_BLOCK_DECOMP_MODE_LAZY)
+        asdf_block_decomp_lazy_shutdown(state);
 
-    if (cs->compressor)
-        cs->compressor->destroy(cs->userdata);
+    if (state->compressor)
+        state->compressor->destroy(state->userdata);
 
-    if (cs->dest)
-        munmap(cs->dest, cs->dest_size);
+    if (state->dest)
+        munmap(state->dest, state->dest_size);
 
-    if (cs->own_fd)
-        close(cs->fd);
+    if (state->own_fd > 0)
+        close(state->fd);
 
-    ZERO_MEMORY(cs, sizeof(asdf_block_comp_state_t));
-    free(cs);
+    ZERO_MEMORY(state, sizeof(asdf_block_comp_state_t));
+    free(state);
+    block->comp_state = NULL;
 }
 
 
-/**
- * Opens a memory handle to contain decompressed block data
- *
- * TODO: Improve error handling here
- * TODO: Clean up cognitive complexity of this function
- */
-int asdf_block_comp_open(asdf_block_t *block) {
-    assert(block);
-
-    int ret = -1;
-
-    const char *compression = asdf_block_compression(block);
-
-    if (strlen(compression) == 0) {
-        // Actually nothing to do, just return 0
-        return 0;
-    }
-
-    const asdf_compressor_t *comp = asdf_compressor_get(block->file, compression);
-
-    if (!comp) {
-        ASDF_LOG(
-            block->file,
-            ASDF_LOG_ERROR,
-            "no compressor extension found for %s compression",
-            compression);
-        return ret;
-    }
-
-    asdf_block_comp_state_t *state = calloc(1, sizeof(asdf_block_comp_state_t));
-
-    if (!state) {
-        ASDF_ERROR_OOM(block->file);
-        goto failure;
-    }
-
-    state->file = block->file;
-    state->compressor = comp;
-
-
-    asdf_config_t *config = block->file->config;
-    asdf_block_header_t *header = &block->info.header;
-    asdf_block_decomp_mode_t mode = config->decomp.mode;
+static bool asdf_block_comp_use_file_backing(const asdf_block_t *block) {
     // Decide whether to use temp file or anonymous mmap
+    assert(block && block->file);
+    const asdf_file_t *file = block->file;
+    const asdf_config_t *config = file->config;
+    const asdf_block_header_t *header = &block->info.header;
+
+    if (!config)
+        return false;
+
     size_t max_memory_bytes = config->decomp.max_memory_bytes;
     double max_memory_threshold = config->decomp.max_memory_threshold;
-
     size_t max_memory = SIZE_MAX;
+    size_t dest_size = header->data_size;
 
     if (max_memory_threshold > 0.0) {
         size_t total_memory = asdf_util_get_total_memory();
 
         if (total_memory > 0)
-            max_memory = (size_t)(total_memory * max_memory_threshold);
+            max_memory = (size_t)((double)total_memory * max_memory_threshold);
     }
 
     if (max_memory_bytes > 0)
         max_memory = (max_memory_bytes < max_memory) ? max_memory_bytes : max_memory;
 
-    size_t dest_size = header->data_size;
-
-    bool use_file_backing = dest_size > max_memory;
-
-    if (use_file_backing)
+    if (dest_size > max_memory) {
         ASDF_LOG(
             block->file,
             ASDF_LOG_DEBUG,
@@ -610,7 +581,30 @@ int asdf_block_comp_open(asdf_block_t *block) {
             block->info.index,
             dest_size,
             max_memory);
+        return true;
+    }
 
+    return false;
+}
+
+
+static asdf_block_comp_state_t *asdf_block_comp_state_create(
+    const asdf_block_t *block, const asdf_compressor_t *comp) {
+    asdf_config_t *config = block->file->config;
+    const asdf_block_header_t *header = &block->info.header;
+    size_t dest_size = header->data_size;
+    asdf_block_decomp_mode_t mode = config->decomp.mode;
+    asdf_block_comp_state_t *state = calloc(1, sizeof(asdf_block_comp_state_t));
+
+    if (!state) {
+        ASDF_ERROR_OOM(block->file);
+        return NULL;
+    }
+
+    state->file = block->file;
+    state->compressor = comp;
+
+    bool use_file_backing = asdf_block_comp_use_file_backing(block);
 
     // Determine if we can use lazy decompression mode
     bool use_lazy_mode = false;
@@ -648,16 +642,19 @@ int asdf_block_comp_open(asdf_block_t *block) {
 
     if (use_file_backing && !use_lazy_mode) {
         if (asdf_create_temp_file(dest_size, config->decomp.tmp_dir, &state->fd) != 0) {
-            goto failure;
+            free(state);
+            return NULL;
         }
         // Read-only for now
         state->dest = mmap(NULL, dest_size, PROT_READ | PROT_WRITE, MAP_SHARED, state->fd, 0);
+
         if (state->dest == MAP_FAILED) {
             close(state->fd);
-            goto failure;
-        } else {
-            state->own_fd = true;
+            free(state);
+            return NULL;
         }
+
+        state->own_fd = true;
     } else {
         // anonymous mmap
         // Read-only for now
@@ -665,7 +662,8 @@ int asdf_block_comp_open(asdf_block_t *block) {
             NULL, dest_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
         if (state->dest == MAP_FAILED) {
-            goto failure;
+            free(state);
+            return NULL;
         }
 
         state->fd = -1;
@@ -675,6 +673,47 @@ int asdf_block_comp_open(asdf_block_t *block) {
     state->dest_size = dest_size;
     state->userdata = state->compressor->init(block, state->dest, state->dest_size);
     state->mode = mode; // Store the effective mode we're running under
+    return state;
+}
+
+
+/**
+ * Opens a memory handle to contain decompressed block data
+ *
+ * TODO: Improve error handling here
+ */
+int asdf_block_comp_open(asdf_block_t *block) {
+    assert(block);
+
+    int ret = -1;
+    asdf_block_comp_state_t *state = NULL;
+
+    const char *compression = asdf_block_compression(block);
+
+    if (strlen(compression) == 0) {
+        // Actually nothing to do, just return 0
+        return 0;
+    }
+
+    const asdf_compressor_t *comp = asdf_compressor_get(block->file, compression);
+
+    if (!comp) {
+        ASDF_LOG(
+            block->file,
+            ASDF_LOG_ERROR,
+            "no compressor extension found for %s compression",
+            compression);
+        return ret;
+    }
+
+    state = asdf_block_comp_state_create(block, comp);
+
+    if (!state) {
+        ASDF_ERROR_OOM(block->file);
+        goto failure;
+    }
+
+    block->comp_state = state;
 
     if (!state->userdata) {
         ASDF_LOG(
@@ -685,7 +724,7 @@ int asdf_block_comp_open(asdf_block_t *block) {
         goto failure;
     }
 
-    if (use_lazy_mode)
+    if (state->mode == ASDF_BLOCK_DECOMP_MODE_LAZY)
         ret = asdf_block_decomp_lazy(state);
     else
         ret = asdf_block_decomp_eager(state);
@@ -693,7 +732,6 @@ int asdf_block_comp_open(asdf_block_t *block) {
     if (ret != 0)
         goto failure;
 
-    block->comp_state = state;
     return 0;
 failure:
     asdf_block_comp_close(block);

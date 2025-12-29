@@ -20,7 +20,7 @@ typedef struct {
 
 
 static asdf_compressor_userdata_t *asdf_compressor_bzp2_init(
-    asdf_block_t *block, const void *dest, size_t dest_size) {
+    const asdf_block_t *block, const void *dest, size_t dest_size) {
     asdf_compressor_bzp2_userdata_t *userdata = NULL;
 
     userdata = calloc(1, sizeof(asdf_compressor_bzp2_userdata_t));

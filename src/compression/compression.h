@@ -35,7 +35,7 @@ typedef struct {
 typedef void asdf_compressor_userdata_t;
 
 typedef asdf_compressor_userdata_t *(*asdf_compressor_init_fn)(
-    asdf_block_t *block, const void *dest, size_t dest_size);
+    const asdf_block_t *block, const void *dest, size_t dest_size);
 typedef const asdf_compressor_info_t *(*asdf_compressor_info_fn)(
     asdf_compressor_userdata_t *userdata);
 typedef int (*asdf_compressor_decomp_fn)(
