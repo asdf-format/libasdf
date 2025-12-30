@@ -358,20 +358,23 @@ static inline size_t parse_single_path_component(
         // If it was not an integer it's invalid if we were in an explicit
         // sequence (in [] brackets); else it can still be a mapping key
         if (end_idx != NULL && *end_idx) {
-            if (target == ASDF_YAML_PC_TARGET_SEQ)
+            if (target == ASDF_YAML_PC_TARGET_SEQ) {
+                free(key);
                 return 0;
+            }
 
             target = ASDF_YAML_PC_TARGET_MAP;
         }
     }
 
-    asdf_yaml_path_push(
-        out_path, (asdf_yaml_path_component_t){.target = target, .key = key, .index = index});
+    asdf_yaml_path_component_t comp = {.target = target, .key = key, .index = index};
+    asdf_yaml_path_push(out_path, comp);
 
     // Advance past the trailing / if any
     if (p != end)
         p++;
 
+    // NOLINTNEXTLINE(clang-analyzer-unix.Malloc)
     return p - start;
 }
 
@@ -403,9 +406,14 @@ bool asdf_yaml_path_parse(const char *path, asdf_yaml_path_t *out_path) {
         // Special case--if the path is null or an empty string, it always
         // refers to the root.  We represent that with parent = NULL, and
         // key = ""
-        asdf_yaml_path_push(
-            out_path,
-            (asdf_yaml_path_component_t){.target = ASDF_YAML_PC_TARGET_MAP, .key = strdup("")});
+        char *key = strdup("");
+
+        if (!key)
+            return false;
+
+        asdf_yaml_path_component_t comp = {.target = ASDF_YAML_PC_TARGET_MAP, .key = key};
+        asdf_yaml_path_push(out_path, comp);
+        // NOLINTNEXTLINE(clang-analyzer-unix.Malloc)
         return true;
     }
 

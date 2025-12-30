@@ -37,34 +37,34 @@ ASDF_LOCAL void asdf_context_error_set_errno(asdf_context_t *ctx, int errnum);
 
 #define ASDF_ERROR(obj, fmt, ...) \
     do { \
-        __ASDF_GET_CONTEXT(obj); \
+        ASDF_GET_CONTEXT(obj); \
         asdf_context_error_set(__ctx, (fmt), ##__VA_ARGS__); \
     } while (0)
 
 
 #define ASDF_ERROR_OOM(obj) \
     do { \
-        __ASDF_GET_CONTEXT(obj); \
+        ASDF_GET_CONTEXT(obj); \
         asdf_context_error_set_oom(__ctx); \
     } while (0)
 
 
 #define ASDF_ERROR_STATIC(obj, error) \
     do { \
-        __ASDF_GET_CONTEXT(obj); \
+        ASDF_GET_CONTEXT(obj); \
         asdf_context_error_set_static(__ctx, (error)); \
     } while (0)
 
 
 #define ASDF_ERROR_COMMON(obj, code) \
     do { \
-        __ASDF_GET_CONTEXT(obj); \
+        ASDF_GET_CONTEXT(obj); \
         asdf_context_error_set_common(__ctx, (code)); \
     } while (0)
 
 
 #define ASDF_ERROR_ERRNO(obj, errnum) \
     do { \
-        __ASDF_GET_CONTEXT(obj); \
+        ASDF_GET_CONTEXT(obj); \
         asdf_context_error_set_errno(__ctx, (errnum)); \
     } while (0)
