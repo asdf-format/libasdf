@@ -1539,7 +1539,7 @@ asdf_value_err_t asdf_value_as_uint8(asdf_value_t *value, uint8_t *out) {
     case ASDF_VALUE_INT32:
     case ASDF_VALUE_INT16:
         // Return anyways but indicate an overflow
-        *out = (int64_t)value->scalar.i;
+        *out = value->scalar.i;
 
         if (value->scalar.i < 0 || value->scalar.i > UINT8_MAX)
             return ASDF_VALUE_ERR_OVERFLOW;
@@ -1709,7 +1709,7 @@ asdf_value_err_t asdf_value_as_uint64(asdf_value_t *value, uint64_t *out) {
     case ASDF_VALUE_UINT32:
     case ASDF_VALUE_UINT16:
     case ASDF_VALUE_UINT8:
-        *out = (uint64_t)value->scalar.u;
+        *out = value->scalar.u;
         return ASDF_VALUE_OK;
     case ASDF_VALUE_INT64:
     case ASDF_VALUE_INT32:
@@ -2222,7 +2222,7 @@ static struct fy_node *asdf_node_create_single_path_component(
     const asdf_yaml_path_component_t *sibling,
     struct fy_node *final) {
 
-    struct fy_node *current = NULL;
+    struct fy_node *node = NULL;
 
     switch (comp->target) {
     case ASDF_YAML_PC_TARGET_ANY:
@@ -2230,50 +2230,50 @@ static struct fy_node *asdf_node_create_single_path_component(
         // treat as a sequence insertion; if it exists and is a mapping
         // treat as a mapping insertion, otherwise create a new sequence
         if (fy_node_is_mapping(parent)) {
-            current = fy_node_mapping_lookup_by_string(parent, comp->key, FY_NT);
+            node = fy_node_mapping_lookup_by_string(parent, comp->key, FY_NT);
         } else if (fy_node_is_sequence(parent)) {
-            current = asdf_node_sequence_get_by_index(parent, comp->index);
+            node = asdf_node_sequence_get_by_index(parent, comp->index);
         }
         break;
     case ASDF_YAML_PC_TARGET_MAP:
         if (fy_node_is_mapping(parent))
-            current = fy_node_mapping_lookup_by_string(parent, comp->key, FY_NT);
+            node = fy_node_mapping_lookup_by_string(parent, comp->key, FY_NT);
         else {
             return NULL;
         }
         break;
     case ASDF_YAML_PC_TARGET_SEQ:
         if (fy_node_is_sequence(parent))
-            current = asdf_node_sequence_get_by_index(parent, comp->index);
+            node = asdf_node_sequence_get_by_index(parent, comp->index);
         else {
             return NULL;
         }
         break;
     }
 
-    if (!current) {
+    if (!node) {
         if (!sibling) {
-            // The node to insert
-            current = final;
+            // The final node to insert in the path
+            node = final;
         } else {
             switch (sibling->target) {
             case ASDF_YAML_PC_TARGET_ANY:
                 if (parent == root)
-                    current = fy_node_create_mapping(doc);
+                    node = fy_node_create_mapping(doc);
                 else
-                    current = fy_node_create_sequence(doc);
+                    node = fy_node_create_sequence(doc);
                 break;
             case ASDF_YAML_PC_TARGET_MAP:
-                current = fy_node_create_mapping(doc);
+                node = fy_node_create_mapping(doc);
                 break;
             case ASDF_YAML_PC_TARGET_SEQ:
-                current = fy_node_create_sequence(doc);
+                node = fy_node_create_sequence(doc);
                 break;
             }
         }
     }
 
-    return current;
+    return node;
 }
 
 static asdf_value_err_t asdf_node_materialize_path(
