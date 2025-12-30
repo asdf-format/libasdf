@@ -23,8 +23,12 @@
  * yaml version--we should specify this more strictly maybe...
  */
 #ifdef HAVE_STRPTIME
-static int asdf_parse_datetime(const char *s, struct timespec *out) {
-    if (!s || !out)
+#define NSEC_PER_SEC 1e9 // In case this ever changes
+#define SEC_PER_HOUR 3600
+#define SEC_PER_MIN 60
+
+static int asdf_parse_datetime(const char *scalar, struct timespec *out) {
+    if (!scalar || !out)
         return -1;
 
     struct tm tm = {0};
@@ -34,15 +38,15 @@ static int asdf_parse_datetime(const char *s, struct timespec *out) {
     long nsec = 0;
     bool has_time = false;
     char *rest = NULL;
-    char *buf = strdup(s);
+    char *buf = strdup(scalar);
 
     if (!buf)
         return -1;
 
     // Normalize separators (replace 'T' or 't' with space)
-    for (char *c = buf; *c; ++c)
-        if (*c == 'T' || *c == 't')
-            *c = ' ';
+    for (char *chr = buf; *chr; ++chr)
+        if (*chr == 'T' || *chr == 't')
+            *chr = ' ';
 
     // Try to parse date and time (without optional fractional seconds and timezone)
     rest = strptime(buf, "%Y-%m-%d %H:%M:%S", &tm);
@@ -63,7 +67,7 @@ static int asdf_parse_datetime(const char *s, struct timespec *out) {
         if (dot) {
             double frac = 0;
             sscanf(dot, "%lf", &frac);
-            nsec = (long)((frac - (int)frac) * 1e9);
+            nsec = (long)((frac - (int)frac) * NSEC_PER_SEC);
         }
 
         // Handle timezone offsets (Z/z = Zulu is ignored, just don't add any offset)
@@ -76,14 +80,14 @@ static int asdf_parse_datetime(const char *s, struct timespec *out) {
     }
 
     // Convert to time_t and adjust for time zone
-    time_t t = timegm(&tm);
-    if (t == (time_t)-1) {
+    time_t time = timegm(&tm);
+    if (time == (time_t)-1) {
         free(buf);
         return -1;
     }
 
-    t -= tz_sign * (tz_hour * 3600 + tz_min * 60);
-    out->tv_sec = t;
+    time -= tz_sign * (tz_hour * SEC_PER_HOUR + tz_min * SEC_PER_MIN);
+    out->tv_sec = time;
     out->tv_nsec = nsec;
     free(buf);
     return 0;
@@ -206,8 +210,10 @@ static asdf_value_err_t asdf_history_entry_deserialize(
 
     asdf_history_entry_t *entry = calloc(1, sizeof(asdf_history_entry_t));
 
-    if (!entry)
-        return ASDF_VALUE_ERR_OOM;
+    if (!entry) {
+        err = ASDF_VALUE_ERR_OOM;
+        goto failure;
+    }
 
     entry->description = description;
     entry->time = time;
@@ -216,6 +222,7 @@ static asdf_value_err_t asdf_history_entry_deserialize(
     return ASDF_VALUE_OK;
 failure:
     asdf_value_destroy(prop);
+    free((void *)software);
     return err;
 }
 

@@ -28,6 +28,7 @@ int asdf_scan_tokens(
     const uint8_t **tokens,
     const size_t *token_lens,
     size_t n_tokens,
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
     size_t *match_offset,
     size_t *match_token_idx) {
 
@@ -176,8 +177,8 @@ static const uint8_t *file_next(asdf_stream_t *stream, size_t count, size_t *ava
     }
 
     if (buf_remain < count || data->buf_pos >= data->buf_avail) {
-        size_t n = fread(data->buf + buf_remain, 1, data->buf_size - buf_remain, data->file);
-        data->buf_avail += n;
+        size_t n_read = fread(data->buf + buf_remain, 1, data->buf_size - buf_remain, data->file);
+        data->buf_avail += n_read;
         buf_remain = data->buf_avail - data->buf_pos;
     }
 
@@ -227,9 +228,9 @@ const uint8_t *file_readline(asdf_stream_t *stream, size_t *len) {
     // Truncate line at buffer end and discard remainder of line
     file_consume(stream, avail);
 
-    int ch;
-    while ((ch = fgetc(data->file)) != EOF) {
-        if (ch == '\n')
+    int chr;
+    while ((chr = fgetc(data->file)) != EOF) {
+        if (chr == '\n')
             break;
     }
 
@@ -243,6 +244,7 @@ static int file_scan(
     const uint8_t **tokens,
     const size_t *token_lens,
     size_t n_tokens,
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
     size_t *match_offset,
     size_t *match_token_idx) {
     // File-based scan is a little trickier because tokens could straddle buffered pages of the
@@ -289,8 +291,8 @@ static int file_scan(
         size_t preserve = (avail < max_token_len - 1) ? avail : max_token_len - 1;
         stream_capture(stream, data->buf, data->buf_avail - preserve);
         memmove(data->buf, data->buf + data->buf_avail - preserve, preserve);
-        size_t n = fread(data->buf + preserve, 1, data->buf_size - preserve, data->file);
-        size_t new_avail = preserve + n;
+        size_t n_read = fread(data->buf + preserve, 1, data->buf_size - preserve, data->file);
+        size_t new_avail = preserve + n_read;
         data->file_pos += (data->buf_avail - preserve);
         data->buf_avail = new_avail;
 
@@ -443,7 +445,7 @@ static void *file_open_mem(asdf_stream_t *stream, off_t offset, size_t size, siz
         }
     }
 
-    if (!mmap_info) {
+    if (!mmap_info && data->mmaps_size) {
         size_t new_size = data->mmaps_size * 2;
         file_mmap_info_t *mmaps = realloc(data->mmaps, new_size);
 
@@ -702,10 +704,10 @@ static const uint8_t *mem_next(asdf_stream_t *stream, UNUSED(size_t count), size
 }
 
 
-static void mem_consume(asdf_stream_t *stream, size_t n) {
+static void mem_consume(asdf_stream_t *stream, size_t nbytes) {
     mem_userdata_t *data = stream->userdata;
-    stream_capture(stream, data->buf + data->pos, n);
-    data->pos += n;
+    stream_capture(stream, data->buf + data->pos, nbytes);
+    data->pos += nbytes;
 }
 
 
@@ -736,6 +738,7 @@ static int mem_scan(
     const uint8_t **tokens,
     const size_t *token_lens,
     size_t n_tokens,
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
     size_t *match_offset,
     size_t *match_token_idx) {
     // The mem_scan case is simple; we only need to wrap asdf_scan_tokens
@@ -763,6 +766,7 @@ static int mem_scan(
 }
 
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 static int mem_seek(asdf_stream_t *stream, off_t offset, int whence) {
     mem_userdata_t *data = stream->userdata;
     size_t new_pos;

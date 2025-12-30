@@ -97,6 +97,7 @@ static void tree_node_add_child(tree_node_t *parent, tree_node_t *child) {
 }
 
 
+// NOLINTNEXTLINE(misc-no-recursion)
 static void tree_node_free(tree_node_t *node) {
     tree_node_t *child = node->first_child;
     while (child) {
@@ -270,6 +271,7 @@ static tree_node_t *build_tree(asdf_parser_t *parser) {
 }
 
 
+// NOLINTNEXTLINE(misc-no-recursion)
 static void print_indent(FILE *file, const tree_node_t *node) {
     if (!node)
         return;
@@ -285,6 +287,7 @@ static void print_indent(FILE *file, const tree_node_t *node) {
 }
 
 
+// NOLINTNEXTLINE(misc-no-recursion)
 void print_tree(FILE *file, const tree_node_t *node) {
     if (!node)
         return;

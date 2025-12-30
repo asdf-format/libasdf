@@ -116,7 +116,7 @@ format:
 
 tidy:
 	clang-tidy $(addprefix $(srcdir)/,$(src_files)) -- \
-	    $(DEFS) $(DEFAULT_INCLUDES) $(AM_CPPLFAGS) $(CPPFLAGS) $(asdf_CFLAGS)
+	    $(DEFS) $(DEFAULT_INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(asdf_CFLAGS)
 
 if BUILD_DOCS
 docs:

@@ -36,9 +36,10 @@ const asdf_block_t *asdf_ndarray_block(asdf_ndarray_t *ndarray) {
 }
 
 
-asdf_scalar_datatype_t asdf_ndarray_datatype_from_string(const char *s) {
-    if (strncmp(s, "int", 3) == 0) {
-        const char *p = s + 3;
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+asdf_scalar_datatype_t asdf_ndarray_datatype_from_string(const char *dtype) {
+    if (strncmp(dtype, "int", 3) == 0) {
+        const char *p = dtype + 3;
         if (*p && strspn(p, "123468") == strlen(p)) {
             if (strcmp(p, "8") == 0)
                 return ASDF_DATATYPE_INT8;
@@ -52,8 +53,8 @@ asdf_scalar_datatype_t asdf_ndarray_datatype_from_string(const char *s) {
         goto unknown;
     }
 
-    if (strncmp(s, "uint", 4) == 0) {
-        const char *p = s + 4;
+    if (strncmp(dtype, "uint", 4) == 0) {
+        const char *p = dtype + 4;
         if (*p && strspn(p, "123468") == strlen(p)) {
             if (strcmp(p, "8") == 0)
                 return ASDF_DATATYPE_UINT8;
@@ -67,8 +68,10 @@ asdf_scalar_datatype_t asdf_ndarray_datatype_from_string(const char *s) {
         goto unknown;
     }
 
-    if (strncmp(s, "float", 5) == 0) {
-        const char *p = s + 5;
+    // NOLINTNEXTLINE(readability-magic-numbers)
+    if (strncmp(dtype, "float", 5) == 0) {
+        // NOLINTNEXTLINE(readability-magic-numbers)
+        const char *p = dtype + 5;
         if (*p && strspn(p, "12346") == strlen(p)) {
             if (strcmp(p, "16") == 0)
                 return ASDF_DATATYPE_FLOAT16;
@@ -80,8 +83,10 @@ asdf_scalar_datatype_t asdf_ndarray_datatype_from_string(const char *s) {
         goto unknown;
     }
 
-    if (strncmp(s, "complex", 7) == 0) {
-        const char *p = s + 7;
+    // NOLINTNEXTLINE(readability-magic-numbers)
+    if (strncmp(dtype, "complex", 7) == 0) {
+        // NOLINTNEXTLINE(readability-magic-numbers)
+        const char *p = dtype + 7;
         if (*p && strspn(p, "12468") == strlen(p)) {
             if (strcmp(p, "64") == 0)
                 return ASDF_DATATYPE_COMPLEX64;
@@ -91,7 +96,7 @@ asdf_scalar_datatype_t asdf_ndarray_datatype_from_string(const char *s) {
         goto unknown;
     }
 
-    if (strcmp(s, "bool8") == 0)
+    if (strcmp(dtype, "bool8") == 0)
         return ASDF_DATATYPE_BOOL8;
 
 unknown:
@@ -810,6 +815,9 @@ asdf_ndarray_err_t asdf_ndarray_read_tile_ndim(
             "source bytes will be copied without conversion",
             src_datatype,
             dst_datatype);
+        memcpy(tile, data, src_tile_size);
+        *dst = tile;
+        return ASDF_NDARRAY_ERR_CONVERSION;
     }
 
     size_t offset = origin[inner_dim];

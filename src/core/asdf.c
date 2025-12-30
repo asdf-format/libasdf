@@ -156,8 +156,10 @@ static asdf_value_err_t asdf_meta_deserialize(
 
     asdf_meta_t *meta = calloc(1, sizeof(asdf_meta_t));
 
-    if (!meta)
-        return ASDF_VALUE_ERR_OOM;
+    if (!meta) {
+        err = ASDF_VALUE_ERR_OOM;
+        goto failure;
+    }
 
     meta->asdf_library = asdf_library;
     meta->history = history;

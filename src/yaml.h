@@ -119,7 +119,7 @@ static void asdf_yaml_path_component_drop(asdf_yaml_path_component_t *component)
 // NOLINTNEXTLINE(readability-identifier-naming)
 #define i_type asdf_yaml_path
 #define i_keyclass asdf_yaml_path_component
-#include <stc/vec.h>
+#include "stc/vec.h"
 typedef asdf_yaml_path asdf_yaml_path_t;
 typedef asdf_yaml_path_iter asdf_yaml_path_iter_t;
 

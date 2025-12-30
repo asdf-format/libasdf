@@ -552,6 +552,9 @@ void asdf_container_item_destroy(asdf_container_item_t *item) {
 
 
 asdf_container_item_t *asdf_container_iter(asdf_value_t *container, asdf_container_iter_t *iter) {
+    if (!container)
+        return NULL;
+
     if (container->raw_type != ASDF_VALUE_MAPPING && container->raw_type != ASDF_VALUE_SEQUENCE) {
 #ifdef ASDF_LOG_ENABLED
         const char *path = asdf_value_path(container);
@@ -706,37 +709,41 @@ asdf_value_err_t asdf_value_as_extension_type(
 
 
 /* Scalar functions */
-static bool is_yaml_null(const char *s, size_t len) {
+static bool is_yaml_null(const char *scalar, size_t len) {
     return (
-        !s || len == 0 ||
-        (len == 4 && ((strncmp(s, "null", len) == 0) || (strncmp(s, "Null", len) == 0) ||
-                      (strncmp(s, "NULL", len) == 0))) ||
-        (len == 1 && s[0] == '~'));
+        !scalar || len == 0 ||
+        (len == 4 && ((strncmp(scalar, "null", len) == 0) || (strncmp(scalar, "Null", len) == 0) ||
+                      (strncmp(scalar, "NULL", len) == 0))) ||
+        (len == 1 && scalar[0] == '~'));
 }
 
 
-static bool is_yaml_bool(const char *s, size_t len, bool *value) {
-    if (!s)
+static bool is_yaml_bool(const char *scalar, size_t len, bool *value) {
+    if (!scalar)
         return false;
 
     /* Allow 0 and 1 tagged as bool */
     if (len == 1) {
-        if (s[0] == '0') {
+        if (scalar[0] == '0') {
             *value = false;
             return true;
-        } else if (s[0] == '1') {
+        }
+
+        if (scalar[0] == '1') {
             *value = true;
             return true;
         }
     }
 
-    if (len == 5 && ((0 == strncmp(s, "false", len)) || (0 == strncmp(s, "False", len)) ||
-                     (0 == strncmp(s, "FALSE", len)))) {
+    // NOLINTNEXTLINE(readability-magic-numbers)
+    if (len == 5 && ((0 == strncmp(scalar, "false", len)) || (0 == strncmp(scalar, "False", len)) ||
+                     (0 == strncmp(scalar, "FALSE", len)))) {
         *value = false;
         return true;
-    } else if (
-        len == 4 && ((0 == strncmp(s, "true", len)) || (0 == strncmp(s, "True", len)) ||
-                     (0 == strncmp(s, "TRUE", len)))) {
+    }
+
+    if (len == 4 && ((0 == strncmp(scalar, "true", len)) || (0 == strncmp(scalar, "True", len)) ||
+                     (0 == strncmp(scalar, "TRUE", len)))) {
         *value = true;
         return true;
     }
@@ -746,119 +753,126 @@ static bool is_yaml_bool(const char *s, size_t len, bool *value) {
 
 
 static asdf_value_err_t is_yaml_signed_int(
-    const char *s, size_t len, int64_t *value, asdf_value_type_t *type) {
-    if (!s)
+    const char *scalar, size_t len, int64_t *value, asdf_value_type_t *type) {
+    if (!scalar)
         return ASDF_VALUE_ERR_UNKNOWN;
 
-    char *is = strndup(s, len);
+    char *int_s = strndup(scalar, len);
 
-    if (!is)
+    if (!int_s)
         return ASDF_VALUE_ERR_UNKNOWN;
 
     errno = 0;
     char *end = NULL;
-    int64_t v = strtoll(is, &end, 0);
+    int64_t val = strtoll(int_s, &end, 0);
 
     if (errno == ERANGE) {
-        free(is);
+        free(int_s);
         return ASDF_VALUE_ERR_OVERFLOW;
-    } else if (errno || *end) {
-        free(is);
+    }
+
+    if (errno || *end) {
+        free(int_s);
         return ASDF_VALUE_ERR_PARSE_FAILURE;
     }
 
     /* choose smallest int that fits */
-    if (v >= INT8_MIN && v <= INT8_MAX)
+    if (val >= INT8_MIN && val <= INT8_MAX)
         *type = ASDF_VALUE_INT8;
-    else if (v >= INT16_MIN && v <= INT16_MAX)
+    else if (val >= INT16_MIN && val <= INT16_MAX)
         *type = ASDF_VALUE_INT16;
-    else if (v >= INT32_MIN && v <= INT32_MAX)
+    else if (val >= INT32_MIN && val <= INT32_MAX)
         *type = ASDF_VALUE_INT32;
     else
         *type = ASDF_VALUE_INT64;
 
-    *value = v;
-    free(is);
+    *value = val;
+    free(int_s);
     return ASDF_VALUE_OK;
 }
 
 
 static asdf_value_err_t is_yaml_unsigned_int(
-    const char *s, size_t len, uint64_t *value, asdf_value_type_t *type) {
-    if (!s)
+    const char *scalar, size_t len, uint64_t *value, asdf_value_type_t *type) {
+    if (!scalar)
         return ASDF_VALUE_ERR_UNKNOWN;
 
-    char *us = strndup(s, len);
+    char *uint_s = strndup(scalar, len);
 
-    if (!us)
+    if (!uint_s)
         return ASDF_VALUE_ERR_UNKNOWN;
 
     errno = 0;
     char *end = NULL;
-    uint64_t v = strtoull(us, &end, 0);
+    uint64_t val = strtoull(uint_s, &end, 0);
 
     if (errno == ERANGE) {
-        free(us);
+        free(uint_s);
         return ASDF_VALUE_ERR_OVERFLOW;
-    } else if (errno || *end) {
-        free(us);
+    }
+
+    if (errno || *end) {
+        free(uint_s);
         return ASDF_VALUE_ERR_PARSE_FAILURE;
     }
 
     /* choose smallest int that fits */
-    if (v <= UINT8_MAX)
+    if (val <= UINT8_MAX)
         *type = ASDF_VALUE_UINT8;
-    else if (v <= UINT16_MAX)
+    else if (val <= UINT16_MAX)
         *type = ASDF_VALUE_UINT16;
-    else if (v <= UINT32_MAX)
+    else if (val <= UINT32_MAX)
         *type = ASDF_VALUE_UINT32;
     else
         *type = ASDF_VALUE_UINT64;
 
-    *value = v;
-    free(us);
+    *value = val;
+    free(uint_s);
     return ASDF_VALUE_OK;
 }
 
 
 static asdf_value_err_t is_yaml_float(
-    const char *s, size_t len, double *value, asdf_value_type_t *type) {
-    if (!s)
+    const char *scalar, size_t len, double *value, asdf_value_type_t *type) {
+
+    if (!scalar)
         return ASDF_VALUE_ERR_UNKNOWN;
 
-    char *fs = strndup(s, len);
+    char *float_s = strndup(scalar, len);
 
-    if (!fs)
+    if (!float_s)
         return ASDF_VALUE_ERR_UNKNOWN;
 
     errno = 0;
     char *end = NULL;
-    double v = strtod(fs, &end);
+    double val = strtod(float_s, &end);
 
     if (errno == ERANGE) {
-        free(fs);
+        free(float_s);
         *type = ASDF_VALUE_DOUBLE;
         return ASDF_VALUE_ERR_OVERFLOW;
-    } else if (errno || *end) {
-        free(fs);
+    }
+
+    if (errno || *end) {
+        free(float_s);
         return ASDF_VALUE_ERR_PARSE_FAILURE;
     }
 
-    float fv = (float)v;
+    float fval = (float)val;
 
-    if ((double)fv == v)
+    if ((double)fval == val)
         *type = ASDF_VALUE_FLOAT;
     else
         *type = ASDF_VALUE_DOUBLE;
 
-    *value = v;
-    free(fs);
+    *value = val;
+    free(float_s);
     return ASDF_VALUE_OK;
 }
 
 
-static asdf_value_err_t asdf_value_infer_null(asdf_value_t *value, const char *s, size_t len) {
-    if (is_yaml_null(s, len)) {
+static asdf_value_err_t asdf_value_infer_null(asdf_value_t *value, const char *scalar, size_t len) {
+    if (is_yaml_null(scalar, len)) {
         value->type = ASDF_VALUE_NULL;
         value->err = ASDF_VALUE_OK;
         return ASDF_VALUE_OK;
@@ -1279,8 +1293,9 @@ bool asdf_value_is_int8(asdf_value_t *value) {
 
 
 asdf_value_err_t asdf_value_as_int8(asdf_value_t *value, int8_t *out) {
-    asdf_value_err_t err = ASDF_VALUE_ERR_UNKNOWN;
-    if ((err = asdf_value_infer_scalar_type(value)) != ASDF_VALUE_OK)
+    asdf_value_err_t err = asdf_value_infer_scalar_type(value);
+
+    if (err != ASDF_VALUE_OK)
         return err;
 
     switch (value->type) {
@@ -1867,6 +1882,9 @@ asdf_value_err_t asdf_value_as_type(asdf_value_t *value, asdf_value_type_t type,
     return ASDF_VALUE_ERR_TYPE_MISMATCH;
 }
 
+#define ASDF_VALUE_FIND_ITER_MIN_CAPACITY 8
+#define ASDF_VALUE_FIND_ITER_MAX_DEPTH 256
+
 /**
  * Implementation details for `asdf_value_find_iter_ex` which is the workhorse
  * for all the other variants (`asdf_value_find_iter`, `asdf_value_find_ex`,
@@ -1874,20 +1892,23 @@ asdf_value_err_t asdf_value_as_type(asdf_value_t *value, asdf_value_type_t type,
  */
 static asdf_find_item_t *asdf_value_find_iter_create(
     bool depth_first, asdf_value_pred_t descend_pred, ssize_t max_depth) {
-    asdf_find_item_t *it = calloc(1, sizeof(asdf_find_item_t));
+    asdf_find_item_t *item = calloc(1, sizeof(asdf_find_item_t));
 
-    if (!it)
+    if (!item)
         return NULL;
 
-    it->depth_first = depth_first;
-    it->descend_pred = descend_pred;
-    it->max_depth = max_depth;
-    it->value = NULL;
+    item->depth_first = depth_first;
+    item->descend_pred = descend_pred;
+    item->max_depth = max_depth;
+    item->value = NULL;
     // Initial small frame stack, though we can also use max_depth as a
     // heuristic
-    it->frame_cap = (max_depth < 0) ? 8 : ((max_depth > 256) ? 256 : max_depth + 1);
-    it->frames = calloc(it->frame_cap, sizeof(asdf_find_frame_t));
-    return it;
+    item->frame_cap = (max_depth < 0) ? ASDF_VALUE_FIND_ITER_MIN_CAPACITY
+                                      : (((max_depth > ASDF_VALUE_FIND_ITER_MAX_DEPTH)
+                                              ? ASDF_VALUE_FIND_ITER_MAX_DEPTH
+                                              : max_depth + 1));
+    item->frames = calloc(item->frame_cap, sizeof(asdf_find_frame_t));
+    return item;
 }
 
 

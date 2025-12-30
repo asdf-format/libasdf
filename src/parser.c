@@ -68,16 +68,16 @@ static int parse_version_comment(
     asdf_parser_t *parser, const char *expected, char *out_buf, size_t out_size) {
     size_t expected_len;
     size_t line_len = 0;
-    const uint8_t *r = asdf_stream_readline(parser->stream, &line_len);
+    const uint8_t *line = asdf_stream_readline(parser->stream, &line_len);
 
-    if (!r) {
+    if (!line) {
         ASDF_ERROR_COMMON(parser, ASDF_ERR_UNEXPECTED_EOF);
         return 1;
     }
 
     expected_len = strlen(expected);
 
-    if (line_len < expected_len || strncmp((const char *)r, expected, expected_len) != 0) {
+    if (line_len < expected_len || strncmp((const char *)line, expected, expected_len) != 0) {
         ASDF_ERROR_COMMON(parser, ASDF_ERR_INVALID_ASDF_HEADER);
         return 1;
     }
@@ -87,7 +87,7 @@ static int parse_version_comment(
     if (to_copy >= out_size)
         to_copy = out_size - 1;
 
-    memcpy(out_buf, r + expected_len, to_copy);
+    memcpy(out_buf, line + expected_len, to_copy);
     out_buf[to_copy] = '\0';
     return 0;
 }
@@ -125,33 +125,33 @@ static parse_result_t parse_standard_version(asdf_parser_t *parser, asdf_event_t
 
 
 static parse_result_t parse_comment(asdf_parser_t *parser, asdf_event_t *event) {
-    const uint8_t *r = NULL;
+    const uint8_t *buf = NULL;
     size_t len = 0;
 
     // Peek the stream to see if we have a comment or blank line
-    while ((r = asdf_stream_peek(parser->stream, 1, &len))) {
+    while ((buf = asdf_stream_peek(parser->stream, 1, &len))) {
         if (len == 0) {
             // EOF
             parser->state = ASDF_PARSER_STATE_END;
             return ASDF_PARSE_CONTINUE;
         }
 
-        if (r[0] == '\r' || r[0] == '\n') {
+        if (buf[0] == '\r' || buf[0] == '\n') {
             // Blank line, just continue
             CONSUME_AND_CHECK(parser, 1);
             continue;
         }
 
-        if (r[0] == ASDF_COMMENT_CHAR) {
+        if (buf[0] == ASDF_COMMENT_CHAR) {
             // Found comment, attempt to read and consume the full line
-            r = asdf_stream_readline(parser->stream, &len);
+            buf = asdf_stream_readline(parser->stream, &len);
 
-            if (!r) {
+            if (!buf) {
                 ASDF_ERROR_COMMON(parser, ASDF_ERR_UNEXPECTED_EOF);
                 return 1;
             }
 
-            char *comment = strndup((const char *)r + 1, len - 1);
+            char *comment = strndup((const char *)buf + 1, len - 1);
             comment[strcspn(comment, "\r\n")] = '\0';
             event->type = ASDF_COMMENT_EVENT;
             event->payload.comment = comment;
@@ -190,22 +190,22 @@ static parse_result_t emit_tree_start_event(asdf_parser_t *parser, asdf_event_t 
 static parse_result_t parse_tree_or_block(asdf_parser_t *parser, asdf_event_t *event) {
     size_t len = 0;
 
-    const uint8_t *r = asdf_stream_peek(parser->stream, 0, &len);
+    const uint8_t *buf = asdf_stream_peek(parser->stream, 0, &len);
 
-    if (!r || !len) {
+    if (!buf || !len) {
         parser->state = ASDF_PARSER_STATE_END;
         // Should immediately emit the end event, not a block event
         return ASDF_PARSE_CONTINUE;
     }
 
     // Likeliest case--we encounter a %YAML directive indicating beginning of the YAML tree
-    if (LIKELY(is_yaml_directive((const char *)r, len))) {
+    if (LIKELY(is_yaml_directive((const char *)buf, len))) {
         parser->tree.has_tree = 1;
         return emit_tree_start_event(parser, event);
     }
 
     // Or may encounter an ASDF block magic esp. in case of an exploded ASDF file
-    if (is_block_magic(r, len)) {
+    if (is_block_magic(buf, len)) {
         parser->tree.has_tree = 0;
         parser->state = ASDF_PARSER_STATE_BLOCK;
         return ASDF_PARSE_CONTINUE;
@@ -228,7 +228,7 @@ static parse_result_t parse_tree_or_block(asdf_parser_t *parser, asdf_event_t *e
             // Make sure it is actually a valid YAML directive
             // TODO: Technically this should be either at the start of the file or begin
             // with a newline; should be more careful about that.
-            if (LIKELY(is_yaml_directive((const char *)r, len))) {
+            if (LIKELY(is_yaml_directive((const char *)buf, len))) {
                 parser->tree.has_tree = 1;
                 return emit_tree_start_event(parser, event);
             }
@@ -277,7 +277,7 @@ parse_result_t emit_tree_end_event(asdf_parser_t *parser, asdf_event_t *event) {
  * of the end of the tree (or EOF)
  */
 static int parse_tree_fast(asdf_parser_t *parser) {
-    const uint8_t *r = NULL;
+    const uint8_t *buf = NULL;
     bool tree_end_found = false;
     off_t tree_end = 0;
     size_t len = 0;
@@ -291,9 +291,9 @@ static int parse_tree_fast(asdf_parser_t *parser) {
         // We got a match for either a document end marker or a block magic
         switch (match_token) {
         case ASDF_YAML_DOCUMENT_END_TOK: {
-            r = asdf_stream_next(parser->stream, 0, &len);
+            buf = asdf_stream_next(parser->stream, 0, &len);
 
-            if (LIKELY(is_yaml_document_end_marker((const char *)r, len))) {
+            if (LIKELY(is_yaml_document_end_marker((const char *)buf, len))) {
                 // Read and consume the full line then set the tree end
                 // First chomp the leading newline of the document end marker, then consume
                 // the line of the marker itself.
@@ -352,16 +352,18 @@ static int initialize_yaml_parser(asdf_parser_t *parser) {
     assert(parser->stream->is_seekable || (parser->tree.found && parser->tree.buf));
     bool buffer_tree = asdf_parser_has_opt(parser, ASDF_PARSER_OPT_BUFFER_TREE);
     int ret = 0;
+    struct fy_parser *yaml_parser = fy_parser_create(&default_fy_parse_cfg);
 
-    if (!(parser->yaml_parser = fy_parser_create(&default_fy_parse_cfg))) {
+    if (!yaml_parser) {
         ASDF_ERROR_COMMON(parser, ASDF_ERR_YAML_PARSER_INIT_FAILED);
     }
 
+    parser->yaml_parser = yaml_parser;
+
     if (buffer_tree) {
-        ret = fy_parser_set_string(
-            parser->yaml_parser, (const char *)parser->tree.buf, parser->tree.size);
+        ret = fy_parser_set_string(yaml_parser, (const char *)parser->tree.buf, parser->tree.size);
     } else {
-        ret = parser->stream->fy_parser_set_input(parser->stream, parser->yaml_parser);
+        ret = parser->stream->fy_parser_set_input(parser->stream, yaml_parser);
     }
 
     if (0 != ret)

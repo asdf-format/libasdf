@@ -151,6 +151,7 @@ typedef enum {
     ASDF_NDARRAY_ERR_OOM,
     ASDF_NDARRAY_ERR_INVAL,
     ASDF_NDARRAY_ERR_OVERFLOW,
+    ASDF_NDARRAY_ERR_CONVERSION,
 } asdf_ndarray_err_t;
 
 
@@ -365,7 +366,7 @@ ASDF_EXPORT asdf_ndarray_err_t asdf_ndarray_read_tile_2d(
  *
  *   This just provides the string representations for the common scalar datatypes.
  */
-ASDF_EXPORT asdf_scalar_datatype_t asdf_ndarray_datatype_from_string(const char *s);
+ASDF_EXPORT asdf_scalar_datatype_t asdf_ndarray_datatype_from_string(const char *dtype);
 
 
 /**
