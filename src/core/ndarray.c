@@ -1,3 +1,4 @@
+#include <limits.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -113,6 +114,7 @@ unknown:
  * Later, however, we may want users to be able to build datatypes (for writing new files)
  * so we may make this available as part of a more extensive datatype API.
  */
+// NOLINTNEXTLINE(misc-no-recursion)
 static void asdf_datatype_clean(asdf_datatype_t *datatype) {
     if (datatype->shape)
         free((size_t *)datatype->shape);
@@ -194,7 +196,7 @@ static void warn_invalid_shape(asdf_value_t *value) {
 
 
 static asdf_value_err_t asdf_ndarray_parse_shape(asdf_sequence_t *value, asdf_shape_t *out) {
-    asdf_value_err_t err = ASDF_VALUE_OK;
+    asdf_value_err_t err = ASDF_VALUE_ERR_PARSE_FAILURE;
     uint64_t *shape = NULL;
 
     int ndim = asdf_sequence_size(value);
@@ -223,7 +225,7 @@ static asdf_value_err_t asdf_ndarray_parse_shape(asdf_sequence_t *value, asdf_sh
 
     out->ndim = ndim;
     out->shape = shape;
-    return err;
+    return ASDF_VALUE_OK;
 failure:
     free(shape);
     return err;
@@ -263,7 +265,7 @@ static asdf_value_err_t asdf_ndarray_parse_strides(
         goto failure;
     }
 
-    strides = malloc(ndim * sizeof(uint64_t));
+    strides = malloc(ndim * sizeof(int64_t));
 
     if (!strides) {
         err = ASDF_VALUE_ERR_OOM;
@@ -342,15 +344,17 @@ static asdf_value_err_t asdf_ndarray_parse_datatype(
  *   shape: [3, 3]
  *
  */
+// NOLINTNEXTLINE(misc-no-recursion)
 static asdf_value_err_t asdf_ndarray_parse_field_datatype(
     asdf_mapping_t *value, asdf_byteorder_t byteorder, asdf_datatype_t *field) {
-    asdf_sequence_t *shape_seq = NULL;
 
+    asdf_sequence_t *shape_seq = NULL;
+    asdf_shape_t shape = {0};
     asdf_value_err_t err = ASDF_VALUE_OK;
+    asdf_value_t *datatype_val = asdf_mapping_get(value, "datatype");
 
     // Get the datatype of the field, which itself may be a nested
     // core/ndarray#/definitions/datatype
-    asdf_value_t *datatype_val = asdf_mapping_get(value, "datatype");
     err = asdf_ndarray_parse_datatype(datatype_val, byteorder, field);
     asdf_value_destroy(datatype_val);
 
@@ -369,34 +373,38 @@ static asdf_value_err_t asdf_ndarray_parse_field_datatype(
     err = asdf_ndarray_parse_byteorder(value, "byteorder", &field->byteorder);
 
     if (!ASDF_IS_OPTIONAL_OK(err))
-        goto failure;
+        goto cleanup;
 
     // A datatype field can also be dimensionful in its own right (otherwise .ndim = 0,
     // .shape = NULL)
     err = asdf_get_optional_property(value, "shape", ASDF_VALUE_SEQUENCE, NULL, (void *)&shape_seq);
 
     if (ASDF_IS_OK(err)) {
-        asdf_shape_t shape = {0};
         err = asdf_ndarray_parse_shape(shape_seq, &shape);
         if (ASDF_IS_OK(err)) {
             field->ndim = shape.ndim;
             field->shape = shape.shape;
+
+            if (shape.ndim > 0)
+                field->size = 1;
+
             // Multiply the size
             for (uint32_t dim = 0; dim < shape.ndim; dim++)
                 field->size *= shape.shape[dim];
         }
-        asdf_sequence_destroy(shape_seq);
     }
 
     // Last thing we checked for was shape; if it was not found that's OK
     if (ASDF_IS_OPTIONAL_OK(err))
         err = ASDF_VALUE_OK;
 
-failure:
+cleanup:
+    asdf_sequence_destroy(shape_seq);
     return err;
 }
 
 
+// NOLINTNEXTLINE(misc-no-recursion)
 static asdf_value_err_t asdf_ndarray_parse_record_datatype(
     asdf_sequence_t *value, asdf_byteorder_t byteorder, asdf_datatype_t *datatype) {
 
@@ -440,6 +448,7 @@ static asdf_value_err_t asdf_ndarray_parse_record_datatype(
 }
 
 
+// NOLINTNEXTLINE(misc-no-recursion)
 static asdf_value_err_t asdf_ndarray_parse_datatype(
     asdf_value_t *value, asdf_byteorder_t byteorder, asdf_datatype_t *datatype) {
     asdf_value_err_t err = ASDF_VALUE_ERR_PARSE_FAILURE;
@@ -474,19 +483,19 @@ static asdf_value_err_t asdf_ndarray_parse_datatype(
 
     // Initialize an unknown datatype and fill in the type if it's a known scalar type
     // Otherwise the datatype must be a string
-    const char *s = NULL;
+    const char *dtype = NULL;
 
-    if (ASDF_VALUE_OK != asdf_value_as_string0(value, &s)) {
+    if (ASDF_VALUE_OK != asdf_value_as_string0(value, &dtype)) {
         warn_unsupported_datatype(value);
         return ASDF_VALUE_ERR_PARSE_FAILURE;
     }
 
-    asdf_scalar_datatype_t type = asdf_ndarray_datatype_from_string(s);
+    asdf_scalar_datatype_t type = asdf_ndarray_datatype_from_string(dtype);
 
 #ifdef ASDF_LOG_ENABLED
     if (type == ASDF_DATATYPE_UNKNOWN) {
         const char *path = asdf_value_path(value);
-        ASDF_LOG(value->file, ASDF_LOG_WARN, "unknown datatype for ndarray at %s: %s", path, s);
+        ASDF_LOG(value->file, ASDF_LOG_WARN, "unknown datatype for ndarray at %s: %s", path, dtype);
     }
 #endif
 
@@ -580,7 +589,9 @@ static asdf_value_err_t asdf_ndarray_deserialize(
         goto cleanup;
 
     /* Parse byteorder */
-    if (!ASDF_IS_OK(asdf_ndarray_parse_byteorder(ndarray_map, "byteorder", &byteorder)))
+    err = asdf_ndarray_parse_byteorder(ndarray_map, "byteorder", &byteorder);
+
+    if (!ASDF_IS_OK(err))
         goto cleanup;
 
     ndarray = calloc(1, sizeof(asdf_ndarray_t));
@@ -630,10 +641,13 @@ cleanup:
     asdf_sequence_destroy(shape_seq);
     asdf_sequence_destroy(strides_seq);
     asdf_value_destroy(datatype);
+
     if (err != ASDF_VALUE_OK) {
         free(strides);
+        free(shape.shape);
         free(ndarray);
     }
+
     return err;
 }
 
@@ -668,8 +682,8 @@ ASDF_REGISTER_EXTENSION(
 
 
 static inline asdf_byteorder_t asdf_host_byteorder() {
-    uint16_t x = 1;
-    return (*(uint8_t *)&x) == 1 ? ASDF_BYTEORDER_LITTLE : ASDF_BYTEORDER_BIG;
+    uint16_t one = 1;
+    return (*(uint8_t *)&one) == 1 ? ASDF_BYTEORDER_LITTLE : ASDF_BYTEORDER_BIG;
 }
 
 
@@ -710,19 +724,23 @@ asdf_ndarray_err_t asdf_ndarray_read_tile_ndim(
     const uint64_t *shape,
     asdf_scalar_datatype_t dst_t,
     void **dst) {
-    uint32_t ndim = ndarray->ndim;
 
     if (UNLIKELY(!dst || !ndarray || !origin || !shape))
         // Invalid argument, must be non-NULL
         return ASDF_NDARRAY_ERR_INVAL;
 
+    void *new_buf = NULL;
+    int64_t *strides = NULL;
+    uint64_t *odometer = NULL;
+    uint32_t ndim = ndarray->ndim;
     asdf_scalar_datatype_t src_t = ndarray->datatype.type;
+    asdf_ndarray_err_t err = ASDF_NDARRAY_ERR_INVAL;
 
     if (dst_t == ASDF_DATATYPE_SOURCE)
         dst_t = src_t;
 
-    ssize_t src_elsize = asdf_ndarray_scalar_datatype_size(src_t);
-    ssize_t dst_elsize = asdf_ndarray_scalar_datatype_size(dst_t);
+    size_t src_elsize = asdf_ndarray_scalar_datatype_size(src_t);
+    size_t dst_elsize = asdf_ndarray_scalar_datatype_size(dst_t);
 
     // For not-yet-supported datatypes return ERR_INVAL
     if (src_elsize < 1 || dst_elsize < 1)
@@ -758,9 +776,9 @@ asdf_ndarray_err_t asdf_ndarray_read_tile_ndim(
     // If the function is passed a null pointer, allocate memory for the tile ourselves
     // User is responsible for freeing it.
     void *tile = *dst;
-    void *new_buf = NULL;
 
     if (!tile) {
+        // NOLINTNEXTLINE(clang-analyzer-optin.portability.UnixAPI)
         tile = malloc(tile_size);
 
         if (!tile)
@@ -774,22 +792,6 @@ asdf_ndarray_err_t asdf_ndarray_read_tile_ndim(
     if (UNLIKELY(0 == ndim || 0 == tile_size)) {
         *dst = tile;
         return ASDF_NDARRAY_OK;
-    }
-
-    // Determine element strides (assume C-order for now; ndarray->strides is not used yet)
-    uint32_t inner_dim = ndim - 1;
-    int64_t *strides = malloc(sizeof(int64_t) * ndim);
-
-    if (!strides) {
-        free(new_buf);
-        return ASDF_NDARRAY_ERR_OOM;
-    }
-
-    strides[inner_dim] = 1;
-
-    if (ndim > 1) {
-        for (uint32_t dim = inner_dim; dim > 0; dim--)
-            strides[dim - 1] = strides[dim] * array_shape[dim];
     }
 
     // Determine the copy strategy to use; right now this just handles whether-or-not byteswap
@@ -820,6 +822,30 @@ asdf_ndarray_err_t asdf_ndarray_read_tile_ndim(
         return ASDF_NDARRAY_ERR_CONVERSION;
     }
 
+    // Determine element strides (assume C-order for now; ndarray->strides is not used yet)
+    uint32_t inner_dim = ndim - 1;
+    strides = malloc(sizeof(int64_t) * ndim);
+
+    if (!strides) {
+        err = ASDF_NDARRAY_ERR_OOM;
+        goto cleanup;
+    }
+
+    strides[inner_dim] = 1;
+
+    if (ndim > 1) {
+        for (uint32_t dim = inner_dim; dim > 0; dim--) {
+            uint64_t extent = array_shape[dim];
+            int64_t stride = strides[dim];
+            // Bounds checking
+            if (extent > (uint64_t)INT64_MAX / llabs(stride)) {
+                err = ASDF_NDARRAY_ERR_OUT_OF_BOUNDS;
+                goto cleanup;
+            }
+            strides[dim - 1] = stride * (int64_t)extent;
+        }
+    }
+
     size_t offset = origin[inner_dim];
     bool is_1d = true;
 
@@ -845,21 +871,20 @@ asdf_ndarray_err_t asdf_ndarray_read_tile_ndim(
         // while copying; this does not necessarily have to be treated as an error depending
         // on the application.
         overflow = convert(tile, src, tile_nelems, dst_elsize);
-        free(strides);
         *dst = tile;
 
         if (overflow)
-            return ASDF_NDARRAY_ERR_OVERFLOW;
+            err = ASDF_NDARRAY_ERR_OVERFLOW;
 
-        return ASDF_NDARRAY_OK;
+        err = ASDF_NDARRAY_OK;
+        goto cleanup;
     }
 
-    uint64_t *odometer = malloc(sizeof(uint64_t) * inner_dim);
+    odometer = malloc(sizeof(uint64_t) * inner_dim);
 
     if (!odometer) {
-        free(strides);
-        free(new_buf);
-        return ASDF_NDARRAY_ERR_OOM;
+        err = ASDF_NDARRAY_ERR_OOM;
+        goto cleanup;
     }
 
     memcpy(odometer, origin, sizeof(uint64_t) * inner_dim);
@@ -878,29 +903,33 @@ asdf_ndarray_err_t asdf_ndarray_read_tile_ndim(
             odometer[dim]++;
             src += strides[dim] * src_elsize;
 
-            if (odometer[dim] < origin[dim] + shape[dim]) {
+            if (odometer[dim] < origin[dim] + shape[dim])
                 break;
-            } else {
-                if (dim == 0) {
-                    done = true;
-                    break;
-                }
 
-                odometer[dim] = origin[dim];
-                // Back up
-                src -= shape[dim] * strides[dim] * src_elsize;
+            if (dim == 0) {
+                done = true;
+                break;
             }
+
+            odometer[dim] = origin[dim];
+            // Back up
+            src -= shape[dim] * strides[dim] * src_elsize;
         } while (dim-- > 0);
     }
 
-    free(odometer);
-    free(strides);
     *dst = tile;
 
     if (overflow)
-        return ASDF_NDARRAY_ERR_OVERFLOW;
+        err = ASDF_NDARRAY_ERR_OVERFLOW;
 
-    return ASDF_NDARRAY_OK;
+    err = ASDF_NDARRAY_OK;
+cleanup:
+    if (err != ASDF_NDARRAY_ERR_OVERFLOW && err != ASDF_NDARRAY_OK)
+        free(new_buf);
+
+    free(strides);
+    free(odometer);
+    return err;
 }
 
 
@@ -925,23 +954,29 @@ asdf_ndarray_err_t asdf_ndarray_read_all(
 
 asdf_ndarray_err_t asdf_ndarray_read_tile_2d(
     asdf_ndarray_t *ndarray,
-    uint64_t x,
-    uint64_t y,
+    uint64_t x, // NOLINT(readability-identifier-length,bugprone-easily-swappable-parameters)
+    uint64_t y, // NOLINT(readability-identifier-length)
     uint64_t width,
     uint64_t height,
     const uint64_t *plane_origin,
     asdf_scalar_datatype_t dst_t,
     void **dst) {
+
+    uint64_t *origin = NULL;
+    uint64_t *shape = NULL;
     uint32_t ndim = ndarray->ndim;
+    asdf_ndarray_err_t err = ASDF_NDARRAY_ERR_OUT_OF_BOUNDS;
 
     if (ndim < 2)
-        return ASDF_NDARRAY_ERR_OUT_OF_BOUNDS;
+        goto cleanup;
 
-    uint64_t *origin = calloc(ndim, sizeof(uint64_t));
-    uint64_t *shape = calloc(ndim, sizeof(uint64_t));
+    origin = calloc(ndim, sizeof(uint64_t));
+    shape = calloc(ndim, sizeof(uint64_t));
 
-    if (!origin || !shape)
-        return ASDF_NDARRAY_ERR_OOM;
+    if (UNLIKELY(!origin || !shape)) {
+        err = ASDF_NDARRAY_ERR_OOM;
+        goto cleanup;
+    }
 
     uint32_t leading_ndim = ndim - 2;
     for (uint32_t dim = 0; dim < leading_ndim; dim++) {
@@ -953,7 +988,8 @@ asdf_ndarray_err_t asdf_ndarray_read_tile_2d(
     shape[ndim - 2] = height;
     shape[ndim - 1] = width;
 
-    asdf_ndarray_err_t err = asdf_ndarray_read_tile_ndim(ndarray, origin, shape, dst_t, dst);
+    err = asdf_ndarray_read_tile_ndim(ndarray, origin, shape, dst_t, dst);
+cleanup:
     free(origin);
     free(shape);
     return err;

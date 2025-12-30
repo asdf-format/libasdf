@@ -114,8 +114,9 @@ format:
 	clang-format -i $(addprefix $(srcdir)/,$(src_files)) $(addprefix $(srcdir)/,$(src_headers))
 
 
+TIDY_SOURCES = $(addprefix $(srcdir)/,$(src_files))
 tidy:
-	clang-tidy $(addprefix $(srcdir)/,$(src_files)) -- \
+	clang-tidy $(TIDY_SOURCES) -- \
 	    $(DEFS) $(DEFAULT_INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(asdf_CFLAGS)
 
 if BUILD_DOCS
