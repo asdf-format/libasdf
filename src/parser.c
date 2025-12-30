@@ -484,11 +484,11 @@ static parse_result_t parse_yaml(asdf_parser_t *parser, asdf_event_t *event) {
         // TODO: What if there are more documents?  Currently not allowed by ASDF
         // but is being discussed for ASDF 2.0.0
         const struct fy_mark *mark = fy_event_end_mark(yaml);
-        if (mark) {
+        if (mark && LIKELY(mark->input_pos < ASDF_OFF_MAX)) {
             // libfyaml doesn't care about FILE* and considers the the input it's handed
             // to be at position 0 when it starts parsing, so to get the actual tree end
             // relative to the start of the file we add it to the tree start position
-            parser->tree.end = parser->tree.start + mark->input_pos;
+            parser->tree.end = parser->tree.start + (off_t)mark->input_pos;
         } else {
             parser->tree.end = parser->tree.start;
         }
@@ -534,10 +534,10 @@ static bool validate_block(asdf_parser_t *parser, size_t idx, asdf_block_info_t 
     asdf_block_index_t *block_index = &parser->block.index;
     isize block_index_size = asdf_block_index_size(block_index);
 
-    if (block_index_size < 0 || idx >= (size_t)block_index_size)
+    if (block_index_size < 0 || idx >= (size_t)block_index_size || idx > PTRDIFF_MAX)
         return false;
 
-    isize offset = *(asdf_block_index_at(block_index, idx));
+    isize offset = *(asdf_block_index_at(block_index, (isize)idx));
     size_t avail = 0;
     TRY_SEEK(parser, (off_t)offset, SEEK_SET, false);
     const uint8_t *buf = asdf_stream_peek(parser->stream, ASDF_BLOCK_MAGIC_SIZE, &avail);
@@ -662,30 +662,15 @@ static bool validate_block_index(asdf_parser_t *parser) {
 // TODO: Per @braingram they have already encountered some ASDF files in the wild (catalogs?)
 // that have as many as 10000 blocks, so this might not even search backwards far enough.
 // Have to take a look at how other libraries are handling this.
-// TODO: Split this up a bit once it's working
-static parse_result_t parse_block_index(asdf_parser_t *parser, asdf_event_t *event) {
-    parse_result_t res = ASDF_PARSE_CONTINUE;
-
-    if (UNLIKELY(!parser->stream->is_seekable)) {
-        // Stream is not seekable so we can't rely on the block index
-        goto next_state;
-    }
-
+static parse_result_t parse_find_block_index(asdf_parser_t *parser, off_t file_size) {
+    assert(parser);
     asdf_stream_t *stream = parser->stream;
-    off_t cur_offset = asdf_stream_tell(stream);
 
-    // Basically seek to the end of the file on page boundardies, then seek for the block index
-    // header
     long page_size = sysconf(_SC_PAGESIZE);
 
-    if (UNLIKELY(page_size <= 0)) {
+    if (UNLIKELY(page_size <= 0))
         // Something bizarre happened here, skip block index parsing
-        goto next_state;
-    }
-
-    TRY_SEEK(parser, 0, SEEK_END, ASDF_PARSE_ERROR);
-
-    off_t file_size = asdf_stream_tell(stream);
+        return ASDF_PARSE_CONTINUE;
 
     if (UNLIKELY(file_size < 0)) {
         ASDF_ERROR_COMMON(parser, ASDF_ERR_UNEXPECTED_EOF);
@@ -695,8 +680,6 @@ static parse_result_t parse_block_index(asdf_parser_t *parser, asdf_event_t *eve
     off_t aligned_offset = (file_size > page_size)
                                ? (file_size - page_size - (file_size % page_size))
                                : 0;
-    struct fy_document *doc = NULL;
-
 
     TRY_SEEK(parser, aligned_offset, SEEK_SET, ASDF_PARSE_ERROR);
 
@@ -708,15 +691,36 @@ static parse_result_t parse_block_index(asdf_parser_t *parser, asdf_event_t *eve
         size_t avail = 0;
         const uint8_t *buf = asdf_stream_peek(stream, ASDF_BLOCK_INDEX_HEADER_SIZE + 1, &avail);
 
-        if (buf == NULL || avail < ASDF_BLOCK_INDEX_HEADER_SIZE + 1) {
-            goto cleanup;
-        }
+        if (buf == NULL || avail < ASDF_BLOCK_INDEX_HEADER_SIZE + 1)
+            return ASDF_PARSE_CONTINUE;
 
         if (ends_with_newline((const char *)buf, avail, ASDF_BLOCK_INDEX_HEADER_SIZE))
             break;
     }
 
     if (match_token != ASDF_BLOCK_INDEX_HEADER_TOK)
+        return ASDF_PARSE_CONTINUE;
+
+    return ASDF_PARSE_EVENT;
+}
+
+
+static parse_result_t parse_block_index(asdf_parser_t *parser, asdf_event_t *event) {
+    parse_result_t res = ASDF_PARSE_CONTINUE;
+
+    if (UNLIKELY(!parser->stream->is_seekable)) {
+        // Stream is not seekable so we can't rely on the block index
+        goto next_state;
+    }
+
+    struct fy_document *doc = NULL;
+    asdf_stream_t *stream = parser->stream;
+    off_t cur_offset = asdf_stream_tell(stream);
+    TRY_SEEK(parser, 0, SEEK_END, ASDF_PARSE_ERROR);
+    off_t file_size = asdf_stream_tell(stream);
+    res = parse_find_block_index(parser, file_size);
+
+    if (res != ASDF_PARSE_EVENT)
         goto cleanup;
 
     // Block index found (assuming it's valid YAML)
@@ -730,7 +734,8 @@ static parse_result_t parse_block_index(asdf_parser_t *parser, asdf_event_t *eve
     if (UNLIKELY(!buf)) {
         // TODO: (#5) Not necessarily an unrecoverable error but should produce a log message
         ASDF_ERROR_COMMON(parser, ASDF_ERR_UNEXPECTED_EOF);
-        return ASDF_PARSE_ERROR;
+        res = ASDF_PARSE_ERROR;
+        goto cleanup;
     }
 
     asdf_block_index_t *block_index = &parser->block.index;
@@ -748,7 +753,7 @@ static parse_result_t parse_block_index(asdf_parser_t *parser, asdf_event_t *eve
 
     if (UNLIKELY(!asdf_block_index_reserve(block_index, count))) {
         ASDF_ERROR_OOM(parser);
-        return ASDF_PARSE_ERROR;
+        goto cleanup;
     }
 
     struct fy_node *item = NULL;
@@ -795,10 +800,15 @@ next_state:
 static const asdf_block_info_t *block_from_index(asdf_parser_t *parser, size_t block_idx) {
     const asdf_block_info_t *block_info = NULL;
     asdf_block_info_vec_t *block_infos = &parser->block.infos;
+
+    if (block_idx > PTRDIFF_MAX)
+        return NULL;
+
     // Seek to block using the block index; if the block index was validated we should
     // also already have the first and last blocks parsed
     if (block_idx < parser->block.count) {
-        const asdf_block_info_t *maybe_block_info = asdf_block_info_vec_at(block_infos, block_idx);
+        const asdf_block_info_t *maybe_block_info = asdf_block_info_vec_at(
+            block_infos, (isize)block_idx);
 
         if (!BLOCK_INFO_IS_EMPTY(maybe_block_info)) {
             block_info = maybe_block_info;
@@ -806,7 +816,8 @@ static const asdf_block_info_t *block_from_index(asdf_parser_t *parser, size_t b
             TRY_SEEK(parser, block_info->data_pos, SEEK_SET, NULL);
         }
     } else {
-        asdf_block_info_t *maybe_block_info = asdf_block_info_vec_at_mut(block_infos, block_idx);
+        asdf_block_info_t *maybe_block_info = asdf_block_info_vec_at_mut(
+            block_infos, (isize)block_idx);
         if (validate_block(parser, block_idx, maybe_block_info))
             block_info = maybe_block_info;
     }

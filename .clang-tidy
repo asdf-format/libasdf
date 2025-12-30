@@ -18,7 +18,7 @@ CheckOptions:
   - key: readability-identifier-length.IgnoredLoopCounterNames
     value: '^p|q$'
   - key: readability-identifier-length.IgnoredParameterNames
-    value: '^fd$'
+    value: '^fd|fp$'
   - key: readability-identifier-length.IgnoredVariableNames
     value: '^fd|p|q|st|tm|tz$'
   - key: readability-identifier-naming.EnumCase

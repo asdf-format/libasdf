@@ -68,14 +68,14 @@ static inline bool ends_with_newline(const char *buf, size_t buf_size, size_t le
 
 
 static inline bool is_string_with_newline(
-    const char *buf, size_t buf_size, const char *s, size_t len) {
+    const char *buf, size_t buf_size, const char *str, size_t len) {
     if (buf_size < len + 1)
         return false;
 
     if (buf == NULL)
         return false;
 
-    if (0 != strncmp(buf, s, len))
+    if (0 != strncmp(buf, str, len))
         return false;
 
     return ends_with_newline(buf, buf_size, len);
