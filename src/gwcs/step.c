@@ -83,6 +83,9 @@ static asdf_value_err_t asdf_gwcs_step_deserialize(
     return ASDF_VALUE_OK;
 failure:
     asdf_gwcs_transform_destroy(transform);
+    if (step && step->free)
+        free(step);
+
     return err;
 }
 
