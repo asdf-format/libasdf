@@ -129,6 +129,40 @@ static asdf_meta_history_t asdf_meta_history_deserialize(asdf_value_t *value) {
 }
 
 
+static void asdf_meta_history_dealloc(asdf_meta_history_t *history) {
+    if (!history)
+        return;
+
+    if (history->entries) {
+        for (asdf_history_entry_t **ep = history->entries; *ep; ++ep) {
+            asdf_history_entry_destroy(*ep);
+        }
+        free((void *)history->entries);
+    }
+}
+
+
+static void asdf_meta_dealloc(void *value) {
+    if (!value)
+        return;
+
+    asdf_meta_t *meta = value;
+
+    if (meta->asdf_library)
+        asdf_software_destroy(meta->asdf_library);
+
+    if (meta->history.extensions) {
+        for (asdf_extension_metadata_t **ep = meta->history.extensions; *ep; ++ep) {
+            asdf_extension_metadata_destroy(*ep);
+        }
+        free((void *)meta->history.extensions);
+    }
+
+    asdf_meta_history_dealloc(&meta->history);
+    free(meta);
+}
+
+
 static asdf_value_err_t asdf_meta_deserialize(
     asdf_value_t *value, UNUSED(const void *userdata), void **out) {
     asdf_value_err_t err = ASDF_VALUE_ERR_PARSE_FAILURE;
@@ -167,34 +201,8 @@ static asdf_value_err_t asdf_meta_deserialize(
     return ASDF_VALUE_OK;
 failure:
     asdf_value_destroy(prop);
+    asdf_meta_history_dealloc(&history);
     return err;
-}
-
-
-static void asdf_meta_dealloc(void *value) {
-    if (!value)
-        return;
-
-    asdf_meta_t *meta = value;
-
-    if (meta->asdf_library)
-        asdf_software_destroy(meta->asdf_library);
-
-    if (meta->history.extensions) {
-        for (asdf_extension_metadata_t **ep = meta->history.extensions; *ep; ++ep) {
-            asdf_extension_metadata_destroy(*ep);
-        }
-        free((void *)meta->history.extensions);
-    }
-
-    if (meta->history.entries) {
-        for (asdf_history_entry_t **ep = meta->history.entries; *ep; ++ep) {
-            asdf_history_entry_destroy(*ep);
-        }
-        free((void *)meta->history.entries);
-    }
-
-    free(meta);
 }
 
 

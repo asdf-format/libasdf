@@ -80,7 +80,7 @@ static atomic_bool conversion_table_initialized = false;
  */
 #define _DEFINE_GENERIC_CONV_FN(src_t, dst_t, name, bswap) \
     static int convert_##name(void *dst, const void *src, size_t count, UNUSED(size_t elsize)) { \
-        dst_t *_dst = (dst_t *)dst; \
+        dst_t *_dst = (dst_t *)dst; /* NOLINT(bugprone-macro-parentheses) */ \
         const src_t *_src = (const src_t *)src; \
         for (size_t idx = 0; idx < count; idx++) { \
             src_t val = _src[idx]; \
@@ -100,7 +100,7 @@ static atomic_bool conversion_table_initialized = false;
  */
 #define _DEFINE_CLAMP_CONV_FN(src_t, dst_t, name, bswap, minval, maxval) \
     static int convert_##name(void *dst, const void *src, size_t count, UNUSED(size_t elsize)) { \
-        dst_t *_dst = (dst_t *)dst; \
+        dst_t *_dst = (dst_t *)dst; /* NOLINT(bugprone-macro-parentheses) */ \
         const src_t *_src = (const src_t *)src; \
         int overflow = 0; \
         for (size_t idx = 0; idx < count; idx++) { \
@@ -123,7 +123,7 @@ static atomic_bool conversion_table_initialized = false;
 /** Special case for conversion between floats, to preserve infinities */
 #define _DEFINE_CLAMP_FLOAT_CONV_FN(src_t, dst_t, name, bswap, minval, maxval) \
     static int convert_##name(void *dst, const void *src, size_t count, UNUSED(size_t elsize)) { \
-        dst_t *_dst = (dst_t *)dst; \
+        dst_t *_dst = (dst_t *)dst; /* NOLINT(bugprone-macro-parentheses) */ \
         const src_t *_src = (const src_t *)src; \
         int overflow = 0; \
         for (size_t idx = 0; idx < count; idx++) { \
@@ -147,7 +147,7 @@ static atomic_bool conversion_table_initialized = false;
 
 #define _DEFINE_CLAMP_MAX_CONV_FN(src_t, dst_t, name, bswap, maxval) \
     static int convert_##name(void *dst, const void *src, size_t count, UNUSED(size_t elsize)) { \
-        dst_t *_dst = (dst_t *)dst; \
+        dst_t *_dst = (dst_t *)dst; /* NOLINT(bugprone-macro-parentheses) */ \
         const src_t *_src = (const src_t *)src; \
         int overflow = 0; \
         for (size_t idx = 0; idx < count; idx++) { \
@@ -170,17 +170,17 @@ static atomic_bool conversion_table_initialized = false;
  */
 #define _DEFINE_TRUNCATE_CONV_FN(src_t, dst_t, name, bswap) \
     static int convert_##name(void *dst, const void *src, size_t count, UNUSED(size_t elsize)) { \
-        dst_t *_dst = (dst_t *)dst; \
-        const src_t *_src = (const src_t *)src; \
+        dst_t *cdst = (dst_t *)dst; /* NOLINT(bugprone-macro-parentheses) */ \
+        const src_t *csrc = (const src_t *)src; \
         int overflow = 0; \
         for (size_t idx = 0; idx < count; idx++) { \
-            src_t val = _src[idx]; \
+            src_t val = csrc[idx]; \
             _DO_BSWAP_##bswap(src_t, val); \
             if (val < (src_t)(0)) { \
                 val = (src_t)(0); \
                 overflow = 1; \
             } \
-            _dst[idx] = (dst_t)val; \
+            cdst[idx] = (dst_t)val; \
         } \
         return overflow; \
     }
@@ -213,8 +213,8 @@ static atomic_bool conversion_table_initialized = false;
 
 #define DEFINE_IDENTITY_CONVERSION(src_name, src_t) \
     static int convert_##src_name##_to_##src_name( \
-        void *dst, const void *src, size_t n, size_t elsize) { \
-        memcpy(dst, src, n *elsize); \
+        void *dst, const void *src, size_t nelem, size_t elsize) { \
+        memcpy(dst, src, nelem *elsize); \
         return 0; \
     } \
     _DEFINE_GENERIC_CONV_FN(src_t, src_t, src_name##_to_##src_name##_bswap, 1)
@@ -339,6 +339,7 @@ DEFINE_CLAMP_CONVERSION(float32, float, uint64, uint64_t, 0, UINT64_MAX)
 
 /** Conversions from float64 */
 DEFINE_IDENTITY_CONVERSION(float64, double)
+// NOLINTNEXTLINE(bugprone-branch-clone)
 DEFINE_CLAMP_FLOAT_CONVERSION(float64, double, float32, float, -FLT_MAX, FLT_MAX)
 DEFINE_CLAMP_CONVERSION(float64, double, int8, int8_t, INT8_MIN, INT8_MAX)
 DEFINE_CLAMP_CONVERSION(float64, double, uint8, uint8_t, 0, UINT8_MAX)

@@ -84,6 +84,7 @@ static void asdf_log_impl(
     fprintf(stream, "[%-5s] (" PACKAGE_NAME ")%s:%d: ", level_names[level], file, lineno);
 #endif
 
+    // NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized)
     vfprintf(stream, fmt, args);
     fprintf(stream, "\n");
 }

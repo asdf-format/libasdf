@@ -116,6 +116,7 @@ format:
 
 TIDY_SOURCES = $(addprefix $(srcdir)/,$(src_files))
 # NOTE: pass STC/include as -isystem to prevent clang-tidy from producing warnings in STC
+# However, this still doesn't appear to get the job done :(
 tidy:
 	clang-tidy $(TIDY_SOURCES) -- \
 	    -isystem $(top_srcdir)/third_party/STC/include $(DEFS) $(DEFAULT_INCLUDES) \

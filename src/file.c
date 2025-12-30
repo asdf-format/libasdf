@@ -130,8 +130,10 @@ static asdf_file_t *asdf_file_create(asdf_config_t *user_config, asdf_file_mode_
 
     asdf_config_t *config = asdf_config_build(user_config);
 
-    if (UNLIKELY(!config))
+    if (UNLIKELY(!config)) {
+        free(file);
         return NULL;
+    }
 
     file->config = config;
     file->mode = mode;
@@ -185,6 +187,7 @@ static asdf_file_mode_t asdf_file_mode_parse(const char *mode) {
 }
 
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 asdf_file_t *asdf_open_file_ex(const char *filename, const char *mode, asdf_config_t *config) {
     asdf_file_t *file = asdf_file_create(config, asdf_file_mode_parse(mode));
 
@@ -498,6 +501,7 @@ asdf_value_err_t asdf_get_scalar0(asdf_file_t *file, const char *path, const cha
 
 
 #define ASDF_GET_TYPE(type) \
+    /* NOLINTNEXTLINE(bugprone-macro-parentheses) */ \
     asdf_value_err_t asdf_get_##type(asdf_file_t *file, const char *path, type *out) { \
         asdf_value_t *value = asdf_get_value(file, path); \
         if (!value) \
@@ -568,6 +572,7 @@ static asdf_value_err_t asdf_set_node(asdf_file_t *file, const char *path, struc
 }
 
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 asdf_value_err_t asdf_set_string(asdf_file_t *file, const char *path, const char *str, size_t len) {
     struct fy_document *tree = asdf_file_get_tree_document(file);
 
@@ -583,6 +588,7 @@ asdf_value_err_t asdf_set_string(asdf_file_t *file, const char *path, const char
 }
 
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 asdf_value_err_t asdf_set_string0(asdf_file_t *file, const char *path, const char *str) {
     struct fy_document *tree = asdf_file_get_tree_document(file);
 

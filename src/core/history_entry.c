@@ -86,7 +86,7 @@ static int asdf_parse_datetime(const char *scalar, struct timespec *out) {
         return -1;
     }
 
-    time -= tz_sign * (tz_hour * SEC_PER_HOUR + tz_min * SEC_PER_MIN);
+    time -= (long)tz_sign * (tz_hour * SEC_PER_HOUR + tz_min * SEC_PER_MIN);
     out->tv_sec = time;
     out->tv_nsec = nsec;
     free(buf);
