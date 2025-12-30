@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <inttypes.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -162,17 +163,89 @@ static tree_node_t *stack_peek(tree_node_stack_t *stack) {
 }
 
 
+static tree_node_t *build_container_node(asdf_event_t *event, tree_node_t *parent) {
+    tree_node_t *root = NULL;
+    tree_node_t *node = NULL;
+    const char *key = NULL;
+    size_t index = 0;
+    const char *tag = NULL;
+    size_t tag_len = 0;
+    asdf_yaml_event_type_t event_type = asdf_yaml_event_type(event);
+    tree_node_type_t node_type = (event_type == ASDF_YAML_MAPPING_START_EVENT) ? TREE_MAPPING
+                                                                               : TREE_SEQUENCE;
+
+    if (parent == NULL) {
+        root = tree_node_new(node_type, NULL, 0);
+        node = root;
+    } else {
+        switch (parent->type) {
+        case TREE_MAPPING:
+            key = parent->state.mapping.pending_key;
+            break;
+        case TREE_SEQUENCE:
+            index = parent->state.sequence.index++;
+            break;
+        default:
+            break;
+        }
+        node = tree_node_new(node_type, key, index);
+        tree_node_set_pending_key(parent, NULL, 0);
+        tree_node_add_child(parent, node);
+    }
+
+    tag = asdf_yaml_event_tag(event, &tag_len);
+
+    if (tag && tag_len > 0)
+        node->tag = strndup(tag, tag_len);
+
+    return node;
+}
+
+
+static tree_node_t *build_scalar_node(asdf_event_t *event, tree_node_t *parent) {
+    tree_node_t *node = NULL;
+    const char *key = NULL;
+    size_t index = 0;
+    size_t val_len = 0;
+    const char *value = asdf_yaml_event_scalar_value(event, &val_len);
+    size_t tag_len = 0;
+    const char *tag = asdf_yaml_event_tag(event, &tag_len);
+
+    if (parent->type == TREE_MAPPING && !parent->state.mapping.pending_key) {
+        tree_node_set_pending_key(parent, value, val_len);
+        return NULL;
+    }
+
+    switch (parent->type) {
+    case TREE_MAPPING:
+        key = parent->state.mapping.pending_key;
+        break;
+    case TREE_SEQUENCE:
+        index = parent->state.sequence.index++;
+        break;
+    default:
+        break;
+    }
+
+    node = tree_node_new(TREE_SCALAR, key, index);
+    tree_node_set_pending_key(parent, NULL, 0);
+    node->value = strndup(value, val_len);
+
+    if (tag && tag_len > 0)
+        node->tag = strndup(tag, tag_len);
+
+    return node;
+}
+
+
 static tree_node_t *build_tree(asdf_parser_t *parser) {
     asdf_event_t *event = NULL;
     tree_node_t *root = NULL;
     tree_node_stack_t *stack = NULL;
-    const char *tag = NULL;
-    size_t tag_len = 0;
 
     while ((event = asdf_event_iterate(parser))) {
         asdf_yaml_event_type_t type = asdf_yaml_event_type(event);
         tree_node_t *parent = stack_peek(stack);
-        tree_node_t *node = NULL;
 
         if (type == ASDF_YAML_STREAM_END_EVENT) {
             asdf_event_free(parser, event);
@@ -183,34 +256,10 @@ static tree_node_t *build_tree(asdf_parser_t *parser) {
         /* TODO: Handle anchor events */
         case ASDF_YAML_MAPPING_START_EVENT:
         case ASDF_YAML_SEQUENCE_START_EVENT: {
-            tree_node_type_t node_type = (type == ASDF_YAML_MAPPING_START_EVENT) ? TREE_MAPPING
-                                                                                 : TREE_SEQUENCE;
-            const char *key = NULL;
-            size_t index = 0;
+            tree_node_t *node = build_container_node(event, parent);
 
-            if (parent == NULL) {
-                root = tree_node_new(node_type, NULL, 0);
-                node = root;
-            } else {
-                switch (parent->type) {
-                case TREE_MAPPING:
-                    key = parent->state.mapping.pending_key;
-                    break;
-                case TREE_SEQUENCE:
-                    index = parent->state.sequence.index++;
-                default:
-                    break;
-                }
-                node = tree_node_new(node_type, key, index);
-                tree_node_set_pending_key(parent, NULL, 0);
-                tree_node_add_child(parent, node);
-            }
-
-            tag = asdf_yaml_event_tag(event, &tag_len);
-
-            if (tag && tag_len > 0) {
-                node->tag = strndup(tag, tag_len);
-            }
+            if (root == NULL)
+                root = node;
 
             stack_push(&stack, node);
             break;
@@ -225,33 +274,11 @@ static tree_node_t *build_tree(asdf_parser_t *parser) {
             if (!parent)
                 continue;
 
-            const char *key = NULL;
-            size_t index = 0;
-            size_t val_len = 0;
-            const char *value = asdf_yaml_event_scalar_value(event, &val_len);
-            tag = asdf_yaml_event_tag(event, &tag_len);
+            tree_node_t *node = build_scalar_node(event, parent);
 
-            if (parent->type == TREE_MAPPING && !parent->state.mapping.pending_key) {
-                tree_node_set_pending_key(parent, value, val_len);
+            if (!node)
                 continue;
-            }
 
-            switch (parent->type) {
-            case TREE_MAPPING:
-                key = parent->state.mapping.pending_key;
-                break;
-            case TREE_SEQUENCE:
-                index = parent->state.sequence.index++;
-                break;
-            default:
-                break;
-            }
-
-            node = tree_node_new(TREE_SCALAR, key, index);
-            tree_node_set_pending_key(parent, NULL, 0);
-            node->value = strndup(value, val_len);
-            if (tag && tag_len > 0)
-                node->tag = strndup(tag, tag_len);
             tree_node_add_child(parent, node);
             break;
         }
@@ -398,6 +425,7 @@ void print_field(FILE *file, field_align_t align, const char *fmt, ...) {
     va_start(args, fmt);
     // NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized)
     vsnprintf(field_buf, sizeof(field_buf), fmt, args);
+    va_end(args);
     fprintf(file, DIM("│"));
     switch (align) {
     case LEFT: {
@@ -453,6 +481,7 @@ static const asdf_info_cfg_t asdf_info_default_cfg = {
     .filename = NULL, .print_tree = true, .print_blocks = false};
 
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 int asdf_info(FILE *in_file, FILE *out_file, const asdf_info_cfg_t *cfg) {
 
     if (!cfg)

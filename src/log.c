@@ -43,9 +43,9 @@ _Static_assert(
 #endif
 
 
-static asdf_log_level_t asdf_log_level_from_string(const char *s) {
+static asdf_log_level_t asdf_log_level_from_string(const char *str) {
     for (unsigned int idx = 1; idx < ASDF_LOG_NUM_LEVELS; idx++) {
-        if (0 == strcasecmp(s, level_names[idx]))
+        if (0 == strcasecmp(str, level_names[idx]))
             return (asdf_log_level_t)idx;
     }
 
