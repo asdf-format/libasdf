@@ -113,6 +113,7 @@ static asdf_value_err_t asdf_get_property_impl(
     asdf_value_type_t prop_type = asdf_value_get_type(prop);
 
     if (type != ASDF_VALUE_UNKNOWN && type != ASDF_VALUE_EXTENSION) {
+        // NOLINTNEXTLINE(readability-suspicious-call-argument)
         if (!is_equivalent_type(prop_type, type)) {
 #ifdef ASDF_LOG_ENABLED
             const char *mapping_tag = asdf_value_tag(&mapping->value);

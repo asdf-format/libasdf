@@ -79,7 +79,7 @@ static asdf_value_err_t asdf_gwcs_bounding_box_deserialize(
         const char *path = asdf_value_path(value);
         ASDF_LOG(value->file, ASDF_LOG_WARN, "insufficient intervals in bounding_box at %s", path);
 #endif
-
+        err = ASDF_VALUE_ERR_PARSE_FAILURE;
         goto cleanup;
     }
 
@@ -95,7 +95,9 @@ static asdf_value_err_t asdf_gwcs_bounding_box_deserialize(
     asdf_gwcs_interval_t *interval_tmp = intervals;
 
     while ((item = asdf_mapping_iter(intervals_map, &iter))) {
-        if (asdf_gwcs_interval_parse(item, interval_tmp) != ASDF_VALUE_OK)
+        err = asdf_gwcs_interval_parse(item, interval_tmp);
+
+        if (err != ASDF_VALUE_OK)
             goto cleanup;
 
         interval_tmp++;
@@ -105,10 +107,7 @@ static asdf_value_err_t asdf_gwcs_bounding_box_deserialize(
     bounding_box->intervals = intervals;
 
     // TODO: Parse order and ignore
-
-    if (!*out)
-        *out = bounding_box;
-
+    *out = bounding_box;
     err = ASDF_VALUE_OK;
 cleanup:
     asdf_sequence_destroy(bounds_seq);

@@ -1,10 +1,10 @@
-#include <limits.h>
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 
 #include <assert.h>
 #include <errno.h>
+#include <limits.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -470,10 +470,10 @@ asdf_value_t *asdf_sequence_iter(asdf_sequence_t *sequence, asdf_sequence_iter_t
         return NULL;
     }
 
-    _asdf_sequence_iter_impl_t *impl = *iter;
+    asdf_sequence_iter_impl_t *impl = *iter;
 
     if (NULL == impl) {
-        impl = calloc(1, sizeof(_asdf_sequence_iter_impl_t));
+        impl = calloc(1, sizeof(asdf_sequence_iter_impl_t));
 
         if (UNLIKELY(!impl)) {
             ASDF_ERROR_OOM(sequence->value.file);
@@ -552,6 +552,9 @@ void asdf_container_item_destroy(asdf_container_item_t *item) {
 
 
 asdf_container_item_t *asdf_container_iter(asdf_value_t *container, asdf_container_iter_t *iter) {
+    if (!container)
+        return NULL;
+
     if (container->raw_type != ASDF_VALUE_MAPPING && container->raw_type != ASDF_VALUE_SEQUENCE) {
 #ifdef ASDF_LOG_ENABLED
         const char *path = asdf_value_path(container);
@@ -560,10 +563,10 @@ asdf_container_item_t *asdf_container_iter(asdf_value_t *container, asdf_contain
         return NULL;
     }
 
-    _asdf_container_iter_impl_t *impl = *iter;
+    asdf_container_item_t *impl = *iter;
 
     if (NULL == impl) {
-        impl = calloc(1, sizeof(_asdf_container_iter_impl_t));
+        impl = calloc(1, sizeof(asdf_container_item_t));
 
         if (!impl) {
             ASDF_ERROR_OOM(container->file);
@@ -706,37 +709,41 @@ asdf_value_err_t asdf_value_as_extension_type(
 
 
 /* Scalar functions */
-static bool is_yaml_null(const char *s, size_t len) {
+static bool is_yaml_null(const char *scalar, size_t len) {
     return (
-        !s || len == 0 ||
-        (len == 4 && ((strncmp(s, "null", len) == 0) || (strncmp(s, "Null", len) == 0) ||
-                      (strncmp(s, "NULL", len) == 0))) ||
-        (len == 1 && s[0] == '~'));
+        !scalar || len == 0 ||
+        (len == 4 && ((strncmp(scalar, "null", len) == 0) || (strncmp(scalar, "Null", len) == 0) ||
+                      (strncmp(scalar, "NULL", len) == 0))) ||
+        (len == 1 && scalar[0] == '~'));
 }
 
 
-static bool is_yaml_bool(const char *s, size_t len, bool *value) {
-    if (!s)
+static bool is_yaml_bool(const char *scalar, size_t len, bool *value) {
+    if (!scalar)
         return false;
 
     /* Allow 0 and 1 tagged as bool */
     if (len == 1) {
-        if (s[0] == '0') {
+        if (scalar[0] == '0') {
             *value = false;
             return true;
-        } else if (s[0] == '1') {
+        }
+
+        if (scalar[0] == '1') {
             *value = true;
             return true;
         }
     }
 
-    if (len == 5 && ((0 == strncmp(s, "false", len)) || (0 == strncmp(s, "False", len)) ||
-                     (0 == strncmp(s, "FALSE", len)))) {
+    // NOLINTNEXTLINE(readability-magic-numbers)
+    if (len == 5 && ((0 == strncmp(scalar, "false", len)) || (0 == strncmp(scalar, "False", len)) ||
+                     (0 == strncmp(scalar, "FALSE", len)))) {
         *value = false;
         return true;
-    } else if (
-        len == 4 && ((0 == strncmp(s, "true", len)) || (0 == strncmp(s, "True", len)) ||
-                     (0 == strncmp(s, "TRUE", len)))) {
+    }
+
+    if (len == 4 && ((0 == strncmp(scalar, "true", len)) || (0 == strncmp(scalar, "True", len)) ||
+                     (0 == strncmp(scalar, "TRUE", len)))) {
         *value = true;
         return true;
     }
@@ -746,119 +753,126 @@ static bool is_yaml_bool(const char *s, size_t len, bool *value) {
 
 
 static asdf_value_err_t is_yaml_signed_int(
-    const char *s, size_t len, int64_t *value, asdf_value_type_t *type) {
-    if (!s)
+    const char *scalar, size_t len, int64_t *value, asdf_value_type_t *type) {
+    if (!scalar)
         return ASDF_VALUE_ERR_UNKNOWN;
 
-    char *is = strndup(s, len);
+    char *int_s = strndup(scalar, len);
 
-    if (!is)
+    if (!int_s)
         return ASDF_VALUE_ERR_UNKNOWN;
 
     errno = 0;
     char *end = NULL;
-    int64_t v = strtoll(is, &end, 0);
+    int64_t val = strtoll(int_s, &end, 0);
 
     if (errno == ERANGE) {
-        free(is);
+        free(int_s);
         return ASDF_VALUE_ERR_OVERFLOW;
-    } else if (errno || *end) {
-        free(is);
+    }
+
+    if (errno || *end) {
+        free(int_s);
         return ASDF_VALUE_ERR_PARSE_FAILURE;
     }
 
     /* choose smallest int that fits */
-    if (v >= INT8_MIN && v <= INT8_MAX)
+    if (val >= INT8_MIN && val <= INT8_MAX)
         *type = ASDF_VALUE_INT8;
-    else if (v >= INT16_MIN && v <= INT16_MAX)
+    else if (val >= INT16_MIN && val <= INT16_MAX)
         *type = ASDF_VALUE_INT16;
-    else if (v >= INT32_MIN && v <= INT32_MAX)
+    else if (val >= INT32_MIN && val <= INT32_MAX)
         *type = ASDF_VALUE_INT32;
     else
         *type = ASDF_VALUE_INT64;
 
-    *value = v;
-    free(is);
+    *value = val;
+    free(int_s);
     return ASDF_VALUE_OK;
 }
 
 
 static asdf_value_err_t is_yaml_unsigned_int(
-    const char *s, size_t len, uint64_t *value, asdf_value_type_t *type) {
-    if (!s)
+    const char *scalar, size_t len, uint64_t *value, asdf_value_type_t *type) {
+    if (!scalar)
         return ASDF_VALUE_ERR_UNKNOWN;
 
-    char *us = strndup(s, len);
+    char *uint_s = strndup(scalar, len);
 
-    if (!us)
+    if (!uint_s)
         return ASDF_VALUE_ERR_UNKNOWN;
 
     errno = 0;
     char *end = NULL;
-    uint64_t v = strtoull(us, &end, 0);
+    uint64_t val = strtoull(uint_s, &end, 0);
 
     if (errno == ERANGE) {
-        free(us);
+        free(uint_s);
         return ASDF_VALUE_ERR_OVERFLOW;
-    } else if (errno || *end) {
-        free(us);
+    }
+
+    if (errno || *end) {
+        free(uint_s);
         return ASDF_VALUE_ERR_PARSE_FAILURE;
     }
 
     /* choose smallest int that fits */
-    if (v <= UINT8_MAX)
+    if (val <= UINT8_MAX)
         *type = ASDF_VALUE_UINT8;
-    else if (v <= UINT16_MAX)
+    else if (val <= UINT16_MAX)
         *type = ASDF_VALUE_UINT16;
-    else if (v <= UINT32_MAX)
+    else if (val <= UINT32_MAX)
         *type = ASDF_VALUE_UINT32;
     else
         *type = ASDF_VALUE_UINT64;
 
-    *value = v;
-    free(us);
+    *value = val;
+    free(uint_s);
     return ASDF_VALUE_OK;
 }
 
 
 static asdf_value_err_t is_yaml_float(
-    const char *s, size_t len, double *value, asdf_value_type_t *type) {
-    if (!s)
+    const char *scalar, size_t len, double *value, asdf_value_type_t *type) {
+
+    if (!scalar)
         return ASDF_VALUE_ERR_UNKNOWN;
 
-    char *fs = strndup(s, len);
+    char *float_s = strndup(scalar, len);
 
-    if (!fs)
+    if (!float_s)
         return ASDF_VALUE_ERR_UNKNOWN;
 
     errno = 0;
     char *end = NULL;
-    double v = strtod(fs, &end);
+    double val = strtod(float_s, &end);
 
     if (errno == ERANGE) {
-        free(fs);
+        free(float_s);
         *type = ASDF_VALUE_DOUBLE;
         return ASDF_VALUE_ERR_OVERFLOW;
-    } else if (errno || *end) {
-        free(fs);
+    }
+
+    if (errno || *end) {
+        free(float_s);
         return ASDF_VALUE_ERR_PARSE_FAILURE;
     }
 
-    float fv = (float)v;
+    float fval = (float)val;
 
-    if ((double)fv == v)
+    if ((double)fval == val)
         *type = ASDF_VALUE_FLOAT;
     else
         *type = ASDF_VALUE_DOUBLE;
 
-    *value = v;
-    free(fs);
+    *value = val;
+    free(float_s);
     return ASDF_VALUE_OK;
 }
 
 
-static asdf_value_err_t asdf_value_infer_null(asdf_value_t *value, const char *s, size_t len) {
-    if (is_yaml_null(s, len)) {
+static asdf_value_err_t asdf_value_infer_null(asdf_value_t *value, const char *scalar, size_t len) {
+    if (is_yaml_null(scalar, len)) {
         value->type = ASDF_VALUE_NULL;
         value->err = ASDF_VALUE_OK;
         return ASDF_VALUE_OK;
@@ -870,9 +884,9 @@ static asdf_value_err_t asdf_value_infer_null(asdf_value_t *value, const char *s
 }
 
 
-static asdf_value_err_t asdf_value_infer_bool(asdf_value_t *value, const char *s, size_t len) {
+static asdf_value_err_t asdf_value_infer_bool(asdf_value_t *value, const char *scalar, size_t len) {
     bool b_val = false;
-    if (is_yaml_bool(s, len, &b_val)) {
+    if (is_yaml_bool(scalar, len, &b_val)) {
         value->type = ASDF_VALUE_BOOL;
         value->scalar.b = b_val;
         value->err = ASDF_VALUE_OK;
@@ -885,17 +899,17 @@ static asdf_value_err_t asdf_value_infer_bool(asdf_value_t *value, const char *s
 }
 
 
-static asdf_value_err_t asdf_value_infer_int(asdf_value_t *value, const char *s, size_t len) {
+static asdf_value_err_t asdf_value_infer_int(asdf_value_t *value, const char *scalar, size_t len) {
     uint64_t u_val = 0;
     asdf_value_type_t type = ASDF_VALUE_UNKNOWN;
-    asdf_value_err_t err = is_yaml_unsigned_int(s, len, &u_val, &type);
+    asdf_value_err_t err = is_yaml_unsigned_int(scalar, len, &u_val, &type);
 
     if (ASDF_VALUE_OK == err) {
         value->type = type;
         value->scalar.u = u_val;
     } else {
         int64_t i_val = 0;
-        err = is_yaml_signed_int(s, len, &i_val, &type);
+        err = is_yaml_signed_int(scalar, len, &i_val, &type);
 
         if (ASDF_VALUE_OK == err) {
             value->type = type;
@@ -909,10 +923,11 @@ static asdf_value_err_t asdf_value_infer_int(asdf_value_t *value, const char *s,
 }
 
 
-static asdf_value_err_t asdf_value_infer_float(asdf_value_t *value, const char *s, size_t len) {
+static asdf_value_err_t asdf_value_infer_float(
+    asdf_value_t *value, const char *scalar, size_t len) {
     double d_val = 0.0;
     asdf_value_type_t type = ASDF_VALUE_UNKNOWN;
-    asdf_value_err_t err = is_yaml_float(s, len, &d_val, &type);
+    asdf_value_err_t err = is_yaml_float(scalar, len, &d_val, &type);
     if (ASDF_VALUE_OK == err || ASDF_VALUE_ERR_OVERFLOW == err) {
         value->type = type;
         value->scalar.d = d_val;
@@ -936,12 +951,12 @@ static asdf_value_err_t asdf_value_infer_scalar_type(asdf_value_t *value) {
         break;
     }
 
-    if (value->type != ASDF_VALUE_SCALAR) {
+    if (value->type != ASDF_VALUE_SCALAR)
         /* Has already been inferred */
         return ASDF_VALUE_OK;
-    } else if (!((ASDF_VALUE_ERR_UNKNOWN == value->err) || (ASDF_VALUE_OK == value->err))) {
+
+    if (!((ASDF_VALUE_ERR_UNKNOWN == value->err) || (ASDF_VALUE_OK == value->err)))
         return value->err;
-    }
 
     enum fy_node_style style = fy_node_get_style(value->node);
 
@@ -959,7 +974,7 @@ static asdf_value_err_t asdf_value_infer_scalar_type(asdf_value_t *value) {
     }
 
     size_t len = 0;
-    const char *s = fy_node_get_scalar(value->node, &len);
+    const char *scalar = fy_node_get_scalar(value->node, &len);
     const char *tag_str = asdf_value_tag(value);
 
     /* If Common Schema tag explicitly present, honor it (but verify) */
@@ -981,18 +996,18 @@ static asdf_value_err_t asdf_value_infer_scalar_type(asdf_value_t *value) {
         case ASDF_YAML_COMMON_TAG_UNKNOWN:
             break;
         case ASDF_YAML_COMMON_TAG_NULL:
-            err = asdf_value_infer_null(value, s, len);
+            err = asdf_value_infer_null(value, scalar, len);
             break;
         case ASDF_YAML_COMMON_TAG_BOOL: {
-            err = asdf_value_infer_bool(value, s, len);
+            err = asdf_value_infer_bool(value, scalar, len);
             break;
         }
         case ASDF_YAML_COMMON_TAG_INT: {
-            err = asdf_value_infer_int(value, s, len);
+            err = asdf_value_infer_int(value, scalar, len);
             break;
         }
         case ASDF_YAML_COMMON_TAG_FLOAT: {
-            err = asdf_value_infer_float(value, s, len);
+            err = asdf_value_infer_float(value, scalar, len);
             break;
         }
         case ASDF_YAML_COMMON_TAG_STR:
@@ -1007,42 +1022,44 @@ static asdf_value_err_t asdf_value_infer_scalar_type(asdf_value_t *value) {
     }
 
     /* Untagged -> core schema heuristics (plain style only) */
-    if (ASDF_VALUE_OK == asdf_value_infer_null(value, s, len)) {
-        ASDF_LOG(value->file, ASDF_LOG_DEBUG, "inferred %.*s as null", len, s);
+    if (ASDF_VALUE_OK == asdf_value_infer_null(value, scalar, len)) {
+        ASDF_LOG(value->file, ASDF_LOG_DEBUG, "inferred %.*s as null", len, scalar);
         return ASDF_VALUE_OK;
     }
 
-    asdf_value_err_t err = asdf_value_infer_int(value, s, len);
+    asdf_value_err_t err = asdf_value_infer_int(value, scalar, len);
 
     if (ASDF_VALUE_OK == err || ASDF_VALUE_ERR_OVERFLOW == err) {
 #ifdef ASDF_LOG_ENABLED
         if (ASDF_VALUE_ERR_OVERFLOW == err)
-            ASDF_LOG(value->file, ASDF_LOG_DEBUG, "inferred %.*s as int (with overflow)", len, s);
+            ASDF_LOG(
+                value->file, ASDF_LOG_DEBUG, "inferred %.*s as int (with overflow)", len, scalar);
         else
-            ASDF_LOG(value->file, ASDF_LOG_DEBUG, "inferred %.*s as int", len, s);
+            ASDF_LOG(value->file, ASDF_LOG_DEBUG, "inferred %.*s as int", len, scalar);
 #endif
         return err;
     }
 
-    if (ASDF_VALUE_OK == asdf_value_infer_bool(value, s, len)) {
-        ASDF_LOG(value->file, ASDF_LOG_DEBUG, "inferred %.*s as bool", len, s);
+    if (ASDF_VALUE_OK == asdf_value_infer_bool(value, scalar, len)) {
+        ASDF_LOG(value->file, ASDF_LOG_DEBUG, "inferred %.*s as bool", len, scalar);
         return ASDF_VALUE_OK;
     }
 
-    err = asdf_value_infer_float(value, s, len);
+    err = asdf_value_infer_float(value, scalar, len);
 
     if (ASDF_VALUE_OK == err || ASDF_VALUE_ERR_OVERFLOW == err) {
 #ifdef ASDF_LOG_ENABLED
         if (ASDF_VALUE_ERR_OVERFLOW == err)
-            ASDF_LOG(value->file, ASDF_LOG_DEBUG, "inferred %.*s as float (with overflow)", len, s);
+            ASDF_LOG(
+                value->file, ASDF_LOG_DEBUG, "inferred %.*s as float (with overflow)", len, scalar);
         else
-            ASDF_LOG(value->file, ASDF_LOG_DEBUG, "inferred %.*s as float", len, s);
+            ASDF_LOG(value->file, ASDF_LOG_DEBUG, "inferred %.*s as float", len, scalar);
 #endif
         return err;
     }
 
     /* Otherwise treat as a string */
-    ASDF_LOG(value->file, ASDF_LOG_DEBUG, "inferred %.*s as string", len, s);
+    ASDF_LOG(value->file, ASDF_LOG_DEBUG, "inferred %.*s as string", len, scalar);
     value->type = ASDF_VALUE_STRING;
     value->err = ASDF_VALUE_OK;
     return ASDF_VALUE_OK;
@@ -1117,8 +1134,9 @@ ASDF_VALUE_IS_SCALAR_TYPE(string, ASDF_VALUE_STRING)
 
 
 asdf_value_err_t asdf_value_as_string(asdf_value_t *value, const char **out, size_t *len) {
-    asdf_value_err_t err = ASDF_VALUE_ERR_UNKNOWN;
-    if ((err = asdf_value_infer_scalar_type(value)) != ASDF_VALUE_OK)
+    asdf_value_err_t err = asdf_value_infer_scalar_type(value);
+
+    if (err != ASDF_VALUE_OK)
         return err;
 
     if (value->type != ASDF_VALUE_STRING)
@@ -1130,8 +1148,9 @@ asdf_value_err_t asdf_value_as_string(asdf_value_t *value, const char **out, siz
 
 
 asdf_value_err_t asdf_value_as_string0(asdf_value_t *value, const char **out) {
-    asdf_value_err_t err = ASDF_VALUE_ERR_UNKNOWN;
-    if ((err = asdf_value_infer_scalar_type(value)) != ASDF_VALUE_OK)
+    asdf_value_err_t err = asdf_value_infer_scalar_type(value);
+
+    if (err != ASDF_VALUE_OK)
         return err;
 
     if (value->type != ASDF_VALUE_STRING)
@@ -1209,16 +1228,13 @@ bool asdf_value_is_bool(asdf_value_t *value) {
 
 
 asdf_value_err_t asdf_value_as_bool(asdf_value_t *value, bool *out) {
-    asdf_value_err_t err = ASDF_VALUE_ERR_UNKNOWN;
-    if ((err = asdf_value_infer_scalar_type(value)) != ASDF_VALUE_OK)
+    asdf_value_err_t err = asdf_value_infer_scalar_type(value);
+    if (err != ASDF_VALUE_OK)
         return err;
 
     /* Allow casting plain 0/1 (strictly) to bool */
     if (value->type == ASDF_VALUE_UINT8) {
-        if (value->scalar.u == 0) {
-            *out = value->scalar.b;
-            return ASDF_VALUE_OK;
-        } else if (value->scalar.u == 1) {
+        if (value->scalar.u == 0 || value->scalar.u == 1) {
             *out = value->scalar.b;
             return ASDF_VALUE_OK;
         }
@@ -1277,8 +1293,9 @@ bool asdf_value_is_int8(asdf_value_t *value) {
 
 
 asdf_value_err_t asdf_value_as_int8(asdf_value_t *value, int8_t *out) {
-    asdf_value_err_t err = ASDF_VALUE_ERR_UNKNOWN;
-    if ((err = asdf_value_infer_scalar_type(value)) != ASDF_VALUE_OK)
+    asdf_value_err_t err = asdf_value_infer_scalar_type(value);
+
+    if (err != ASDF_VALUE_OK)
         return err;
 
     switch (value->type) {
@@ -1522,7 +1539,7 @@ asdf_value_err_t asdf_value_as_uint8(asdf_value_t *value, uint8_t *out) {
     case ASDF_VALUE_INT32:
     case ASDF_VALUE_INT16:
         // Return anyways but indicate an overflow
-        *out = (int64_t)value->scalar.i;
+        *out = value->scalar.i;
 
         if (value->scalar.i < 0 || value->scalar.i > UINT8_MAX)
             return ASDF_VALUE_ERR_OVERFLOW;
@@ -1692,7 +1709,7 @@ asdf_value_err_t asdf_value_as_uint64(asdf_value_t *value, uint64_t *out) {
     case ASDF_VALUE_UINT32:
     case ASDF_VALUE_UINT16:
     case ASDF_VALUE_UINT8:
-        *out = (uint64_t)value->scalar.u;
+        *out = value->scalar.u;
         return ASDF_VALUE_OK;
     case ASDF_VALUE_INT64:
     case ASDF_VALUE_INT32:
@@ -1865,61 +1882,68 @@ asdf_value_err_t asdf_value_as_type(asdf_value_t *value, asdf_value_type_t type,
     return ASDF_VALUE_ERR_TYPE_MISMATCH;
 }
 
+#define ASDF_VALUE_FIND_ITER_MIN_CAPACITY 8
+#define ASDF_VALUE_FIND_ITER_MAX_DEPTH 256
+
 /**
  * Implementation details for `asdf_value_find_iter_ex` which is the workhorse
  * for all the other variants (`asdf_value_find_iter`, `asdf_value_find_ex`,
  * `asdf_value_find`)
  */
-static _asdf_find_iter_impl_t *asdf_value_find_iter_create(
+static asdf_find_item_t *asdf_value_find_iter_create(
     bool depth_first, asdf_value_pred_t descend_pred, ssize_t max_depth) {
-    _asdf_find_iter_impl_t *it = calloc(1, sizeof(_asdf_find_iter_impl_t));
+    asdf_find_item_t *item = calloc(1, sizeof(asdf_find_item_t));
 
-    if (!it)
+    if (!item)
         return NULL;
 
-    it->depth_first = depth_first;
-    it->descend_pred = descend_pred;
-    it->max_depth = max_depth;
-    it->value = NULL;
+    item->depth_first = depth_first;
+    item->descend_pred = descend_pred;
+    item->max_depth = max_depth;
+    item->value = NULL;
     // Initial small frame stack, though we can also use max_depth as a
     // heuristic
-    it->frame_cap = (max_depth < 0) ? 8 : ((max_depth > 256) ? 256 : max_depth + 1);
-    it->frames = calloc(it->frame_cap, sizeof(_asdf_find_frame_t));
-    return it;
+    item->frame_cap = (max_depth < 0) ? ASDF_VALUE_FIND_ITER_MIN_CAPACITY
+                                      : (((max_depth > ASDF_VALUE_FIND_ITER_MAX_DEPTH)
+                                              ? ASDF_VALUE_FIND_ITER_MAX_DEPTH
+                                              : max_depth + 1));
+    item->frames = calloc(item->frame_cap, sizeof(asdf_find_frame_t));
+    return item;
 }
 
 
 /** Just doubles the frame capacity */
-static inline void asdf_find_iter_push_frame(
-    _asdf_find_iter_impl_t *it, asdf_value_t *container, ssize_t depth) {
+static inline asdf_find_frame_t *asdf_find_iter_push_frame(
+    asdf_find_item_t *iter, asdf_value_t *container, ssize_t depth) {
     // Refuse to push a new frame if we are already at max-depth or the new
     // container doesn't match the descend predicate
     // Always allow push though if frame_count == 0; that is, the root node is
     // always searched through regardless of descend_prod
-    if ((it->max_depth >= 0 && depth > it->max_depth) ||
-        (it->frame_count > 0 && it->descend_pred && !it->descend_pred(container)))
-        return;
+    if ((iter->max_depth >= 0 && depth > iter->max_depth) ||
+        (iter->frame_count > 0 && iter->descend_pred && !iter->descend_pred(container)))
+        return NULL;
 
-    if (it->frame_count == it->frame_cap) {
-        size_t new_frame_cap = it->frame_cap * 2;
-        _asdf_find_frame_t *new_frames = realloc(
-            it->frames, new_frame_cap * sizeof(_asdf_find_frame_t));
+    if (iter->frame_count == iter->frame_cap) {
+        size_t new_frame_cap = iter->frame_cap * 2;
+        asdf_find_frame_t *new_frames = realloc(
+            iter->frames, new_frame_cap * sizeof(asdf_find_frame_t));
 
         if (!new_frames) {
             ASDF_ERROR_OOM(container->file);
-            return;
+            return NULL;
         }
 
-        it->frames = new_frames;
-        it->frame_cap = new_frame_cap;
+        iter->frames = new_frames;
+        iter->frame_cap = new_frame_cap;
     }
 
-    _asdf_find_frame_t *frame = &it->frames[it->frame_count++];
-    ZERO_MEMORY(frame, sizeof(_asdf_find_frame_t));
+    asdf_find_frame_t *frame = &iter->frames[iter->frame_count++];
+    ZERO_MEMORY(frame, sizeof(asdf_find_frame_t));
     frame->container = container;
     frame->iter = asdf_container_iter_init();
     frame->is_mapping = container->raw_type == ASDF_VALUE_MAPPING;
     frame->depth = depth;
+    return frame;
 }
 
 
@@ -1929,8 +1953,8 @@ static inline void asdf_find_iter_push_frame(
  * Breadth-first traversal can be slightly more expensive here since we have
  * to shift all the frames down
  */
-static inline void asdf_find_iter_pop_frame(_asdf_find_iter_impl_t *it, size_t idx) {
-    _asdf_find_frame_t *frame = &it->frames[idx];
+static inline void asdf_find_iter_pop_frame(asdf_find_item_t *iter, size_t idx) {
+    asdf_find_frame_t *frame = &iter->frames[idx];
 
     asdf_container_item_destroy(frame->iter);
 
@@ -1939,25 +1963,25 @@ static inline void asdf_find_iter_pop_frame(_asdf_find_iter_impl_t *it, size_t i
     if (frame->owns_container)
         asdf_value_destroy(frame->container);
 
-    memset(frame, 0, sizeof(_asdf_find_frame_t));
+    ZERO_MEMORY(frame, sizeof(asdf_find_frame_t));
 
-    if (idx != it->frame_count - 1) {
+    if (idx != iter->frame_count - 1) {
         // Normally we only pop from the bottom in BFS (idx == 0), but let's
         // handle generic idx
         memmove(
-            &it->frames[idx],
-            &it->frames[idx + 1],
-            (it->frame_count - idx - 1) * sizeof(_asdf_find_frame_t));
+            &iter->frames[idx],
+            &iter->frames[idx + 1],
+            (iter->frame_count - idx - 1) * sizeof(asdf_find_frame_t));
     }
 
-    it->frame_count--;
+    iter->frame_count--;
 }
 
 
 /** DFS strategy for `asdf_find_iter_next` */
-static asdf_value_t *asdf_find_iter_next_dfs(_asdf_find_iter_impl_t *it) {
-    assert(it->frame_count > 0);
-    _asdf_find_frame_t *frame = &it->frames[it->frame_count - 1];
+static asdf_value_t *asdf_find_iter_next_dfs(asdf_find_item_t *iter) {
+    assert(iter->frame_count > 0);
+    asdf_find_frame_t *frame = &iter->frames[iter->frame_count - 1];
 
     if (!frame->visited) {
         frame->visited = true;
@@ -1967,21 +1991,21 @@ static asdf_value_t *asdf_find_iter_next_dfs(_asdf_find_iter_impl_t *it) {
     asdf_container_item_t *item = NULL;
     while ((item = asdf_container_iter(frame->container, &frame->iter))) {
         if (asdf_value_is_container(item->value)) {
-            asdf_find_iter_push_frame(it, item->value, frame->depth + 1);
+            asdf_find_iter_push_frame(iter, item->value, frame->depth + 1);
             return NULL;
         }
 
         return item->value;
     }
-    asdf_find_iter_pop_frame(it, it->frame_count - 1);
+    asdf_find_iter_pop_frame(iter, iter->frame_count - 1);
     return NULL;
 }
 
 
 /** BFS strategy for `asdf_find_iter_next` */
-static asdf_value_t *asdf_find_iter_next_bfs(_asdf_find_iter_impl_t *it) {
-    assert(it->frame_count > 0);
-    _asdf_find_frame_t *frame = &it->frames[0];
+static asdf_value_t *asdf_find_iter_next_bfs(asdf_find_item_t *iter) {
+    assert(iter->frame_count > 0);
+    asdf_find_frame_t *frame = &iter->frames[0];
 
     if (!frame->visited) {
         frame->visited = true;
@@ -1997,14 +2021,19 @@ static asdf_value_t *asdf_find_iter_next_bfs(_asdf_find_iter_impl_t *it) {
             // choice that makes sense most of the time but is a foot-gun
             // here.  Would be better if we boxed values with reference
             // counting
-            asdf_find_iter_push_frame(it, asdf_value_clone(item->value), frame->depth + 1);
-            it->frames[it->frame_count - 1].visited = true;
-            it->frames[it->frame_count - 1].owns_container = true;
+            asdf_find_frame_t *new_frame = asdf_find_iter_push_frame(
+                iter, asdf_value_clone(item->value), frame->depth + 1);
+
+            if (!new_frame)
+                return NULL;
+
+            new_frame->visited = true;
+            new_frame->owns_container = true;
         }
 
         return item->value;
     }
-    asdf_find_iter_pop_frame(it, 0);
+    asdf_find_iter_pop_frame(iter, 0);
     return NULL;
 }
 
@@ -2022,27 +2051,27 @@ static asdf_value_t *asdf_find_iter_next_bfs(_asdf_find_iter_impl_t *it) {
  * if possible. `asdf_info` was written very early in the project when I was
  * just trying to get a handle on libfyaml.
  */
-static asdf_value_t *asdf_find_iter_next(_asdf_find_iter_impl_t *it) {
-    if (it->value && !asdf_value_is_container(it->value))
-        return it->value;
+static asdf_value_t *asdf_find_iter_next(asdf_find_item_t *iter) {
+    if (iter->value && !asdf_value_is_container(iter->value))
+        return iter->value;
 
-    if (!it->frame_count)
+    if (!iter->frame_count)
         return NULL;
 
     // Originally had this all combined together, but I think the logic is
     // clearer if we split the DFS and BFS versions into separate subroutines
     // even though there's a lot of overlap.
-    if (it->depth_first)
-        return asdf_find_iter_next_dfs(it);
+    if (iter->depth_first)
+        return asdf_find_iter_next_dfs(iter);
 
-    return asdf_find_iter_next_bfs(it);
+    return asdf_find_iter_next_bfs(iter);
 }
 
 
 asdf_find_iter_t asdf_find_iter_init_ex(
     bool depth_first, asdf_value_pred_t descend_pred, ssize_t max_depth) {
-    _asdf_find_iter_impl_t *it = asdf_value_find_iter_create(depth_first, descend_pred, max_depth);
-    return it;
+    asdf_find_item_t *iter = asdf_value_find_iter_create(depth_first, descend_pred, max_depth);
+    return iter;
 }
 
 
@@ -2071,38 +2100,38 @@ void asdf_find_item_destroy(asdf_find_item_t *item) {
 asdf_find_item_t *asdf_value_find_iter(
     asdf_value_t *root, asdf_value_pred_t pred, asdf_find_iter_t *iter) {
 
-    _asdf_find_iter_impl_t *it = *iter;
+    asdf_find_item_t *item = *iter;
 
-    if (!it) {
+    if (!item) {
         ASDF_ERROR_OOM(root->file);
         return NULL;
     }
 
-    if (it->frame_count == 0) {
+    if (item->frame_count == 0) {
         // Subsequent calls with the same iterator but a different root result
         // in undefined behavior.  Push the root node onto the stack to begin
         if (asdf_value_is_container(root))
-            asdf_find_iter_push_frame(it, root, 0);
+            asdf_find_iter_push_frame(item, root, 0);
         else
             // Special case when we are given a scalar "root" value
-            it->value = root;
+            item->value = root;
     } else {
-        it->value = NULL;
+        item->value = NULL;
     }
 
     asdf_value_t *current = NULL;
 
-    while (it->frame_count > 0 || it->value) {
-        current = asdf_find_iter_next(it);
+    while (item->frame_count > 0 || item->value) {
+        current = asdf_find_iter_next(item);
         if (current && (!pred || pred(current))) {
             // wrap in find_item_t and return
-            it->value = current;
+            item->value = current;
             // TODO: Build path
-            return (asdf_find_item_t *)it;
+            return item;
         }
-        it->value = NULL;
+        item->value = NULL;
     }
-    asdf_find_item_destroy(it);
+    asdf_find_item_destroy(item);
     return NULL;
 }
 
@@ -2150,6 +2179,20 @@ static inline struct fy_node *asdf_node_sequence_get_by_index(
 }
 
 
+static bool asdf_node_is_null(struct fy_node *node) {
+    if (!node)
+        return false;
+
+    if (fy_node_get_type(node) != FYNT_SCALAR)
+        return false;
+
+    size_t len = 0;
+    fy_node_get_scalar(node, &len);
+    return len == 0;
+}
+
+
+/** Utilities for asdf_node_insert_at */
 static bool asdf_node_sequence_materialize(
     struct fy_document *doc, struct fy_node *sequence, ssize_t size) {
     int cur_size = fy_node_sequence_item_count(sequence);
@@ -2171,18 +2214,163 @@ static bool asdf_node_sequence_materialize(
 }
 
 
-static bool asdf_node_is_null(struct fy_node *node) {
-    if (!node)
-        return false;
+static struct fy_node *asdf_node_create_single_path_component(
+    struct fy_document *doc,
+    struct fy_node *root,
+    const asdf_yaml_path_component_t *comp,
+    struct fy_node *parent,
+    const asdf_yaml_path_component_t *sibling,
+    struct fy_node *final) {
 
-    if (fy_node_get_type(node) != FYNT_SCALAR)
-        return false;
+    struct fy_node *node = NULL;
 
-    size_t len = 0;
-    fy_node_get_scalar(node, &len);
-    return len == 0;
+    switch (comp->target) {
+    case ASDF_YAML_PC_TARGET_ANY:
+        // Ambiguous case--if the parent node exists and is a sequence,
+        // treat as a sequence insertion; if it exists and is a mapping
+        // treat as a mapping insertion, otherwise create a new sequence
+        if (fy_node_is_mapping(parent)) {
+            node = fy_node_mapping_lookup_by_string(parent, comp->key, FY_NT);
+        } else if (fy_node_is_sequence(parent)) {
+            node = asdf_node_sequence_get_by_index(parent, comp->index);
+        }
+        break;
+    case ASDF_YAML_PC_TARGET_MAP:
+        if (fy_node_is_mapping(parent))
+            node = fy_node_mapping_lookup_by_string(parent, comp->key, FY_NT);
+        else {
+            return NULL;
+        }
+        break;
+    case ASDF_YAML_PC_TARGET_SEQ:
+        if (fy_node_is_sequence(parent))
+            node = asdf_node_sequence_get_by_index(parent, comp->index);
+        else {
+            return NULL;
+        }
+        break;
+    }
+
+    if (!node) {
+        if (!sibling) {
+            // The final node to insert in the path
+            node = final;
+        } else {
+            switch (sibling->target) {
+            case ASDF_YAML_PC_TARGET_ANY:
+                if (parent == root)
+                    node = fy_node_create_mapping(doc);
+                else
+                    node = fy_node_create_sequence(doc);
+                break;
+            case ASDF_YAML_PC_TARGET_MAP:
+                node = fy_node_create_mapping(doc);
+                break;
+            case ASDF_YAML_PC_TARGET_SEQ:
+                node = fy_node_create_sequence(doc);
+                break;
+            }
+        }
+    }
+
+    return node;
 }
 
+static asdf_value_err_t asdf_node_materialize_path(
+    struct fy_document *doc,
+    struct fy_node *root,
+    struct fy_node *node,
+    const asdf_yaml_path_t *path) {
+    struct fy_node *parent = root;
+    struct fy_node *current = NULL;
+    isize n_components = asdf_yaml_path_size(path);
+    const asdf_yaml_path_component_t *comp = asdf_yaml_path_at(path, 0);
+    const asdf_yaml_path_component_t *next = comp;
+
+    if (!next)
+        return ASDF_VALUE_ERR_NOT_FOUND;
+
+    for (isize idx = 0; idx < n_components; idx++) {
+        assert(parent);
+        comp = next;
+
+        if (idx == n_components - 1) {
+            next = NULL;
+        } else {
+            next = asdf_yaml_path_at(path, idx + 1);
+            assert(next);
+        }
+
+        current = asdf_node_create_single_path_component(doc, root, comp, parent, next, node);
+
+        if (!current)
+            return ASDF_VALUE_ERR_NOT_FOUND;
+
+        if (fy_node_is_mapping(parent)) {
+            struct fy_node *key = fy_node_create_scalar_copy(doc, comp->key, FY_NT);
+
+            if (!key)
+                return ASDF_VALUE_ERR_OOM;
+
+            if (fy_node_mapping_append(parent, key, current) != 0)
+                return ASDF_VALUE_ERR_OOM;
+
+        } else if (fy_node_is_sequence(parent)) {
+            if (!asdf_node_sequence_materialize(doc, parent, comp->index))
+                return ASDF_VALUE_ERR_OOM;
+
+            if (fy_node_sequence_append(parent, current) != 0)
+                return ASDF_VALUE_ERR_OOM;
+        }
+
+        parent = current;
+    }
+
+    return ASDF_VALUE_OK;
+}
+
+
+static asdf_value_err_t asdf_doc_set_root_from_path(
+    struct fy_document *doc,
+    struct fy_node *node,
+    struct fy_node **root_out,
+    asdf_yaml_path_t *path) {
+    assert(doc && node && root_out && path);
+    const asdf_yaml_path_component_t *comp = asdf_yaml_path_at(path, 0);
+    struct fy_node *root = *root_out;
+
+    if (!comp)
+        return ASDF_VALUE_ERR_NOT_FOUND;
+
+    // Special case--if the first path element is of type MAP and its key is
+    // the empty string, the node is *replacing* the entire document root
+    if (comp->target == ASDF_YAML_PC_TARGET_MAP && strlen(comp->key) == 0) {
+        if (!fy_document_set_root(doc, node))
+            return ASDF_VALUE_ERR_NOT_FOUND;
+
+        *root_out = node;
+        return ASDF_VALUE_OK;
+    }
+
+    // If no root, create it!  The root will *always* default to a mapping
+    // unless the path absolutely insists it not be.
+    if (!root || asdf_node_is_null(root)) {
+        if (comp->target == ASDF_YAML_PC_TARGET_SEQ)
+            root = fy_node_create_sequence(doc);
+        else
+            root = fy_node_create_mapping(doc);
+
+        if (fy_document_set_root(doc, root) != 0)
+            return ASDF_VALUE_ERR_OOM;
+
+        *root_out = root;
+    }
+
+    if (!root)
+        return ASDF_VALUE_ERR_OOM;
+
+    return ASDF_VALUE_OK;
+}
 
 /**
  * Insert a `struct fy_node` into the document at the given (root-anchored) path
@@ -2229,140 +2417,13 @@ asdf_value_err_t asdf_node_insert_at(
         goto cleanup;
     }
 
-    const asdf_yaml_path_component_t *comp = asdf_yaml_path_at(&yaml_path, 0);
+    err = asdf_doc_set_root_from_path(doc, node, &root, &yaml_path);
 
-    if (!comp) {
-        err = ASDF_VALUE_ERR_NOT_FOUND;
+    if (err != ASDF_VALUE_OK)
         goto cleanup;
-    }
 
-    // Special case--if the first path element is of type MAP and its key is
-    // the empty string, the node is *replacing* the entire document root
-    if (comp->target == ASDF_YAML_PC_TARGET_MAP && strlen(comp->key) == 0) {
-        if (!fy_document_set_root(doc, node))
-            err = ASDF_VALUE_ERR_NOT_FOUND;
 
-        goto cleanup;
-    }
-
-    // If no root, create it!  The root will *always* default to a mapping
-    // unless the path absolutely insists it not be.
-    if (!root || asdf_node_is_null(root)) {
-        if (comp->target == ASDF_YAML_PC_TARGET_SEQ)
-            root = fy_node_create_sequence(doc);
-        else
-            root = fy_node_create_mapping(doc);
-
-        if (fy_document_set_root(doc, root) != 0) {
-            err = ASDF_VALUE_ERR_OOM;
-            goto cleanup;
-        }
-    }
-
-    if (!root) {
-        err = ASDF_VALUE_ERR_OOM;
-        goto cleanup;
-    }
-
-    struct fy_node *parent = root;
-    struct fy_node *current = NULL;
-    isize n_components = asdf_yaml_path_size(&yaml_path);
-    const asdf_yaml_path_component_t *next = comp;
-
-    for (isize idx = 0; idx < n_components; idx++) {
-        assert(parent);
-        comp = next;
-
-        if (idx == n_components - 1) {
-            next = NULL;
-        } else {
-            next = asdf_yaml_path_at(&yaml_path, idx + 1);
-            assert(next);
-        }
-
-        switch (comp->target) {
-        case ASDF_YAML_PC_TARGET_ANY:
-            // Ambiguous case--if the parent node exists and is a sequence,
-            // treat as a sequence insertion; if it exists and is a mapping
-            // treat as a mapping insertion, otherwise create a new sequence
-            if (fy_node_is_mapping(parent)) {
-                current = fy_node_mapping_lookup_by_string(parent, comp->key, FY_NT);
-            } else if (fy_node_is_sequence(parent)) {
-                current = asdf_node_sequence_get_by_index(parent, comp->index);
-            }
-            break;
-        case ASDF_YAML_PC_TARGET_MAP:
-            if (fy_node_is_mapping(parent))
-                current = fy_node_mapping_lookup_by_string(parent, comp->key, FY_NT);
-            else {
-                err = ASDF_VALUE_ERR_NOT_FOUND;
-                goto cleanup;
-            }
-            break;
-        case ASDF_YAML_PC_TARGET_SEQ:
-            if (fy_node_is_sequence(parent))
-                current = asdf_node_sequence_get_by_index(parent, comp->index);
-            else {
-                err = ASDF_VALUE_ERR_NOT_FOUND;
-                goto cleanup;
-            }
-            break;
-        }
-
-        if (!current) {
-            if (!next) {
-                // The node to insert
-                current = node;
-            } else {
-                switch (next->target) {
-                case ASDF_YAML_PC_TARGET_ANY:
-                    if (parent == root)
-                        current = fy_node_create_mapping(doc);
-                    else
-                        current = fy_node_create_sequence(doc);
-                    break;
-                case ASDF_YAML_PC_TARGET_MAP:
-                    current = fy_node_create_mapping(doc);
-                    break;
-                case ASDF_YAML_PC_TARGET_SEQ:
-                    current = fy_node_create_sequence(doc);
-                    break;
-                }
-
-                if (!current) {
-                    err = ASDF_VALUE_ERR_NOT_FOUND;
-                    goto cleanup;
-                }
-            }
-        }
-
-        if (fy_node_is_mapping(parent)) {
-            struct fy_node *key = fy_node_create_scalar_copy(doc, comp->key, FY_NT);
-
-            if (!key) {
-                err = ASDF_VALUE_ERR_OOM;
-                goto cleanup;
-            }
-
-            if (fy_node_mapping_append(parent, key, current) != 0) {
-                err = ASDF_VALUE_ERR_OOM;
-                goto cleanup;
-            }
-        } else if (fy_node_is_sequence(parent)) {
-            if (!asdf_node_sequence_materialize(doc, parent, comp->index)) {
-                err = ASDF_VALUE_ERR_OOM;
-                goto cleanup;
-            }
-
-            if (fy_node_sequence_append(parent, current) != 0) {
-                err = ASDF_VALUE_ERR_OOM;
-                goto cleanup;
-            }
-        }
-
-        parent = current;
-    }
-
+    err = asdf_node_materialize_path(doc, root, node, &yaml_path);
 cleanup:
     asdf_yaml_path_drop(&yaml_path);
     return err;

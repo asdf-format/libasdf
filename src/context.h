@@ -72,4 +72,4 @@ static inline asdf_context_t *asdf_get_context_helper(void *obj) {
 }
 
 
-#define __ASDF_GET_CONTEXT(obj) asdf_context_t *__ctx = asdf_get_context_helper(obj);
+#define ASDF_GET_CONTEXT(obj) asdf_context_t *__ctx = asdf_get_context_helper(obj);

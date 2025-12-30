@@ -20,7 +20,7 @@ typedef struct {
 
 
 static asdf_compressor_userdata_t *asdf_compressor_bzp2_init(
-    asdf_block_t *block, const void *dest, size_t dest_size) {
+    const asdf_block_t *block, const void *dest, size_t dest_size) {
     asdf_compressor_bzp2_userdata_t *userdata = NULL;
 
     userdata = calloc(1, sizeof(asdf_compressor_bzp2_userdata_t));
@@ -30,13 +30,13 @@ static asdf_compressor_userdata_t *asdf_compressor_bzp2_init(
         return NULL;
     }
 
-    bz_stream *bz = &userdata->bz;
-    bz->next_in = (char *)block->data;
-    bz->avail_in = block->avail_size;
-    bz->next_out = (char *)dest;
-    bz->avail_out = dest_size;
+    bz_stream *stream = &userdata->bz;
+    stream->next_in = (char *)block->data;
+    stream->avail_in = block->avail_size;
+    stream->next_out = (char *)dest;
+    stream->avail_out = dest_size;
 
-    int ret = BZ2_bzDecompressInit(bz, 0, 0);
+    int ret = BZ2_bzDecompressInit(stream, 0, 0);
     if (ret != BZ_OK) {
         ASDF_LOG(block->file, ASDF_LOG_ERROR, "error initializing bzip2 stream: %d", ret);
         return NULL;
@@ -72,8 +72,8 @@ static int asdf_compressor_bzp2_decomp(
     asdf_compressor_userdata_t *userdata,
     uint8_t *buf,
     size_t buf_size,
-    size_t offset_hint,
-    size_t *offset_out) {
+    size_t *offset_out,
+    size_t offset_hint) {
     assert(userdata);
     asdf_compressor_bzp2_userdata_t *bzp2 = userdata;
     bzp2->info.status = ASDF_COMPRESSOR_IN_PROGRESS;

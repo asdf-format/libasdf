@@ -62,17 +62,20 @@ typedef struct asdf_sequence {
     asdf_value_t value;
 } asdf_sequence_t;
 
-typedef struct _asdf_sequence_iter_impl {
+typedef struct asdf_sequence_iter_impl {
     asdf_value_t *value;
     int index;
     void *iter;
-} _asdf_sequence_iter_impl_t;
+} asdf_sequence_iter_impl_t;
 
 
-typedef _asdf_sequence_iter_impl_t *asdf_sequence_iter_t;
+typedef void *asdf_sequence_iter_t;
 
 
-typedef struct _asdf_container_iter_impl {
+/**
+ * Contains both the iterator state and the current item of the iterator
+ */
+typedef struct asdf_container_item {
     union {
         const char *key;
         int index;
@@ -83,13 +86,10 @@ typedef struct _asdf_container_iter_impl {
         asdf_mapping_iter_t mapping;
         asdf_sequence_iter_t sequence;
     } iter;
-} _asdf_container_iter_impl_t;
+} asdf_container_item_t;
 
 
-typedef _asdf_container_iter_impl_t *asdf_container_iter_t;
-
-
-typedef struct _asdf_container_iter_impl asdf_container_item_t;
+typedef void *asdf_container_iter_t;
 
 
 ASDF_LOCAL asdf_value_t *asdf_value_create(asdf_file_t *file, struct fy_node *node);
@@ -106,23 +106,21 @@ typedef struct {
     bool is_mapping;
     ssize_t depth;
     asdf_container_iter_t iter;
-} _asdf_find_frame_t;
+} asdf_find_frame_t;
 
 
-typedef struct _asdf_find_iter_impl {
+typedef struct asdf_find_item {
     asdf_value_t *value;
     bool depth_first;
     asdf_value_pred_t descend_pred;
     ssize_t max_depth;
-    _asdf_find_frame_t *frames;
+    asdf_find_frame_t *frames;
     size_t frame_count;
     size_t frame_cap;
-} _asdf_find_iter_impl_t;
+} asdf_find_item_t;
 
 
-typedef _asdf_find_iter_impl_t *asdf_find_iter_t;
-
-typedef struct _asdf_find_iter_impl asdf_find_item_t;
+typedef void *asdf_find_iter_t;
 
 
 /**

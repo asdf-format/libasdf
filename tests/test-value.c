@@ -150,7 +150,8 @@ MU_TEST(test_asdf_value_as_scalar) {
     err = asdf_value_as_scalar(value, &s, &len);
     assert_int(err, ==, ASDF_VALUE_OK);
     assert_not_null(s);
-    assert_string_equal(s, "127");
+    assert_int(len, ==, 3);
+    assert_memory_equal(len, s, "127");
     asdf_value_destroy(value);
     asdf_close(file);
     return MUNIT_OK;

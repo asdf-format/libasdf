@@ -28,7 +28,7 @@
 #define ASDF_LOG(obj, level, fmt, ...) \
     do { \
         if ((level) >= ASDF_LOG_MIN_LEVEL) { \
-            __ASDF_GET_CONTEXT(obj); \
+            ASDF_GET_CONTEXT(obj); \
             asdf_log(__ctx, (level), __FILE__, __LINE__, fmt, ##__VA_ARGS__); \
         } \
     } while (0)

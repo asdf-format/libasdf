@@ -68,8 +68,8 @@ typedef struct asdf_stream {
 static inline const uint8_t *asdf_stream_next_impl(
     asdf_stream_t *stream, size_t count, size_t *avail, const char *file, int lineno) {
 #if DEBUG
-    const uint8_t *r = stream->next(stream, count, avail);
-    if (stream->last_next_ptr == r) {
+    const uint8_t *buf = stream->next(stream, count, avail);
+    if (stream->last_next_ptr == buf) {
         stream->unconsumed_next_count++;
 
         if (stream->unconsumed_next_count > 1) {
@@ -88,11 +88,11 @@ static inline const uint8_t *asdf_stream_next_impl(
     } else {
         stream->unconsumed_next_count = 1;
         stream->last_next_size = *avail;
-        stream->last_next_ptr = r;
+        stream->last_next_ptr = buf;
         stream->prev_next_file = file;
         stream->prev_next_lineno = lineno;
     }
-    return r;
+    return buf;
 #else
     (void)file;
     (void)lineno;

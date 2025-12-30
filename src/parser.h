@@ -11,7 +11,6 @@
 
 #include "asdf/parser.h" // IWYU pragma: export
 
-#include "block.h"
 #include "context.h"
 #include "event.h"
 #include "stream.h"

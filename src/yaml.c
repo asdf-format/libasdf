@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <ctype.h>
 #include <stdbool.h>
 #include <string.h>
@@ -91,48 +92,57 @@ const char *asdf_yaml_event_tag(const asdf_event_t *event, size_t *lenp) {
 }
 
 
+static bool asdf_yaml_document_add_tag_handles(
+    struct fy_document *doc, const asdf_yaml_tag_handle_t *handles) {
+    assert(doc);
+    assert(handles);
+    const asdf_yaml_tag_handle_t *handle = handles;
+    bool has_default_tag_handle = false;
+
+    while (handle && handle->handle) {
+        if (strcmp(handle->handle, ASDF_YAML_DEFAULT_TAG_HANDLE) == 0) {
+            has_default_tag_handle = true;
+            break;
+        }
+        handle++;
+    }
+
+    if (!has_default_tag_handle) {
+        if (fy_document_tag_directive_lookup(doc, ASDF_YAML_DEFAULT_TAG_HANDLE) != NULL) {
+            if (fy_document_tag_directive_remove(doc, ASDF_YAML_DEFAULT_TAG_HANDLE) != 0)
+                return false;
+        }
+
+        if (fy_document_tag_directive_add(
+                doc, ASDF_YAML_DEFAULT_TAG_HANDLE, ASDF_STANDARD_TAG_PREFIX) != 0)
+            return false;
+    }
+
+    handle = handles;
+    while (handle && handle->handle) {
+        if (fy_document_tag_directive_lookup(doc, handle->handle) != NULL) {
+            if (fy_document_tag_directive_remove(doc, handle->handle) != 0)
+                return false;
+        }
+        if (fy_document_tag_directive_add(doc, handle->handle, handle->prefix) != 0)
+            return false;
+        handle++;
+    }
+
+    return true;
+}
+
 // TODO: Could maybe cache the default empty document and use fy_document_clone on it
 // but I don't think this is a very expensive operation to begin with.
 struct fy_document *asdf_yaml_create_empty_document(asdf_config_t *config) {
-    bool has_default_tag_handle = false;
     struct fy_document *doc = fy_document_build_from_string(NULL, asdf_yaml_empty_document, FY_NT);
 
     if (!doc)
         return NULL;
 
     if (config && config->emitter.tag_handles) {
-        // One loop over to see if we actually have the ! handle defined, if not
-        // set it to the default
-        asdf_yaml_tag_handle_t *handle = config->emitter.tag_handles;
-        while (handle && handle->handle) {
-            if (strcmp(handle->handle, ASDF_YAML_DEFAULT_TAG_HANDLE) == 0) {
-                has_default_tag_handle = true;
-                break;
-            }
-            handle++;
-        }
-
-        if (!has_default_tag_handle) {
-            if (fy_document_tag_directive_lookup(doc, ASDF_YAML_DEFAULT_TAG_HANDLE) != NULL) {
-                if (fy_document_tag_directive_remove(doc, ASDF_YAML_DEFAULT_TAG_HANDLE) != 0)
-                    goto error;
-            }
-
-            if (fy_document_tag_directive_add(
-                    doc, ASDF_YAML_DEFAULT_TAG_HANDLE, ASDF_STANDARD_TAG_PREFIX) != 0)
-                goto error;
-        }
-
-        handle = config->emitter.tag_handles;
-        while (handle && handle->handle) {
-            if (fy_document_tag_directive_lookup(doc, handle->handle) != NULL) {
-                if (fy_document_tag_directive_remove(doc, handle->handle) != 0)
-                    goto error;
-            }
-            if (fy_document_tag_directive_add(doc, handle->handle, handle->prefix) != 0)
-                goto error;
-            handle++;
-        }
+        if (!asdf_yaml_document_add_tag_handles(doc, config->emitter.tag_handles))
+            goto error;
     }
 
     return doc;
@@ -142,11 +152,231 @@ error:
 }
 
 
+/** Utilities for path parser */
+
+
 #define SKIP_WHITESPACE(p) \
     do { \
         while (*(p) && isspace(*(p))) \
             (p)++; \
     } while (0)
+
+
+#define ASDF_YAML_PATH_MAX_INDEX_LEN 10
+
+
+/**
+ * Given a character ``brac`` determine if it is a known bracket character and
+ * return the expected path target type for a key/index in that bracket
+ *
+ * The expected matching bracket is returned in ``closing_brac``.
+ *
+ * If ``[`` then a sequence index is expected; if ``'`` or ``"`` a mapping key
+ * is expected; otherwise ambiguous.
+ *
+ * If the input character is not a supported bracket; ``closing_brac`` is set
+ * to -1.
+ */
+static inline asdf_yaml_pc_target_t target_for_bracket(char brac, char *closing_brac) {
+    assert(closing_brac);
+    switch (brac) {
+    case '[':
+        // target had better be a sequence index
+        *closing_brac = ']';
+        return ASDF_YAML_PC_TARGET_SEQ;
+    case '\'':
+    case '\"':
+        // target had better be a mapping key
+        *closing_brac = brac;
+        return ASDF_YAML_PC_TARGET_MAP;
+    default:
+        *closing_brac = -1;
+        return ASDF_YAML_PC_TARGET_ANY;
+    }
+}
+
+
+/** Return a copy of the path component or NULL if not valid */
+static inline char *find_path_component_any(const char *start, const char *end, size_t *len) {
+    assert(len);
+    // In the unknown/ambiguous case, just scan until the next /
+    // A '/' is not allowed in a key unless it's in a quoted key
+    SKIP_WHITESPACE(start);
+    const char *p = start;
+    while (p < end && *p != '/') {
+        // Invalid bracket encountered in a non-bracketed path
+        // component
+        if (strchr("'\"[]", *p))
+            return NULL;
+
+        p++;
+    }
+    *len = p - start;
+    return strndup(start, *len);
+}
+
+
+static inline char *find_path_component_map(
+    const char *start, const char *end, char closing_brac, size_t *len) {
+    assert(start);
+    assert(end);
+    assert(len);
+    const char *p = start;
+
+    if (p == end)
+        return NULL;
+
+    while (p < end) {
+        if (*p == '\\') {
+            // Encountered an escape sequence; next character must be
+            // one of the escaped characters
+            if (!strchr("/*&.{}[]\\", *(++p)))
+                return NULL;
+
+            continue;
+        }
+
+        if (*p == closing_brac && (*(p + 1) == '\0' || *(p + 1) == '/')) {
+            break;
+        }
+
+        p++;
+    }
+
+    // We never reached the end quote; invalid path
+    if (p == end)
+        return NULL;
+
+    size_t key_len = p - start;
+    // Advance past closing bracket
+    *len = key_len + 1;
+    return strndup(start, key_len);
+}
+
+
+static inline char *find_path_component_seq(
+    const char *start, const char *end, char closing_brac, size_t *len) {
+    // Must be a sequence index (opened with [)
+    // We allow leading and trailing whitespace inside the brackets
+    // like [ 0 ]; this seems to be consistent with libfyaml
+    SKIP_WHITESPACE(start);
+    size_t index_len = 0;
+    const char *index_start = start;
+    const char *p = start;
+
+    if (p == end)
+        return NULL;
+
+    // Leading sign, OK
+    if (*p == '-')
+        p++;
+
+    while (p < end) {
+        if (!isdigit(*p)) {
+            index_len = p - index_start;
+            // must be followed by either whitespace or the closing
+            // bracket
+            SKIP_WHITESPACE(p);
+            if (*p != closing_brac)
+                return NULL;
+
+            p++;
+            SKIP_WHITESPACE(p);
+            break;
+        }
+
+        p++;
+    }
+
+    if (index_len == 0)
+        return NULL;
+
+    *len = p - start;
+    return strndup(index_start, index_len);
+}
+
+
+/**
+ * Find the next path component given the expected target type, start position of the path, end
+ * of the path
+ *
+ * Return the length of the path parsed into ``len`` (which may not be the length of the returned
+ * path component since it includes any skipped whitespace, etc.).
+ */
+static inline char *find_path_component(
+    asdf_yaml_pc_target_t target,
+    const char *start,
+    const char *end,
+    char closing_brac,
+    size_t *len) {
+    switch (target) {
+    case ASDF_YAML_PC_TARGET_ANY:
+        return find_path_component_any(start, end, len);
+    case ASDF_YAML_PC_TARGET_MAP:
+        return find_path_component_map(start, end, closing_brac, len);
+    case ASDF_YAML_PC_TARGET_SEQ:
+        return find_path_component_seq(start, end, closing_brac, len);
+    default:
+        UNREACHABLE();
+    }
+}
+
+
+static inline size_t parse_single_path_component(
+    const char *start, const char *end, asdf_yaml_path_t *out_path) {
+    assert(start);
+    assert(end);
+    assert(out_path);
+
+    const char *p = start;
+    char *key = NULL;
+    char closing_brac = -1;
+    size_t comp_len = 0;
+    ssize_t index = 0;
+
+    asdf_yaml_pc_target_t target = target_for_bracket(*p, &closing_brac);
+
+    if (closing_brac > 0)
+        p++;
+
+    key = find_path_component(target, p, end, closing_brac, &comp_len);
+
+    if (key == NULL)
+        return 0;
+
+    p += comp_len;
+
+    // Determine if the key was a pure integer
+    // If the target is ANY (ambiguous) we store both the string key and the
+    // integer value on the path component.  Otherwise we determine here
+    // that if the path component was not an integer, in which case it should
+    // be treated as a mapping key
+    if (target == ASDF_YAML_PC_TARGET_ANY || target == ASDF_YAML_PC_TARGET_SEQ) {
+        char *end_idx = NULL;
+        index = strtoll(key, &end_idx, ASDF_YAML_PATH_MAX_INDEX_LEN);
+
+        // If it was not an integer it's invalid if we were in an explicit
+        // sequence (in [] brackets); else it can still be a mapping key
+        if (end_idx != NULL && *end_idx) {
+            if (target == ASDF_YAML_PC_TARGET_SEQ) {
+                free(key);
+                return 0;
+            }
+
+            target = ASDF_YAML_PC_TARGET_MAP;
+        }
+    }
+
+    asdf_yaml_path_component_t comp = {.target = target, .key = key, .index = index};
+    asdf_yaml_path_push(out_path, comp);
+
+    // Advance past the trailing / if any
+    if (p != end)
+        p++;
+
+    // NOLINTNEXTLINE(clang-analyzer-unix.Malloc)
+    return p - start;
+}
 
 
 /**
@@ -176,9 +406,14 @@ bool asdf_yaml_path_parse(const char *path, asdf_yaml_path_t *out_path) {
         // Special case--if the path is null or an empty string, it always
         // refers to the root.  We represent that with parent = NULL, and
         // key = ""
-        asdf_yaml_path_push(
-            out_path,
-            (asdf_yaml_path_component_t){.target = ASDF_YAML_PC_TARGET_MAP, .key = strdup("")});
+        char *key = strdup("");
+
+        if (!key)
+            return false;
+
+        asdf_yaml_path_component_t comp = {.target = ASDF_YAML_PC_TARGET_MAP, .key = key};
+        asdf_yaml_path_push(out_path, comp);
+        // NOLINTNEXTLINE(clang-analyzer-unix.Malloc)
         return true;
     }
 
@@ -193,161 +428,15 @@ bool asdf_yaml_path_parse(const char *path, asdf_yaml_path_t *out_path) {
         return false;
 
     const char *end = p + len;
-    const char *cur = NULL;
-    const char *cur_end = NULL;
-    char brac = -1;
-    asdf_yaml_pc_target_t target = ASDF_YAML_PC_TARGET_ANY;
+    size_t comp_len = 0;
 
     while (p != end) {
-        cur_end = NULL;
-        brac = *p;
+        comp_len = parse_single_path_component(p, end, out_path);
 
-        // Here we check if the path component begins with one of the
-        // recognized opening brackets: [, ", or '
-        // If [ then it *must* be a sequence index, and if a quote it must
-        // be a mapping key.  Otherwise we determine later
-        switch (brac) {
-        case '[':
-            // target had better be a sequence index
-            target = ASDF_YAML_PC_TARGET_SEQ;
-            p++;
-            break;
-        case '\'':
-        case '\"':
-            // target had better be a mapping key
-            target = ASDF_YAML_PC_TARGET_MAP;
-            p++;
-            break;
-        default:
-            target = ASDF_YAML_PC_TARGET_ANY;
-            brac = -1;
-            break;
-        }
-
-        switch (target) {
-        case ASDF_YAML_PC_TARGET_ANY: {
-            // In the unknown/ambiguous case, just scan until the next /
-            // A '/' is not allowed in a key unless it's in a quoted key
-            SKIP_WHITESPACE(p);
-            cur = p;
-            while (p < end && *p != '/') {
-                // Invalid bracket encountered in a non-bracketed path
-                // component
-                if (strchr("'\"[]", *p))
-                    goto invalid;
-
-                p++;
-            }
-            cur_end = p;
-            break;
-        }
-        case ASDF_YAML_PC_TARGET_MAP:
-            // Definitely a mapping key because we are inside quotes
-            // scan until the matching quote and also check for valid escape
-            // sequences
-            if (p == end)
-                goto invalid;
-
-            cur = p;
-            while (p < end) {
-                if (*p == '\\') {
-                    // Encountered an escape sequence; next character must be
-                    // one of the escaped characters
-                    if (!strchr("/*&.{}[]\\", *(++p)))
-                        goto invalid;
-
-                    continue;
-                }
-
-                if (*p == brac && (*(p + 1) == '\0' || *(p + 1) == '/')) {
-                    cur_end = p;
-                    p++;
-                    break;
-                }
-
-                p++;
-            }
-
-            // We never reached the end quote; invalid path
-            if (!cur_end)
-                goto invalid;
-
-            break;
-        case ASDF_YAML_PC_TARGET_SEQ:
-            // Must be a sequence index (opened with [)
-            // We allow leading and trailing whitespace inside the brackets
-            // like [ 0 ]; this seems to be consistent with libfyaml
-            SKIP_WHITESPACE(p);
-
-            if (p == end)
-                goto invalid;
-
-            cur = p;
-            // Leading sign, OK
-            if (*p == '-')
-                p++;
-
-            while (p < end) {
-                if (!isdigit(*p)) {
-                    // must be followed by either whitespace or the closing
-                    // bracket
-                    SKIP_WHITESPACE(p);
-                    if (*p != ']') {
-                        goto invalid;
-                    } else {
-                        cur_end = p;
-                        p++;
-                        SKIP_WHITESPACE(p);
-                        break;
-                    }
-                } else {
-                    p++;
-                }
-            }
-
-            if (!cur_end)
-                goto invalid;
-
-            break;
-        }
-
-        ssize_t index = 0;
-        char *key = strndup(cur, (cur_end - cur));
-
-        if (!key)
+        if (comp_len == 0)
             goto invalid;
 
-        // Determine if the key was a pure integer
-        // If the target is ANY (ambiguous) we store both the string key and the
-        // integer value on the path component.  Otherwise we determine here
-        // that if the path component was not an integer, in which case it should
-        // be treated as a mapping key
-        if (target == ASDF_YAML_PC_TARGET_ANY || target == ASDF_YAML_PC_TARGET_SEQ) {
-            char *end_idx = NULL;
-            index = strtoll(key, &end_idx, 10);
-
-            // If it was not an integer it's invalid if we were in an explicit
-            // sequence (in [] brackets); else it can still be a mapping key
-            if (end_idx != NULL && *end_idx) {
-                if (target == ASDF_YAML_PC_TARGET_SEQ)
-                    goto invalid;
-                else
-                    target = ASDF_YAML_PC_TARGET_MAP;
-            }
-        }
-
-        // For sequence components we don't store the string key at all
-        if (target == ASDF_YAML_PC_TARGET_SEQ) {
-            free(key);
-            key = NULL;
-        }
-
-        asdf_yaml_path_push(
-            out_path, (asdf_yaml_path_component_t){.target = target, .key = key, .index = index});
-
-        // Advance past the trailing / if any
-        if (p != end)
-            p++;
+        p += comp_len;
     }
 
     return true;

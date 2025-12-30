@@ -10,6 +10,7 @@
 #include <stdatomic.h>
 
 #include "../block.h"
+#include "../context.h"
 #include "../file.h"
 #include "../log.h"
 

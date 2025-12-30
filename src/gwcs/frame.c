@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -41,6 +42,7 @@ static inline void warn_invalid_frame_axes_param(
 static inline void warn_invalid_frame_axes_param(
     UNUSED(asdf_value_t *value),
     UNUSED(const char *propname),
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
     UNUSED(asdf_value_type_t expected_type),
     UNUSED(uint32_t min_axes),
     UNUSED(uint32_t max_axes)) {
@@ -94,6 +96,8 @@ static asdf_value_err_t get_frame_axes_order_param(
     asdf_mapping_t *value, uint32_t *ints, uint32_t min_axes, uint32_t max_axes) {
     asdf_value_err_t err = ASDF_VALUE_ERR_PARSE_FAILURE;
     asdf_sequence_t *axes_seq = NULL;
+    assert(ints);
+
     err = asdf_get_optional_property(
         value, "axes_order", ASDF_VALUE_SEQUENCE, NULL, (void *)&axes_seq);
 

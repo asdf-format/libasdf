@@ -81,7 +81,7 @@ static asdf_value_err_t get_matrix_prop(asdf_mapping_t *value, const char *name,
 
     data = asdf_ndarray_data_raw(ndarray, &size);
 
-    if (size != 2 * 2 * sizeof(double)) {
+    if (size != 2UL * 2UL * sizeof(double)) {
 #ifdef ASDF_LOG_ENABLED
         const char *path = asdf_value_path(&value->value);
         ASDF_LOG(value->value.file, ASDF_LOG_ERROR, "invalid array data for %s in %s", name, path);
@@ -372,7 +372,7 @@ asdf_gwcs_err_t asdf_gwcs_fits_get_ctype(
 
     for (int idx = 0; idx < 2; idx++) {
         char *ctype = malloc(CTYPE_SIZE + 1); // -------- with null
-        //
+
         if (!ctype) {
             err = ASDF_GWCS_ERR_OOM;
             goto failure;
@@ -380,6 +380,8 @@ asdf_gwcs_err_t asdf_gwcs_fits_get_ctype(
 
         memset(ctype, '-', CTYPE_SIZE);
         ctype[CTYPE_SIZE] = '\0';
+        ctypes[idx] = ctype;
+
         const char *axis_type = ucd1_to_ctype(celestial->axis_physical_types[idx]);
 
         if (!axis_type)
@@ -402,7 +404,6 @@ asdf_gwcs_err_t asdf_gwcs_fits_get_ctype(
         size_t proj_str_len = strlen(proj_str);
         assert((axis_type_len + proj_str_len) <= CTYPE_SIZE);
         memcpy(ctype + (CTYPE_SIZE - proj_str_len), proj_str, proj_str_len);
-        ctypes[idx] = ctype;
     }
 
     *ctype1 = ctypes[0];

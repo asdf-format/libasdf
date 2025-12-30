@@ -56,7 +56,7 @@ MU_TEST(test_asdf_yaml_path_parse_single_component) {
     assert_int(asdf_yaml_path_size(&path), ==, 1);
     comp = asdf_yaml_path_at(&path, 0);
     assert_int(comp->target, ==, ASDF_YAML_PC_TARGET_SEQ);
-    assert_null(comp->key);
+    assert_string_equal(comp->key, "0");
     assert_int(comp->index, ==, 0);
     asdf_yaml_path_clear(&path);
 
@@ -120,12 +120,12 @@ MU_TEST(test_asdf_yaml_path_parse) {
 
     comp = asdf_yaml_path_at(&path, 3);
     assert_int(comp->target, ==, ASDF_YAML_PC_TARGET_SEQ);
-    assert_null(comp->key);
+    assert_string_equal(comp->key, "0");
     assert_int(comp->index, ==, 0);
 
     comp = asdf_yaml_path_at(&path, 4);
     assert_int(comp->target, ==, ASDF_YAML_PC_TARGET_SEQ);
-    assert_null(comp->key);
+    assert_string_equal(comp->key, "-1");
     assert_int(comp->index, ==, -1);
 
     comp = asdf_yaml_path_at(&path, 5);

@@ -53,7 +53,7 @@ typedef struct asdf_file {
 ASDF_LOCAL struct fy_document *asdf_file_get_tree_document(asdf_file_t *file);
 
 // Forward-declaration
-typedef struct _asdf_block_comp_state_t asdf_block_comp_state_t;
+typedef struct asdf_block_comp_state asdf_block_comp_state_t;
 
 /**
  * User-level object for inspecting ASDF block metadata and data

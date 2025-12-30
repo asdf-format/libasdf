@@ -114,9 +114,13 @@ format:
 	clang-format -i $(addprefix $(srcdir)/,$(src_files)) $(addprefix $(srcdir)/,$(src_headers))
 
 
+TIDY_SOURCES = $(addprefix $(srcdir)/,$(src_files))
+# NOTE: pass STC/include as -isystem to prevent clang-tidy from producing warnings in STC
+# However, this still doesn't appear to get the job done :(
 tidy:
-	clang-tidy $(addprefix $(srcdir)/,$(src_files)) -- \
-	    $(DEFS) $(DEFAULT_INCLUDES) $(AM_CPPLFAGS) $(CPPFLAGS) $(asdf_CFLAGS)
+	clang-tidy $(TIDY_SOURCES) -- \
+	    -isystem $(top_srcdir)/third_party/STC/include $(DEFS) $(DEFAULT_INCLUDES) \
+            $(AM_CPPFLAGS) $(CPPFLAGS) $(asdf_CFLAGS)
 
 if BUILD_DOCS
 docs:

@@ -298,10 +298,8 @@ ASDF_EXPORT asdf_value_t *asdf_sequence_get(asdf_sequence_t *sequence, int index
 ASDF_EXPORT asdf_value_err_t asdf_value_as_sequence(asdf_value_t *value, asdf_sequence_t **out);
 ASDF_EXPORT void asdf_sequence_destroy(asdf_sequence_t *sequence);
 
-typedef struct _asdf_sequence_iter_impl _asdf_sequence_iter_impl_t;
-
 /** Opaque struct holding sequence iterator state */
-typedef _asdf_sequence_iter_impl_t *asdf_sequence_iter_t;
+typedef void *asdf_sequence_iter_t;
 
 ASDF_EXPORT asdf_sequence_iter_t asdf_sequence_iter_init(void);
 
@@ -332,11 +330,8 @@ ASDF_EXPORT asdf_value_t *asdf_sequence_iter(asdf_sequence_t *sequence, asdf_seq
 
 //
 
-typedef struct _asdf_container_iter_impl _asdf_container_iter_impl_t;
-
-
 /** Opaque struct containing container iterator state */
-typedef _asdf_container_iter_impl_t *asdf_container_iter_t;
+typedef void *asdf_container_iter_t;
 
 /**
  * Opaque struct for values returned from `asdf_container_iter`
@@ -349,7 +344,7 @@ typedef _asdf_container_iter_impl_t *asdf_container_iter_t;
  * and `asdf_container_item_value` to extract properties from the container
  * item.
  */
-typedef struct _asdf_container_iter_impl asdf_container_item_t;
+typedef struct asdf_container_item asdf_container_item_t;
 
 
 ASDF_EXPORT asdf_container_iter_t asdf_container_iter_init(void);
@@ -547,7 +542,7 @@ typedef bool (*asdf_value_pred_t)(asdf_value_t *value);
  * Use `asdf_find_item_path` to return the path of the found value, and
  * `asdf_find_item_value` to return the corresponding value.
  */
-typedef struct _asdf_find_iter_impl asdf_find_item_t;
+typedef struct asdf_find_item asdf_find_item_t;
 
 /**
  * Traverse the tree breadth-first starting from ``root`` until a value
@@ -582,12 +577,10 @@ ASDF_EXPORT const char *asdf_find_item_path(asdf_find_item_t *item);
 ASDF_EXPORT asdf_value_t *asdf_find_item_value(asdf_find_item_t *item);
 
 
-typedef struct _asdf_find_iter_impl _asdf_find_iter_impl_t;
-
 /**
  * Opaque struct used to manage state across `asdf_value_find_iter` calls
  */
-typedef _asdf_find_iter_impl_t *asdf_find_iter_t;
+typedef void *asdf_find_iter_t;
 
 
 /**
@@ -670,7 +663,9 @@ ASDF_EXPORT asdf_find_item_t *asdf_value_find_ex(
  *
  * Only descend into mappings (don't iterate over sequences).
  */
-#define asdf_find_descend_mapping_only asdf_value_is_mapping
+static inline bool asdf_find_descend_mapping_only(asdf_value_t *value) {
+    return asdf_value_is_mapping(value);
+}
 
 
 /**
@@ -680,7 +675,9 @@ ASDF_EXPORT asdf_find_item_t *asdf_value_find_ex(
  * Only iterate over sequences and nested sequences (don't descend into nested
  * mappings).
  */
-#define asdf_find_descend_sequence_only asdf_value_is_sequence
+static inline bool asdf_find_descend_sequence_only(asdf_value_t *value) {
+    return asdf_value_is_sequence(value);
+}
 
 
 /**

@@ -88,6 +88,23 @@ void asdf_gwcs_transform_clean(asdf_gwcs_transform_t *transform) {
 }
 
 
+void asdf_gwcs_transform_destroy(asdf_gwcs_transform_t *transform) {
+    if (!transform)
+        return;
+
+    switch (transform->type) {
+    case ASDF_GWCS_TRANSFORM_FITSWCS_IMAGING:
+        asdf_gwcs_fits_destroy((asdf_gwcs_fits_t *)transform);
+        return;
+    default:
+        break;
+    }
+
+    asdf_gwcs_transform_clean(transform);
+    free(transform);
+}
+
+
 asdf_value_err_t asdf_value_as_gwcs_transform(asdf_value_t *value, asdf_gwcs_transform_t **out) {
     // TODO: This has the same problem as asdf_value_as_gwcs_frame; currently
     // we only support fitswcs_imaging transform so there is no problem, but
@@ -116,25 +133,10 @@ asdf_value_err_t asdf_value_as_gwcs_transform(asdf_value_t *value, asdf_gwcs_tra
 
     if (ASDF_IS_OK(err))
         *out = transform;
+    else
+        asdf_gwcs_transform_destroy(transform);
 
     return err;
-}
-
-
-void asdf_gwcs_transform_destroy(asdf_gwcs_transform_t *transform) {
-    if (!transform)
-        return;
-
-    switch (transform->type) {
-    case ASDF_GWCS_TRANSFORM_FITSWCS_IMAGING:
-        asdf_gwcs_fits_destroy((asdf_gwcs_fits_t *)transform);
-        return;
-    default:
-        break;
-    }
-
-    asdf_gwcs_transform_clean(transform);
-    free(transform);
 }
 
 
