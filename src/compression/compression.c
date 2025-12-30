@@ -63,7 +63,7 @@ static int asdf_create_temp_file(size_t data_size, const char *tmp_dir, int *out
     // unlink so it deletes on close
     unlink(path);
 
-    if (data_size > asdf_off_max()) {
+    if (data_size > ASDF_OFF_MAX) {
         close(fd);
         return -1;
     }

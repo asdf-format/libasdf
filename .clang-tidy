@@ -20,7 +20,7 @@ CheckOptions:
   - key: readability-identifier-length.IgnoredParameterNames
     value: '^fd$'
   - key: readability-identifier-length.IgnoredVariableNames
-    value: '^fd|p|q|tm|tz$'
+    value: '^fd|p|q|st|tm|tz$'
   - key: readability-identifier-naming.EnumCase
     value: lower_case
   - key: readability-identifier-naming.FunctionCase
