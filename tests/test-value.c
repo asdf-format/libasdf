@@ -507,6 +507,20 @@ MU_TEST(test_value_tagged_strings) {
 }
 
 
+MU_TEST(test_asdf_mapping_create) {
+    // TODO: For this test change it to just an in-memory file; we won't write anything anyways
+    // But we need an open file with which to associate the mapping
+    const char *path = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    asdf_file_t *file = asdf_open(path, "w");
+    assert_not_null(file);
+    asdf_mapping_t *mapping = asdf_mapping_create(file);
+    assert_not_null(mapping);
+    asdf_mapping_destroy(mapping);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
 MU_TEST(test_asdf_mapping_iter) {
     const char *path = get_fixture_file_path("value-types.asdf");
     asdf_file_t *file = asdf_open_file(path, "r");
@@ -574,6 +588,20 @@ MU_TEST(test_asdf_mapping_get) {
     assert_null(null);
 
     asdf_mapping_destroy(mapping);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+MU_TEST(test_asdf_sequence_create) {
+    // TODO: For this test change it to just an in-memory file; we won't write anything anyways
+    // But we need an open file with which to associate the sequence
+    const char *path = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    asdf_file_t *file = asdf_open(path, "w");
+    assert_not_null(file);
+    asdf_sequence_t *sequence = asdf_sequence_create(file);
+    assert_not_null(sequence);
+    asdf_sequence_destroy(sequence);
     asdf_close(file);
     return MUNIT_OK;
 }
@@ -1093,8 +1121,10 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_value_as_float),
     MU_RUN_TEST(test_asdf_value_as_double),
     MU_RUN_TEST(test_value_tagged_strings),
+    MU_RUN_TEST(test_asdf_mapping_create),
     MU_RUN_TEST(test_asdf_mapping_iter),
     MU_RUN_TEST(test_asdf_mapping_get),
+    MU_RUN_TEST(test_asdf_sequence_create),
     MU_RUN_TEST(test_asdf_sequence_iter),
     MU_RUN_TEST(test_asdf_sequence_get),
     MU_RUN_TEST(test_asdf_container_iter),

@@ -295,6 +295,23 @@ asdf_value_err_t asdf_value_as_mapping(asdf_value_t *value, asdf_mapping_t **out
 }
 
 
+asdf_mapping_t *asdf_mapping_create(asdf_file_t *file) {
+    struct fy_document *tree = asdf_file_get_tree_document(file);
+
+    if (!tree)
+        return NULL;
+
+    struct fy_node *mapping = fy_node_create_mapping(tree);
+
+    if (!mapping) {
+        ASDF_ERROR_OOM(file);
+        return NULL;
+    }
+
+    return (asdf_mapping_t *)asdf_value_create(file, mapping);
+}
+
+
 void asdf_mapping_destroy(asdf_mapping_t *mapping) {
     asdf_value_destroy(&mapping->value);
 }
@@ -447,6 +464,23 @@ asdf_value_err_t asdf_value_as_sequence(asdf_value_t *value, asdf_sequence_t **o
 
     *out = (asdf_sequence_t *)value;
     return ASDF_VALUE_OK;
+}
+
+
+asdf_sequence_t *asdf_sequence_create(asdf_file_t *file) {
+    struct fy_document *tree = asdf_file_get_tree_document(file);
+
+    if (!tree)
+        return NULL;
+
+    struct fy_node *sequence = fy_node_create_sequence(tree);
+
+    if (!sequence) {
+        ASDF_ERROR_OOM(file);
+        return NULL;
+    }
+
+    return (asdf_sequence_t *)asdf_value_create(file, sequence);
 }
 
 

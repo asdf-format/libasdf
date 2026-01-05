@@ -219,6 +219,7 @@ typedef struct asdf_mapping asdf_mapping_t;
 ASDF_EXPORT bool asdf_value_is_mapping(asdf_value_t *value);
 ASDF_EXPORT int asdf_mapping_size(asdf_mapping_t *mapping);
 ASDF_EXPORT asdf_value_err_t asdf_value_as_mapping(asdf_value_t *value, asdf_mapping_t **out);
+ASDF_EXPORT asdf_mapping_t *asdf_mapping_create(asdf_file_t *file);
 ASDF_EXPORT void asdf_mapping_destroy(asdf_mapping_t *mapping);
 
 /**
@@ -296,6 +297,7 @@ ASDF_EXPORT bool asdf_value_is_sequence(asdf_value_t *value);
 ASDF_EXPORT int asdf_sequence_size(asdf_sequence_t *sequence);
 ASDF_EXPORT asdf_value_t *asdf_sequence_get(asdf_sequence_t *sequence, int index);
 ASDF_EXPORT asdf_value_err_t asdf_value_as_sequence(asdf_value_t *value, asdf_sequence_t **out);
+ASDF_EXPORT asdf_sequence_t *asdf_sequence_create(asdf_file_t *file);
 ASDF_EXPORT void asdf_sequence_destroy(asdf_sequence_t *sequence);
 
 /** Opaque struct holding sequence iterator state */
