@@ -664,6 +664,9 @@ asdf_value_err_t asdf_set_mapping(asdf_file_t *file, const char *path, asdf_mapp
 
     err = asdf_set_node(file, path, mapping->value.node);
 cleanup:
+    /* asdf_set_node implicitly frees the original node, so here set it
+     * to null to avoid double-freeing it and then just destroy the asdf_value_t */
+    mapping->value.node = NULL;
     asdf_mapping_destroy(mapping);
     return err;
 }
@@ -678,6 +681,9 @@ asdf_value_err_t asdf_set_sequence(asdf_file_t *file, const char *path, asdf_seq
 
     err = asdf_set_node(file, path, sequence->value.node);
 cleanup:
+    /* asdf_set_node implicitly frees the original node, so here set it
+     * to null to avoid double-freeing it and then just destroy the asdf_value_t */
+    sequence->value.node = NULL;
     asdf_sequence_destroy(sequence);
     return err;
 }

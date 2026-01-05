@@ -593,6 +593,38 @@ MU_TEST(test_asdf_mapping_get) {
 }
 
 
+/** Test basic mapping setters */
+// TODO: Change to use in-memory file
+MU_TEST(test_asdf_mapping_set_scalars) {
+    const char *path = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    asdf_file_t *file = asdf_open_file(path, "w");
+    assert_not_null(file);
+    asdf_mapping_t *mapping = asdf_mapping_create(file);
+    assert_not_null(mapping);
+    assert_int(asdf_mapping_set_string(mapping, "string", "string", 6), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_string0(mapping, "string0", "string0"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_null(mapping, "null"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_bool(mapping, "false", false), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_bool(mapping, "true", true), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_int8(mapping, "int8", INT8_MIN), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_int16(mapping, "int16", INT16_MIN), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_int32(mapping, "int32", INT32_MIN), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_int64(mapping, "int64", INT64_MIN), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_uint8(mapping, "uint8", UINT8_MAX), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_uint16(mapping, "uint16", UINT16_MAX), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_uint32(mapping, "uint32", UINT32_MAX), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_uint64(mapping, "uint64", UINT64_MAX), ==, ASDF_VALUE_OK);
+
+    // Assign the mapping as the root
+    assert_int(asdf_set_mapping(file, "", mapping), ==, ASDF_VALUE_OK);
+    asdf_close(file);
+
+    const char *fixture_path = get_fixture_file_path("scalars-out.asdf");
+    assert_true(compare_files(path, fixture_path));
+    return MUNIT_OK;
+}
+
+
 MU_TEST(test_asdf_sequence_create) {
     // TODO: For this test change it to just an in-memory file; we won't write anything anyways
     // But we need an open file with which to associate the sequence
@@ -1124,6 +1156,7 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_mapping_create),
     MU_RUN_TEST(test_asdf_mapping_iter),
     MU_RUN_TEST(test_asdf_mapping_get),
+    MU_RUN_TEST(test_asdf_mapping_set_scalars),
     MU_RUN_TEST(test_asdf_sequence_create),
     MU_RUN_TEST(test_asdf_sequence_iter),
     MU_RUN_TEST(test_asdf_sequence_get),
