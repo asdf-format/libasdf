@@ -1,0 +1,1 @@
+Simplify parsing of floating point values in existing files to always assume double-precision floats; removing hacky attempts to assume intent in the reperesentation.

@@ -6,6 +6,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <limits.h>
+#include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -859,35 +860,29 @@ static asdf_value_err_t is_yaml_float(
     if (!scalar)
         return ASDF_VALUE_ERR_UNKNOWN;
 
-    char *float_s = strndup(scalar, len);
+    char *double_s = strndup(scalar, len);
 
-    if (!float_s)
+    if (!double_s)
         return ASDF_VALUE_ERR_UNKNOWN;
 
     errno = 0;
     char *end = NULL;
-    double val = strtod(float_s, &end);
+    double val = strtod(double_s, &end);
 
     if (errno == ERANGE) {
-        free(float_s);
+        free(double_s);
         *type = ASDF_VALUE_DOUBLE;
         return ASDF_VALUE_ERR_OVERFLOW;
     }
 
     if (errno || *end) {
-        free(float_s);
+        free(double_s);
         return ASDF_VALUE_ERR_PARSE_FAILURE;
     }
 
-    float fval = (float)val;
-
-    if ((double)fval == val)
-        *type = ASDF_VALUE_FLOAT;
-    else
-        *type = ASDF_VALUE_DOUBLE;
-
     *value = val;
-    free(float_s);
+    *type = ASDF_VALUE_DOUBLE;
+    free(double_s);
     return ASDF_VALUE_OK;
 }
 
@@ -1773,13 +1768,15 @@ asdf_value_err_t asdf_value_as_float(asdf_value_t *value, float *out) {
     case ASDF_VALUE_FLOAT:
         *out = (float)value->scalar.d;
         return ASDF_VALUE_OK;
-    case ASDF_VALUE_DOUBLE:
-        *out = (float)value->scalar.d;
+    case ASDF_VALUE_DOUBLE: {
+        float flt = (float)value->scalar.d;
+        *out = flt;
 
-        if ((float)value->scalar.d != value->scalar.d)
+        if (!isfinite(flt))
             return ASDF_VALUE_ERR_OVERFLOW;
 
         return ASDF_VALUE_OK;
+    }
     default:
         return ASDF_VALUE_ERR_TYPE_MISMATCH;
     }
