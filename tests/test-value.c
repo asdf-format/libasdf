@@ -1,3 +1,4 @@
+#include <float.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
@@ -55,7 +56,7 @@ MU_TEST(test_asdf_value_get_type) {
     CHECK_VALUE_TYPE("uint32", ASDF_VALUE_UINT32);
     CHECK_VALUE_TYPE("uint64", ASDF_VALUE_UINT64);
     CHECK_VALUE_TYPE("bigint", ASDF_VALUE_UNKNOWN);
-    CHECK_VALUE_TYPE("float32", ASDF_VALUE_FLOAT);
+    CHECK_VALUE_TYPE("float32", ASDF_VALUE_DOUBLE);
     CHECK_VALUE_TYPE("float64", ASDF_VALUE_DOUBLE);
     CHECK_VALUE_TYPE("bigfloat", ASDF_VALUE_DOUBLE);
     asdf_close(file);
@@ -470,7 +471,7 @@ MU_TEST(test_asdf_value_as_float) {
     asdf_file_t *file = asdf_open_file(path, "r");
     assert_not_null(file);
     CHECK_FLOAT_VALUE(float, "float32", ASDF_VALUE_OK, 0.15625);
-    CHECK_FLOAT_VALUE(float, "float64", ASDF_VALUE_ERR_OVERFLOW, 1.000000059604644775390625);
+    CHECK_FLOAT_VALUE(float, "float64", ASDF_VALUE_OK, 1.000000059604644775390625);
     CHECK_FLOAT_VALUE_MISMATCH(float, "plain");
     asdf_close(file);
     return MUNIT_OK;
@@ -1059,6 +1060,18 @@ MU_TEST(regression_read_min_int) {
 }
 
 
+MU_TEST(regression_read_flt_max) {
+    const char *path = get_fixture_file_path("scalars-out.asdf");
+    asdf_file_t *file = asdf_open_file(path, "r");
+    assert_not_null(file);
+    CHECK_FLOAT_VALUE(float, "float", ASDF_VALUE_OK, FLT_MAX);
+    CHECK_FLOAT_VALUE(double, "double", ASDF_VALUE_OK, DBL_MAX);
+    CHECK_FLOAT_VALUE(float, "double", ASDF_VALUE_ERR_OVERFLOW, DBL_MAX);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
 MU_TEST_SUITE(
     value,
     MU_RUN_TEST(test_asdf_value_get_type),
@@ -1096,7 +1109,8 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_raw_value_type_preserved_after_type_resolution),
     // TODO: Maybe set up a separate test suite for regression tests
     MU_RUN_TEST(regression_clone_extension_value),
-    MU_RUN_TEST(regression_read_min_int)
+    MU_RUN_TEST(regression_read_min_int),
+    MU_RUN_TEST(regression_read_flt_max)
 );
 
 

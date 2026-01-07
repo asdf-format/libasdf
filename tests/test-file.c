@@ -2,6 +2,7 @@
 #define _GNU_SOURCE  /* for memmem */
 #endif
 #include <errno.h>
+#include <float.h>
 #include <setjmp.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -373,6 +374,8 @@ MU_TEST(test_asdf_set_scalar_type) {
     assert_int(asdf_set_uint16(file, "uint16", UINT16_MAX), ==, ASDF_VALUE_OK);
     assert_int(asdf_set_uint32(file, "uint32", UINT32_MAX), ==, ASDF_VALUE_OK);
     assert_int(asdf_set_uint64(file, "uint64", UINT64_MAX), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_float(file, "float", FLT_MAX), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_double(file, "double", DBL_MAX), ==, ASDF_VALUE_OK);
     asdf_close(file);
 
     const char *reference = get_fixture_file_path("scalars-out.asdf");
