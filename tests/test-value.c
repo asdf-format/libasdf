@@ -1029,7 +1029,7 @@ MU_TEST(test_raw_value_type_preserved_after_type_resolution) {
 }
 
 /** Regression test for double-free bug on cloned extension values */
-MU_TEST(test_clone_extension_value) {
+MU_TEST(regression_clone_extension_value) {
     const char *path = get_reference_file_path("1.6.0/basic.asdf");
     asdf_file_t *file = asdf_open_file(path, "r");
     assert_not_null(file);
@@ -1041,6 +1041,19 @@ MU_TEST(test_clone_extension_value) {
     assert_string_equal(asdf_value_path(value), asdf_value_path(cloned));
     asdf_value_destroy(value);
     asdf_value_destroy(cloned);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+/** Regression test for overflow bug when reading negative integers */
+MU_TEST(regression_read_min_int) {
+    const char *path = get_fixture_file_path("scalars-out.asdf");
+    asdf_file_t *file = asdf_open_file(path, "r");
+    assert_not_null(file);
+    CHECK_INT_VALUE(int8, "int8", ASDF_VALUE_OK, INT8_MIN);
+    CHECK_INT_VALUE(int16, "int16", ASDF_VALUE_OK, INT16_MIN);
+    CHECK_INT_VALUE(int32, "int32", ASDF_VALUE_OK, INT32_MIN);
+    CHECK_INT_VALUE(int64, "int64", ASDF_VALUE_OK, INT64_MIN);
     asdf_close(file);
     return MUNIT_OK;
 }
@@ -1081,7 +1094,9 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_value_find),
     MU_RUN_TEST(test_asdf_value_find_on_scalar),
     MU_RUN_TEST(test_raw_value_type_preserved_after_type_resolution),
-    MU_RUN_TEST(test_clone_extension_value)
+    // TODO: Maybe set up a separate test suite for regression tests
+    MU_RUN_TEST(regression_clone_extension_value),
+    MU_RUN_TEST(regression_read_min_int)
 );
 
 

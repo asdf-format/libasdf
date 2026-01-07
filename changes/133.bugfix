@@ -1,0 +1,1 @@
+Fix bug where signed integers were sometimes parsed as unsigned integers, and could result in an overflow error.
