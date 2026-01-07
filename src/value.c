@@ -702,6 +702,148 @@ cleanup:
 }
 
 
+/** Sequence append routines
+ *
+ * May be useful to generalize this a bit further especially if we want to
+ * add sequence_insert_* functions too
+ */
+asdf_value_err_t asdf_sequence_append_string(
+    asdf_sequence_t *sequence, const char *str, size_t len) {
+
+    if (!sequence)
+        return ASDF_VALUE_ERR_UNKNOWN;
+
+    struct fy_document *tree = asdf_file_get_tree_document(sequence->value.file);
+
+    if (!tree)
+        return ASDF_VALUE_ERR_OOM;
+
+    struct fy_node *value_node = asdf_node_of_string(tree, str, len);
+
+    if (fy_node_sequence_append(sequence->value.node, value_node) != 0) {
+        ASDF_ERROR_OOM(sequence->value.file);
+        return ASDF_VALUE_ERR_OOM;
+    }
+
+    return ASDF_VALUE_OK;
+}
+
+
+asdf_value_err_t asdf_sequence_append_string0(asdf_sequence_t *sequence, const char *str) {
+
+    if (!sequence)
+        return ASDF_VALUE_ERR_UNKNOWN;
+
+    struct fy_document *tree = asdf_file_get_tree_document(sequence->value.file);
+
+    if (!tree)
+        return ASDF_VALUE_ERR_OOM;
+
+    struct fy_node *value_node = asdf_node_of_string0(tree, str);
+
+    if (fy_node_sequence_append(sequence->value.node, value_node) != 0) {
+        ASDF_ERROR_OOM(sequence->value.file);
+        return ASDF_VALUE_ERR_OOM;
+    }
+
+    return ASDF_VALUE_OK;
+}
+
+
+asdf_value_err_t asdf_sequence_append_null(asdf_sequence_t *sequence) {
+    if (!sequence)
+        return ASDF_VALUE_ERR_UNKNOWN;
+
+    struct fy_document *tree = asdf_file_get_tree_document(sequence->value.file);
+
+    if (!tree)
+        return ASDF_VALUE_ERR_OOM;
+
+    struct fy_node *value_node = asdf_node_of_null(tree);
+
+    if (fy_node_sequence_append(sequence->value.node, value_node) != 0) {
+        ASDF_ERROR_OOM(sequence->value.file);
+        return ASDF_VALUE_ERR_OOM;
+    }
+
+    return ASDF_VALUE_OK;
+}
+
+
+/** Other scalar setters for sequences */
+#define ASDF_SEQUENCE_APPEND_TYPE(type) \
+    asdf_value_err_t asdf_sequence_append_##type(asdf_sequence_t *sequence, type value) { \
+        if (!sequence) \
+            return ASDF_VALUE_ERR_UNKNOWN; \
+        struct fy_document *tree = asdf_file_get_tree_document(sequence->value.file); \
+        if (!tree) \
+            return ASDF_VALUE_ERR_OOM; \
+        struct fy_node *value_node = asdf_node_of_##type(tree, value); \
+        if (fy_node_sequence_append(sequence->value.node, value_node) != 0) { \
+            ASDF_ERROR_OOM(sequence->value.file); \
+            return ASDF_VALUE_ERR_OOM; \
+        } \
+        return ASDF_VALUE_OK; \
+    }
+
+
+#define ASDF_SEQUENCE_APPEND_INT_TYPE(type) \
+    asdf_value_err_t asdf_sequence_append_##type(asdf_sequence_t *sequence, type##_t value) { \
+        if (!sequence) \
+            return ASDF_VALUE_ERR_UNKNOWN; \
+        struct fy_document *tree = asdf_file_get_tree_document(sequence->value.file); \
+        if (!tree) \
+            return ASDF_VALUE_ERR_OOM; \
+        struct fy_node *value_node = asdf_node_of_##type(tree, value); \
+        if (fy_node_sequence_append(sequence->value.node, value_node) != 0) { \
+            ASDF_ERROR_OOM(sequence->value.file); \
+            return ASDF_VALUE_ERR_OOM; \
+        } \
+        return ASDF_VALUE_OK; \
+    }
+
+
+#define ASDF_SEQUENCE_APPEND_COLLECTION_TYPE(type) \
+    asdf_value_err_t asdf_sequence_append_##type( \
+        asdf_sequence_t *sequence, asdf_##type##_t *value) { \
+        asdf_value_err_t err = ASDF_VALUE_ERR_UNKNOWN; \
+        if (!sequence || !value) \
+            goto cleanup; \
+        struct fy_document *tree = asdf_file_get_tree_document(sequence->value.file); \
+        if (!tree) { \
+            err = ASDF_VALUE_ERR_OOM; \
+            goto cleanup; \
+        } \
+        if (fy_node_sequence_append(sequence->value.node, value->value.node) != 0) { \
+            ASDF_ERROR_OOM(sequence->value.file); \
+            err = ASDF_VALUE_ERR_OOM; \
+            goto cleanup; \
+        } \
+        err = ASDF_VALUE_OK; \
+    cleanup: \
+        /* fy_node_sequence_append implicitly frees the original node, so here set it \
+         * to null to avoid double-freeing it and then just destroy the asdf_value_t */ \
+        value->value.node = NULL; \
+        asdf_value_destroy(&value->value); \
+        return err; \
+    }
+
+
+ASDF_SEQUENCE_APPEND_TYPE(bool);
+ASDF_SEQUENCE_APPEND_INT_TYPE(int8);
+ASDF_SEQUENCE_APPEND_INT_TYPE(int16);
+ASDF_SEQUENCE_APPEND_INT_TYPE(int32);
+ASDF_SEQUENCE_APPEND_INT_TYPE(int64);
+ASDF_SEQUENCE_APPEND_INT_TYPE(uint8);
+ASDF_SEQUENCE_APPEND_INT_TYPE(uint16);
+ASDF_SEQUENCE_APPEND_INT_TYPE(uint32);
+ASDF_SEQUENCE_APPEND_INT_TYPE(uint64);
+ASDF_SEQUENCE_APPEND_TYPE(float);
+ASDF_SEQUENCE_APPEND_TYPE(double);
+ASDF_SEQUENCE_APPEND_COLLECTION_TYPE(mapping);
+ASDF_SEQUENCE_APPEND_COLLECTION_TYPE(sequence);
+
+
 /** Generic container functions */
 asdf_container_iter_t asdf_container_iter_init() {
     return NULL;

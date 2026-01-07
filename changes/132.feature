@@ -2,4 +2,5 @@
 
 - `asdf_set_mapping` and `asdf_set_sequence` for inserting new mappings/sequences into a file.
 
-- ``asdf_mapping_set_<type>`` functions for inserting values into a new mapping
+- ``asdf_mapping_set_<type>`` and ``asdf_sequence_append_<type>`` functions for appending new
+  values into new mappings or sequences respectively.

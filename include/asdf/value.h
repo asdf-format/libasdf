@@ -366,6 +366,40 @@ ASDF_EXPORT asdf_value_t *asdf_sequence_iter(asdf_sequence_t *sequence, asdf_seq
 
 
 /**
+ * Append values to sequences
+ *
+ * .. todo::
+ *
+ *   Document these.
+ */
+ASDF_EXPORT asdf_value_err_t
+asdf_sequence_append_string(asdf_sequence_t *sequence, const char *str, size_t len);
+ASDF_EXPORT asdf_value_err_t
+asdf_sequence_append_string0(asdf_sequence_t *sequence, const char *str);
+
+ASDF_EXPORT asdf_value_err_t asdf_sequence_append_bool(asdf_sequence_t *sequence, bool val);
+
+ASDF_EXPORT asdf_value_err_t asdf_sequence_append_null(asdf_sequence_t *sequence);
+
+ASDF_EXPORT asdf_value_err_t asdf_sequence_append_int8(asdf_sequence_t *sequence, int8_t val);
+ASDF_EXPORT asdf_value_err_t asdf_sequence_append_int16(asdf_sequence_t *sequence, int16_t val);
+ASDF_EXPORT asdf_value_err_t asdf_sequence_append_int32(asdf_sequence_t *sequence, int32_t val);
+ASDF_EXPORT asdf_value_err_t asdf_sequence_append_int64(asdf_sequence_t *sequence, int64_t val);
+ASDF_EXPORT asdf_value_err_t asdf_sequence_append_uint8(asdf_sequence_t *sequence, uint8_t val);
+ASDF_EXPORT asdf_value_err_t asdf_sequence_append_uint16(asdf_sequence_t *sequence, uint16_t val);
+ASDF_EXPORT asdf_value_err_t asdf_sequence_append_uint32(asdf_sequence_t *sequence, uint32_t val);
+ASDF_EXPORT asdf_value_err_t asdf_sequence_append_uint64(asdf_sequence_t *sequence, uint64_t val);
+
+ASDF_EXPORT asdf_value_err_t asdf_sequence_append_float(asdf_sequence_t *sequence, float val);
+ASDF_EXPORT asdf_value_err_t asdf_sequence_append_double(asdf_sequence_t *sequence, double val);
+
+ASDF_EXPORT asdf_value_err_t
+asdf_sequence_append_mapping(asdf_sequence_t *sequence, asdf_mapping_t *value);
+ASDF_EXPORT asdf_value_err_t
+asdf_sequence_append_sequence(asdf_sequence_t *sequence, asdf_sequence_t *value);
+
+
+/**
  * Any container-related functions
  *
  * Here "container" means either sequence or mapping though maybe could extend

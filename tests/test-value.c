@@ -614,6 +614,8 @@ MU_TEST(test_asdf_mapping_set_scalars) {
     assert_int(asdf_mapping_set_uint16(mapping, "uint16", UINT16_MAX), ==, ASDF_VALUE_OK);
     assert_int(asdf_mapping_set_uint32(mapping, "uint32", UINT32_MAX), ==, ASDF_VALUE_OK);
     assert_int(asdf_mapping_set_uint64(mapping, "uint64", UINT64_MAX), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_float(mapping, "float", FLT_MAX), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_double(mapping, "double", DBL_MAX), ==, ASDF_VALUE_OK);
 
     // Assign the mapping as the root
     assert_int(asdf_set_mapping(file, "", mapping), ==, ASDF_VALUE_OK);
@@ -621,6 +623,131 @@ MU_TEST(test_asdf_mapping_set_scalars) {
 
     const char *fixture_path = get_fixture_file_path("scalars-out.asdf");
     assert_true(compare_files(path, fixture_path));
+    return MUNIT_OK;
+}
+
+
+#define CHECK_ASDF_SEQUENCE_GET_INT_TYPE(idx, type, expected) do { \
+    value = asdf_sequence_get(sequence, (idx)); \
+    assert_not_null(value); \
+    type##_t _val = 0; \
+    assert_int(asdf_value_as_##type(value, &_val), ==, ASDF_VALUE_OK); \
+    assert_##type(_val, ==, (expected)); \
+    asdf_value_destroy(value); \
+} while (0)
+
+
+MU_TEST(test_asdf_sequence_append) {
+    // TODO: For this test change it to just an in-memory file; we won't write anything anyways
+    // But we need an open file with which to associate the sequence
+    const char *path = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    asdf_file_t *file = asdf_open(path, "w");
+    assert_not_null(file);
+    asdf_sequence_t *sequence = asdf_sequence_create(file);
+    assert_not_null(sequence);
+    assert_int(asdf_sequence_append_string(sequence, "string", 6), ==, ASDF_VALUE_OK);
+    assert_int(asdf_sequence_append_string0(sequence, "string0"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_sequence_append_bool(sequence, false), ==, ASDF_VALUE_OK);
+    assert_int(asdf_sequence_append_bool(sequence, true), ==, ASDF_VALUE_OK);
+    assert_int(asdf_sequence_append_null(sequence), ==, ASDF_VALUE_OK);
+    assert_int(asdf_sequence_append_int8(sequence, INT8_MIN), ==, ASDF_VALUE_OK);
+    assert_int(asdf_sequence_append_int16(sequence, INT16_MIN), ==, ASDF_VALUE_OK);
+    assert_int(asdf_sequence_append_int32(sequence, INT32_MIN), ==, ASDF_VALUE_OK);
+    assert_int(asdf_sequence_append_int64(sequence, INT64_MIN), ==, ASDF_VALUE_OK);
+    assert_int(asdf_sequence_append_uint8(sequence, UINT8_MAX), ==, ASDF_VALUE_OK);
+    assert_int(asdf_sequence_append_uint16(sequence, UINT16_MAX), ==, ASDF_VALUE_OK);
+    assert_int(asdf_sequence_append_uint32(sequence, UINT32_MAX), ==, ASDF_VALUE_OK);
+    assert_int(asdf_sequence_append_uint64(sequence, UINT64_MAX), ==, ASDF_VALUE_OK);
+    assert_int(asdf_sequence_append_float(sequence, FLT_MAX), ==, ASDF_VALUE_OK);
+    assert_int(asdf_sequence_append_double(sequence, DBL_MAX), ==, ASDF_VALUE_OK);
+
+    asdf_sequence_t *sequence_val = asdf_sequence_create(file);
+    assert_not_null(sequence_val);
+    asdf_mapping_t *mapping_val = asdf_mapping_create(file);
+    assert_not_null(mapping_val);
+    assert_int(asdf_sequence_append_sequence(sequence, sequence_val), ==, ASDF_VALUE_OK);
+    assert_int(asdf_sequence_append_mapping(sequence, mapping_val), ==, ASDF_VALUE_OK);
+
+    assert_int(asdf_set_sequence(file, "sequence", sequence), ==, ASDF_VALUE_OK);
+    asdf_close(file);
+
+    file = asdf_open(path, "r");
+    sequence = NULL;
+    assert_not_null(file);
+    assert_int(asdf_get_sequence(file, "sequence", &sequence), ==, ASDF_VALUE_OK);
+    assert_not_null(sequence);
+    assert_int(asdf_sequence_size(sequence), ==, 17);
+
+    asdf_value_t *value = asdf_sequence_get(sequence, 0);
+    assert_not_null(value);
+    const char *str = NULL;
+    size_t len = 0;
+    assert_int(asdf_value_as_string(value, &str, &len), ==, ASDF_VALUE_OK);
+    assert_memory_equal(strlen("string"), str, "string");
+    asdf_value_destroy(value);
+
+    value = asdf_sequence_get(sequence, 1);
+    assert_not_null(value);
+    assert_int(asdf_value_as_string0(value, &str), ==, ASDF_VALUE_OK);
+    assert_string_equal(str, "string0");
+    asdf_value_destroy(value);
+
+    bool bool_val = true;
+    value = asdf_sequence_get(sequence, 2);
+    assert_not_null(value);
+    assert_int(asdf_value_as_bool(value, &bool_val), ==, ASDF_VALUE_OK);
+    assert_false(bool_val);
+    asdf_value_destroy(value);
+
+    value = asdf_sequence_get(sequence, 3);
+    assert_not_null(value);
+    assert_int(asdf_value_as_bool(value, &bool_val), ==, ASDF_VALUE_OK);
+    assert_true(bool_val);
+    asdf_value_destroy(value);
+
+    value = asdf_sequence_get(sequence, 4);
+    assert_true(asdf_value_is_null(value));
+    asdf_value_destroy(value);
+
+    CHECK_ASDF_SEQUENCE_GET_INT_TYPE(5, int8, INT8_MIN);
+    CHECK_ASDF_SEQUENCE_GET_INT_TYPE(6, int16, INT16_MIN);
+    CHECK_ASDF_SEQUENCE_GET_INT_TYPE(7, int32, INT32_MIN);
+    CHECK_ASDF_SEQUENCE_GET_INT_TYPE(8, int64, INT64_MIN);
+    CHECK_ASDF_SEQUENCE_GET_INT_TYPE(9, uint8, UINT8_MAX);
+    CHECK_ASDF_SEQUENCE_GET_INT_TYPE(10, uint16, UINT16_MAX);
+    CHECK_ASDF_SEQUENCE_GET_INT_TYPE(11, uint32, UINT32_MAX);
+    CHECK_ASDF_SEQUENCE_GET_INT_TYPE(12, uint64, UINT64_MAX);
+
+    float float_val = 0.0F;
+    value = asdf_sequence_get(sequence, 13);
+    assert_not_null(value);
+    assert_int(asdf_value_as_float(value, &float_val), ==, ASDF_VALUE_OK);
+    assert_double_equal(float_val, FLT_MAX, 9);
+    asdf_value_destroy(value);
+
+    double double_val = 0.0;
+    value = asdf_sequence_get(sequence, 14);
+    assert_not_null(value);
+    assert_int(asdf_value_as_double(value, &double_val), ==, ASDF_VALUE_OK);
+    assert_double_equal(double_val, DBL_MAX, 9);
+    asdf_value_destroy(value);
+
+    sequence_val = NULL;
+    value = asdf_sequence_get(sequence, 15);
+    assert_int(asdf_value_as_sequence(value, &sequence_val), ==, ASDF_VALUE_OK);
+    assert_not_null(sequence_val);
+    assert_int(asdf_sequence_size(sequence_val), ==, 0);
+    asdf_sequence_destroy(sequence_val);
+
+    mapping_val = NULL;
+    value = asdf_sequence_get(sequence, 16);
+    assert_int(asdf_value_as_mapping(value, &mapping_val), ==, ASDF_VALUE_OK);
+    assert_not_null(mapping_val);
+    assert_int(asdf_mapping_size(mapping_val), ==, 0);
+    asdf_mapping_destroy(mapping_val);
+
+    asdf_sequence_destroy(sequence);
+    asdf_close(file);
     return MUNIT_OK;
 }
 
@@ -1157,6 +1284,7 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_mapping_iter),
     MU_RUN_TEST(test_asdf_mapping_get),
     MU_RUN_TEST(test_asdf_mapping_set_scalars),
+    MU_RUN_TEST(test_asdf_sequence_append),
     MU_RUN_TEST(test_asdf_sequence_create),
     MU_RUN_TEST(test_asdf_sequence_iter),
     MU_RUN_TEST(test_asdf_sequence_get),
