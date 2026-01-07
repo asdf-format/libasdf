@@ -3,6 +3,7 @@
 #endif
 
 #include <assert.h>
+#include <ctype.h>
 #include <errno.h>
 #include <limits.h>
 #include <stdbool.h>
@@ -792,18 +793,38 @@ static asdf_value_err_t is_yaml_signed_int(
 }
 
 
+#define MAX_UINT64_DIGITS 20
+
+
 static asdf_value_err_t is_yaml_unsigned_int(
     const char *scalar, size_t len, uint64_t *value, asdf_value_type_t *type) {
     if (!scalar)
         return ASDF_VALUE_ERR_UNKNOWN;
 
-    char *uint_s = strndup(scalar, len);
+    const char *stmp = scalar;
+    char *end = (char *)scalar + len;
+
+    /**
+     * TIL: strtoull is stupid--it will happily parse negative signs and even
+     * return a successful result so long as converting from the signed to
+     * unsigned value does not overflow.
+     *
+     * Hence we do the whitespace skipping and check ourselves for a negative
+     * sign.
+     */
+    while (isspace(*stmp) && stmp <= end)
+        stmp++;
+
+    if (stmp > end || (!isdigit(*stmp) && *stmp != '+'))
+        return ASDF_VALUE_ERR_PARSE_FAILURE;
+
+    size_t maxlen = MAX_UINT64_DIGITS + 1; // Allow for an optional + sign
+    char *uint_s = strndup(stmp, len < maxlen ? len : maxlen);
 
     if (!uint_s)
-        return ASDF_VALUE_ERR_UNKNOWN;
+        return ASDF_VALUE_ERR_OOM;
 
     errno = 0;
-    char *end = NULL;
     uint64_t val = strtoull(uint_s, &end, 0);
 
     if (errno == ERANGE) {
