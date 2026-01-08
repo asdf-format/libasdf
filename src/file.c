@@ -9,7 +9,6 @@
 
 #include <libfyaml.h>
 
-#include "asdf/value.h"
 #include "compression/compression.h"
 #include "context.h"
 #include "emitter.h"
@@ -654,6 +653,40 @@ ASDF_SET_INT_TYPE(uint32);
 ASDF_SET_INT_TYPE(uint64);
 ASDF_SET_TYPE(float);
 ASDF_SET_TYPE(double);
+
+
+asdf_value_err_t asdf_set_mapping(asdf_file_t *file, const char *path, asdf_mapping_t *mapping) {
+    struct fy_document *tree = asdf_file_get_tree_document(file);
+    asdf_value_err_t err = ASDF_VALUE_ERR_OOM;
+
+    if (!tree)
+        goto cleanup;
+
+    err = asdf_set_node(file, path, mapping->value.node);
+cleanup:
+    /* asdf_set_node implicitly frees the original node, so here set it
+     * to null to avoid double-freeing it and then just destroy the asdf_value_t */
+    mapping->value.node = NULL;
+    asdf_mapping_destroy(mapping);
+    return err;
+}
+
+
+asdf_value_err_t asdf_set_sequence(asdf_file_t *file, const char *path, asdf_sequence_t *sequence) {
+    struct fy_document *tree = asdf_file_get_tree_document(file);
+    asdf_value_err_t err = ASDF_VALUE_ERR_OOM;
+
+    if (!tree)
+        goto cleanup;
+
+    err = asdf_set_node(file, path, sequence->value.node);
+cleanup:
+    /* asdf_set_node implicitly frees the original node, so here set it
+     * to null to avoid double-freeing it and then just destroy the asdf_value_t */
+    sequence->value.node = NULL;
+    asdf_sequence_destroy(sequence);
+    return err;
+}
 
 
 /* User-facing block-related methods */

@@ -219,6 +219,7 @@ typedef struct asdf_mapping asdf_mapping_t;
 ASDF_EXPORT bool asdf_value_is_mapping(asdf_value_t *value);
 ASDF_EXPORT int asdf_mapping_size(asdf_mapping_t *mapping);
 ASDF_EXPORT asdf_value_err_t asdf_value_as_mapping(asdf_value_t *value, asdf_mapping_t **out);
+ASDF_EXPORT asdf_mapping_t *asdf_mapping_create(asdf_file_t *file);
 ASDF_EXPORT void asdf_mapping_destroy(asdf_mapping_t *mapping);
 
 /**
@@ -265,6 +266,55 @@ ASDF_EXPORT asdf_mapping_item_t *asdf_mapping_iter(
     asdf_mapping_t *mapping, asdf_mapping_iter_t *iter);
 
 /**
+ * Set values on mappings
+ *
+ * .. todo::
+ *
+ *   Document these.
+ */
+ASDF_EXPORT asdf_value_err_t
+asdf_mapping_set_string(asdf_mapping_t *mapping, const char *key, const char *str, size_t len);
+ASDF_EXPORT asdf_value_err_t
+asdf_mapping_set_string0(asdf_mapping_t *mapping, const char *key, const char *str);
+
+ASDF_EXPORT asdf_value_err_t
+asdf_mapping_set_bool(asdf_mapping_t *mapping, const char *key, bool val);
+
+ASDF_EXPORT asdf_value_err_t asdf_mapping_set_null(asdf_mapping_t *mapping, const char *key);
+
+ASDF_EXPORT asdf_value_err_t
+asdf_mapping_set_int8(asdf_mapping_t *mapping, const char *key, int8_t val);
+ASDF_EXPORT asdf_value_err_t
+asdf_mapping_set_int16(asdf_mapping_t *mapping, const char *key, int16_t val);
+ASDF_EXPORT asdf_value_err_t
+asdf_mapping_set_int32(asdf_mapping_t *mapping, const char *key, int32_t val);
+ASDF_EXPORT asdf_value_err_t
+asdf_mapping_set_int64(asdf_mapping_t *mapping, const char *key, int64_t val);
+ASDF_EXPORT asdf_value_err_t
+asdf_mapping_set_uint8(asdf_mapping_t *mapping, const char *key, uint8_t val);
+ASDF_EXPORT asdf_value_err_t
+asdf_mapping_set_uint16(asdf_mapping_t *mapping, const char *key, uint16_t val);
+ASDF_EXPORT asdf_value_err_t
+asdf_mapping_set_uint32(asdf_mapping_t *mapping, const char *key, uint32_t val);
+ASDF_EXPORT asdf_value_err_t
+asdf_mapping_set_uint64(asdf_mapping_t *mapping, const char *key, uint64_t val);
+
+ASDF_EXPORT asdf_value_err_t
+asdf_mapping_set_float(asdf_mapping_t *mapping, const char *key, float val);
+ASDF_EXPORT asdf_value_err_t
+asdf_mapping_set_double(asdf_mapping_t *mapping, const char *key, double val);
+
+ASDF_EXPORT asdf_value_err_t
+asdf_mapping_set_mapping(asdf_mapping_t *mapping, const char *key, asdf_mapping_t *value);
+
+// Forward-declaration
+typedef struct asdf_sequence asdf_sequence_t;
+
+ASDF_EXPORT asdf_value_err_t
+asdf_mapping_set_sequence(asdf_mapping_t *mapping, const char *key, asdf_sequence_t *value);
+
+
+/**
  * Release memory resources used by `asdf_mapping_item_t`
  *
  * If the iterator was run to exhaustion (i.e. `asdf_mapping_iter` called
@@ -296,6 +346,7 @@ ASDF_EXPORT bool asdf_value_is_sequence(asdf_value_t *value);
 ASDF_EXPORT int asdf_sequence_size(asdf_sequence_t *sequence);
 ASDF_EXPORT asdf_value_t *asdf_sequence_get(asdf_sequence_t *sequence, int index);
 ASDF_EXPORT asdf_value_err_t asdf_value_as_sequence(asdf_value_t *value, asdf_sequence_t **out);
+ASDF_EXPORT asdf_sequence_t *asdf_sequence_create(asdf_file_t *file);
 ASDF_EXPORT void asdf_sequence_destroy(asdf_sequence_t *sequence);
 
 /** Opaque struct holding sequence iterator state */
@@ -312,6 +363,40 @@ ASDF_EXPORT asdf_sequence_iter_t asdf_sequence_iter_init(void);
  *   Finish documenting me.
  */
 ASDF_EXPORT asdf_value_t *asdf_sequence_iter(asdf_sequence_t *sequence, asdf_sequence_iter_t *iter);
+
+
+/**
+ * Append values to sequences
+ *
+ * .. todo::
+ *
+ *   Document these.
+ */
+ASDF_EXPORT asdf_value_err_t
+asdf_sequence_append_string(asdf_sequence_t *sequence, const char *str, size_t len);
+ASDF_EXPORT asdf_value_err_t
+asdf_sequence_append_string0(asdf_sequence_t *sequence, const char *str);
+
+ASDF_EXPORT asdf_value_err_t asdf_sequence_append_bool(asdf_sequence_t *sequence, bool val);
+
+ASDF_EXPORT asdf_value_err_t asdf_sequence_append_null(asdf_sequence_t *sequence);
+
+ASDF_EXPORT asdf_value_err_t asdf_sequence_append_int8(asdf_sequence_t *sequence, int8_t val);
+ASDF_EXPORT asdf_value_err_t asdf_sequence_append_int16(asdf_sequence_t *sequence, int16_t val);
+ASDF_EXPORT asdf_value_err_t asdf_sequence_append_int32(asdf_sequence_t *sequence, int32_t val);
+ASDF_EXPORT asdf_value_err_t asdf_sequence_append_int64(asdf_sequence_t *sequence, int64_t val);
+ASDF_EXPORT asdf_value_err_t asdf_sequence_append_uint8(asdf_sequence_t *sequence, uint8_t val);
+ASDF_EXPORT asdf_value_err_t asdf_sequence_append_uint16(asdf_sequence_t *sequence, uint16_t val);
+ASDF_EXPORT asdf_value_err_t asdf_sequence_append_uint32(asdf_sequence_t *sequence, uint32_t val);
+ASDF_EXPORT asdf_value_err_t asdf_sequence_append_uint64(asdf_sequence_t *sequence, uint64_t val);
+
+ASDF_EXPORT asdf_value_err_t asdf_sequence_append_float(asdf_sequence_t *sequence, float val);
+ASDF_EXPORT asdf_value_err_t asdf_sequence_append_double(asdf_sequence_t *sequence, double val);
+
+ASDF_EXPORT asdf_value_err_t
+asdf_sequence_append_mapping(asdf_sequence_t *sequence, asdf_mapping_t *value);
+ASDF_EXPORT asdf_value_err_t
+asdf_sequence_append_sequence(asdf_sequence_t *sequence, asdf_sequence_t *value);
 
 
 /**

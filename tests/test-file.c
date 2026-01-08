@@ -163,6 +163,50 @@ MU_TEST(test_asdf_get_sequence) {
 }
 
 
+MU_TEST(test_asdf_set_mapping) {
+    // TODO: Change this test to use an in-memory file
+    const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    asdf_file_t *file = asdf_open_file(filename, "w");
+    assert_not_null(file);
+    asdf_mapping_t *mapping = asdf_mapping_create(file);
+    assert_not_null(mapping);
+    assert_int(asdf_set_mapping(file, "mapping", mapping), ==, ASDF_VALUE_OK);
+    asdf_close(file);
+
+    file = asdf_open(filename, "r");
+    assert_not_null(file);
+    assert_true(asdf_is_mapping(file, "mapping"));
+    assert_int(asdf_get_mapping(file, "mapping", &mapping), ==, ASDF_VALUE_OK);
+    assert_not_null(mapping);
+    assert_int(asdf_mapping_size(mapping), ==, 0);
+    asdf_mapping_destroy(mapping);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+MU_TEST(test_asdf_set_sequence) {
+    // TODO: Change this test to use an in-memory file
+    const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    asdf_file_t *file = asdf_open_file(filename, "w");
+    assert_not_null(file);
+    asdf_sequence_t *sequence = asdf_sequence_create(file);
+    assert_not_null(sequence);
+    assert_int(asdf_set_sequence(file, "sequence", sequence), ==, ASDF_VALUE_OK);
+    asdf_close(file);
+
+    file = asdf_open(filename, "r");
+    assert_not_null(file);
+    assert_true(asdf_is_sequence(file, "sequence"));
+    assert_int(asdf_get_sequence(file, "sequence", &sequence), ==, ASDF_VALUE_OK);
+    assert_not_null(sequence);
+    assert_int(asdf_sequence_size(sequence), ==, 0);
+    asdf_sequence_destroy(sequence);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
 MU_TEST(test_asdf_block_count) {
     const char *filename = get_reference_file_path("1.6.0/basic.asdf");
     asdf_file_t *file = asdf_open_file(filename, "r");
@@ -913,6 +957,8 @@ MU_TEST_SUITE(
     MU_RUN_TEST(scalar_getters),
     MU_RUN_TEST(test_asdf_get_mapping),
     MU_RUN_TEST(test_asdf_get_sequence),
+    MU_RUN_TEST(test_asdf_set_mapping),
+    MU_RUN_TEST(test_asdf_set_sequence),
     MU_RUN_TEST(test_asdf_block_count),
     MU_RUN_TEST(missing_block_index),
     MU_RUN_TEST(invalid_block_index),

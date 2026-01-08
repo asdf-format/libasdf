@@ -739,6 +739,11 @@ ASDF_EXPORT asdf_value_err_t asdf_set_uint64(asdf_file_t *file, const char *path
 ASDF_EXPORT asdf_value_err_t asdf_set_float(asdf_file_t *file, const char *path, float val);
 ASDF_EXPORT asdf_value_err_t asdf_set_double(asdf_file_t *file, const char *path, double val);
 
+ASDF_EXPORT asdf_value_err_t
+asdf_set_mapping(asdf_file_t *file, const char *path, asdf_mapping_t *mapping);
+ASDF_EXPORT asdf_value_err_t
+asdf_set_sequence(asdf_file_t *file, const char *path, asdf_sequence_t *sequence);
+
 
 /**
  * Block-related APIs
