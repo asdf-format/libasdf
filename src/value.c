@@ -295,6 +295,11 @@ asdf_value_err_t asdf_value_as_mapping(asdf_value_t *value, asdf_mapping_t **out
 }
 
 
+asdf_value_t *asdf_value_of_mapping(asdf_mapping_t *mapping) {
+    return mapping ? &mapping->value : NULL;
+}
+
+
 asdf_mapping_t *asdf_mapping_create(asdf_file_t *file) {
     struct fy_document *tree = asdf_file_get_tree_document(file);
 
@@ -617,6 +622,11 @@ asdf_value_err_t asdf_value_as_sequence(asdf_value_t *value, asdf_sequence_t **o
 
     *out = (asdf_sequence_t *)value;
     return ASDF_VALUE_OK;
+}
+
+
+asdf_value_t *asdf_value_of_sequence(asdf_sequence_t *sequence) {
+    return sequence ? &sequence->value : NULL;
 }
 
 
@@ -2228,6 +2238,62 @@ asdf_value_err_t asdf_value_as_type(asdf_value_t *value, asdf_value_type_t type,
     }
     return ASDF_VALUE_ERR_TYPE_MISMATCH;
 }
+
+
+/** Typed value creation functions */
+asdf_value_t *asdf_value_of_string(asdf_file_t *file, const char *value, size_t len) {
+    if (UNLIKELY(!file))
+        return NULL;
+
+    struct fy_document *doc = asdf_file_get_tree_document(file);
+    struct fy_node *node = asdf_node_of_string(doc, value, len);
+
+    if (UNLIKELY((!node)))
+        return NULL;
+
+    return asdf_value_create(file, node);
+}
+
+
+asdf_value_t *asdf_value_of_null(asdf_file_t *file) {
+    if (UNLIKELY(!file))
+        return NULL;
+
+    struct fy_document *doc = asdf_file_get_tree_document(file);
+    struct fy_node *node = asdf_node_of_null(doc);
+
+    if (UNLIKELY((!node)))
+        return NULL;
+
+    return asdf_value_create(file, node);
+}
+
+
+#define ASDF_VALUE_OF_TYPE(typename, type) \
+    asdf_value_t *asdf_value_of_##typename(asdf_file_t * file, type value) { \
+        if (UNLIKELY(!file)) \
+            return NULL; \
+        struct fy_document *doc = asdf_file_get_tree_document(file); \
+        struct fy_node *node = asdf_node_of_##typename(doc, value); \
+        if (UNLIKELY((!node))) \
+            return NULL; \
+        return asdf_value_create(file, node); \
+    }
+
+
+ASDF_VALUE_OF_TYPE(string0, const char *);
+ASDF_VALUE_OF_TYPE(bool, bool);
+ASDF_VALUE_OF_TYPE(int8, int8_t);
+ASDF_VALUE_OF_TYPE(int16, int16_t);
+ASDF_VALUE_OF_TYPE(int32, int32_t);
+ASDF_VALUE_OF_TYPE(int64, int64_t);
+ASDF_VALUE_OF_TYPE(uint8, uint8_t);
+ASDF_VALUE_OF_TYPE(uint16, uint16_t);
+ASDF_VALUE_OF_TYPE(uint32, uint32_t);
+ASDF_VALUE_OF_TYPE(uint64, uint64_t);
+ASDF_VALUE_OF_TYPE(float, float);
+ASDF_VALUE_OF_TYPE(double, double);
+
 
 #define ASDF_VALUE_FIND_ITER_MIN_CAPACITY 8
 #define ASDF_VALUE_FIND_ITER_MAX_DEPTH 256

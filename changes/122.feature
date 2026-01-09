@@ -1,0 +1,1 @@
+Adds previously missing ``asdf_set_value`` function for setting a generic ``asdf_value_t`` to a given path in the file.  Adds ``asdf_value_of_<type>`` functions for instantiating new ``asdf_value_t`` from an existing native value.  For example, ``asdf_value_of_uint8(file, 123)`` wraps the integer ``123`` in a generic ``asdf_value_t``.

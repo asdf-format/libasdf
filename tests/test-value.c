@@ -490,6 +490,54 @@ MU_TEST(test_asdf_value_as_double) {
 }
 
 
+#define CHECK_SET_VALUE_OF_TYPE(type, val) do { \
+    value = asdf_value_of_##type(file, (val)); \
+    assert_not_null(value); \
+    assert_int(asdf_set_value(file, #type, value), ==, ASDF_VALUE_OK); \
+} while (0)
+
+
+MU_TEST(test_asdf_value_of_type) {
+    const char *path = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    asdf_file_t *file = asdf_open_file(path, "w");
+    assert_not_null(file);
+
+    asdf_value_t *value = asdf_value_of_string(file, "string", 6);
+    assert_not_null(value);
+    assert_int(asdf_set_value(file, "string", value), ==, ASDF_VALUE_OK);
+
+    CHECK_SET_VALUE_OF_TYPE(string0, "string0");
+
+    value = asdf_value_of_null(file);
+    assert_not_null(value);
+    assert_int(asdf_set_value(file, "null", value), ==, ASDF_VALUE_OK);
+
+    value = asdf_value_of_bool(file, false);
+    assert_not_null(value);
+    assert_int(asdf_set_value(file, "false", value), ==, ASDF_VALUE_OK);
+
+    value = asdf_value_of_bool(file, true);
+    assert_not_null(value);
+    assert_int(asdf_set_value(file, "true", value), ==, ASDF_VALUE_OK);
+
+    CHECK_SET_VALUE_OF_TYPE(int8, INT8_MIN);
+    CHECK_SET_VALUE_OF_TYPE(int16, INT16_MIN);
+    CHECK_SET_VALUE_OF_TYPE(int32, INT32_MIN);
+    CHECK_SET_VALUE_OF_TYPE(int64, INT64_MIN);
+    CHECK_SET_VALUE_OF_TYPE(uint8, UINT8_MAX);
+    CHECK_SET_VALUE_OF_TYPE(uint16, UINT16_MAX);
+    CHECK_SET_VALUE_OF_TYPE(uint32, UINT32_MAX);
+    CHECK_SET_VALUE_OF_TYPE(uint64, UINT64_MAX);
+    CHECK_SET_VALUE_OF_TYPE(float, FLT_MAX);
+    CHECK_SET_VALUE_OF_TYPE(double, DBL_MAX);
+    asdf_close(file);
+
+    const char *fixture_path = get_fixture_file_path("scalars-out.asdf");
+    assert_true(compare_files(path, fixture_path));
+    return MUNIT_OK;
+}
+
+
 /**
  * Test that scalars explicitly tagged as !!str as interpreted as strings
  */
@@ -1279,6 +1327,7 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_value_as_uint64_on_bigint),
     MU_RUN_TEST(test_asdf_value_as_float),
     MU_RUN_TEST(test_asdf_value_as_double),
+    MU_RUN_TEST(test_asdf_value_of_type),
     MU_RUN_TEST(test_value_tagged_strings),
     MU_RUN_TEST(test_asdf_mapping_create),
     MU_RUN_TEST(test_asdf_mapping_iter),
