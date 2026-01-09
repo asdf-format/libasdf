@@ -28,6 +28,7 @@ MU_TEST(test_asdf_value_get_type) {
     const char *path = get_fixture_file_path("scalars.asdf");
     asdf_file_t *file = asdf_open_file(path, "r");
     assert_not_null(file);
+    assert_int(asdf_value_get_type(NULL), ==, ASDF_VALUE_UNKNOWN);
     CHECK_VALUE_TYPE("single_quoted", ASDF_VALUE_STRING);
     CHECK_VALUE_TYPE("double_quoted", ASDF_VALUE_STRING);
     CHECK_VALUE_TYPE("plain", ASDF_VALUE_STRING);
@@ -47,10 +48,10 @@ MU_TEST(test_asdf_value_get_type) {
     CHECK_VALUE_TYPE("Null", ASDF_VALUE_NULL);
     CHECK_VALUE_TYPE("NULL", ASDF_VALUE_NULL);
     CHECK_VALUE_TYPE("empty", ASDF_VALUE_NULL);
-    CHECK_VALUE_TYPE("int8", ASDF_VALUE_UINT8);
-    CHECK_VALUE_TYPE("int16", ASDF_VALUE_UINT16);
-    CHECK_VALUE_TYPE("int32", ASDF_VALUE_UINT32);
-    CHECK_VALUE_TYPE("int64", ASDF_VALUE_UINT64);
+    CHECK_VALUE_TYPE("int8", ASDF_VALUE_INT8);
+    CHECK_VALUE_TYPE("int16", ASDF_VALUE_INT16);
+    CHECK_VALUE_TYPE("int32", ASDF_VALUE_INT32);
+    CHECK_VALUE_TYPE("int64", ASDF_VALUE_INT64);
     CHECK_VALUE_TYPE("uint8", ASDF_VALUE_UINT8);
     CHECK_VALUE_TYPE("uint16", ASDF_VALUE_UINT16);
     CHECK_VALUE_TYPE("uint32", ASDF_VALUE_UINT32);
@@ -110,6 +111,16 @@ MU_TEST(test_asdf_value_as_string) {
     CHECK_STR_VALUE_MISMATCH("empty");
     CHECK_STR_VALUE_MISMATCH("int8");
     CHECK_STR_VALUE_MISMATCH("float32");
+
+    asdf_value_t *root = asdf_get_value(file, "");
+    assert_not_null(root);
+
+    // Test on something that is not a scalar
+    const char *str = NULL;
+    size_t len = 0;
+    assert_int(asdf_value_as_string(root, &str, &len), ==, ASDF_VALUE_ERR_TYPE_MISMATCH);
+    assert_null(str);
+    asdf_value_destroy(root);
     asdf_close(file);
     return MUNIT_OK;
 }
@@ -122,13 +133,22 @@ MU_TEST(test_asdf_value_as_string0) {
     const char *path = get_fixture_file_path("scalars.asdf");
     asdf_file_t *file = asdf_open_file(path, "r");
     assert_not_null(file);
-    const char *s = NULL;
+    const char *str = NULL;
     asdf_value_t *value = asdf_get_value(file, "plain");
-    assert_not_null(value); \
-    asdf_value_err_t err = asdf_value_as_string0(value, &s);
+    assert_not_null(value);
+    asdf_value_err_t err = asdf_value_as_string0(value, &str);
     assert_int(err, ==, ASDF_VALUE_OK);
-    assert_not_null(s);
-    assert_string_equal(s, "string");
+    assert_not_null(str);
+    assert_string_equal(str, "string");
+    asdf_value_destroy(value);
+
+    str = NULL;
+    value = asdf_get_value(file, "int8");
+    assert_not_null(value);
+    err = asdf_value_as_string0(value, &str);
+    assert_int(err, ==, ASDF_VALUE_ERR_TYPE_MISMATCH);
+    assert_null(str);
+
     asdf_value_destroy(value);
     asdf_close(file);
     return MUNIT_OK;
@@ -147,13 +167,23 @@ MU_TEST(test_asdf_value_as_scalar) {
     assert_true(asdf_value_is_scalar(value));
     asdf_value_err_t err = asdf_value_as_int8(value, &i);
     assert_int(err, ==, ASDF_VALUE_OK);
-    assert_int(i, ==, 127);
+    assert_int(i, ==, -127);
     err = asdf_value_as_scalar(value, &s, &len);
     assert_int(err, ==, ASDF_VALUE_OK);
     assert_not_null(s);
-    assert_int(len, ==, 3);
-    assert_memory_equal(len, s, "127");
+    assert_int(len, ==, 4);
+    assert_memory_equal(len, s, "-127");
     asdf_value_destroy(value);
+
+    // Misc error conditions
+    assert_int(asdf_value_as_scalar(NULL, NULL, NULL), ==, ASDF_VALUE_ERR_UNKNOWN);
+    value = asdf_value_of_mapping(asdf_mapping_create(file));
+    assert_int(asdf_value_as_scalar(value, NULL, NULL), ==, ASDF_VALUE_ERR_TYPE_MISMATCH);
+    asdf_value_destroy(value);
+    value = asdf_value_of_sequence(asdf_sequence_create(file));
+    assert_int(asdf_value_as_scalar(value, NULL, NULL), ==, ASDF_VALUE_ERR_TYPE_MISMATCH);
+    asdf_value_destroy(value);
+
     asdf_close(file);
     return MUNIT_OK;
 }
@@ -169,12 +199,22 @@ MU_TEST(test_asdf_value_as_scalar0) {
     assert_not_null(value); \
     asdf_value_err_t err = asdf_value_as_int8(value, &i);
     assert_int(err, ==, ASDF_VALUE_OK);
-    assert_int(i, ==, 127);
+    assert_int(i, ==, -127);
     err = asdf_value_as_scalar0(value, &s);
     assert_int(err, ==, ASDF_VALUE_OK);
     assert_not_null(s);
-    assert_string_equal(s, "127");
+    assert_string_equal(s, "-127");
     asdf_value_destroy(value);
+
+    // Misc error conditions
+    assert_int(asdf_value_as_scalar0(NULL, NULL), ==, ASDF_VALUE_ERR_UNKNOWN);
+    value = asdf_value_of_mapping(asdf_mapping_create(file));
+    assert_int(asdf_value_as_scalar0(value, NULL), ==, ASDF_VALUE_ERR_TYPE_MISMATCH);
+    asdf_value_destroy(value);
+    value = asdf_value_of_sequence(asdf_sequence_create(file));
+    assert_int(asdf_value_as_scalar0(value, NULL), ==, ASDF_VALUE_ERR_TYPE_MISMATCH);
+    asdf_value_destroy(value);
+
     asdf_close(file);
     return MUNIT_OK;
 }
@@ -222,6 +262,34 @@ MU_TEST(test_asdf_value_as_bool) {
     CHECK_BOOL_VALUE("true1", true);
     CHECK_BOOL_MISMATCH("int64");
     CHECK_BOOL_MISMATCH("plain");
+
+    asdf_value_t *root = asdf_get_value(file, "");
+    assert_int(asdf_value_as_bool(root, NULL), ==, ASDF_VALUE_ERR_TYPE_MISMATCH);
+    asdf_value_destroy(root);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+MU_TEST(test_asdf_value_is_bool) {
+    const char *path = get_fixture_file_path("scalars.asdf");
+    asdf_file_t *file = asdf_open_file(path, "r");
+    assert_not_null(file);
+    asdf_value_t *int_value = asdf_value_of_int8(file, 0);
+    assert_true(asdf_value_is_bool(int_value));
+    asdf_value_destroy(int_value);
+
+    int_value = asdf_value_of_int8(file, 1);
+    assert_true(asdf_value_is_bool(int_value));
+    asdf_value_destroy(int_value);
+
+    int_value = asdf_value_of_int8(file, -1);
+    assert_false(asdf_value_is_bool(int_value));
+    asdf_value_destroy(int_value);
+
+    asdf_value_t *root = asdf_get_value(file, "");
+    assert_false(asdf_value_is_bool(root));
+    asdf_value_destroy(root);
     asdf_close(file);
     return MUNIT_OK;
 }
@@ -254,6 +322,19 @@ MU_TEST(test_asdf_value_is_null) {
 }
 
 
+MU_TEST(test_asdf_value_is_int) {
+    const char *path = get_fixture_file_path("scalars.asdf");
+    asdf_file_t *file = asdf_open_file(path, "r");
+    assert_not_null(file);
+    asdf_value_t *value = asdf_get_value(file, "");
+    assert_not_null(value);
+    assert_false(asdf_value_is_int(value));
+    asdf_value_destroy(value);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
 /* Helpers for int conversion tests */
 #define CHECK_INT_VALUE(type, key, expected_err, expected_value) \
     do { \
@@ -281,19 +362,45 @@ MU_TEST(test_asdf_value_is_null) {
     } while (0)
 
 
+#define CHECK_VALUE_IS_INT(type, key, expected) \
+    do { \
+        asdf_value_t *__value = asdf_get_value(file, (key)); \
+        assert_not_null(__value); \
+        if (expected) \
+            assert_true(asdf_value_is_##type(__value)); \
+        else \
+            assert_false(asdf_value_is_##type(__value)); \
+        asdf_value_destroy(__value); \
+    } while (0)
+
+
 MU_TEST(test_asdf_value_as_int8) {
     const char *path = get_fixture_file_path("scalars.asdf");
     asdf_file_t *file = asdf_open_file(path, "r");
     assert_not_null(file);
-    CHECK_INT_VALUE(int8, "int8", ASDF_VALUE_OK, 127);
+    CHECK_INT_VALUE(int8, "int8", ASDF_VALUE_OK, -127);
     CHECK_INT_VALUE(int8, "uint8", ASDF_VALUE_ERR_OVERFLOW, -1);
-    CHECK_INT_VALUE(int8, "int16", ASDF_VALUE_ERR_OVERFLOW, -1);
+    CHECK_INT_VALUE(int8, "int16", ASDF_VALUE_ERR_OVERFLOW, 1);
     CHECK_INT_VALUE(int8, "uint16", ASDF_VALUE_ERR_OVERFLOW, -1);
-    CHECK_INT_VALUE(int8, "int32", ASDF_VALUE_ERR_OVERFLOW, -1);
+    CHECK_INT_VALUE(int8, "int32", ASDF_VALUE_ERR_OVERFLOW, 1);
     CHECK_INT_VALUE(int8, "uint32", ASDF_VALUE_ERR_OVERFLOW, -1);
-    CHECK_INT_VALUE(int8, "int64", ASDF_VALUE_ERR_OVERFLOW, -1);
+    CHECK_INT_VALUE(int8, "int64", ASDF_VALUE_ERR_OVERFLOW, 1);
     CHECK_INT_VALUE(int8, "uint64", ASDF_VALUE_ERR_OVERFLOW, -1);
     CHECK_INT_VALUE_MISMATCH(int8, "plain");
+    CHECK_INT_VALUE_MISMATCH(int8, "");
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+MU_TEST(test_asdf_value_is_int8) {
+    const char *path = get_fixture_file_path("scalars.asdf");
+    asdf_file_t *file = asdf_open_file(path, "r");
+    assert_not_null(file);
+    CHECK_VALUE_IS_INT(int8, "", false);
+    CHECK_VALUE_IS_INT(int8, "int8", true);
+    CHECK_VALUE_IS_INT(int8, "int16", false);
+    CHECK_VALUE_IS_INT(int8, "uint8", false);
     asdf_close(file);
     return MUNIT_OK;
 }
@@ -303,15 +410,30 @@ MU_TEST(test_asdf_value_as_int16) {
     const char *path = get_fixture_file_path("scalars.asdf");
     asdf_file_t *file = asdf_open_file(path, "r");
     assert_not_null(file);
-    CHECK_INT_VALUE(int16, "int8", ASDF_VALUE_OK, 127);
+    CHECK_INT_VALUE(int16, "int8", ASDF_VALUE_OK, -127);
     CHECK_INT_VALUE(int16, "uint8", ASDF_VALUE_OK, 255);
-    CHECK_INT_VALUE(int16, "int16", ASDF_VALUE_OK, 32767);
+    CHECK_INT_VALUE(int16, "int16", ASDF_VALUE_OK, -32767);
     CHECK_INT_VALUE(int16, "uint16", ASDF_VALUE_ERR_OVERFLOW, -1);
-    CHECK_INT_VALUE(int16, "int32", ASDF_VALUE_ERR_OVERFLOW, -1);
+    CHECK_INT_VALUE(int16, "int32", ASDF_VALUE_ERR_OVERFLOW, 1);
     CHECK_INT_VALUE(int16, "uint32", ASDF_VALUE_ERR_OVERFLOW, -1);
-    CHECK_INT_VALUE(int16, "int64", ASDF_VALUE_ERR_OVERFLOW, -1);
+    CHECK_INT_VALUE(int16, "int64", ASDF_VALUE_ERR_OVERFLOW, 1);
     CHECK_INT_VALUE(int16, "uint64", ASDF_VALUE_ERR_OVERFLOW, -1);
     CHECK_INT_VALUE_MISMATCH(int16, "plain");
+    CHECK_INT_VALUE_MISMATCH(int16, "");
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+MU_TEST(test_asdf_value_is_int16) {
+    const char *path = get_fixture_file_path("scalars.asdf");
+    asdf_file_t *file = asdf_open_file(path, "r");
+    assert_not_null(file);
+    CHECK_VALUE_IS_INT(int16, "", false);
+    CHECK_VALUE_IS_INT(int16, "int8", true);
+    CHECK_VALUE_IS_INT(int16, "int16", true);
+    CHECK_VALUE_IS_INT(int16, "int32", false);
+    CHECK_VALUE_IS_INT(int16, "uint16", false);
     asdf_close(file);
     return MUNIT_OK;
 }
@@ -321,15 +443,31 @@ MU_TEST(test_asdf_value_as_int32) {
     const char *path = get_fixture_file_path("scalars.asdf");
     asdf_file_t *file = asdf_open_file(path, "r");
     assert_not_null(file);
-    CHECK_INT_VALUE(int32, "int8", ASDF_VALUE_OK, 127);
+    CHECK_INT_VALUE(int32, "int8", ASDF_VALUE_OK, -127);
     CHECK_INT_VALUE(int32, "uint8", ASDF_VALUE_OK, 255);
-    CHECK_INT_VALUE(int32, "int16", ASDF_VALUE_OK, 32767);
+    CHECK_INT_VALUE(int32, "int16", ASDF_VALUE_OK, -32767);
     CHECK_INT_VALUE(int32, "uint16", ASDF_VALUE_OK, 65535);
-    CHECK_INT_VALUE(int32, "int32", ASDF_VALUE_OK, 2147483647);
+    CHECK_INT_VALUE(int32, "int32", ASDF_VALUE_OK, -2147483647);
     CHECK_INT_VALUE(int32, "uint32", ASDF_VALUE_ERR_OVERFLOW, -1);
-    CHECK_INT_VALUE(int32, "int64", ASDF_VALUE_ERR_OVERFLOW, -1);
+    CHECK_INT_VALUE(int32, "int64", ASDF_VALUE_ERR_OVERFLOW, 1);
     CHECK_INT_VALUE(int32, "uint64", ASDF_VALUE_ERR_OVERFLOW, -1);
     CHECK_INT_VALUE_MISMATCH(int32, "plain");
+    CHECK_INT_VALUE_MISMATCH(int32, "");
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+MU_TEST(test_asdf_value_is_int32) {
+    const char *path = get_fixture_file_path("scalars.asdf");
+    asdf_file_t *file = asdf_open_file(path, "r");
+    assert_not_null(file);
+    CHECK_VALUE_IS_INT(int32, "", false);
+    CHECK_VALUE_IS_INT(int32, "int8", true);
+    CHECK_VALUE_IS_INT(int32, "int16", true);
+    CHECK_VALUE_IS_INT(int32, "int32", true);
+    CHECK_VALUE_IS_INT(int32, "int64", false);
+    CHECK_VALUE_IS_INT(int32, "uint32", false);
     asdf_close(file);
     return MUNIT_OK;
 }
@@ -339,15 +477,34 @@ MU_TEST(test_asdf_value_as_int64) {
     const char *path = get_fixture_file_path("scalars.asdf");
     asdf_file_t *file = asdf_open_file(path, "r");
     assert_not_null(file);
-    CHECK_INT_VALUE(int64, "int64", ASDF_VALUE_OK, 9223372036854775807LL);
-    CHECK_INT_VALUE(int64, "int32", ASDF_VALUE_OK, 2147483647);
-    CHECK_INT_VALUE(int64, "int16", ASDF_VALUE_OK, 32767);
-    CHECK_INT_VALUE(int64, "int8", ASDF_VALUE_OK, 127);
+    CHECK_INT_VALUE(int64, "int64", ASDF_VALUE_OK, -9223372036854775807LL);
+    CHECK_INT_VALUE(int64, "int32", ASDF_VALUE_OK, -2147483647);
+    CHECK_INT_VALUE(int64, "int16", ASDF_VALUE_OK, -32767);
+    CHECK_INT_VALUE(int64, "int8", ASDF_VALUE_OK, -127);
     CHECK_INT_VALUE(int64, "uint64", ASDF_VALUE_ERR_OVERFLOW, -1);
     CHECK_INT_VALUE(int64, "uint32", ASDF_VALUE_OK, 4294967295);
     CHECK_INT_VALUE(int64, "uint16", ASDF_VALUE_OK, 65535);
     CHECK_INT_VALUE(int64, "uint8", ASDF_VALUE_OK, 255);
     CHECK_INT_VALUE_MISMATCH(int64, "plain");
+    CHECK_INT_VALUE_MISMATCH(int64, "");
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+MU_TEST(test_asdf_value_is_int64) {
+    const char *path = get_fixture_file_path("scalars.asdf");
+    asdf_file_t *file = asdf_open_file(path, "r");
+    assert_not_null(file);
+    CHECK_VALUE_IS_INT(int64, "", false);
+    CHECK_VALUE_IS_INT(int64, "int8", true);
+    CHECK_VALUE_IS_INT(int64, "int16", true);
+    CHECK_VALUE_IS_INT(int64, "int32", true);
+    CHECK_VALUE_IS_INT(int64, "int64", true);
+    CHECK_VALUE_IS_INT(int64, "uint8", true);
+    CHECK_VALUE_IS_INT(int64, "uint16", true);
+    CHECK_VALUE_IS_INT(int64, "uint32", true);
+    CHECK_VALUE_IS_INT(int64, "uint64", false);
     asdf_close(file);
     return MUNIT_OK;
 }
@@ -357,15 +514,47 @@ MU_TEST(test_asdf_value_as_uint8) {
     const char *path = get_fixture_file_path("scalars.asdf");
     asdf_file_t *file = asdf_open_file(path, "r");
     assert_not_null(file);
-    CHECK_INT_VALUE(uint8, "int8", ASDF_VALUE_OK, 127);
+    CHECK_INT_VALUE(uint8, "int8", ASDF_VALUE_ERR_OVERFLOW, -127);
     CHECK_INT_VALUE(uint8, "uint8", ASDF_VALUE_OK, 255);
-    CHECK_INT_VALUE(uint8, "int16", ASDF_VALUE_ERR_OVERFLOW, 255);
+    CHECK_INT_VALUE(uint8, "int16", ASDF_VALUE_ERR_OVERFLOW, 1);
     CHECK_INT_VALUE(uint8, "uint16", ASDF_VALUE_ERR_OVERFLOW, 255);
-    CHECK_INT_VALUE(uint8, "int32", ASDF_VALUE_ERR_OVERFLOW, 255);
+    CHECK_INT_VALUE(uint8, "int32", ASDF_VALUE_ERR_OVERFLOW, 1);
     CHECK_INT_VALUE(uint8, "uint32", ASDF_VALUE_ERR_OVERFLOW, 255);
-    CHECK_INT_VALUE(uint8, "int64", ASDF_VALUE_ERR_OVERFLOW, 255);
+    CHECK_INT_VALUE(uint8, "int64", ASDF_VALUE_ERR_OVERFLOW, 1);
     CHECK_INT_VALUE(uint8, "uint64", ASDF_VALUE_ERR_OVERFLOW, 255);
     CHECK_INT_VALUE_MISMATCH(uint8, "plain");
+    CHECK_INT_VALUE_MISMATCH(uint8, "");
+    asdf_value_t *int_value = asdf_value_of_uint16(file, 1);
+    uint8_t u8 = 0;
+    assert_int(asdf_value_as_uint8(int_value, &u8), ==, ASDF_VALUE_OK);
+    assert_int(u8, ==, 1);
+    asdf_value_destroy(int_value);
+
+    u8 = 0;
+    int_value = asdf_value_of_int8(file, 1);
+    assert_int(asdf_value_as_uint8(int_value, &u8), ==, ASDF_VALUE_OK);
+    assert_int(u8, ==, 1);
+    asdf_value_destroy(int_value);
+
+    u8 = 0;
+    int_value = asdf_value_of_int16(file, 1);
+    assert_int(asdf_value_as_uint8(int_value, &u8), ==, ASDF_VALUE_OK);
+    assert_int(u8, ==, 1);
+    asdf_value_destroy(int_value);
+
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+MU_TEST(test_asdf_value_is_uint8) {
+    const char *path = get_fixture_file_path("scalars.asdf");
+    asdf_file_t *file = asdf_open_file(path, "r");
+    assert_not_null(file);
+    CHECK_VALUE_IS_INT(uint8, "", false);
+    CHECK_VALUE_IS_INT(uint8, "int8", false);
+    CHECK_VALUE_IS_INT(uint8, "uint8", true);
+    CHECK_VALUE_IS_INT(uint8, "int16", false);
     asdf_close(file);
     return MUNIT_OK;
 }
@@ -375,15 +564,50 @@ MU_TEST(test_asdf_value_as_uint16) {
     const char *path = get_fixture_file_path("scalars.asdf");
     asdf_file_t *file = asdf_open_file(path, "r");
     assert_not_null(file);
-    CHECK_INT_VALUE(uint16, "int8", ASDF_VALUE_OK, 127);
+    CHECK_INT_VALUE(uint16, "int8", ASDF_VALUE_ERR_OVERFLOW, -127);
     CHECK_INT_VALUE(uint16, "uint8", ASDF_VALUE_OK, 255);
-    CHECK_INT_VALUE(uint16, "int16", ASDF_VALUE_OK, 32767);
+    CHECK_INT_VALUE(uint16, "int16", ASDF_VALUE_ERR_OVERFLOW, -32767);
     CHECK_INT_VALUE(uint16, "uint16", ASDF_VALUE_OK, 65535);
-    CHECK_INT_VALUE(uint16, "int32", ASDF_VALUE_ERR_OVERFLOW, 65535);
+    CHECK_INT_VALUE(uint16, "int32", ASDF_VALUE_ERR_OVERFLOW, 1);
     CHECK_INT_VALUE(uint16, "uint32", ASDF_VALUE_ERR_OVERFLOW, 65535);
-    CHECK_INT_VALUE(uint16, "int64", ASDF_VALUE_ERR_OVERFLOW, 65535);
+    CHECK_INT_VALUE(uint16, "int64", ASDF_VALUE_ERR_OVERFLOW, 1);
     CHECK_INT_VALUE(uint16, "uint64", ASDF_VALUE_ERR_OVERFLOW, 65535);
     CHECK_INT_VALUE_MISMATCH(uint16, "plain");
+    CHECK_INT_VALUE_MISMATCH(uint16, "");
+
+    asdf_value_t *int_value = asdf_value_of_uint32(file, 1);
+    uint16_t u16 = 0;
+    assert_int(asdf_value_as_uint16(int_value, &u16), ==, ASDF_VALUE_OK);
+    assert_int(u16, ==, 1);
+    asdf_value_destroy(int_value);
+
+    u16 = 0;
+    int_value = asdf_value_of_int8(file, 1);
+    assert_int(asdf_value_as_uint16(int_value, &u16), ==, ASDF_VALUE_OK);
+    assert_int(u16, ==, 1);
+    asdf_value_destroy(int_value);
+
+    u16 = 0;
+    int_value = asdf_value_of_int32(file, 1);
+    assert_int(asdf_value_as_uint16(int_value, &u16), ==, ASDF_VALUE_OK);
+    assert_int(u16, ==, 1);
+    asdf_value_destroy(int_value);
+
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+MU_TEST(test_asdf_value_is_uint16) {
+    const char *path = get_fixture_file_path("scalars.asdf");
+    asdf_file_t *file = asdf_open_file(path, "r");
+    assert_not_null(file);
+    CHECK_VALUE_IS_INT(uint16, "", false);
+    CHECK_VALUE_IS_INT(uint16, "int8", false);
+    CHECK_VALUE_IS_INT(uint16, "uint8", true);
+    CHECK_VALUE_IS_INT(uint16, "int16", false);
+    CHECK_VALUE_IS_INT(uint16, "uint32", false);
+    CHECK_VALUE_IS_INT(uint16, "int32", false);
     asdf_close(file);
     return MUNIT_OK;
 }
@@ -393,15 +617,52 @@ MU_TEST(test_asdf_value_as_uint32) {
     const char *path = get_fixture_file_path("scalars.asdf");
     asdf_file_t *file = asdf_open_file(path, "r");
     assert_not_null(file);
-    CHECK_INT_VALUE(uint32, "int8", ASDF_VALUE_OK, 127);
+    CHECK_INT_VALUE(uint32, "int8", ASDF_VALUE_ERR_OVERFLOW, -127);
     CHECK_INT_VALUE(uint32, "uint8", ASDF_VALUE_OK, 255);
-    CHECK_INT_VALUE(uint32, "int16", ASDF_VALUE_OK, 32767);
+    CHECK_INT_VALUE(uint32, "int16", ASDF_VALUE_ERR_OVERFLOW, -32767);
     CHECK_INT_VALUE(uint32, "uint16", ASDF_VALUE_OK, 65535);
-    CHECK_INT_VALUE(uint32, "int32", ASDF_VALUE_OK, 2147483647);
+    CHECK_INT_VALUE(uint32, "int32", ASDF_VALUE_ERR_OVERFLOW, -2147483647);
     CHECK_INT_VALUE(uint32, "uint32", ASDF_VALUE_OK, 4294967295);
-    CHECK_INT_VALUE(uint32, "int64", ASDF_VALUE_ERR_OVERFLOW, 4294967295);
+    CHECK_INT_VALUE(uint32, "int64", ASDF_VALUE_ERR_OVERFLOW, 1);
     CHECK_INT_VALUE(uint32, "uint64", ASDF_VALUE_ERR_OVERFLOW, 4294967295);
     CHECK_INT_VALUE_MISMATCH(uint32, "plain");
+    CHECK_INT_VALUE_MISMATCH(uint32, "");
+
+    asdf_value_t *int_value = asdf_value_of_uint64(file, 1);
+    uint32_t u32 = 0;
+    assert_int(asdf_value_as_uint32(int_value, &u32), ==, ASDF_VALUE_OK);
+    assert_int(u32, ==, 1);
+    asdf_value_destroy(int_value);
+
+    u32 = 0;
+    int_value = asdf_value_of_int8(file, 1);
+    assert_int(asdf_value_as_uint32(int_value, &u32), ==, ASDF_VALUE_OK);
+    assert_int(u32, ==, 1);
+    asdf_value_destroy(int_value);
+
+    u32 = 0;
+    int_value = asdf_value_of_int32(file, 1);
+    assert_int(asdf_value_as_uint32(int_value, &u32), ==, ASDF_VALUE_OK);
+    assert_int(u32, ==, 1);
+    asdf_value_destroy(int_value);
+
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+MU_TEST(test_asdf_value_is_uint32) {
+    const char *path = get_fixture_file_path("scalars.asdf");
+    asdf_file_t *file = asdf_open_file(path, "r");
+    assert_not_null(file);
+    CHECK_VALUE_IS_INT(uint32, "", false);
+    CHECK_VALUE_IS_INT(uint32, "int8", false);
+    CHECK_VALUE_IS_INT(uint32, "uint8", true);
+    CHECK_VALUE_IS_INT(uint32, "int16", false);
+    CHECK_VALUE_IS_INT(uint32, "uint32", true);
+    CHECK_VALUE_IS_INT(uint32, "int32", false);
+    CHECK_VALUE_IS_INT(uint32, "uint64", false);
+    CHECK_VALUE_IS_INT(uint32, "int64", false);
     asdf_close(file);
     return MUNIT_OK;
 }
@@ -411,15 +672,34 @@ MU_TEST(test_asdf_value_as_uint64) {
     const char *path = get_fixture_file_path("scalars.asdf");
     asdf_file_t *file = asdf_open_file(path, "r");
     assert_not_null(file);
-    CHECK_INT_VALUE(uint64, "int8", ASDF_VALUE_OK, 127);
+    CHECK_INT_VALUE(uint64, "int8", ASDF_VALUE_ERR_OVERFLOW, -127);
     CHECK_INT_VALUE(uint64, "uint8", ASDF_VALUE_OK, 255);
-    CHECK_INT_VALUE(uint64, "int16", ASDF_VALUE_OK, 32767);
+    CHECK_INT_VALUE(uint64, "int16", ASDF_VALUE_ERR_OVERFLOW, -32767);
     CHECK_INT_VALUE(uint64, "uint16", ASDF_VALUE_OK, 65535);
-    CHECK_INT_VALUE(uint64, "int32", ASDF_VALUE_OK, 2147483647);
+    CHECK_INT_VALUE(uint64, "int32", ASDF_VALUE_ERR_OVERFLOW, -2147483647);
     CHECK_INT_VALUE(uint64, "uint32", ASDF_VALUE_OK, 4294967295);
-    CHECK_INT_VALUE(uint64, "int64", ASDF_VALUE_OK, 9223372036854775807LL);
+    CHECK_INT_VALUE(uint64, "int64", ASDF_VALUE_ERR_OVERFLOW, -9223372036854775807LL);
     CHECK_INT_VALUE(uint64, "uint64", ASDF_VALUE_OK, 18446744073709551615ULL);
     CHECK_INT_VALUE_MISMATCH(uint64, "plain");
+    CHECK_INT_VALUE_MISMATCH(uint64, "");
+
+    asdf_value_t *int_value = asdf_value_of_int8(file, 1);
+    uint64_t u64 = 0;
+    assert_int(asdf_value_as_uint64(int_value, &u64), ==, ASDF_VALUE_OK);
+    assert_int(u64, ==, 1);
+    asdf_value_destroy(int_value);
+
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+MU_TEST(test_asdf_value_is_uint64) {
+    const char *path = get_fixture_file_path("scalars.asdf");
+    asdf_file_t *file = asdf_open_file(path, "r");
+    assert_not_null(file);
+    CHECK_VALUE_IS_INT(uint64, "", false);
+    CHECK_VALUE_IS_INT(uint64, "int8", false);
     asdf_close(file);
     return MUNIT_OK;
 }
@@ -473,6 +753,22 @@ MU_TEST(test_asdf_value_as_float) {
     CHECK_FLOAT_VALUE(float, "float32", ASDF_VALUE_OK, 0.15625);
     CHECK_FLOAT_VALUE(float, "float64", ASDF_VALUE_OK, 1.000000059604644775390625);
     CHECK_FLOAT_VALUE_MISMATCH(float, "plain");
+    CHECK_FLOAT_VALUE_MISMATCH(float, "");
+    asdf_value_t *float_val = asdf_value_of_float(file, 1.0F);
+    float out = 0.0F;
+    assert_int(asdf_value_as_float(float_val, &out), ==, ASDF_VALUE_OK);
+    assert_float(out, ==, 1.0F);
+    asdf_value_destroy(float_val);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+MU_TEST(test_asdf_value_is_float) {
+    const char *path = get_fixture_file_path("scalars.asdf");
+    asdf_file_t *file = asdf_open_file(path, "r");
+    assert_not_null(file);
+    assert_false(asdf_is_float(file, ""));
     asdf_close(file);
     return MUNIT_OK;
 }
@@ -484,7 +780,128 @@ MU_TEST(test_asdf_value_as_double) {
     assert_not_null(file);
     CHECK_FLOAT_VALUE(double, "float32", ASDF_VALUE_OK, 0.15625);
     CHECK_FLOAT_VALUE(double, "float64", ASDF_VALUE_OK, 1.000000059604644775390625);
-    CHECK_FLOAT_VALUE_MISMATCH(float, "plain");
+    CHECK_FLOAT_VALUE_MISMATCH(double, "plain");
+    CHECK_FLOAT_VALUE_MISMATCH(double, "");
+
+    asdf_value_t *float_val = asdf_value_of_float(file, 1.0F);
+    double out = 0.0;
+    assert_int(asdf_value_as_double(float_val, &out), ==, ASDF_VALUE_OK);
+    assert_double(out, ==, 1.0);
+    asdf_value_destroy(float_val);
+
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+MU_TEST(test_asdf_value_as_type) {
+    const char *path = get_fixture_file_path("scalars.asdf");
+    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_value_t *value = asdf_get_value(file, "plain");
+    asdf_value_t *clone = NULL;
+    const char *str = NULL;
+    assert_int(asdf_value_as_type(value, ASDF_VALUE_UNKNOWN, (void *)&clone), ==, ASDF_VALUE_OK);
+    assert_not_null(clone);
+    asdf_value_destroy(clone);
+    assert_int(asdf_value_as_type(value, ASDF_VALUE_SEQUENCE, NULL), ==, ASDF_VALUE_ERR_TYPE_MISMATCH);
+    assert_int(asdf_value_as_type(value, ASDF_VALUE_MAPPING, NULL), ==, ASDF_VALUE_ERR_TYPE_MISMATCH);
+    assert_int(asdf_value_as_type(value, ASDF_VALUE_SCALAR, (void *)&str), ==, ASDF_VALUE_OK);
+    assert_string_equal(str, "string");
+    str = NULL;
+    assert_int(asdf_value_as_type(value, ASDF_VALUE_STRING, (void *)&str), ==, ASDF_VALUE_OK);
+    assert_string_equal(str, "string");
+    str = NULL;
+    assert_int(asdf_value_as_type(value, ASDF_VALUE_BOOL, NULL), ==, ASDF_VALUE_ERR_TYPE_MISMATCH);
+    assert_int(asdf_value_as_type(value, ASDF_VALUE_NULL, NULL), ==, ASDF_VALUE_ERR_TYPE_MISMATCH);
+    assert_int(asdf_value_as_type(value, ASDF_VALUE_INT8, NULL), ==, ASDF_VALUE_ERR_TYPE_MISMATCH);
+    assert_int(asdf_value_as_type(value, ASDF_VALUE_INT16, NULL), ==, ASDF_VALUE_ERR_TYPE_MISMATCH);
+    assert_int(asdf_value_as_type(value, ASDF_VALUE_INT32, NULL), ==, ASDF_VALUE_ERR_TYPE_MISMATCH);
+    assert_int(asdf_value_as_type(value, ASDF_VALUE_INT64, NULL), ==, ASDF_VALUE_ERR_TYPE_MISMATCH);
+    assert_int(asdf_value_as_type(value, ASDF_VALUE_UINT8, NULL), ==, ASDF_VALUE_ERR_TYPE_MISMATCH);
+    assert_int(asdf_value_as_type(value, ASDF_VALUE_UINT16, NULL), ==, ASDF_VALUE_ERR_TYPE_MISMATCH);
+    assert_int(asdf_value_as_type(value, ASDF_VALUE_UINT32, NULL), ==, ASDF_VALUE_ERR_TYPE_MISMATCH);
+    assert_int(asdf_value_as_type(value, ASDF_VALUE_UINT64, NULL), ==, ASDF_VALUE_ERR_TYPE_MISMATCH);
+    assert_int(asdf_value_as_type(value, ASDF_VALUE_FLOAT, NULL), ==, ASDF_VALUE_ERR_TYPE_MISMATCH);
+    assert_int(asdf_value_as_type(value, ASDF_VALUE_DOUBLE, NULL), ==, ASDF_VALUE_ERR_TYPE_MISMATCH);
+    assert_int(asdf_value_as_type(value, ASDF_VALUE_EXTENSION, NULL), ==, ASDF_VALUE_ERR_TYPE_MISMATCH);
+    assert_int(asdf_value_as_type(value, -2, NULL), ==, ASDF_VALUE_ERR_TYPE_MISMATCH);
+    asdf_value_destroy(value);
+
+    // Special case of null
+    value = asdf_get_value(file, "null");
+    assert_int(asdf_value_as_type(value, ASDF_VALUE_NULL, NULL), ==, ASDF_VALUE_OK);
+    asdf_value_destroy(value);
+
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+
+MU_TEST(test_asdf_value_is_type) {
+    const char *path = get_fixture_file_path("scalars.asdf");
+    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_value_t *value = asdf_get_value(file, "plain");
+    assert_false(asdf_value_is_type(value, -2));
+    assert_false(asdf_value_is_type(value, ASDF_VALUE_UNKNOWN));
+    assert_false(asdf_value_is_type(value, ASDF_VALUE_SEQUENCE));
+    assert_false(asdf_value_is_type(value, ASDF_VALUE_MAPPING));
+    assert_true(asdf_value_is_type(value, ASDF_VALUE_SCALAR));
+    assert_true(asdf_value_is_type(value, ASDF_VALUE_STRING));
+    assert_false(asdf_value_is_type(value, ASDF_VALUE_BOOL));
+    assert_false(asdf_value_is_type(value, ASDF_VALUE_NULL));
+    assert_false(asdf_value_is_type(value, ASDF_VALUE_INT8));
+    assert_false(asdf_value_is_type(value, ASDF_VALUE_INT16));
+    assert_false(asdf_value_is_type(value, ASDF_VALUE_INT32));
+    assert_false(asdf_value_is_type(value, ASDF_VALUE_INT64));
+    assert_false(asdf_value_is_type(value, ASDF_VALUE_UINT8));
+    assert_false(asdf_value_is_type(value, ASDF_VALUE_UINT16));
+    assert_false(asdf_value_is_type(value, ASDF_VALUE_UINT32));
+    assert_false(asdf_value_is_type(value, ASDF_VALUE_UINT64));
+    assert_false(asdf_value_is_type(value, ASDF_VALUE_FLOAT));
+    assert_false(asdf_value_is_type(value, ASDF_VALUE_DOUBLE));
+    assert_false(asdf_value_is_type(value, ASDF_VALUE_EXTENSION));
+    asdf_value_destroy(value);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+MU_TEST(test_asdf_value_of_mapping) {
+    const char *path = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    asdf_file_t *file = asdf_open_file(path, "w");
+    assert_not_null(file);
+    asdf_mapping_t *mapping = asdf_mapping_create(file);
+    assert_not_null(mapping);
+    asdf_value_t *value = asdf_value_of_mapping(mapping);
+    assert_int(asdf_set_value(file, "mapping", value), ==, ASDF_VALUE_OK);
+    asdf_close(file);
+    file = asdf_open(path, "r");
+    mapping = NULL;
+    asdf_get_mapping(file, "mapping", &mapping);
+    assert_not_null(mapping);
+    assert_int(asdf_mapping_size(mapping), ==, 0);
+    asdf_mapping_destroy(mapping);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+MU_TEST(test_asdf_value_of_sequence) {
+    const char *path = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    asdf_file_t *file = asdf_open_file(path, "w");
+    assert_not_null(file);
+    asdf_sequence_t *sequence = asdf_sequence_create(file);
+    assert_not_null(sequence);
+    asdf_value_t *value = asdf_value_of_sequence(sequence);
+    assert_int(asdf_set_value(file, "sequence", value), ==, ASDF_VALUE_OK);
+    asdf_close(file);
+    file = asdf_open(path, "r");
+    sequence = NULL;
+    asdf_get_sequence(file, "sequence", &sequence);
+    assert_not_null(sequence);
+    assert_int(asdf_sequence_size(sequence), ==, 0);
+    asdf_sequence_destroy(sequence);
     asdf_close(file);
     return MUNIT_OK;
 }
@@ -565,6 +982,12 @@ MU_TEST(test_asdf_mapping_create) {
     assert_not_null(mapping);
     asdf_mapping_destroy(mapping);
     asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+MU_TEST(test_asdf_mapping_item_destroy) {
+    asdf_mapping_item_destroy(NULL); // OK
     return MUNIT_OK;
 }
 
@@ -694,9 +1117,12 @@ MU_TEST(test_asdf_sequence_append) {
     asdf_sequence_t *sequence = asdf_sequence_create(file);
     assert_not_null(sequence);
     assert_int(asdf_sequence_append_string(sequence, "string", 6), ==, ASDF_VALUE_OK);
+    assert_int(asdf_sequence_append_string(NULL, "string", 6), ==, ASDF_VALUE_ERR_UNKNOWN);
     assert_int(asdf_sequence_append_string0(sequence, "string0"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_sequence_append_string0(NULL, "string0"), ==, ASDF_VALUE_ERR_UNKNOWN);
     assert_int(asdf_sequence_append_bool(sequence, false), ==, ASDF_VALUE_OK);
     assert_int(asdf_sequence_append_bool(sequence, true), ==, ASDF_VALUE_OK);
+    assert_int(asdf_sequence_append_null(NULL), ==, ASDF_VALUE_ERR_UNKNOWN);
     assert_int(asdf_sequence_append_null(sequence), ==, ASDF_VALUE_OK);
     assert_int(asdf_sequence_append_int8(sequence, INT8_MIN), ==, ASDF_VALUE_OK);
     assert_int(asdf_sequence_append_int16(sequence, INT16_MIN), ==, ASDF_VALUE_OK);
@@ -956,6 +1382,19 @@ MU_TEST(test_value_copy_with_parent_path) {
     asdf_value_destroy(ext_uri_clone);
     asdf_value_destroy(value_clone);
     asdf_value_destroy(ext_uri);
+    asdf_value_destroy(value);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+MU_TEST(test_asdf_value_file) {
+    const char *filename = get_reference_file_path("1.6.0/basic.asdf");
+    asdf_file_t *file = asdf_open_file(filename, "r");
+    assert_not_null(file);
+    asdf_value_t *value = asdf_get_value(file, "/history/extensions/0");
+    assert_not_null(value);
+    assert_ptr_equal(asdf_value_file(value), file);
     asdf_value_destroy(value);
     asdf_close(file);
     return MUNIT_OK;
@@ -1230,6 +1669,47 @@ MU_TEST(test_asdf_value_find_on_scalar) {
 }
 
 
+MU_TEST(test_asdf_value_path) {
+    assert_null(asdf_value_path(NULL));
+    const char *filename = get_fixture_file_path("nested.asdf");
+    asdf_file_t *file = asdf_open(filename, "r");
+    assert_not_null(file);
+    asdf_value_t *value = asdf_get_value(file, "/d/0");
+    assert_not_null(value);
+    assert_string_equal(asdf_value_path(value), "/d/0");
+    asdf_value_t *clone = asdf_value_clone(value);
+    assert_string_equal(asdf_value_path(clone), "/d/0");
+    asdf_value_destroy(value);
+    asdf_value_destroy(clone);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+/** This test is basically tautological :) */
+MU_TEST(test_asdf_value_type_string) {
+    assert_string_equal(asdf_value_type_string(-1), "<unknown>");
+    assert_string_equal(asdf_value_type_string(ASDF_VALUE_SEQUENCE), "sequence");
+    assert_string_equal(asdf_value_type_string(ASDF_VALUE_MAPPING), "mapping");
+    assert_string_equal(asdf_value_type_string(ASDF_VALUE_SCALAR), "scalar");
+    assert_string_equal(asdf_value_type_string(ASDF_VALUE_STRING), "string");
+    assert_string_equal(asdf_value_type_string(ASDF_VALUE_BOOL), "bool");
+    assert_string_equal(asdf_value_type_string(ASDF_VALUE_NULL), "null");
+    assert_string_equal(asdf_value_type_string(ASDF_VALUE_INT8), "int8");
+    assert_string_equal(asdf_value_type_string(ASDF_VALUE_INT16), "int16");
+    assert_string_equal(asdf_value_type_string(ASDF_VALUE_INT32), "int32");
+    assert_string_equal(asdf_value_type_string(ASDF_VALUE_INT64), "int64");
+    assert_string_equal(asdf_value_type_string(ASDF_VALUE_UINT8), "uint8");
+    assert_string_equal(asdf_value_type_string(ASDF_VALUE_UINT16), "uint16");
+    assert_string_equal(asdf_value_type_string(ASDF_VALUE_UINT32), "uint32");
+    assert_string_equal(asdf_value_type_string(ASDF_VALUE_UINT64), "uint64");
+    assert_string_equal(asdf_value_type_string(ASDF_VALUE_FLOAT), "float");
+    assert_string_equal(asdf_value_type_string(ASDF_VALUE_DOUBLE), "double");
+    assert_string_equal(asdf_value_type_string(ASDF_VALUE_EXTENSION), "<extension>");
+    return MUNIT_OK;
+}
+
+
 /** Regression test for issue #75 */
 MU_TEST(test_raw_value_type_preserved_after_type_resolution) {
     const char *filename = get_fixture_file_path("nested.asdf");
@@ -1315,21 +1795,37 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_value_as_scalar),
     MU_RUN_TEST(test_asdf_value_as_scalar0),
     MU_RUN_TEST(test_asdf_value_as_bool),
+    MU_RUN_TEST(test_asdf_value_is_bool),
     MU_RUN_TEST(test_asdf_value_is_null),
+    MU_RUN_TEST(test_asdf_value_is_int),
     MU_RUN_TEST(test_asdf_value_as_int8),
+    MU_RUN_TEST(test_asdf_value_is_int8),
     MU_RUN_TEST(test_asdf_value_as_int16),
+    MU_RUN_TEST(test_asdf_value_is_int16),
     MU_RUN_TEST(test_asdf_value_as_int32),
+    MU_RUN_TEST(test_asdf_value_is_int32),
     MU_RUN_TEST(test_asdf_value_as_int64),
+    MU_RUN_TEST(test_asdf_value_is_int64),
     MU_RUN_TEST(test_asdf_value_as_uint8),
+    MU_RUN_TEST(test_asdf_value_is_uint8),
     MU_RUN_TEST(test_asdf_value_as_uint16),
+    MU_RUN_TEST(test_asdf_value_is_uint16),
     MU_RUN_TEST(test_asdf_value_as_uint32),
+    MU_RUN_TEST(test_asdf_value_is_uint32),
     MU_RUN_TEST(test_asdf_value_as_uint64),
+    MU_RUN_TEST(test_asdf_value_is_uint64),
     MU_RUN_TEST(test_asdf_value_as_uint64_on_bigint),
     MU_RUN_TEST(test_asdf_value_as_float),
+    MU_RUN_TEST(test_asdf_value_is_float),
     MU_RUN_TEST(test_asdf_value_as_double),
+    MU_RUN_TEST(test_asdf_value_as_type),
+    MU_RUN_TEST(test_asdf_value_is_type),
+    MU_RUN_TEST(test_asdf_value_of_mapping),
+    MU_RUN_TEST(test_asdf_value_of_sequence),
     MU_RUN_TEST(test_asdf_value_of_type),
     MU_RUN_TEST(test_value_tagged_strings),
     MU_RUN_TEST(test_asdf_mapping_create),
+    MU_RUN_TEST(test_asdf_mapping_item_destroy),
     MU_RUN_TEST(test_asdf_mapping_iter),
     MU_RUN_TEST(test_asdf_mapping_get),
     MU_RUN_TEST(test_asdf_mapping_set_scalars),
@@ -1339,6 +1835,7 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_sequence_get),
     MU_RUN_TEST(test_asdf_container_iter),
     MU_RUN_TEST(test_value_copy_with_parent_path),
+    MU_RUN_TEST(test_asdf_value_file),
     MU_RUN_TEST(test_asdf_value_find_iter_ex_descend_mapping_only),
     MU_RUN_TEST(test_asdf_value_find_iter_ex_descend_sequence_only),
     MU_RUN_TEST(test_asdf_value_find_iter_max_depth),
@@ -1346,6 +1843,8 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_value_find_iter),
     MU_RUN_TEST(test_asdf_value_find),
     MU_RUN_TEST(test_asdf_value_find_on_scalar),
+    MU_RUN_TEST(test_asdf_value_path),
+    MU_RUN_TEST(test_asdf_value_type_string),
     MU_RUN_TEST(test_raw_value_type_preserved_after_type_resolution),
     // TODO: Maybe set up a separate test suite for regression tests
     MU_RUN_TEST(regression_clone_extension_value),

@@ -104,10 +104,10 @@ MU_TEST(scalar_getters) {
 
     assert_true(asdf_is_null(file, "null"));
 
-    CHECK_GET_INT(int8, "int8", 127);
-    CHECK_GET_INT(int16, "int16", 32767);
-    CHECK_GET_INT(int32, "int32", 2147483647);
-    CHECK_GET_INT(int64, "int64", 9223372036854775807LL);
+    CHECK_GET_INT(int8, "int8", -127);
+    CHECK_GET_INT(int16, "int16", -32767);
+    CHECK_GET_INT(int32, "int32", -2147483647);
+    CHECK_GET_INT(int64, "int64", -9223372036854775807LL);
     CHECK_GET_INT(uint8, "uint8", 255);
     CHECK_GET_INT(uint16, "uint16", 65535);
     CHECK_GET_INT(uint32, "uint32", 4294967295);

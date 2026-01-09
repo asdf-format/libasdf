@@ -102,6 +102,7 @@ typedef struct {
 typedef asdf_yaml_path_component asdf_yaml_path_component_t;
 
 
+/* LCOV_EXCL_START */
 static asdf_yaml_path_component_t asdf_yaml_path_component_clone(
     asdf_yaml_path_component_t component) {
     if (component.key)
@@ -109,6 +110,7 @@ static asdf_yaml_path_component_t asdf_yaml_path_component_clone(
 
     return component;
 }
+/* LCOV_EXCL_STOP */
 
 
 static void asdf_yaml_path_component_drop(asdf_yaml_path_component_t *component) {
