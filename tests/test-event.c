@@ -119,8 +119,14 @@ MU_TEST(basic) {
         assert_int(*(asdf_block_index_at(block_index, idx)), ==, expected);
     }
 
+    // Test asdf_event_tree_info is NULL for a non-tree event
+    const asdf_tree_info_t *tree_info = asdf_event_tree_info(event);
+    assert_null(tree_info);
+
     CHECK_NEXT_EVENT_TYPE(ASDF_TREE_START_EVENT);
-    assert_int(event->payload.tree->start, ==, 0x21);
+    tree_info = asdf_event_tree_info(event);
+    assert_not_null(tree_info);
+    assert_int(tree_info->start, ==, 0x21);
 
     CHECK_NEXT_YAML_EVENT(ASDF_YAML_STREAM_START_EVENT);
     CHECK_NEXT_YAML_EVENT(ASDF_YAML_DOCUMENT_START_EVENT);
@@ -180,9 +186,10 @@ MU_TEST(basic) {
     CHECK_NEXT_YAML_EVENT(ASDF_YAML_STREAM_END_EVENT);
 
     CHECK_NEXT_EVENT_TYPE(ASDF_TREE_END_EVENT);
-    assert_int(event->payload.tree->start, ==, 0x21);
-    assert_int(event->payload.tree->end, ==, 0x298);
-    assert_null(event->payload.tree->buf);
+    tree_info = asdf_event_tree_info(event);
+    assert_int(tree_info->start, ==, 0x21);
+    assert_int(tree_info->end, ==, 0x298);
+    assert_null(tree_info->buf);
 
     CHECK_NEXT_EVENT_TYPE(ASDF_BLOCK_EVENT);
     const asdf_block_info_t *block = event->payload.block;
