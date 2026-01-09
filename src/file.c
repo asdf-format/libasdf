@@ -571,6 +571,21 @@ static asdf_value_err_t asdf_set_node(asdf_file_t *file, const char *path, struc
 }
 
 
+asdf_value_err_t asdf_set_value(asdf_file_t *file, const char *path, asdf_value_t *value) {
+    struct fy_document *tree = asdf_file_get_tree_document(file);
+    asdf_value_err_t err = ASDF_VALUE_ERR_OOM;
+
+    if (!tree)
+        goto cleanup;
+
+    struct fy_node *node = value ? value->node : NULL;
+    err = asdf_set_node(file, path, node);
+cleanup:
+    asdf_value_destroy(value);
+    return err;
+}
+
+
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 asdf_value_err_t asdf_set_string(asdf_file_t *file, const char *path, const char *str, size_t len) {
     struct fy_document *tree = asdf_file_get_tree_document(file);
@@ -618,41 +633,29 @@ asdf_value_err_t asdf_set_null(asdf_file_t *file, const char *path) {
 }
 
 
-#define ASDF_SET_TYPE(type) \
-    asdf_value_err_t asdf_set_##type(asdf_file_t *file, const char *path, type value) { \
+#define ASDF_SET_TYPE(typename, type) \
+    asdf_value_err_t asdf_set_##typename(asdf_file_t * file, const char *path, type value) { \
         struct fy_document *tree = asdf_file_get_tree_document(file); \
         if (!tree) \
             return ASDF_VALUE_ERR_OOM; \
-        struct fy_node *node = asdf_node_of_##type(tree, value); \
+        struct fy_node *node = asdf_node_of_##typename(tree, value); \
         if (!node) \
             return ASDF_VALUE_ERR_OOM; \
         return asdf_set_node(file, path, node); \
     }
 
 
-#define ASDF_SET_INT_TYPE(type) \
-    asdf_value_err_t asdf_set_##type(asdf_file_t *file, const char *path, type##_t value) { \
-        struct fy_document *tree = asdf_file_get_tree_document(file); \
-        if (!tree) \
-            return ASDF_VALUE_ERR_OOM; \
-        struct fy_node *node = asdf_node_of_##type(tree, value); \
-        if (!node) \
-            return ASDF_VALUE_ERR_OOM; \
-        return asdf_set_node(file, path, node); \
-    }
-
-
-ASDF_SET_TYPE(bool);
-ASDF_SET_INT_TYPE(int8);
-ASDF_SET_INT_TYPE(int16);
-ASDF_SET_INT_TYPE(int32);
-ASDF_SET_INT_TYPE(int64);
-ASDF_SET_INT_TYPE(uint8);
-ASDF_SET_INT_TYPE(uint16);
-ASDF_SET_INT_TYPE(uint32);
-ASDF_SET_INT_TYPE(uint64);
-ASDF_SET_TYPE(float);
-ASDF_SET_TYPE(double);
+ASDF_SET_TYPE(bool, bool);
+ASDF_SET_TYPE(int8, int8_t);
+ASDF_SET_TYPE(int16, int16_t);
+ASDF_SET_TYPE(int32, int32_t);
+ASDF_SET_TYPE(int64, int64_t);
+ASDF_SET_TYPE(uint8, uint8_t);
+ASDF_SET_TYPE(uint16, uint16_t);
+ASDF_SET_TYPE(uint32, uint32_t);
+ASDF_SET_TYPE(uint64, uint64_t);
+ASDF_SET_TYPE(float, float);
+ASDF_SET_TYPE(double, double);
 
 
 asdf_value_err_t asdf_set_mapping(asdf_file_t *file, const char *path, asdf_mapping_t *mapping) {

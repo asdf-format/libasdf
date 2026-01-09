@@ -219,6 +219,7 @@ typedef struct asdf_mapping asdf_mapping_t;
 ASDF_EXPORT bool asdf_value_is_mapping(asdf_value_t *value);
 ASDF_EXPORT int asdf_mapping_size(asdf_mapping_t *mapping);
 ASDF_EXPORT asdf_value_err_t asdf_value_as_mapping(asdf_value_t *value, asdf_mapping_t **out);
+ASDF_EXPORT asdf_value_t *asdf_value_of_mapping(asdf_mapping_t *mapping);
 ASDF_EXPORT asdf_mapping_t *asdf_mapping_create(asdf_file_t *file);
 ASDF_EXPORT void asdf_mapping_destroy(asdf_mapping_t *mapping);
 
@@ -346,6 +347,7 @@ ASDF_EXPORT bool asdf_value_is_sequence(asdf_value_t *value);
 ASDF_EXPORT int asdf_sequence_size(asdf_sequence_t *sequence);
 ASDF_EXPORT asdf_value_t *asdf_sequence_get(asdf_sequence_t *sequence, int index);
 ASDF_EXPORT asdf_value_err_t asdf_value_as_sequence(asdf_value_t *value, asdf_sequence_t **out);
+ASDF_EXPORT asdf_value_t *asdf_value_of_sequence(asdf_sequence_t *sequence);
 ASDF_EXPORT asdf_sequence_t *asdf_sequence_create(asdf_file_t *file);
 ASDF_EXPORT void asdf_sequence_destroy(asdf_sequence_t *sequence);
 
@@ -575,7 +577,9 @@ asdf_value_as_type(asdf_value_t *value, asdf_value_type_t type, void *out);
 ASDF_EXPORT bool asdf_value_is_string(asdf_value_t *value);
 ASDF_EXPORT asdf_value_err_t
 asdf_value_as_string(asdf_value_t *value, const char **out, size_t *out_len);
+ASDF_EXPORT asdf_value_t *asdf_value_of_string(asdf_file_t *file, const char *value, size_t len);
 ASDF_EXPORT asdf_value_err_t asdf_value_as_string0(asdf_value_t *value, const char **out);
+ASDF_EXPORT asdf_value_t *asdf_value_of_string0(asdf_file_t *file, const char *value);
 
 ASDF_EXPORT bool asdf_value_is_scalar(asdf_value_t *value);
 ASDF_EXPORT asdf_value_err_t
@@ -584,31 +588,52 @@ ASDF_EXPORT asdf_value_err_t asdf_value_as_scalar0(asdf_value_t *value, const ch
 
 ASDF_EXPORT bool asdf_value_is_bool(asdf_value_t *value);
 ASDF_EXPORT asdf_value_err_t asdf_value_as_bool(asdf_value_t *value, bool *out);
+ASDF_EXPORT asdf_value_t *asdf_value_of_bool(asdf_file_t *file, bool value);
 
 ASDF_EXPORT bool asdf_value_is_null(asdf_value_t *value);
+ASDF_EXPORT asdf_value_t *asdf_value_of_null(asdf_file_t *file);
 
 ASDF_EXPORT bool asdf_value_is_int(asdf_value_t *value);
+
 ASDF_EXPORT bool asdf_value_is_int8(asdf_value_t *value);
 ASDF_EXPORT asdf_value_err_t asdf_value_as_int8(asdf_value_t *value, int8_t *out);
+ASDF_EXPORT asdf_value_t *asdf_value_of_int8(asdf_file_t *file, int8_t value);
+
 ASDF_EXPORT bool asdf_value_is_int16(asdf_value_t *value);
 ASDF_EXPORT asdf_value_err_t asdf_value_as_int16(asdf_value_t *value, int16_t *out);
+ASDF_EXPORT asdf_value_t *asdf_value_of_int16(asdf_file_t *file, int16_t value);
+
 ASDF_EXPORT bool asdf_value_is_int32(asdf_value_t *value);
 ASDF_EXPORT asdf_value_err_t asdf_value_as_int32(asdf_value_t *value, int32_t *out);
+ASDF_EXPORT asdf_value_t *asdf_value_of_int32(asdf_file_t *file, int32_t value);
+
 ASDF_EXPORT bool asdf_value_is_int64(asdf_value_t *value);
 ASDF_EXPORT asdf_value_err_t asdf_value_as_int64(asdf_value_t *value, int64_t *out);
+ASDF_EXPORT asdf_value_t *asdf_value_of_int64(asdf_file_t *file, int64_t value);
+
 ASDF_EXPORT bool asdf_value_is_uint8(asdf_value_t *value);
 ASDF_EXPORT asdf_value_err_t asdf_value_as_uint8(asdf_value_t *value, uint8_t *out);
+ASDF_EXPORT asdf_value_t *asdf_value_of_uint8(asdf_file_t *file, uint8_t value);
+
 ASDF_EXPORT bool asdf_value_is_uint16(asdf_value_t *value);
 ASDF_EXPORT asdf_value_err_t asdf_value_as_uint16(asdf_value_t *value, uint16_t *out);
+ASDF_EXPORT asdf_value_t *asdf_value_of_uint16(asdf_file_t *file, uint16_t value);
+
 ASDF_EXPORT bool asdf_value_is_uint32(asdf_value_t *value);
 ASDF_EXPORT asdf_value_err_t asdf_value_as_uint32(asdf_value_t *value, uint32_t *out);
+ASDF_EXPORT asdf_value_t *asdf_value_of_uint32(asdf_file_t *file, uint32_t value);
+
 ASDF_EXPORT bool asdf_value_is_uint64(asdf_value_t *value);
 ASDF_EXPORT asdf_value_err_t asdf_value_as_uint64(asdf_value_t *value, uint64_t *out);
+ASDF_EXPORT asdf_value_t *asdf_value_of_uint64(asdf_file_t *file, uint64_t value);
 
 ASDF_EXPORT bool asdf_value_is_float(asdf_value_t *value);
 ASDF_EXPORT asdf_value_err_t asdf_value_as_float(asdf_value_t *value, float *out);
+ASDF_EXPORT asdf_value_t *asdf_value_of_float(asdf_file_t *file, float value);
+
 ASDF_EXPORT bool asdf_value_is_double(asdf_value_t *value);
 ASDF_EXPORT asdf_value_err_t asdf_value_as_double(asdf_value_t *value, double *out);
+ASDF_EXPORT asdf_value_t *asdf_value_of_double(asdf_file_t *file, double value);
 
 /** Tree traversal functions */
 

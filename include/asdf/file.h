@@ -718,7 +718,8 @@ asdf_get_extension_type(asdf_file_t *file, const char *path, asdf_extension_t *e
  *   Needs general explanation, to do in #114
  */
 
-
+ASDF_EXPORT asdf_value_err_t
+asdf_set_value(asdf_file_t *file, const char *path, asdf_value_t *value);
 ASDF_EXPORT asdf_value_err_t
 asdf_set_string(asdf_file_t *file, const char *path, const char *str, size_t len);
 ASDF_EXPORT asdf_value_err_t asdf_set_string0(asdf_file_t *file, const char *path, const char *str);
