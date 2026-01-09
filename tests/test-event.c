@@ -1,6 +1,7 @@
 #include <string.h>
 
 #include <asdf/event.h>
+#include <asdf/log.h>
 #include <asdf/parser.h>
 #include <asdf/yaml.h>
 
@@ -479,6 +480,32 @@ MU_TEST(basic_buffer_yaml) {
 }
 
 
+MU_TEST(test_asdf_event_summary) {
+    const char *filename = get_reference_file_path("1.6.0/basic.asdf");
+    const char *log_file = get_temp_file_path(fixture->tempfile_prefix, ".log");
+    FILE *log_stream = fopen(log_file, "w");
+    assert_not_null(log_stream);
+    asdf_log_cfg_t log_config = {.level = ASDF_LOG_TRACE, .stream = log_stream, .no_color = true};
+    asdf_parser_cfg_t parser_cfg = {.flags = ASDF_PARSER_OPT_EMIT_YAML_EVENTS, .log=&log_config};
+
+    asdf_parser_t *parser = asdf_parser_create(&parser_cfg);
+    assert_not_null(parser);
+    assert_int(asdf_parser_set_input_file(parser, filename), ==, 0);
+    while (asdf_parser_parse(parser));
+    asdf_parser_destroy(parser);
+    fclose(log_stream);
+    const char *expected_log_file = get_fixture_file_path("events/basic.log");
+    assert_true(compare_files(log_file, expected_log_file));
+    return MUNIT_OK;
+}
+
+
+MU_TEST(test_asdf_event_type_none) {
+    assert_int(asdf_event_type(NULL), ==, ASDF_NONE_EVENT);
+    return MUNIT_OK;
+}
+
+
 /* Parameterize all tests to work on file and memory buffers */
 static char *stream_params[] = {"file", "memory", NULL};
 static MunitParameterEnum test_params[] = {
@@ -492,7 +519,9 @@ MU_TEST_SUITE(
     MU_RUN_TEST(basic, test_params),
     MU_RUN_TEST(basic_no_yaml, test_params),
     MU_RUN_TEST(basic_no_yaml_buffer_yaml, test_params),
-    MU_RUN_TEST(basic_buffer_yaml, test_params)
+    MU_RUN_TEST(basic_buffer_yaml, test_params),
+    MU_RUN_TEST(test_asdf_event_summary),
+    MU_RUN_TEST(test_asdf_event_type_none)
 );
 
 

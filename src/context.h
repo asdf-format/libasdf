@@ -25,16 +25,10 @@ typedef enum {
 
 
 typedef struct {
-    asdf_log_level_t level;
-    FILE *stream; /* Currently just defaults to stderr */
-} asdf_log_config_t;
-
-
-typedef struct {
     atomic_uint refcount;
     asdf_error_type_t error_type;
     const char *error;
-    asdf_log_config_t log;
+    asdf_log_cfg_t log;
 } asdf_context_t;
 
 
@@ -54,7 +48,7 @@ typedef struct {
 } asdf_global_context_t;
 
 
-ASDF_LOCAL asdf_context_t *asdf_context_create(void);
+ASDF_LOCAL asdf_context_t *asdf_context_create(const asdf_log_cfg_t *log_config);
 ASDF_LOCAL void asdf_context_destroy(asdf_context_t *ctx);
 ASDF_LOCAL void asdf_context_retain(asdf_context_t *ctx);
 ASDF_LOCAL void asdf_context_release(asdf_context_t *ctx);

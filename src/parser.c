@@ -1028,13 +1028,14 @@ asdf_event_t *asdf_parser_parse(asdf_parser_t *parser) {
 static const asdf_parser_cfg_t default_asdf_parser_cfg = {.flags = 0};
 
 
-asdf_parser_t *asdf_parser_create(asdf_parser_cfg_t *config) {
+asdf_parser_t *asdf_parser_create(const asdf_parser_cfg_t *config) {
     asdf_parser_t *parser = calloc(1, sizeof(asdf_parser_t));
 
     if (!parser)
         return parser;
 
-    asdf_context_t *ctx = asdf_context_create();
+    config = config ? config : &default_asdf_parser_cfg;
+    asdf_context_t *ctx = asdf_context_create(config->log);
 
     if (!ctx) {
         free(parser);
@@ -1042,7 +1043,7 @@ asdf_parser_t *asdf_parser_create(asdf_parser_cfg_t *config) {
     }
 
     parser->base.ctx = ctx;
-    parser->config = config ? *config : default_asdf_parser_cfg;
+    parser->config = *config;
     parser->state = ASDF_PARSER_STATE_INITIAL;
     parser->done = false;
     parser->tree.has_tree = -1;

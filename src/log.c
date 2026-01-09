@@ -67,19 +67,31 @@ asdf_log_level_t asdf_log_level_from_env() {
 static void asdf_log_impl(
     FILE *stream,
     asdf_log_level_t level,
+    bool no_color,
     const char *file,
     int lineno,
     const char *fmt,
     va_list args) {
+    // Strip any leading relative path from file, which can occur in
+    // subdirectory builds
+    size_t file_prefix = strspn(file, "./");
 #ifdef ASDF_LOG_COLOR
-    fprintf(
-        stream,
-        DIM("[") COLOR("%s", "%s")
-            DIM("]") " " COLOR(COLOR_DIM_GREY, "(" PACKAGE_NAME ")%s:%d:") " ",
-        level_colors[level],
-        level_names[level],
-        file,
-        lineno);
+    if (no_color)
+        fprintf(
+            stream,
+            "[%-5s] (" PACKAGE_NAME ")%s:%d: ",
+            level_names[level],
+            file + file_prefix,
+            lineno);
+    else
+        fprintf(
+            stream,
+            DIM("[") COLOR("%s", "%s")
+                DIM("]") " " COLOR(COLOR_DIM_GREY, "(" PACKAGE_NAME ")%s:%d:") " ",
+            level_colors[level],
+            level_names[level],
+            file + file_prefix,
+            lineno);
 #else
     fprintf(stream, "[%-5s] (" PACKAGE_NAME ")%s:%d: ", level_names[level], file, lineno);
 #endif
@@ -110,7 +122,7 @@ void asdf_log(
     // NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized)
     va_list args;
     va_start(args, fmt);
-    asdf_log_impl(ctx->log.stream, level, file, lineno, fmt, args);
+    asdf_log_impl(ctx->log.stream, level, ctx->log.no_color, file, lineno, fmt, args);
     va_end(args);
 }
 
@@ -121,6 +133,6 @@ void asdf_log_fallback(asdf_log_level_t level, const char *file, int lineno, con
     // NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized)
     va_list args;
     va_start(args, fmt);
-    asdf_log_impl(stderr, level, file, lineno, fmt, args);
+    asdf_log_impl(stderr, level, false, file, lineno, fmt, args);
     va_end(args);
 }

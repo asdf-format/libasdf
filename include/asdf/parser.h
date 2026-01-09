@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include <asdf/log.h>
 #include <asdf/util.h>
 
 
@@ -40,6 +41,7 @@ typedef uint64_t asdf_parser_optflags_t;
  */
 typedef struct asdf_parser_cfg {
     asdf_parser_optflags_t flags;
+    asdf_log_cfg_t *log;
 } asdf_parser_cfg_t;
 
 
@@ -51,7 +53,7 @@ typedef struct asdf_event asdf_event_t;
 
 
 /* Public API functions */
-ASDF_EXPORT asdf_parser_t *asdf_parser_create(asdf_parser_cfg_t *config);
+ASDF_EXPORT asdf_parser_t *asdf_parser_create(const asdf_parser_cfg_t *config);
 ASDF_EXPORT int asdf_parser_set_input_file(asdf_parser_t *parser, const char *filename);
 ASDF_EXPORT int asdf_parser_set_input_fp(asdf_parser_t *parser, FILE *fp, const char *filename);
 ASDF_EXPORT int asdf_parser_set_input_mem(asdf_parser_t *parser, const void *buf, size_t size);
