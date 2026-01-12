@@ -10,10 +10,9 @@
 #include "stc/cregex.h"
 
 #ifdef HAVE_STRPTIME
-const char *ASDF_TIME_SFMT_ISO_TIME[] = {"%Y-%m-%d %H:%M:%S", "%Y-%m-%d"};
-const char *ASDF_TIME_SFMT_JD[] = {"%j"};
-const char *ASDF_TIME_SFMT_YDAY[] = {"%Y:%j:%H:%M:%S", "%Y:%j"};
-const char *ASDF_TIME_SFMT_UNIX[] = {"%s"};
+static const char *ASDF_TIME_SFMT_ISO_TIME[] = {"%Y-%m-%d %H:%M:%S", "%Y-%m-%d"};
+static const char *ASDF_TIME_SFMT_YDAY[] = {"%Y:%j:%H:%M:%S", "%Y:%j"};
+static const char *ASDF_TIME_SFMT_UNIX[] = {"%s"};
 
 #define check_format_strptime(TYPE, BUF, TM, HAS_TIME, STATUS) \
     { \
@@ -27,76 +26,58 @@ const char *ASDF_TIME_SFMT_UNIX[] = {"%s"};
         } while (i++ && i < sizeof((TYPE)) / sizeof(*(TYPE))); \
     }
 
-int is_leap_year(int year) {
+static int is_leap_year(int year) {
     return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
 }
 
-int get_days_in_month(int month, int year) {
-    int days[] = {31,28,31,30,31,30,31,31,30,31,30,31};
+static int get_days_in_month(int month, int year) {
+    int days[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
     if (month == 2 && is_leap_year(year)) return 29;
     return days[month - 1];
 }
 
-#define JD_B1900 2415020.31352
-#define JD_J2000 2451545.0
-#define JD_MJD   2400000.5
-#define JD_UNIX  2440587.5
-
 // Calendar constants
-const double JD_GREGORIAN_START = 2299161.0;
-const double JD_CORRECTION_REF  = 1867216.25;
-const double JD_CALENDAR_OFFSET = 122.1;
-const int    JD_BASE_YEAR = 4716;
-const double JD_YEAR_LENGTH = 365.25;
-const double JD_EPOCH_BASE = 1524.0;
-const double GREGORIAN_OFFSET = (int) JD_EPOCH_BASE;
-const double JD_EPOCH_SHIFT = JD_EPOCH_BASE + 0.5;
+static const double JD_GREGORIAN_START = 2299161.0;
+static const double JD_CORRECTION_REF  = 1867216.25;
+static const double JD_CALENDAR_OFFSET = 122.1;
+static const int    JD_BASE_YEAR = 4716;
+static const double JD_YEAR_LENGTH = 365.25;
+static const double JD_EPOCH_BASE = 1524.0;
+static const double GREGORIAN_OFFSET = (int) JD_EPOCH_BASE;
+static const double JD_EPOCH_SHIFT = JD_EPOCH_BASE + 0.5;
 
-const double AVG_MONTH_LENGTH = 30.6001;
-const double AVG_YEAR_LENGTH = 365.242198781;
-const double DAYS_IN_CENTURY = 36524.2198781;
-const int    HOURS_PER_DAY = 24;
-const int    SECONDS_PER_DAY = 86400;
-const int    SECONDS_PER_HOUR = 3600;
-const int    SECONDS_PER_MINUTE = 60;
-
-void show_timespec(const struct timespec *t) {
-    fprintf(stderr, "seconds = %lu\n", t->tv_sec);
-    fprintf(stderr, "nanoseconds = %lu\n", t->tv_nsec);
+static void show_timespec(const struct timespec *t, FILE *stream) {
+    fprintf(stream, "seconds = %lu\n", t->tv_sec);
+    fprintf(stream, "nanoseconds = %lu\n", t->tv_nsec);
 }
 
-
-void show_tm(const struct tm *t) {
-    fprintf(stderr, "year = %d\n", t->tm_year + 1900);
-    fprintf(stderr, "month = %d\n", t->tm_mon + 1);
-    fprintf(stderr, "day = %d\n", t->tm_mday);
-    fprintf(stderr, "hour = %d\n", t->tm_hour);
-    fprintf(stderr, "minute = %d\n", t->tm_min);
-    fprintf(stderr, "second = %d\n", t->tm_sec);
-    fprintf(stderr, "weekday = %d\n", t->tm_wday);
-    fprintf(stderr, "year day = %d\n", t->tm_yday);
-    fprintf(stderr, "dst = %d\n", t->tm_isdst);
-    fprintf(stderr, "gmt offset = %lu\n", t->tm_gmtoff);
-    fprintf(stderr, "timezone: %s\n", t->tm_zone);
+static void show_tm(const struct tm *t, FILE *stream) {
+    fprintf(stream, "year       = %d\n", t->tm_year + 1900);
+    fprintf(stream, "month      = %d\n", t->tm_mon + 1);
+    fprintf(stream, "day        = %d\n", t->tm_mday);
+    fprintf(stream, "hour       = %d\n", t->tm_hour);
+    fprintf(stream, "minute     = %d\n", t->tm_min);
+    fprintf(stream, "second     = %d\n", t->tm_sec);
+    fprintf(stream, "weekday    = %d\n", t->tm_wday);
+    fprintf(stream, "year day   = %d\n", t->tm_yday);
+    fprintf(stream, "dst        = %d\n", t->tm_isdst);
+    fprintf(stream, "gmt offset = %lu\n", t->tm_gmtoff);
+    fprintf(stream, "timezone   = %s\n", t->tm_zone);
 }
 
-void show_asdf_time_info(const struct asdf_time_info_t *t) {
-    #if !defined(NDEBUG)
-    show_tm(&t->tm);
-    printf("\n");
-    show_timespec(&t->ts);
-    printf("\n");
-    #else
-    (void *) t;
-    #endif
+void asdf_time_info_dump(const struct asdf_time_info *t, FILE *stream) {
+    show_tm(&t->tm, stream);
+    fprintf(stream, "\n");
+    show_timespec(&t->ts, stream);
+    fprintf(stream, "\n");
 }
 
-double jd_to_unix(const double jd) {
-    return (jd - JD_UNIX) / SECONDS_PER_DAY;
+double asdf_time_convert_jd_to_unix(const double jd) {
+    return (jd - ASDF_TIME_EPOCH_JD_UNIX) / ASDF_TIME_SECONDS_PER_DAY;
 }
 
 // Julian Date to Gregorian calendar conversion
-void julian_to_tm(const double jd, struct tm *t, time_t *nanoseconds) {
+void asdf_time_convert_julian_to_tm(const double jd, struct tm *t, time_t *nanoseconds) {
     const double jd_shift = jd + 0.5;
     const int jd_int = (int)jd_shift;
     const double day_fraction = jd_shift - jd_int;
@@ -105,23 +86,23 @@ void julian_to_tm(const double jd, struct tm *t, time_t *nanoseconds) {
     if (jd_int < JD_GREGORIAN_START) {
         jd_adjust = jd_int;
     } else {
-        const int leap_adjust = (int)((jd_int - JD_CORRECTION_REF) / DAYS_IN_CENTURY);
+        const int leap_adjust = (int)((jd_int - JD_CORRECTION_REF) / ASDF_TIME_DAYS_IN_CENTURY);
         jd_adjust = jd_int + 1 + leap_adjust - leap_adjust / 4;
     }
 
     const int calendar_day = jd_adjust + GREGORIAN_OFFSET;
     const int year_base = (int)((calendar_day - JD_CALENDAR_OFFSET) / JD_YEAR_LENGTH);
     const int days_in_years = (int)(JD_YEAR_LENGTH * year_base);
-    const int month_base = (int)((calendar_day - days_in_years) / AVG_MONTH_LENGTH);
+    const int month_base = (int)((calendar_day - days_in_years) / ASDF_TIME_AVG_MONTH_LENGTH);
 
-    const int day = calendar_day - days_in_years - (int)(AVG_MONTH_LENGTH * month_base) + day_fraction;
+    const int day = calendar_day - days_in_years - (int)(ASDF_TIME_AVG_MONTH_LENGTH * month_base) + day_fraction;
     const int month = month_base < 14 ? month_base - 1 : month_base - 13;
     const int year = month > 2 ? year_base - JD_BASE_YEAR : year_base - JD_BASE_YEAR - 1;
 
-    const double total_seconds = day_fraction * SECONDS_PER_DAY + 0.5;
-    const int hour = (int)(total_seconds / SECONDS_PER_HOUR);
-    const int minute = (int)((total_seconds - hour * SECONDS_PER_HOUR) / SECONDS_PER_MINUTE);
-    const double seconds_whole = total_seconds - hour * SECONDS_PER_HOUR - minute * SECONDS_PER_MINUTE;
+    const double total_seconds = day_fraction * ASDF_TIME_SECONDS_PER_DAY + 0.5;
+    const int hour = (int)(total_seconds / ASDF_TIME_SECONDS_PER_HOUR);
+    const int minute = (int)((total_seconds - hour * ASDF_TIME_SECONDS_PER_HOUR) / ASDF_TIME_SECONDS_PER_MINUTE);
+    const double seconds_whole = total_seconds - hour * ASDF_TIME_SECONDS_PER_HOUR - minute * ASDF_TIME_SECONDS_PER_MINUTE;
     const int second = (int)seconds_whole;
     const double fractional_seconds = seconds_whole - second;
 
@@ -137,7 +118,13 @@ void julian_to_tm(const double jd, struct tm *t, time_t *nanoseconds) {
     }
 }
 
-double tm_to_julian(const struct tm *t) {
+/**
+ * Convert C tm to Julian date
+ *
+ * @param t is a pointer to `struct tm`
+ * @return the double-precision Julian date
+ */
+double asdf_time_convert_tm_to_julian(const struct tm *t) {
     const int calendar_year = t->tm_year + 1900;
     const int calendar_month = t->tm_mon + 1;
     const int day_of_month = t->tm_mday;
@@ -154,39 +141,44 @@ double tm_to_julian(const struct tm *t) {
     const int gregorian_correction = 2 - century + (century / 4);
 
     // Fractional day from time
-    const double fractional_day = (hour + minute / (double)SECONDS_PER_MINUTE + second / (double)SECONDS_PER_HOUR) / HOURS_PER_DAY;
+    const double fractional_day = (hour + minute / (double)ASDF_TIME_SECONDS_PER_MINUTE + second / (double)ASDF_TIME_SECONDS_PER_HOUR) / ASDF_TIME_HOURS_PER_DAY;
 
     // Julian Date calculation using approximate year/month lengths
     const double julian_date = floor(JD_YEAR_LENGTH * (adjusted_year + JD_BASE_YEAR))
-                             + floor(AVG_MONTH_LENGTH * (adjusted_month + 1))
+                             + floor(ASDF_TIME_AVG_MONTH_LENGTH * (adjusted_month + 1))
                              + day_of_month + fractional_day + gregorian_correction - JD_EPOCH_SHIFT;
 
     return julian_date;
 }
 
-double julian_to_mjd(const double jd) {
-    return jd - JD_MJD;
+double asdf_time_convert_julian_to_mjd(const double jd) {
+    return jd - ASDF_TIME_EPOCH_JD_MJD;
 }
 
-void mjd_to_tm(const double mjd, struct tm *t, time_t *nsec) {
-    const double jd = mjd + JD_MJD;
-    julian_to_tm(jd, t, nsec);
+void asdf_time_convert_mjd_to_tm(const double mjd, struct tm *t, time_t *nsec) {
+    const double jd = mjd + ASDF_TIME_EPOCH_JD_MJD;
+    asdf_time_convert_julian_to_tm(jd, t, nsec);
 }
 
-double julian_to_besselian(const double jd) {
-    return 1900.0 + (jd - JD_B1900) / AVG_YEAR_LENGTH;
+double asdf_time_convert_tm_to_besselian(const struct tm *t) {
+    const double jd = asdf_time_convert_tm_to_julian(t);
+    return asdf_time_convert_julian_to_besselian(jd);
 }
 
-double besselian_to_julian(const double b) {
-    return JD_B1900 + AVG_YEAR_LENGTH * (b - 1900.0);
+double asdf_time_convert_julian_to_besselian(const double jd) {
+    return 1900.0 + (jd - ASDF_TIME_EPOCH_JD_B1900) / ASDF_TIME_AVG_YEAR_LENGTH;
 }
 
-void besselian_to_tm(const double b, struct tm *t, time_t *nsec) {
-    const double jd = besselian_to_julian(b);
-    julian_to_tm(jd, t, nsec);
+double asdf_time_convert_besselian_to_julian(const double b) {
+    return ASDF_TIME_EPOCH_JD_B1900 + ASDF_TIME_AVG_YEAR_LENGTH * (b - 1900.0);
 }
 
-int asdf_time_parse_std(const char *s, const asdf_time_format_t *format, struct asdf_time_info_t *out) {
+void asdf_time_convert_besselian_to_tm(const double b, struct tm *t, time_t *nsec) {
+    const double jd = asdf_time_convert_besselian_to_julian(b);
+    asdf_time_convert_julian_to_tm(jd, t, nsec);
+}
+
+int asdf_time_parse_std(const char *s, const asdf_time_format_t *format, struct asdf_time_info *out) {
     if (!s || !out) {
         return -1;
     }
@@ -255,7 +247,7 @@ int asdf_time_parse_std(const char *s, const asdf_time_format_t *format, struct 
         return -1;
     }
 
-    t -= tz_sign * (tz_hour * SECONDS_PER_HOUR + tz_min * SECONDS_PER_MINUTE);
+    t -= tz_sign * (tz_hour * ASDF_TIME_SECONDS_PER_HOUR + tz_min * ASDF_TIME_SECONDS_PER_MINUTE);
 
     out->tm = *gmtime(&t);
     out->ts.tv_sec = t;
@@ -265,11 +257,11 @@ int asdf_time_parse_std(const char *s, const asdf_time_format_t *format, struct 
 }
 
 
-int asdf_time_parse_jd(UNUSED(const char *s), struct asdf_time_info_t *out) {
+int asdf_time_parse_jd(UNUSED(const char *s), struct asdf_time_info *out) {
     const double jd = strtod(s, NULL);
     struct tm jd_tm;
     time_t nsec = 0;
-    julian_to_tm(jd, &jd_tm, &nsec);
+    asdf_time_convert_julian_to_tm(jd, &jd_tm, &nsec);
     const time_t t = timegm(&jd_tm);
 
     if (out) {
@@ -282,11 +274,11 @@ int asdf_time_parse_jd(UNUSED(const char *s), struct asdf_time_info_t *out) {
     return 0;
 }
 
-int asdf_time_parse_mjd(UNUSED(const char *s), struct asdf_time_info_t *out) {
-    const double mjd = julian_to_mjd(strtod(s, NULL)) + JD_MJD;
+int asdf_time_parse_mjd(UNUSED(const char *s), struct asdf_time_info *out) {
+    const double mjd = asdf_time_convert_julian_to_mjd(strtod(s, NULL)) + ASDF_TIME_EPOCH_JD_MJD;
     struct tm mjd_tm;
     time_t nsec = 0;
-    mjd_to_tm(mjd, &mjd_tm, &nsec);
+    asdf_time_convert_mjd_to_tm(mjd, &mjd_tm, &nsec);
     const time_t t = timegm(&mjd_tm);
 
     if (out) {
@@ -299,13 +291,13 @@ int asdf_time_parse_mjd(UNUSED(const char *s), struct asdf_time_info_t *out) {
     return 0;
 }
 
-int asdf_time_parse_byear(UNUSED(const char *s), struct asdf_time_info_t *out) {
+int asdf_time_parse_byear(UNUSED(const char *s), struct asdf_time_info *out) {
     const double byear = strtod(s, NULL);
-    const double jd = besselian_to_julian(byear);
+    const double jd = asdf_time_convert_besselian_to_julian(byear);
     struct tm tm;
     time_t nsec = 0;
 
-    julian_to_tm(jd, &tm, &nsec);
+    asdf_time_convert_julian_to_tm(jd, &tm, &nsec);
     const time_t t = timegm(&tm);
 
     if (out) {
@@ -328,7 +320,7 @@ static int asdf_time_parse_std(UNUSED(const char *s), struct timespec *out) {
 }
 #endif
 
-static int asdf_time_parse_time(UNUSED(const char *s), const asdf_time_format_t *format, struct asdf_time_info_t *out) {
+static int asdf_time_parse_time(UNUSED(const char *s), const asdf_time_format_t *format, struct asdf_time_info *out) {
     int status = -1;
     switch (format->type) {
         case ASDF_TIME_FORMAT_YDAY:
@@ -358,14 +350,15 @@ static asdf_value_err_t asdf_time_deserialize(asdf_value_t *value, UNUSED(const 
 
     asdf_value_t *prop = NULL;
     asdf_value_err_t err = ASDF_VALUE_ERR_PARSE_FAILURE;
+    asdf_mapping_t *mapping = NULL;
 
     asdf_time_t *time = calloc(1, sizeof(asdf_time_t));
     if (!time) {
         return ASDF_VALUE_ERR_OOM;
     }
 
-    if (asdf_value_is_mapping(value)) {
-        prop = asdf_mapping_get(value, "value");
+    if (asdf_value_as_mapping(value, &mapping) == ASDF_VALUE_OK) {
+        prop = asdf_mapping_get(mapping, "value");
     } else {
         prop = value;
     }
@@ -410,7 +403,7 @@ static asdf_value_err_t asdf_time_deserialize(asdf_value_t *value, UNUSED(const 
     }
 
     if (asdf_value_is_mapping(value)) {
-        prop = asdf_mapping_get(value, "format");
+        prop = asdf_mapping_get(mapping, "format");
         if (ASDF_VALUE_OK != asdf_value_as_string0(prop, &format_s)) {
             goto failure;
         }
