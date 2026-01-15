@@ -406,6 +406,9 @@ MU_TEST(test_asdf_block_append_read_only) {
  * single binary block
  */
 MU_TEST(write_block_no_index) {
+#ifndef HAVE_MD5
+    return MUNIT_SKIP;
+#else
     const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
     asdf_config_t config = {.emitter = {
         .flags = ASDF_EMITTER_OPT_NO_EMIT_EMPTY_TREE | ASDF_EMITTER_OPT_NO_BLOCK_INDEX}};
@@ -428,6 +431,7 @@ MU_TEST(write_block_no_index) {
     assert_true(compare_files(filename, reference));
     free(data);
     return MUNIT_OK;
+#endif
 }
 
 
@@ -463,6 +467,9 @@ MU_TEST(write_block_no_checksum) {
 
 
 MU_TEST(write_blocks_and_index) {
+#ifndef HAVE_MD5
+    return MUNIT_SKIP;
+#else
     const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
     asdf_config_t config = {.emitter = { .flags = ASDF_EMITTER_OPT_NO_EMIT_EMPTY_TREE }};
     asdf_file_t *file = asdf_open_ex(filename, "w", &config);
@@ -487,6 +494,7 @@ MU_TEST(write_blocks_and_index) {
     assert_true(compare_files(filename, reference));
     free(data);
     return MUNIT_OK;
+#endif
 }
 
 
