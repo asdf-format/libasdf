@@ -63,6 +63,7 @@ static asdf_config_t *asdf_config_build(asdf_config_t *user_config) {
     if (user_config) {
         ASDF_CONFIG_OVERRIDE(config, user_config, log.stream, stderr);
         ASDF_CONFIG_OVERRIDE(config, user_config, log.level, ASDF_LOG_WARN);
+        ASDF_CONFIG_OVERRIDE(config, user_config, log.fields, 0);
         ASDF_CONFIG_OVERRIDE(config, user_config, log.no_color, false);
         ASDF_CONFIG_OVERRIDE(config, user_config, parser.flags, 0);
         ASDF_CONFIG_OVERRIDE(config, user_config, emitter.flags, 0);

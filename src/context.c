@@ -32,6 +32,7 @@ asdf_context_t *asdf_context_create(const asdf_log_cfg_t *log_config) {
 
     ctx->log.level = log_config->level == ASDF_LOG_NONE ? asdf_log_level_from_env()
                                                         : log_config->level;
+    ctx->log.fields = log_config->fields ? log_config->fields : ASDF_LOG_FIELD_ALL;
     ctx->log.stream = log_config->stream ? log_config->stream : stderr;
     ctx->log.no_color = log_config->no_color;
     return ctx;

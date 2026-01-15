@@ -492,7 +492,9 @@ MU_TEST(test_asdf_event_summary) {
     const char *log_file = get_temp_file_path(fixture->tempfile_prefix, ".log");
     FILE *log_stream = fopen(log_file, "w");
     assert_not_null(log_stream);
-    asdf_log_cfg_t log_config = {.level = ASDF_LOG_TRACE, .stream = log_stream, .no_color = true};
+    asdf_log_cfg_t log_config = {
+        .level = ASDF_LOG_TRACE, .fields = ASDF_LOG_FIELD_ALL ^ ASDF_LOG_FIELD_LINE,
+        .stream = log_stream, .no_color = true};
     asdf_parser_cfg_t parser_cfg = {.flags = ASDF_PARSER_OPT_EMIT_YAML_EVENTS, .log=&log_config};
 
     asdf_parser_t *parser = asdf_parser_create(&parser_cfg);

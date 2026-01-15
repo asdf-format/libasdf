@@ -67,6 +67,7 @@ asdf_log_level_t asdf_log_level_from_env() {
 static void asdf_log_impl(
     FILE *stream,
     asdf_log_level_t level,
+    asdf_log_fields_t fields,
     bool no_color,
     const char *file,
     int lineno,
@@ -75,30 +76,58 @@ static void asdf_log_impl(
     // Strip any leading relative path from file, which can occur in
     // subdirectory builds
     size_t file_prefix = strspn(file, "./");
+    // Don't allow logging "nothing" (logging should simply be disabled for
+    // that); if fields is empty enable all fields
+    fields = fields ? fields : ASDF_LOG_FIELD_ALL;
 #ifdef ASDF_LOG_COLOR
-    if (no_color)
-        fprintf(
-            stream,
-            "[%-5s] (" PACKAGE_NAME ")%s:%d: ",
-            level_names[level],
-            file + file_prefix,
-            lineno);
-    else
-        fprintf(
-            stream,
-            DIM("[") COLOR("%s", "%s")
-                DIM("]") " " COLOR(COLOR_DIM_GREY, "(" PACKAGE_NAME ")%s:%d:") " ",
-            level_colors[level],
-            level_names[level],
-            file + file_prefix,
-            lineno);
-#else
-    fprintf(stream, "[%-5s] (" PACKAGE_NAME ")%s:%d: ", level_names[level], file, lineno);
-#endif
+    if (!no_color) {
+        if (fields & ASDF_LOG_FIELD_LEVEL)
+            fprintf(
+                stream,
+                DIM("[") COLOR("%s", "%s") DIM("]") " ",
+                level_colors[level],
+                level_names[level]);
 
-    // NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized)
-    vfprintf(stream, fmt, args);
-    fprintf(stream, "\n");
+        if (fields & ASDF_LOG_FIELD_PACKAGE)
+            fputs(COLOR(COLOR_DIM_GREY, "(" PACKAGE_NAME ")"), stream);
+
+        if (fields & ASDF_LOG_FIELD_FILE)
+            fprintf(stream, COLOR(COLOR_DIM_GREY, "%s:"), file + file_prefix);
+
+        if (fields & ASDF_LOG_FIELD_LINE)
+            fprintf(stream, COLOR(COLOR_DIM_GREY, "%d:"), lineno);
+
+        if (fields > ASDF_LOG_FIELD_MSG)
+            fputc(' ', stream);
+
+        if (fields & ASDF_LOG_FIELD_MSG)
+            // NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized)
+            vfprintf(stream, fmt, args);
+
+        fputc('\n', stream);
+        return;
+    }
+#endif
+    if (fields & ASDF_LOG_FIELD_LEVEL)
+        fprintf(stream, "[%-5s] ", level_names[level]);
+
+    if (fields & ASDF_LOG_FIELD_PACKAGE)
+        fputs("(" PACKAGE_NAME ")", stream);
+
+    if (fields & ASDF_LOG_FIELD_FILE)
+        fprintf(stream, "%s:", file + file_prefix);
+
+    if (fields & ASDF_LOG_FIELD_LINE)
+        fprintf(stream, "%d:", lineno);
+
+    if (fields > ASDF_LOG_FIELD_MSG)
+        fputc(' ', stream);
+
+    if (fields & ASDF_LOG_FIELD_MSG)
+        // NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized)
+        vfprintf(stream, fmt, args);
+
+    fputc('\n', stream);
 }
 
 
@@ -122,7 +151,8 @@ void asdf_log(
     // NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized)
     va_list args;
     va_start(args, fmt);
-    asdf_log_impl(ctx->log.stream, level, ctx->log.no_color, file, lineno, fmt, args);
+    asdf_log_impl(
+        ctx->log.stream, level, ctx->log.fields, ctx->log.no_color, file, lineno, fmt, args);
     va_end(args);
 }
 
@@ -133,6 +163,6 @@ void asdf_log_fallback(asdf_log_level_t level, const char *file, int lineno, con
     // NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized)
     va_list args;
     va_start(args, fmt);
-    asdf_log_impl(stderr, level, false, file, lineno, fmt, args);
+    asdf_log_impl(stderr, level, ASDF_LOG_FIELD_ALL, false, file, lineno, fmt, args);
     va_end(args);
 }
