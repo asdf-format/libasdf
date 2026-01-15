@@ -80,6 +80,27 @@ check_c_source_compiles("
 " HAVE_DECL_SYS_USERFAULTFD)
 
 
+# Check for libbsd md5.h support
+check_include_file(md5.h HAVE_MD5_H)
+if(HAVE_MD5_H)
+    check_function_exists(MD5Init HAVE_MD5INIT)
+    if(NOT HAVE_MD5INIT)
+        # Try with libbsd explicitly linked
+        message(STATUS "MD5Init may require linking with libmd, testing...")
+        unset(HAVE_MD5INIT CACHE)
+        set(CMAKE_REQUIRED_LIBRARIES md)
+        check_function_exists(MD5Init HAVE_MD5INIT)
+        unset(CMAKE_REQUIRED_LIBRARIES)
+        if(HAVE_MD5INIT)
+            set(MD5_LIBRARIES "md" CACHE INTERNAL "libraries for MD5 support")
+        endif()
+    endif()
+endif()
+
+if(HAVE_MD5INIT)
+    set(HAVE_MD5 1)
+endif()
+
 if(BZIP2_FOUND)
     set(HAVE_BZIP2 1)
 endif()
@@ -107,4 +128,3 @@ include_directories(${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/include)
 
 # Write out the header
 configure_file(config.h.cmake include/config.h @ONLY)
-

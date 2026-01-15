@@ -47,6 +47,8 @@
 #cmakedefine01 HAVE_DECL_HTOBE32
 #cmakedefine01 HAVE_DECL_HTOBE64
 #cmakedefine01 HAVE_DECL_LE32TOH
+#cmakedefine HAVE_MD5
+#cmakedefine HAVE_MD5_H
 #cmakedefine HAVE_BZIP2
 #cmakedefine HAVE_LZ4
 #cmakedefine HAVE_ZLIB

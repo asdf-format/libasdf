@@ -126,7 +126,7 @@ test_parse_util_unit_SOURCES = \
 test_parse_util_unit_CPPFLAGS = $(unit_test_cppflags)
 test_parse_util_unit_CFLAGS = $(unit_test_cflags)
 test_parse_util_unit_LDFLAGS = $(unit_test_ldflags)
-test_parse_util_unit_LDADD = libmunit.a $(FYAML_LIBS)
+test_parse_util_unit_LDADD = libmunit.a $(FYAML_LIBS) $(MD5_LIBS)
 
 # test-stream.unit
 test_stream_unit_SOURCES = \
@@ -254,6 +254,7 @@ EXTRA_DIST += \
     fixtures/255.asdf \
     fixtures/255-2-blocks.asdf \
     fixtures/255-block-no-index.asdf \
+    fixtures/255-invalid-checksum.asdf \
     fixtures/byteorder.asdf \
     fixtures/compressed.asdf \
     fixtures/cube.asdf \

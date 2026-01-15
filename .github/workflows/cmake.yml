@@ -63,6 +63,7 @@ jobs:
             libbz2-dev \
             liblz4-dev \
             zlib1g-dev \
+            libbsd-dev \
             libstatgrab-dev
 
     - name: MacOS dependencies
@@ -79,6 +80,7 @@ jobs:
         brew install \
             argp-standalone \
             libstatgrab \
+            libbsd \
             lz4
 
     - name: Setup ccache action

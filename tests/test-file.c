@@ -310,6 +310,64 @@ MU_TEST(invalid_block_index) {
 }
 
 
+MU_TEST(test_asdf_block_checksum) {
+    assert_null(asdf_block_checksum(NULL));
+    const char *filename = get_fixture_file_path("255-invalid-checksum.asdf");
+    asdf_file_t *file = asdf_open(filename, "r");
+    assert_not_null(file);
+    asdf_block_t *block = asdf_block_open(file, 0);
+    assert_not_null(block);
+    assert_memory_equal(16, asdf_block_checksum(block),
+                        "\xde\xad\xbe\xef\xde\xad\xbe\xef\xde\xad\xbe\xef\xde\xad\xbe\xef");
+    asdf_block_close(block);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+MU_TEST(test_asdf_block_checksum_verify) {
+#ifndef HAVE_MD5
+    return MUNIT_SKIP;
+#else
+    assert_false(asdf_block_checksum_verify(NULL));
+
+    // Verify some of the test fixture files that were actually written by
+    // libasdf itself, as well as one of the reference files
+    const char *filenames[3] = {0};
+    filenames[0] = get_reference_file_path("1.6.0/basic.asdf");
+    filenames[1] = get_fixture_file_path("255-2-blocks.asdf");
+    filenames[2] = get_fixture_file_path("255-block-no-index.asdf");
+
+    asdf_file_t *file = NULL;
+    asdf_block_t *block = NULL;
+    uint8_t empty_checksum[16] = {0};
+
+    for (int idx = 0; idx < 3; idx++) {
+        assert_not_null(filenames[idx]);
+        file = asdf_open(filenames[idx], "r");
+        assert_not_null(file);
+        block = asdf_block_open(file, 0);
+        assert_not_null(block);
+        assert_memory_not_equal(16, asdf_block_checksum(block), empty_checksum);
+        assert_true(asdf_block_checksum_verify(block));
+        asdf_block_close(block);
+        asdf_close(file);
+    }
+
+    // Test file doped with a bad checksum
+    const char *filename = get_fixture_file_path("255-invalid-checksum.asdf");
+    file = asdf_open(filename, "r");
+    assert_not_null(file);
+    block = asdf_block_open(file, 0);
+    assert_false(asdf_block_checksum_verify(block));
+    assert_not_null(block);
+    asdf_block_close(block);
+    asdf_close(file);
+    return MUNIT_OK;
+#endif
+}
+
+
 MU_TEST(test_asdf_block_append) {
     const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
     asdf_file_t *file = asdf_open(filename, "w");
@@ -348,6 +406,9 @@ MU_TEST(test_asdf_block_append_read_only) {
  * single binary block
  */
 MU_TEST(write_block_no_index) {
+#ifndef HAVE_MD5
+    return MUNIT_SKIP;
+#else
     const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
     asdf_config_t config = {.emitter = {
         .flags = ASDF_EMITTER_OPT_NO_EMIT_EMPTY_TREE | ASDF_EMITTER_OPT_NO_BLOCK_INDEX}};
@@ -370,10 +431,46 @@ MU_TEST(write_block_no_index) {
     assert_true(compare_files(filename, reference));
     free(data);
     return MUNIT_OK;
+#endif
+}
+
+
+MU_TEST(write_block_no_checksum) {
+    const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    asdf_config_t config = {.emitter = {
+        .flags = ASDF_EMITTER_OPT_NO_EMIT_EMPTY_TREE | ASDF_EMITTER_OPT_NO_BLOCK_CHECKSUM}};
+    asdf_file_t *file = asdf_open_ex(filename, "w", &config);
+    assert_not_null(file);
+
+    size_t size = (UINT8_MAX + 1) * sizeof(uint8_t);
+    uint8_t *data = malloc(size);
+
+    if (!data)
+        return MUNIT_ERROR;
+
+    for (int idx = 0; idx <= UINT8_MAX; idx++)
+        data[idx] = idx;
+
+    assert_int(asdf_block_append(file, data, size), ==, 0);
+    asdf_close(file);
+    free(data);
+
+    file = asdf_open(filename, "r");
+    assert_not_null(file);
+    asdf_block_t *block = asdf_block_open(file, 0);
+    assert_not_null(block);
+    uint8_t expected[16] = {0};
+    assert_memory_equal(16, asdf_block_checksum(block), expected);
+    asdf_block_close(block);
+    asdf_close(file);
+    return MUNIT_OK;
 }
 
 
 MU_TEST(write_blocks_and_index) {
+#ifndef HAVE_MD5
+    return MUNIT_SKIP;
+#else
     const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
     asdf_config_t config = {.emitter = { .flags = ASDF_EMITTER_OPT_NO_EMIT_EMPTY_TREE }};
     asdf_file_t *file = asdf_open_ex(filename, "w", &config);
@@ -398,6 +495,7 @@ MU_TEST(write_blocks_and_index) {
     assert_true(compare_files(filename, reference));
     free(data);
     return MUNIT_OK;
+#endif
 }
 
 
@@ -962,9 +1060,12 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_block_count),
     MU_RUN_TEST(missing_block_index),
     MU_RUN_TEST(invalid_block_index),
+    MU_RUN_TEST(test_asdf_block_checksum),
+    MU_RUN_TEST(test_asdf_block_checksum_verify),
     MU_RUN_TEST(test_asdf_block_append),
     MU_RUN_TEST(test_asdf_block_append_read_only),
     MU_RUN_TEST(write_block_no_index),
+    MU_RUN_TEST(write_block_no_checksum),
     MU_RUN_TEST(write_blocks_and_index),
     MU_RUN_TEST(test_asdf_set_scalar_type),
     MU_RUN_TEST(test_asdf_set_scalar_overwrite),

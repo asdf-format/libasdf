@@ -84,6 +84,7 @@ foreach(source_file ${source_files})
         ${STATGRAB_LIBRARIES}
         ${LZ4_LIBRARIES}
         ${ZLIB_LIBRARIES}
+        ${MD5_LIBRARIES}
         stc
         $<TARGET_OBJECTS:libasdf_objs>
         munit

@@ -13,6 +13,10 @@
 #include <string.h>
 #include <sys/types.h>
 
+#if defined(HAVE_MD5) && defined(HAVE_MD5_H)
+#include <md5.h>
+#endif
+
 #include "stream.h"
 #include "util.h"
 
@@ -106,4 +110,18 @@ static inline bool is_block_magic(const uint8_t *buf, size_t len) {
 ASDF_LOCAL void asdf_block_info_init(
     size_t index, const void *data, size_t size, asdf_block_info_t *out_block);
 ASDF_LOCAL bool asdf_block_info_read(asdf_stream_t *stream, asdf_block_info_t *out_block);
-ASDF_LOCAL bool asdf_block_info_write(asdf_stream_t *stream, asdf_block_info_t *block);
+ASDF_LOCAL bool asdf_block_info_write(
+    asdf_stream_t *stream, asdf_block_info_t *block, bool checksum);
+
+
+#ifdef HAVE_MD5
+#ifdef HAVE_MD5_H
+/** libbsd md5.h implementation (only one currently available) */
+typedef struct asdf_md5_ctx {
+    MD5_CTX ctx;
+} asdf_md5_ctx_t;
+#endif
+ASDF_LOCAL void asdf_md5_init(asdf_md5_ctx_t *ctx);
+ASDF_LOCAL void asdf_md5_update(asdf_md5_ctx_t *ctx, const void *data, size_t len);
+ASDF_LOCAL void asdf_md5_final(asdf_md5_ctx_t *ctx, unsigned char digest[16]);
+#endif

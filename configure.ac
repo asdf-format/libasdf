@@ -228,6 +228,32 @@ PKG_CHECK_MODULES([LZ4], [liblz4], [], [
 ])
 
 
+# Detect support for md5.h from libmd (libbsd on older systems);
+# should try other options as well e.g. openssl
+AC_CHECK_HEADERS([md5.h], [have_md5_h=yes], [have_md5_h=no])
+AS_IF([test "x$have_md5_h" = "xyes"], [
+    AC_CHECK_FUNCS([MD5Init], [have_md5=yes], [have_md5=no])
+    AS_IF([test "x$have_md5" = "xno"], [
+        AC_MSG_NOTICE([MD5Init not found, trying with -lmd])
+        unset ac_cv_func_MD5Init
+        save_LIBS="$LIBS"
+        LIBS="-lmd $LIBS"
+        AC_CHECK_FUNCS([MD5Init], [have_md5=yes], [have_md5=no])
+        LIBS="$save_LIBS"
+        AS_IF([test "x$have_md5" = "xyes"], [
+            md5_libs="-lmd"
+        ])
+    ])
+], [
+    AC_MSG_WARN([libbsd is required for MD5 support; compiling without checksum support])
+])
+
+AS_IF([test "x$have_md5" = "xyes"], [
+    AC_DEFINE([HAVE_MD5], [1], [Define if MD5 support is available])
+])
+
+AC_SUBST([MD5_LIBS], [$md5_libs])
+
 # Check for homebrew packages in macOS
 AS_IF([test "x$asdf_build_tool" = "xyes"], [
   ASDF_CHECK_HOMEBREW_PKG([argp-standalone])
@@ -238,7 +264,7 @@ AS_IF([test "x$asdf_build_tool" = "xyes"], [
   ])
 ])
 
-ASDF_LIBS="$FYAML_LIBS $ZLIB_LIBS $BZIP2_LIBS $LZ4_LIBS $STATGRAB_LIBS"
+ASDF_LIBS="$FYAML_LIBS $ZLIB_LIBS $BZIP2_LIBS $LZ4_LIBS $STATGRAB_LIBS $MD5_LIBS"
 AC_SUBST([ASDF_LIBS])
 
 # ------ Optional features ---------------------------------------------------
