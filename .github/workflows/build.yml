@@ -63,12 +63,18 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           brew update
+          # Horrible things to downgrade to an older libfyaml version
+          # See PR #143
+          brew tap --force homebrew/core
+          brew tap-new homebrew/local
+          brew extract --version=0.9.2 libfyaml homebrew/local
+          brew install homebrew/local/libfyaml@0.9.2
+          # End horrible things
           brew install \
             autoconf \
             automake \
             libtool \
             argp-standalone \
-            libfyaml \
             libstatgrab
 
       - name: Setup ccache action
