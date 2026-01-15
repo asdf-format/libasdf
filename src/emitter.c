@@ -206,10 +206,11 @@ static asdf_emitter_state_t emit_blocks(asdf_emitter_t *emitter) {
     assert(emitter->file);
     assert(emitter->stream);
     asdf_block_info_vec_t *blocks = &emitter->file->blocks;
+    bool checksum = !(emitter->config.flags & ASDF_EMITTER_OPT_NO_BLOCK_CHECKSUM);
 
     for (asdf_block_info_vec_iter_t it = asdf_block_info_vec_begin(blocks); it.ref;
          asdf_block_info_vec_next(&it)) {
-        if (!asdf_block_info_write(emitter->stream, it.ref))
+        if (!asdf_block_info_write(emitter->stream, it.ref, checksum))
             return ASDF_EMITTER_STATE_ERROR;
 
         asdf_stream_flush(emitter->stream);

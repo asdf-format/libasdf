@@ -137,7 +137,7 @@ bool asdf_block_info_read(asdf_stream_t *stream, asdf_block_info_t *out_block) {
     } while (0)
 
 
-bool asdf_block_info_write(asdf_stream_t *stream, asdf_block_info_t *block) {
+bool asdf_block_info_write(asdf_stream_t *stream, asdf_block_info_t *block, bool checksum) {
     assert(stream);
     assert(stream->is_writeable);
     assert(block);
@@ -156,7 +156,22 @@ bool asdf_block_info_write(asdf_stream_t *stream, asdf_block_info_t *block) {
     WRITE_CHECK(stream, &data_size, sizeof(uint64_t));
     // data_size
     WRITE_CHECK(stream, &data_size, sizeof(uint64_t));
-    // TODO: Optionally compute checksum (#106)
+#ifdef HAVE_MD5
+    if (checksum) {
+        asdf_md5_ctx_t md5_ctx = {0};
+        asdf_md5_init(&md5_ctx);
+        asdf_md5_update(&md5_ctx, block->data, block->header.data_size);
+        asdf_md5_final(&md5_ctx, (unsigned char *)&block->header.checksum);
+    } else {
+        ASDF_LOG(stream, ASDF_LOG_DEBUG, "block checksum calculation disabled by emitter flags");
+    }
+#else
+    ASDF_LOG(
+        stream,
+        ASDF_LOG_WARN,
+        PACKAGE_NAME " was compiled without MD5 support; block "
+                     "checksum will not be written");
+#endif
     WRITE_CHECK(stream, block->header.checksum, ASDF_BLOCK_CHECKSUM_FIELD_SIZE);
     block->data_pos = asdf_stream_tell(stream);
     WRITE_CHECK(stream, block->data, block->header.data_size);

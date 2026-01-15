@@ -110,7 +110,8 @@ static inline bool is_block_magic(const uint8_t *buf, size_t len) {
 ASDF_LOCAL void asdf_block_info_init(
     size_t index, const void *data, size_t size, asdf_block_info_t *out_block);
 ASDF_LOCAL bool asdf_block_info_read(asdf_stream_t *stream, asdf_block_info_t *out_block);
-ASDF_LOCAL bool asdf_block_info_write(asdf_stream_t *stream, asdf_block_info_t *block);
+ASDF_LOCAL bool asdf_block_info_write(
+    asdf_stream_t *stream, asdf_block_info_t *block, bool checksum);
 
 
 #ifdef HAVE_MD5
