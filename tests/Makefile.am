@@ -255,6 +255,11 @@ EXTRA_DIST += \
     fixtures/255-2-blocks.asdf \
     fixtures/255-block-no-index.asdf \
     fixtures/255-invalid-checksum.asdf \
+    fixtures/255-no-newline-before-tree.asdf \
+    fixtures/255-no-tree-padding-after-header.asdf \
+    fixtures/255-no-tree.asdf \
+    fixtures/255-padding-after-header.asdf \
+    fixtures/255-padding-after-tree.asdf \
     fixtures/byteorder.asdf \
     fixtures/compressed.asdf \
     fixtures/cube.asdf \

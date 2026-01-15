@@ -61,6 +61,51 @@ MU_TEST(test_asdf_open_file_nonexistent) {
 }
 
 
+/** Test opening an empty file */
+MU_TEST(test_asdf_open_file_empty) {
+    const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    FILE *fp = fopen(filename, "w");
+    fflush(fp);
+    fclose(fp);
+
+    asdf_file_t *file = asdf_open_file(filename, "r");
+    assert_not_null(file);
+    // Initially there should be no problem since the library is completely
+    // lazy until you try to read anything out of it
+    assert_int(asdf_block_count(file), ==, 0);
+    const char *error = asdf_error(file);
+    assert_not_null(error);
+    assert_string_equal(error, "Unexpected end of file");
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+/** Test opening a file theat does not begin with an asdf header */
+MU_TEST(test_asdf_open_file_not_asdf) {
+    const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    FILE *fp = fopen(filename, "w");
+    int ret = fputs("just some utter garbage\n", fp);
+    if (MUNIT_UNLIKELY(ret <= 0)) {
+        munit_error("error writing to temp file)");
+        return MUNIT_ERROR;
+    }
+    fflush(fp);
+    fclose(fp);
+
+    asdf_file_t *file = asdf_open_file(filename, "r");
+    assert_not_null(file);
+    // Initially there should be no problem since the library is completely
+    // lazy until you try to read anything out of it
+    assert_int(asdf_block_count(file), ==, 0);
+    const char *error = asdf_error(file);
+    assert_not_null(error);
+    assert_string_equal(error, "Invalid ASDF header");
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
 MU_TEST(test_asdf_open_file_invalid_mode) {
     asdf_file_t *file = asdf_open_file("does-not-exist", "x");
     assert_null(file);
@@ -1051,6 +1096,8 @@ MU_TEST_SUITE(
     file,
     MU_RUN_TEST(test_asdf_open_file),
     MU_RUN_TEST(test_asdf_open_file_nonexistent),
+    MU_RUN_TEST(test_asdf_open_file_empty),
+    MU_RUN_TEST(test_asdf_open_file_not_asdf),
     MU_RUN_TEST(test_asdf_open_file_invalid_mode),
     MU_RUN_TEST(scalar_getters),
     MU_RUN_TEST(test_asdf_get_mapping),
