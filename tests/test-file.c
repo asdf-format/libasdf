@@ -453,6 +453,7 @@ MU_TEST(write_block_no_checksum) {
 
     assert_int(asdf_block_append(file, data, size), ==, 0);
     asdf_close(file);
+    free(data);
 
     file = asdf_open(filename, "r");
     assert_not_null(file);
