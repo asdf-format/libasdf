@@ -166,6 +166,7 @@ bool asdf_block_info_write(asdf_stream_t *stream, asdf_block_info_t *block, bool
         ASDF_LOG(stream, ASDF_LOG_DEBUG, "block checksum calculation disabled by emitter flags");
     }
 #else
+    (void)checksum;
     ASDF_LOG(
         stream,
         ASDF_LOG_WARN,
