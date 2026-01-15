@@ -56,7 +56,12 @@ add_library(libasdf SHARED $<TARGET_OBJECTS:libasdf_objs>)
 
 target_link_libraries(libasdf PUBLIC
     stc
-    ${FYAML_LIBRARIES} ${BZIP2_LIBRARIES} ${ZLIB_LIBRARIES} ${LZ4_LIBRARIES} ${STATGRAB_LIBRARIES}
+    ${FYAML_LIBRARIES}
+    ${BZIP2_LIBRARIES}
+    ${ZLIB_LIBRARIES}
+    ${LZ4_LIBRARIES}
+    ${STATGRAB_LIBRARIES}
+    ${MD5_LIBRARIES}
 )
 
 target_link_directories(libasdf PUBLIC

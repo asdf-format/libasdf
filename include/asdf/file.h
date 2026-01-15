@@ -831,6 +831,36 @@ ASDF_EXPORT const char *asdf_block_compression(asdf_block_t *block);
 
 
 /**
+ * Return the checksum from the block header
+ *
+ * :param block: The `asdf_block_t *` handle
+ * :return: Pointer to the MD5 checksum digest array of 16 bytes
+ */
+ASDF_EXPORT const unsigned char *asdf_block_checksum(asdf_block_t *block);
+
+
+/**
+ * Verify the MD5 checksum of the block
+ *
+ * By default this is not done automatically when reading the block.
+ *
+ * If libasdf was built without MD5 support this always returns true.
+ *
+ * .. todo::
+ *
+ *   Maybe disable entirely if MD5 support was not available at build time.
+ *
+ * .. todo::
+ *
+ *   Add and document option to automatically verify checksums.
+ *
+ * :param block: The `asdf_block_t *` handle
+ * :return: True if the checksum is valid
+ */
+ASDF_EXPORT bool asdf_block_checksum_verify(asdf_block_t *block);
+
+
+/**
  * Returns a `void *` to the beginning of the block data, and optionally its size
  *
  * .. note::

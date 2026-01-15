@@ -9,6 +9,7 @@
 
 #include <libfyaml.h>
 
+#include "block.h"
 #include "compression/compression.h"
 #include "context.h"
 #include "emitter.h"
@@ -866,4 +867,40 @@ const char *asdf_block_compression(asdf_block_t *block) {
     }
 
     return block->compression;
+}
+
+
+const unsigned char *asdf_block_checksum(asdf_block_t *block) {
+    if (!block)
+        return NULL;
+
+    const asdf_block_header_t *header = &block->info.header;
+    return header->checksum;
+}
+
+
+bool asdf_block_checksum_verify(asdf_block_t *block) {
+    if (!block)
+        return false;
+
+#ifndef HAVE_MD5
+    (void)block;
+    return true;
+#else
+    const asdf_block_header_t *header = &block->info.header;
+    size_t size = 0;
+    asdf_md5_ctx_t md5_ctx = {0};
+    // NOLINTNEXTLINE(readability-magic-numbers)
+    unsigned char digest[16] = {0};
+    const void *data = asdf_block_data(block, &size);
+
+    if (!data)
+        return false;
+
+    asdf_md5_init(&md5_ctx);
+    asdf_md5_update(&md5_ctx, data, size);
+    asdf_md5_final(&md5_ctx, digest);
+    // NOLINTNEXTLINE(readability-magic-numbers)
+    return memcmp(header->checksum, digest, 16) == 0;
+#endif
 }

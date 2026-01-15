@@ -310,6 +310,49 @@ MU_TEST(invalid_block_index) {
 }
 
 
+MU_TEST(test_asdf_block_checksum) {
+    assert_null(asdf_block_checksum(NULL));
+    const char *filename = get_fixture_file_path("255-invalid-checksum.asdf");
+    asdf_file_t *file = asdf_open(filename, "r");
+    assert_not_null(file);
+    asdf_block_t *block = asdf_block_open(file, 0);
+    assert_not_null(block);
+    assert_memory_equal(16, asdf_block_checksum(block),
+                        "\xde\xad\xbe\xef\xde\xad\xbe\xef\xde\xad\xbe\xef\xde\xad\xbe\xef");
+    asdf_block_close(block);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+MU_TEST(test_asdf_block_checksum_verify) {
+#ifndef HAVE_MD5
+    return MUNIT_SKIP;
+#else
+    assert_false(asdf_block_checksum_verify(NULL));
+    const char *filename = get_reference_file_path("1.6.0/basic.asdf");
+    asdf_file_t *file = asdf_open(filename, "r");
+    assert_not_null(file);
+    asdf_block_t *block = asdf_block_open(file, 0);
+    assert_not_null(block);
+    assert_true(asdf_block_checksum_verify(block));
+    asdf_block_close(block);
+    asdf_close(file);
+
+    // Test file doped with a bad checksum
+    filename = get_fixture_file_path("255-invalid-checksum.asdf");
+    file = asdf_open(filename, "r");
+    assert_not_null(file);
+    block = asdf_block_open(file, 0);
+    assert_false(asdf_block_checksum_verify(block));
+    assert_not_null(block);
+    asdf_block_close(block);
+    asdf_close(file);
+    return MUNIT_OK;
+#endif
+}
+
+
 MU_TEST(test_asdf_block_append) {
     const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
     asdf_file_t *file = asdf_open(filename, "w");
@@ -962,6 +1005,8 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_block_count),
     MU_RUN_TEST(missing_block_index),
     MU_RUN_TEST(invalid_block_index),
+    MU_RUN_TEST(test_asdf_block_checksum),
+    MU_RUN_TEST(test_asdf_block_checksum_verify),
     MU_RUN_TEST(test_asdf_block_append),
     MU_RUN_TEST(test_asdf_block_append_read_only),
     MU_RUN_TEST(write_block_no_index),

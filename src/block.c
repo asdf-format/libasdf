@@ -7,6 +7,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#if defined(HAVE_MD5) && defined(HAVE_MD5_H)
+#include <md5.h>
+#endif
+
 #include "block.h"
 #include "compat/endian.h" // IWYU pragma: keep
 #include "error.h"
@@ -154,3 +162,23 @@ bool asdf_block_info_write(asdf_stream_t *stream, asdf_block_info_t *block) {
     WRITE_CHECK(stream, block->data, block->header.data_size);
     return true;
 }
+
+
+#ifdef HAVE_MD5
+#ifdef HAVE_MD5_H
+/** libbsd md5.h implementation (only one currently available) */
+void asdf_md5_init(asdf_md5_ctx_t *ctx) {
+    MD5Init(&ctx->ctx);
+}
+
+
+void asdf_md5_update(asdf_md5_ctx_t *ctx, const void *data, size_t len) {
+    MD5Update(&ctx->ctx, data, len);
+}
+
+
+void asdf_md5_final(asdf_md5_ctx_t *ctx, unsigned char digest[16]) {
+    MD5Final(digest, &ctx->ctx);
+}
+#endif
+#endif
