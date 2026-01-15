@@ -53,6 +53,7 @@ jobs:
             libbz2-dev \
             liblz4-dev \
             zlib1g-dev \
+            libbsd-dev \
             libstatgrab-dev
 
           if [ "${{ matrix.cc }}" = "clang" ]; then
