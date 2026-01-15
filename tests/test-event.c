@@ -500,7 +500,7 @@ MU_TEST(test_asdf_event_summary) {
     asdf_parser_t *parser = asdf_parser_create(&parser_cfg);
     assert_not_null(parser);
     assert_int(asdf_parser_set_input_file(parser, filename), ==, 0);
-    while (asdf_parser_parse(parser));
+    while (asdf_event_iterate(parser));
     asdf_parser_destroy(parser);
     fclose(log_stream);
     const char *expected_log_file = get_fixture_file_path("events/basic.log");
