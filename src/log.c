@@ -73,9 +73,6 @@ static void asdf_log_impl(
     int lineno,
     const char *fmt,
     va_list args) {
-    // Strip any leading relative path from file, which can occur in
-    // subdirectory builds
-    size_t file_prefix = strspn(file, "./");
     // Don't allow logging "nothing" (logging should simply be disabled for
     // that); if fields is empty enable all fields
     fields = fields ? fields : ASDF_LOG_FIELD_ALL;
@@ -92,7 +89,7 @@ static void asdf_log_impl(
             fputs(COLOR(COLOR_DIM_GREY, "(" PACKAGE_NAME ")"), stream);
 
         if (fields & ASDF_LOG_FIELD_FILE)
-            fprintf(stream, COLOR(COLOR_DIM_GREY, "%s:"), file + file_prefix);
+            fprintf(stream, COLOR(COLOR_DIM_GREY, "%s:"), file);
 
         if (fields & ASDF_LOG_FIELD_LINE)
             fprintf(stream, COLOR(COLOR_DIM_GREY, "%d:"), lineno);
@@ -115,7 +112,7 @@ static void asdf_log_impl(
         fputs("(" PACKAGE_NAME ")", stream);
 
     if (fields & ASDF_LOG_FIELD_FILE)
-        fprintf(stream, "%s:", file + file_prefix);
+        fprintf(stream, "%s:", file);
 
     if (fields & ASDF_LOG_FIELD_LINE)
         fprintf(stream, "%d:", lineno);

@@ -94,6 +94,11 @@ target_compile_options(libasdf_objs PUBLIC
     ${ZLIB_CFLAGS}
 )
 
+# Make __FILE__ names relative to source root
+target_compile_options(libasdf_objs PRIVATE
+    -fmacro-prefix-map=${CMAKE_SOURCE_DIR}/=
+)
+
 # Avoid generating "liblibasdf"
 set_target_properties(libasdf ${PROJECT_NAME} PROPERTIES
     SOVERSION ${PROJECT_SOVERSION}
