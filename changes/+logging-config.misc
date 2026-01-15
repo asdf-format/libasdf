@@ -1,0 +1,1 @@
+Added new options for configuring logging for a single file, including logging to an alternate file and disabling specific log fields.
