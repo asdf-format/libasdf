@@ -30,7 +30,6 @@ AC_DEFUN([ASDF_CHECK_SPHINX], [
   AS_IF([test "x$enable_docs" != "xno"], [
     AC_PATH_PROG([SPHINXBUILD],[sphinx-build],[:])
     AS_IF([test "x$SPHINXBUILD" = "x:"], [
-      AC_MSG_RESULT([no])
       _ASDF_DOCS_DISABLE_OR_ERROR([sphinx-build not found])
     ])
   ])
