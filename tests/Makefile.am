@@ -266,6 +266,7 @@ EXTRA_DIST += \
     fixtures/custom-tag-handle.asdf \
     fixtures/datatypes.asdf \
     fixtures/events/basic.events.txt \
+    fixtures/events/basic.log \
     fixtures/events/complex.events.txt \
     fixtures/events/compressed.events.txt \
     fixtures/events/int.events.txt \
