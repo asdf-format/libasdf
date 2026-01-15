@@ -80,6 +80,7 @@ jobs:
         brew install \
             argp-standalone \
             libstatgrab \
+            libbsd \
             lz4
 
     - name: Setup ccache action

@@ -211,7 +211,7 @@ On **Fedora**::
 On **macOS** (with Homebrew)::
 
     brew install pkg-config libfyaml argp-standalone \
-      zlib bzip2 lz4 libstatgrab
+      zlib bzip2 lz4 libstatgrab libbsd
 
 Building
 ^^^^^^^^
