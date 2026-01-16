@@ -13,7 +13,11 @@ static asdf_global_context_t global_ctx = {0};
 static atomic_bool global_ctx_initialized = false;
 
 
-asdf_context_t *asdf_context_create() {
+static asdf_log_cfg_t asdf_context_log_config_default = {
+    .stream = NULL, .level = ASDF_LOG_NONE, .no_color = false};
+
+
+asdf_context_t *asdf_context_create(const asdf_log_cfg_t *log_config) {
     asdf_context_t *ctx = malloc(sizeof(asdf_context_t));
 
     if (!ctx)
@@ -23,9 +27,14 @@ asdf_context_t *asdf_context_create() {
     ctx->error = NULL;
     ctx->error_type = ASDF_ERROR_NONE;
 
-    // Maybe initialize from ASDF_LOG_LEVEL environment variable, or fallback to default
-    ctx->log.level = asdf_log_level_from_env();
-    ctx->log.stream = stderr;
+    if (!log_config)
+        log_config = &asdf_context_log_config_default;
+
+    ctx->log.level = log_config->level == ASDF_LOG_NONE ? asdf_log_level_from_env()
+                                                        : log_config->level;
+    ctx->log.fields = log_config->fields ? log_config->fields : ASDF_LOG_FIELD_ALL;
+    ctx->log.stream = log_config->stream ? log_config->stream : stderr;
+    ctx->log.no_color = log_config->no_color;
     return ctx;
 }
 
@@ -61,7 +70,7 @@ ASDF_CONSTRUCTOR static void asdf_global_context_create() {
     if (atomic_load_explicit(&global_ctx_initialized, memory_order_acquire))
         return;
 
-    asdf_context_t *ctx = asdf_context_create();
+    asdf_context_t *ctx = asdf_context_create(NULL);
 
     if (!ctx) {
         asdf_log_fallback(

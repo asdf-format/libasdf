@@ -150,8 +150,10 @@ char *asdf_event_summary(const asdf_event_t *event) {
 
         const char *val = asdf_yaml_event_scalar_value(event, &len);
 
-        if (len > 0)
-            fprintf(stream, ", Value: %.20s", val); // Truncate long scalars
+        if (len > 0) {
+            int value_len = len > 20 ? 20 : (int)len;
+            fprintf(stream, ", Value: %.*s", value_len, val); // Truncate long scalars
+        }
 
         fprintf(stream, ")");
         break;
@@ -313,9 +315,6 @@ void asdf_event_print(const asdf_event_t *event, FILE *file, bool verbose) {
 
 void asdf_event_free(asdf_parser_t *parser, asdf_event_t *event) {
     assert(parser);
-
-    if (!event)
-        return;
 
     if (!event)
         return;

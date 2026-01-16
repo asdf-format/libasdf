@@ -58,8 +58,13 @@ static asdf_config_t *asdf_config_build(asdf_config_t *user_config) {
     }
 
     memcpy(config, &asdf_config_default, sizeof(asdf_config_t));
+    config->log.stream = stderr;
 
     if (user_config) {
+        ASDF_CONFIG_OVERRIDE(config, user_config, log.stream, stderr);
+        ASDF_CONFIG_OVERRIDE(config, user_config, log.level, ASDF_LOG_WARN);
+        ASDF_CONFIG_OVERRIDE(config, user_config, log.fields, 0);
+        ASDF_CONFIG_OVERRIDE(config, user_config, log.no_color, false);
         ASDF_CONFIG_OVERRIDE(config, user_config, parser.flags, 0);
         ASDF_CONFIG_OVERRIDE(config, user_config, emitter.flags, 0);
         ASDF_CONFIG_OVERRIDE(config, user_config, emitter.tag_handles, NULL);
@@ -69,6 +74,11 @@ static asdf_config_t *asdf_config_build(asdf_config_t *user_config) {
         ASDF_CONFIG_OVERRIDE(config, user_config, decomp.chunk_size, 0);
         ASDF_CONFIG_OVERRIDE(config, user_config, decomp.tmp_dir, NULL);
     }
+
+    // The parser config has its own log config internally; this is used mostly just
+    // for internal testing purposes and should not generally be set by users
+    if (!config->parser.log)
+        config->parser.log = &config->log;
 
     return config;
 }
@@ -153,7 +163,7 @@ static asdf_file_t *asdf_file_create(asdf_config_t *user_config, asdf_file_mode_
         break;
     }
     case ASDF_FILE_MODE_WRITE_ONLY: {
-        file->base.ctx = asdf_context_create();
+        file->base.ctx = asdf_context_create(NULL);
         asdf_emitter_t *emitter = asdf_emitter_create(file, &config->emitter);
 
         if (UNLIKELY(!emitter)) {

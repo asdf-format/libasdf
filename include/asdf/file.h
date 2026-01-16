@@ -20,6 +20,7 @@
 #include <stdio.h>
 
 #include <asdf/emitter.h>
+#include <asdf/log.h>
 #include <asdf/parser.h>
 #include <asdf/util.h>
 #include <asdf/value.h>
@@ -87,6 +88,8 @@ typedef struct {
 
     /** Low-level emitter configuration; see `asdf_emitter_cfg_t` */
     asdf_emitter_cfg_t emitter;
+
+    asdf_log_cfg_t log;
 
     /** Decompression options */
     struct {

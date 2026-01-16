@@ -1899,7 +1899,7 @@ asdf_value_err_t asdf_value_as_uint8(asdf_value_t *value, uint8_t *out) {
         if (value->scalar.i < 0 || value->scalar.i > UINT8_MAX)
             return ASDF_VALUE_ERR_OVERFLOW;
 
-        return ASDF_VALUE_ERR_OVERFLOW;
+        return ASDF_VALUE_OK;
     default:
         return ASDF_VALUE_ERR_TYPE_MISMATCH;
     }
@@ -2251,7 +2251,35 @@ asdf_value_t *asdf_value_of_string(asdf_file_t *file, const char *value, size_t 
     if (UNLIKELY((!node)))
         return NULL;
 
-    return asdf_value_create(file, node);
+    asdf_value_t *val = asdf_value_create(file, node);
+
+    if (LIKELY(val)) {
+        val->type = ASDF_VALUE_STRING;
+        val->raw_type = ASDF_VALUE_STRING;
+    }
+
+    return val;
+}
+
+
+asdf_value_t *asdf_value_of_string0(asdf_file_t *file, const char *value) {
+    if (UNLIKELY(!file))
+        return NULL;
+
+    struct fy_document *doc = asdf_file_get_tree_document(file);
+    struct fy_node *node = asdf_node_of_string0(doc, value);
+
+    if (UNLIKELY((!node)))
+        return NULL;
+
+    asdf_value_t *val = asdf_value_create(file, node);
+
+    if (LIKELY(val)) {
+        val->type = ASDF_VALUE_STRING;
+        val->raw_type = ASDF_VALUE_STRING;
+    }
+
+    return val;
 }
 
 
@@ -2265,34 +2293,46 @@ asdf_value_t *asdf_value_of_null(asdf_file_t *file) {
     if (UNLIKELY((!node)))
         return NULL;
 
-    return asdf_value_create(file, node);
+    asdf_value_t *val = asdf_value_create(file, node);
+
+    if (LIKELY(val)) {
+        val->type = ASDF_VALUE_NULL;
+        val->raw_type = ASDF_VALUE_NULL;
+    }
+
+    return val;
 }
 
 
-#define ASDF_VALUE_OF_TYPE(typename, type) \
-    asdf_value_t *asdf_value_of_##typename(asdf_file_t * file, type value) { \
+#define ASDF_VALUE_OF_TYPE(typename, typ, value_type, scalar_field, scalar_field_typ) \
+    asdf_value_t *asdf_value_of_##typename(asdf_file_t * file, typ value) { \
         if (UNLIKELY(!file)) \
             return NULL; \
         struct fy_document *doc = asdf_file_get_tree_document(file); \
         struct fy_node *node = asdf_node_of_##typename(doc, value); \
         if (UNLIKELY((!node))) \
             return NULL; \
-        return asdf_value_create(file, node); \
+        asdf_value_t *val = asdf_value_create(file, node); \
+        if (LIKELY(val)) { \
+            val->type = value_type; \
+            val->raw_type = value_type; \
+            val->scalar.scalar_field = (scalar_field_typ)value; \
+        } \
+        return val; \
     }
 
 
-ASDF_VALUE_OF_TYPE(string0, const char *);
-ASDF_VALUE_OF_TYPE(bool, bool);
-ASDF_VALUE_OF_TYPE(int8, int8_t);
-ASDF_VALUE_OF_TYPE(int16, int16_t);
-ASDF_VALUE_OF_TYPE(int32, int32_t);
-ASDF_VALUE_OF_TYPE(int64, int64_t);
-ASDF_VALUE_OF_TYPE(uint8, uint8_t);
-ASDF_VALUE_OF_TYPE(uint16, uint16_t);
-ASDF_VALUE_OF_TYPE(uint32, uint32_t);
-ASDF_VALUE_OF_TYPE(uint64, uint64_t);
-ASDF_VALUE_OF_TYPE(float, float);
-ASDF_VALUE_OF_TYPE(double, double);
+ASDF_VALUE_OF_TYPE(bool, bool, ASDF_VALUE_BOOL, b, bool);
+ASDF_VALUE_OF_TYPE(int8, int8_t, ASDF_VALUE_INT8, i, int64_t);
+ASDF_VALUE_OF_TYPE(int16, int16_t, ASDF_VALUE_INT16, i, int64_t);
+ASDF_VALUE_OF_TYPE(int32, int32_t, ASDF_VALUE_INT32, i, int64_t);
+ASDF_VALUE_OF_TYPE(int64, int64_t, ASDF_VALUE_INT64, i, int64_t);
+ASDF_VALUE_OF_TYPE(uint8, uint8_t, ASDF_VALUE_UINT8, u, uint64_t);
+ASDF_VALUE_OF_TYPE(uint16, uint16_t, ASDF_VALUE_UINT16, u, uint64_t);
+ASDF_VALUE_OF_TYPE(uint32, uint32_t, ASDF_VALUE_UINT32, u, uint64_t);
+ASDF_VALUE_OF_TYPE(uint64, uint64_t, ASDF_VALUE_UINT64, u, uint64_t);
+ASDF_VALUE_OF_TYPE(float, float, ASDF_VALUE_FLOAT, d, double);
+ASDF_VALUE_OF_TYPE(double, double, ASDF_VALUE_DOUBLE, d, double);
 
 
 #define ASDF_VALUE_FIND_ITER_MIN_CAPACITY 8

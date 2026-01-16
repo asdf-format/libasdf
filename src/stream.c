@@ -646,7 +646,7 @@ asdf_stream_t *asdf_stream_from_fp(
     }
 
     if (!ctx) {
-        ctx = asdf_context_create();
+        ctx = asdf_context_create(NULL);
 
         if (!ctx) {
             free(data->buf);
@@ -912,7 +912,7 @@ asdf_stream_t *asdf_stream_from_memory(asdf_context_t *ctx, const void *buf, siz
     }
 
     if (!ctx) {
-        ctx = asdf_context_create();
+        ctx = asdf_context_create(NULL);
 
         if (!ctx) {
             free(data);

@@ -225,6 +225,7 @@ static parse_result_t parse_tree_or_block(asdf_parser_t *parser, asdf_event_t *e
         // up to this point it is either empty or invalid
         switch (match_token) {
         case ASDF_YAML_DIRECTIVE_TOK:
+            buf = asdf_stream_next(parser->stream, 0, &len);
             // Make sure it is actually a valid YAML directive
             // TODO: Technically this should be either at the start of the file or begin
             // with a newline; should be more careful about that.
@@ -753,6 +754,7 @@ static parse_result_t parse_block_index(asdf_parser_t *parser, asdf_event_t *eve
 
     if (UNLIKELY(!asdf_block_index_reserve(block_index, count))) {
         ASDF_ERROR_OOM(parser);
+        res = ASDF_PARSE_ERROR;
         goto cleanup;
     }
 
@@ -768,6 +770,7 @@ static parse_result_t parse_block_index(asdf_parser_t *parser, asdf_event_t *eve
 
     if (!validate_block_index(parser)) {
         // Inconsistent/invalid block index, so discard
+        res = ASDF_PARSE_CONTINUE;
         goto cleanup;
     }
 
@@ -991,6 +994,8 @@ asdf_event_t *asdf_parser_parse(asdf_parser_t *parser) {
             return NULL;
         case ASDF_PARSER_STATE_ERROR:
             ASDF_LOG(parser, ASDF_LOG_ERROR, ASDF_ERROR_GET(parser));
+            // Always set the parser to done when reaching an error state
+            parser->done = true;
             return NULL;
         default:
             ASDF_ERROR_COMMON(parser, ASDF_ERR_UNKNOWN_STATE);
@@ -1028,13 +1033,14 @@ asdf_event_t *asdf_parser_parse(asdf_parser_t *parser) {
 static const asdf_parser_cfg_t default_asdf_parser_cfg = {.flags = 0};
 
 
-asdf_parser_t *asdf_parser_create(asdf_parser_cfg_t *config) {
+asdf_parser_t *asdf_parser_create(const asdf_parser_cfg_t *config) {
     asdf_parser_t *parser = calloc(1, sizeof(asdf_parser_t));
 
     if (!parser)
         return parser;
 
-    asdf_context_t *ctx = asdf_context_create();
+    config = config ? config : &default_asdf_parser_cfg;
+    asdf_context_t *ctx = asdf_context_create(config->log);
 
     if (!ctx) {
         free(parser);
@@ -1042,7 +1048,7 @@ asdf_parser_t *asdf_parser_create(asdf_parser_cfg_t *config) {
     }
 
     parser->base.ctx = ctx;
-    parser->config = config ? *config : default_asdf_parser_cfg;
+    parser->config = *config;
     parser->state = ASDF_PARSER_STATE_INITIAL;
     parser->done = false;
     parser->tree.has_tree = -1;

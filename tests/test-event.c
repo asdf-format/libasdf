@@ -1,6 +1,7 @@
 #include <string.h>
 
 #include <asdf/event.h>
+#include <asdf/log.h>
 #include <asdf/parser.h>
 #include <asdf/yaml.h>
 
@@ -118,8 +119,14 @@ MU_TEST(basic) {
         assert_int(*(asdf_block_index_at(block_index, idx)), ==, expected);
     }
 
+    // Test asdf_event_tree_info is NULL for a non-tree event
+    const asdf_tree_info_t *tree_info = asdf_event_tree_info(event);
+    assert_null(tree_info);
+
     CHECK_NEXT_EVENT_TYPE(ASDF_TREE_START_EVENT);
-    assert_int(event->payload.tree->start, ==, 0x21);
+    tree_info = asdf_event_tree_info(event);
+    assert_not_null(tree_info);
+    assert_int(tree_info->start, ==, 0x21);
 
     CHECK_NEXT_YAML_EVENT(ASDF_YAML_STREAM_START_EVENT);
     CHECK_NEXT_YAML_EVENT(ASDF_YAML_DOCUMENT_START_EVENT);
@@ -179,9 +186,10 @@ MU_TEST(basic) {
     CHECK_NEXT_YAML_EVENT(ASDF_YAML_STREAM_END_EVENT);
 
     CHECK_NEXT_EVENT_TYPE(ASDF_TREE_END_EVENT);
-    assert_int(event->payload.tree->start, ==, 0x21);
-    assert_int(event->payload.tree->end, ==, 0x298);
-    assert_null(event->payload.tree->buf);
+    tree_info = asdf_event_tree_info(event);
+    assert_int(tree_info->start, ==, 0x21);
+    assert_int(tree_info->end, ==, 0x298);
+    assert_null(tree_info->buf);
 
     CHECK_NEXT_EVENT_TYPE(ASDF_BLOCK_EVENT);
     const asdf_block_info_t *block = event->payload.block;
@@ -479,6 +487,34 @@ MU_TEST(basic_buffer_yaml) {
 }
 
 
+MU_TEST(test_asdf_event_summary) {
+    const char *filename = get_reference_file_path("1.6.0/basic.asdf");
+    const char *log_file = get_temp_file_path(fixture->tempfile_prefix, ".log");
+    FILE *log_stream = fopen(log_file, "w");
+    assert_not_null(log_stream);
+    asdf_log_cfg_t log_config = {
+        .level = ASDF_LOG_TRACE, .fields = ASDF_LOG_FIELD_ALL ^ ASDF_LOG_FIELD_LINE,
+        .stream = log_stream, .no_color = true};
+    asdf_parser_cfg_t parser_cfg = {.flags = ASDF_PARSER_OPT_EMIT_YAML_EVENTS, .log=&log_config};
+
+    asdf_parser_t *parser = asdf_parser_create(&parser_cfg);
+    assert_not_null(parser);
+    assert_int(asdf_parser_set_input_file(parser, filename), ==, 0);
+    while (asdf_event_iterate(parser));
+    asdf_parser_destroy(parser);
+    fclose(log_stream);
+    const char *expected_log_file = get_fixture_file_path("events/basic.log");
+    assert_true(compare_files(log_file, expected_log_file));
+    return MUNIT_OK;
+}
+
+
+MU_TEST(test_asdf_event_type_none) {
+    assert_int(asdf_event_type(NULL), ==, ASDF_NONE_EVENT);
+    return MUNIT_OK;
+}
+
+
 /* Parameterize all tests to work on file and memory buffers */
 static char *stream_params[] = {"file", "memory", NULL};
 static MunitParameterEnum test_params[] = {
@@ -492,7 +528,9 @@ MU_TEST_SUITE(
     MU_RUN_TEST(basic, test_params),
     MU_RUN_TEST(basic_no_yaml, test_params),
     MU_RUN_TEST(basic_no_yaml_buffer_yaml, test_params),
-    MU_RUN_TEST(basic_buffer_yaml, test_params)
+    MU_RUN_TEST(basic_buffer_yaml, test_params),
+    MU_RUN_TEST(test_asdf_event_summary),
+    MU_RUN_TEST(test_asdf_event_type_none)
 );
 
 
