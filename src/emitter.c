@@ -139,6 +139,11 @@ static asdf_emitter_state_t emit_standard_version(asdf_emitter_t *emitter) {
 }
 
 
+typedef struct {
+    asdf_stream_t *stream;
+} asdf_fy_emitter_userdata_t;
+
+
 /**
  * Custom outputter for the fy_emitter that just writes to our stream
  */
@@ -150,9 +155,70 @@ static int fy_emitter_stream_output(
     void *userdata) {
     assert(fy_emit);
     assert(userdata);
-    // The userdata passed in is our stream
-    asdf_stream_t *stream = userdata;
-    return (int)asdf_stream_write(stream, str, len);
+    asdf_fy_emitter_userdata_t *asdf_userdata = userdata;
+
+    if (!asdf_userdata->stream)
+        return 0;
+
+    return (int)asdf_stream_write(asdf_userdata->stream, str, len);
+}
+
+
+static void asdf_fy_emitter_finalize(struct fy_emitter *emitter) {
+    const struct fy_emitter_cfg *cfg = fy_emitter_get_cfg(emitter);
+    asdf_fy_emitter_userdata_t *userdata = cfg->userdata;
+    free(userdata);
+}
+
+
+/**
+ * Common logic for creating and configuring a libfyaml ``fy_emitter`` to write
+ * to our stream with our default settings
+ */
+static struct fy_emitter *asdf_fy_emitter_create(asdf_emitter_t *emitter) {
+    asdf_fy_emitter_userdata_t *userdata = malloc(sizeof(asdf_fy_emitter_userdata_t));
+
+    if (!userdata)
+        return NULL;
+
+    userdata->stream = emitter->stream;
+
+    // NOTE: There are many, many different options that can be passed to the
+    // libfyaml document emitter; we will probably want to give some
+    // opportunities to control this, and also determine which options hew
+    // closest to the Python output
+    struct fy_emitter_cfg config = {
+        .flags = FYECF_DEFAULT | FYECF_DOC_END_MARK_ON,
+        .output = fy_emitter_stream_output,
+        .userdata = userdata};
+
+    struct fy_emitter *fy_emitter = fy_emitter_create(&config);
+
+    if (!fy_emitter)
+        return NULL;
+
+    fy_emitter_set_finalizer(fy_emitter, asdf_fy_emitter_finalize);
+
+    /* Workaround for the bug in libfyaml 0.9.3 described in
+     * https://github.com/asdf-format/libasdf/issues/144
+     *
+     * This works by writing dummy empty document to the emitter (with no
+     * output, i.e. stream set to NULL) followed by an explicit document end
+     * marker.
+     *
+     * This tricks the emitter state into thinking it's already written a
+     * document and does not need to output a document end marker anymore.
+     */
+    if (strcmp(fy_library_version(), "0.9.3") == 0) {
+        userdata->stream = NULL;
+        struct fy_document *dummy = fy_document_create(NULL);
+        fy_emit_document(fy_emitter, dummy);
+        fy_emit_document_end(fy_emitter);
+        fy_document_destroy(dummy);
+        userdata->stream = emitter->stream;
+    }
+
+    return fy_emitter;
 }
 
 
@@ -169,14 +235,7 @@ static asdf_emitter_state_t emit_tree(asdf_emitter_t *emitter) {
     if (!tree)
         return ASDF_EMITTER_STATE_ERROR;
 
-    // NOTE: There are many, many different options that can be passed to the
-    // libfyaml document emitter; we will probably want to give some
-    // opportunities to control this, and also determine which options hew
-    // closest to the Python output
-    struct fy_emitter_cfg config = {
-        .flags = FYECF_DEFAULT, .output = fy_emitter_stream_output, .userdata = emitter->stream};
-
-    struct fy_emitter *fy_emitter = fy_emitter_create(&config);
+    struct fy_emitter *fy_emitter = asdf_fy_emitter_create(emitter);
 
     if (!fy_emitter)
         return ASDF_EMITTER_STATE_ERROR;
@@ -286,10 +345,7 @@ static asdf_emitter_state_t emit_block_index(asdf_emitter_t *emitter) {
     WRITE_STRING0(emitter->stream, asdf_block_index_header);
     WRITE_NEWLINE(emitter->stream);
 
-    struct fy_emitter_cfg config = {
-        .flags = FYECF_DEFAULT, .output = fy_emitter_stream_output, .userdata = emitter->stream};
-
-    fy_emitter = fy_emitter_create(&config);
+    fy_emitter = asdf_fy_emitter_create(emitter);
 
     if (!fy_emitter) {
         ASDF_ERROR_OOM(emitter);
