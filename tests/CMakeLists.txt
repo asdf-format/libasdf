@@ -100,7 +100,8 @@ foreach(source_file ${source_files})
         ${ZLIB_LIBDIR}
     )
 
-    add_test(${test_executable} ${test_executable})
+    set(MUNIT_ARGS --log-visible debug --show-stderr)
+    add_test(NAME ${test_executable} COMMAND ${test_executable} ${MUNIT_ARGS})
     set_tests_properties(${test_executable}
         PROPERTIES TIMEOUT 240)
     set_tests_properties(${test_executable}

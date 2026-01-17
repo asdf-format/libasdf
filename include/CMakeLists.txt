@@ -27,6 +27,7 @@ install(
         asdf/core/extension_metadata.h
         asdf/core/software.h
         asdf/core/ndarray.h
+        asdf/core/time.h
 
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/asdf/core"
 )
