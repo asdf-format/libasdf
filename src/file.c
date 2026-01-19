@@ -646,6 +646,7 @@ asdf_value_err_t asdf_set_value(asdf_file_t *file, const char *path, asdf_value_
     struct fy_node *node = value ? value->node : NULL;
     err = asdf_set_node(file, path, node);
 cleanup:
+    value->node = NULL;
     asdf_value_destroy(value);
     return err;
 }

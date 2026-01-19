@@ -16,7 +16,6 @@
 #include <stc/cstr.h>
 
 #include "asdf/emitter.h"
-#include "asdf/file.h"
 #include "asdf/core/ndarray.h"
 #include "asdf/value.h"
 
@@ -1092,6 +1091,21 @@ MU_TEST(write_custom_tag_handle) {
 }
 
 
+/** Regression test for a double-free that could occur in this case */
+MU_TEST(test_asdf_set_value_double_free) {
+    const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    asdf_file_t *file = asdf_open(filename, "w");
+    assert_not_null(file);
+    asdf_mapping_t *new_root = asdf_mapping_create(file);
+    assert_not_null(new_root);
+    assert_int(asdf_mapping_set_string0(new_root, "foo", "bar"), ==, ASDF_VALUE_OK);
+    asdf_value_t *new_root_val = asdf_value_of_mapping(new_root);
+    assert_int(asdf_set_value(file, "", new_root_val), ==, ASDF_VALUE_OK);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
 MU_TEST_SUITE(
     file,
     MU_RUN_TEST(test_asdf_open_file),
@@ -1127,7 +1141,8 @@ MU_TEST_SUITE(
     MU_RUN_TEST(write_empty),
     MU_RUN_TEST(write_minimal),
     MU_RUN_TEST(write_minimal_empty_tree),
-    MU_RUN_TEST(write_custom_tag_handle)
+    MU_RUN_TEST(write_custom_tag_handle),
+    MU_RUN_TEST(test_asdf_set_value_double_free)
 );
 
 
