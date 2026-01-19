@@ -14,6 +14,7 @@
 #include "emitter.h"
 #include "parser.h"
 #include "types/asdf_block_info_vec.h"
+#include "types/asdf_str_map.h"
 
 
 #ifdef HAVE_USERFAULTFD
@@ -38,6 +39,9 @@ typedef enum {
 } asdf_file_mode_t;
 
 
+#define ASDF_FILE_TAG_MAP_DEFAULT_SIZE 20
+
+
 typedef struct asdf_file {
     asdf_base_t base;
     asdf_config_t *config;
@@ -46,11 +50,31 @@ typedef struct asdf_file {
     asdf_emitter_t *emitter;
     struct fy_document *tree;
     asdf_block_info_vec_t blocks;
+    /**
+     * Map of full canonical tag names to shortned ("normalized") tags using
+     * document's defined tag handles
+     *
+     * This serves two purposes:
+     *
+     * - Because of how libfyaml handles tags, all tags attached to nodes
+     *   have to be kept alive somewhere in memory.  When we shorten full
+     *   tags to their normalized form these are allocated on the heap, so
+     *   we have to track them sometime for the lifetime of the file so that
+     *   any new tagged nodes created can continue to reference those tags.
+     *
+     * - As a side benefit we cache the normalized tags and don't have to
+     *   rebuild them.  This has little benefit for tags that are only used
+     *   once in the file, but may have some benefit for frequently used tags.
+     */
+    asdf_str_map_t tag_map;
 } asdf_file_t;
 
 
-/* Internal helper to get the `struct fy_document` for the tree, if any */
-ASDF_LOCAL struct fy_document *asdf_file_get_tree_document(asdf_file_t *file);
+/** Internal helper to get the `struct fy_document` for the tree, if any */
+ASDF_LOCAL struct fy_document *asdf_file_tree_document(asdf_file_t *file);
+
+/** Internal helper to set and/or retrieve a normalized tag */
+ASDF_LOCAL const char *asdf_file_tag_normalize(asdf_file_t *file, const char *tag);
 
 // Forward-declaration
 typedef struct asdf_block_comp_state asdf_block_comp_state_t;

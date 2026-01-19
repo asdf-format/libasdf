@@ -78,6 +78,7 @@ ASDF_REGISTER_EXTENSION(
     ASDF_CORE_TAG_PREFIX "extension_metadata-1.0.0",
     asdf_extension_metadata_t,
     &libasdf_software,
+    NULL,
     asdf_extension_metadata_deserialize,
     asdf_extension_metadata_dealloc,
     NULL);

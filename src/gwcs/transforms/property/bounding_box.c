@@ -138,6 +138,7 @@ ASDF_REGISTER_EXTENSION(
     ASDF_GWCS_BOUNDING_BOX_TAG,
     asdf_gwcs_bounding_box_t,
     &libasdf_software,
+    NULL,
     asdf_gwcs_bounding_box_deserialize,
     asdf_gwcs_bounding_box_dealloc,
     NULL);

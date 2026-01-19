@@ -12,6 +12,7 @@
 #include "block.h"
 #include "compression/compression.h"
 #include "context.h"
+#include "core/asdf.h"
 #include "emitter.h"
 #include "error.h"
 #include "event.h"
@@ -172,6 +173,8 @@ static asdf_file_t *asdf_file_create(asdf_config_t *user_config, asdf_file_mode_
         }
 
         file->emitter = emitter;
+        // Initialize the tag map
+        asdf_str_map_reserve(&file->tag_map, ASDF_FILE_TAG_MAP_DEFAULT_SIZE);
         break;
     }
     default:
@@ -280,6 +283,7 @@ void asdf_close(asdf_file_t *file) {
     asdf_emitter_destroy(file->emitter);
     asdf_parser_destroy(file->parser);
     asdf_block_info_vec_drop(&file->blocks);
+    asdf_str_map_drop(&file->tag_map);
     free(file->config);
     /* Clean up */
     ZERO_MEMORY(file, sizeof(asdf_file_t));
@@ -308,7 +312,41 @@ const char *asdf_error(asdf_file_t *file) {
 }
 
 
-struct fy_document *asdf_file_get_tree_document(asdf_file_t *file) {
+struct fy_document *asdf_file_tree_document_create_default(asdf_file_t *file) {
+    struct fy_document *tree = asdf_yaml_create_empty_document(file->config);
+    const char *tag = NULL;
+
+    if (UNLIKELY(!tree))
+        goto failure;
+
+    // Create the default document root
+    // TODO: This should create a full asdf/core/asdf object; for now just
+    // create an empty mapping with that tag
+    struct fy_node *root = fy_node_create_mapping(tree);
+
+    if (!root)
+        goto failure;
+
+    tag = asdf_file_tag_normalize(file, ASDF_CORE_ASDF_TAG);
+
+    if (!tag)
+        goto failure;
+
+    if (fy_node_set_tag(root, tag, FY_NT) != 0)
+        goto failure;
+
+    if (fy_document_set_root(tree, root) != 0)
+        goto failure;
+
+    return tree;
+failure:
+    ASDF_ERROR_OOM(file);
+    fy_document_destroy(tree);
+    return NULL;
+}
+
+
+struct fy_document *asdf_file_tree_document(asdf_file_t *file) {
     if (!file)
         return NULL;
 
@@ -319,10 +357,8 @@ struct fy_document *asdf_file_get_tree_document(asdf_file_t *file) {
     asdf_parser_t *parser = file->parser;
 
     // If no parser (e.g. we are in write-only mode) create a new empty document
-    // TODO: Add a subroutine to initialize the empty document as well, with
-    // core/asdf schema, initial tag prefixes, etc.
     if (!parser) {
-        file->tree = asdf_yaml_create_empty_document(file->config);
+        file->tree = asdf_file_tree_document_create_default(file);
         return file->tree;
     }
 
@@ -370,8 +406,26 @@ has_tree:
 }
 
 
+const char *asdf_file_tag_normalize(asdf_file_t *file, const char *tag) {
+    assert(file);
+    assert(tag);
+    asdf_str_map_t *tag_map = &file->tag_map;
+    if (asdf_str_map_contains(tag_map, tag))
+        return cstr_str(asdf_str_map_at(tag_map, tag));
+
+    char *normalized_tag = asdf_yaml_tag_normalize(tag, file->config->emitter.tag_handles);
+
+    if (!normalized_tag)
+        return NULL;
+
+    asdf_str_map_res_t res = asdf_str_map_emplace(tag_map, tag, normalized_tag);
+    free(normalized_tag);
+    return cstr_str(&res.ref->second);
+}
+
+
 asdf_value_t *asdf_get_value(asdf_file_t *file, const char *path) {
-    struct fy_document *tree = asdf_file_get_tree_document(file);
+    struct fy_document *tree = asdf_file_tree_document(file);
 
     if (UNLIKELY(!tree))
         return NULL;
@@ -573,7 +627,7 @@ static asdf_value_err_t asdf_set_node(asdf_file_t *file, const char *path, struc
     if (file->mode == ASDF_FILE_MODE_READ_ONLY)
         return ASDF_VALUE_ERR_READ_ONLY;
 
-    struct fy_document *tree = asdf_file_get_tree_document(file);
+    struct fy_document *tree = asdf_file_tree_document(file);
 
     if (!tree)
         return ASDF_VALUE_ERR_OOM;
@@ -583,7 +637,7 @@ static asdf_value_err_t asdf_set_node(asdf_file_t *file, const char *path, struc
 
 
 asdf_value_err_t asdf_set_value(asdf_file_t *file, const char *path, asdf_value_t *value) {
-    struct fy_document *tree = asdf_file_get_tree_document(file);
+    struct fy_document *tree = asdf_file_tree_document(file);
     asdf_value_err_t err = ASDF_VALUE_ERR_OOM;
 
     if (!tree)
@@ -599,7 +653,7 @@ cleanup:
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 asdf_value_err_t asdf_set_string(asdf_file_t *file, const char *path, const char *str, size_t len) {
-    struct fy_document *tree = asdf_file_get_tree_document(file);
+    struct fy_document *tree = asdf_file_tree_document(file);
 
     if (!tree)
         return ASDF_VALUE_ERR_OOM;
@@ -615,7 +669,7 @@ asdf_value_err_t asdf_set_string(asdf_file_t *file, const char *path, const char
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 asdf_value_err_t asdf_set_string0(asdf_file_t *file, const char *path, const char *str) {
-    struct fy_document *tree = asdf_file_get_tree_document(file);
+    struct fy_document *tree = asdf_file_tree_document(file);
 
     if (!tree)
         return ASDF_VALUE_ERR_OOM;
@@ -630,7 +684,7 @@ asdf_value_err_t asdf_set_string0(asdf_file_t *file, const char *path, const cha
 
 
 asdf_value_err_t asdf_set_null(asdf_file_t *file, const char *path) {
-    struct fy_document *tree = asdf_file_get_tree_document(file);
+    struct fy_document *tree = asdf_file_tree_document(file);
 
     if (!tree)
         return ASDF_VALUE_ERR_OOM;
@@ -646,7 +700,7 @@ asdf_value_err_t asdf_set_null(asdf_file_t *file, const char *path) {
 
 #define ASDF_SET_TYPE(typename, type) \
     asdf_value_err_t asdf_set_##typename(asdf_file_t * file, const char *path, type value) { \
-        struct fy_document *tree = asdf_file_get_tree_document(file); \
+        struct fy_document *tree = asdf_file_tree_document(file); \
         if (!tree) \
             return ASDF_VALUE_ERR_OOM; \
         struct fy_node *node = asdf_node_of_##typename(tree, value); \
@@ -670,7 +724,7 @@ ASDF_SET_TYPE(double, double);
 
 
 asdf_value_err_t asdf_set_mapping(asdf_file_t *file, const char *path, asdf_mapping_t *mapping) {
-    struct fy_document *tree = asdf_file_get_tree_document(file);
+    struct fy_document *tree = asdf_file_tree_document(file);
     asdf_value_err_t err = ASDF_VALUE_ERR_OOM;
 
     if (!tree)
@@ -687,7 +741,7 @@ cleanup:
 
 
 asdf_value_err_t asdf_set_sequence(asdf_file_t *file, const char *path, asdf_sequence_t *sequence) {
-    struct fy_document *tree = asdf_file_get_tree_document(file);
+    struct fy_document *tree = asdf_file_tree_document(file);
     asdf_value_err_t err = ASDF_VALUE_ERR_OOM;
 
     if (!tree)

@@ -213,9 +213,10 @@ failure:
  */
 ASDF_REGISTER_EXTENSION(
     meta,
-    ASDF_CORE_TAG_PREFIX "asdf-1.1.0",
+    ASDF_CORE_ASDF_TAG,
     asdf_meta_t,
     &libasdf_software,
+    NULL,
     asdf_meta_deserialize,
     asdf_meta_dealloc,
     NULL);

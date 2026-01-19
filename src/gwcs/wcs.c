@@ -132,6 +132,7 @@ ASDF_REGISTER_EXTENSION(
     ASDF_GWCS_TAG_PREFIX "wcs-1.4.0",
     asdf_gwcs_t,
     &libasdf_software,
+    NULL,
     asdf_gwcs_deserialize,
     asdf_gwcs_dealloc,
     NULL);

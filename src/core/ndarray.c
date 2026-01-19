@@ -673,6 +673,7 @@ ASDF_REGISTER_EXTENSION(
     ASDF_CORE_NDARRAY_TAG,
     asdf_ndarray_t,
     &libasdf_software,
+    NULL,
     asdf_ndarray_deserialize,
     asdf_ndarray_dealloc,
     NULL);

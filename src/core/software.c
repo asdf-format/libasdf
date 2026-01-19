@@ -83,6 +83,7 @@ ASDF_REGISTER_EXTENSION(
     ASDF_CORE_TAG_PREFIX "software-1.0.0",
     asdf_software_t,
     &libasdf_software,
+    NULL,
     asdf_software_deserialize,
     asdf_software_dealloc,
     NULL);

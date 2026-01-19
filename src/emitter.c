@@ -12,6 +12,7 @@
 #include "parse_util.h"
 #include "stream.h"
 #include "types/asdf_block_info_vec.h"
+#include "util.h"
 #include "yaml.h"
 
 /**
@@ -223,13 +224,64 @@ static struct fy_emitter *asdf_fy_emitter_create(asdf_emitter_t *emitter) {
 
 
 /**
+ * This is such a hassle that it might be worth it to just hand-roll writing
+ * the minimal empty file rather than fight with libfyaml's assumptions
+ */
+static int emit_prepare_tree(asdf_emitter_t *emitter, struct fy_document *tree) {
+    assert(emitter);
+    assert(tree);
+    struct fy_node *root = fy_document_root(tree);
+
+    if (UNLIKELY(!root)) // Should not happen
+        return -1;
+
+    if ((fy_node_is_mapping(root) && fy_node_mapping_is_empty(root)) ||
+        UNLIKELY(fy_node_is_sequence(root) && fy_node_sequence_is_empty(root))) {
+        // Copy the original tag of the root anyways
+        size_t tag_len = 0;
+        const char *tag = fy_node_get_tag(root, &tag_len);
+        // Building a node from an empty string gives a null node
+        struct fy_node *new_root = fy_node_create_scalar(tree, "", FY_NT);
+        const char *tag_normalized = NULL;
+
+        if (UNLIKELY(!new_root))
+            return -1;
+
+        if (tag) {
+            char *tag0 = strndup(tag, tag_len);
+
+            if (UNLIKELY(!tag0))
+                return -1;
+
+            tag_normalized = asdf_file_tag_normalize(emitter->file, (const char *)tag0);
+            free(tag0);
+
+            if (UNLIKELY(!tag_normalized)) {
+                return -1;
+            }
+
+            if (UNLIKELY(fy_node_set_tag(new_root, tag_normalized, FY_NT) != 0)) {
+                return -1;
+            }
+        }
+
+        if (UNLIKELY(fy_document_set_root(tree, new_root) != 0)) {
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+
+/**
  * Emit the YAML tree to the file
  */
 static asdf_emitter_state_t emit_tree(asdf_emitter_t *emitter) {
     if (!asdf_emitter_should_emit_tree(emitter))
         return ASDF_EMITTER_STATE_BLOCKS;
 
-    struct fy_document *tree = asdf_file_get_tree_document(emitter->file);
+    struct fy_document *tree = asdf_file_tree_document(emitter->file);
 
     // There *should* be a tree now, even if empty
     if (!tree)
@@ -238,6 +290,17 @@ static asdf_emitter_state_t emit_tree(asdf_emitter_t *emitter) {
     struct fy_emitter *fy_emitter = asdf_fy_emitter_create(emitter);
 
     if (!fy_emitter)
+        return ASDF_EMITTER_STATE_ERROR;
+
+    /**
+     * libfyaml's default behavior (which seems to be difficult if not
+     * impossible to change) when the root node is an empty mapping or
+     * sequence it writes the empty container in flow style (e.g. {})
+     *
+     * I would prefer it just leave the document completely empty in this case
+     * which can only be achieved by setting the root node to a null scalar.
+     */
+    if (emit_prepare_tree(emitter, tree) != 0)
         return ASDF_EMITTER_STATE_ERROR;
 
     if (fy_emit_document(fy_emitter, tree) != 0) {

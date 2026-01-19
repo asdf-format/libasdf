@@ -201,6 +201,7 @@ ASDF_REGISTER_EXTENSION(
     ASDF_GWCS_TAG_PREFIX "fitswcs_imaging-1.0.0",
     asdf_gwcs_fits_t,
     &libasdf_software,
+    NULL,
     asdf_gwcs_fits_deserialize,
     asdf_gwcs_fits_dealloc,
     NULL);

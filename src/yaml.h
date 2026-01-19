@@ -54,6 +54,10 @@ extern ASDF_LOCAL const char *asdf_yaml_document_end_marker;
 #define ASDF_YAML_DOCUMENT_END_MARKER_SIZE 4
 
 
+extern ASDF_LOCAL const char *asdf_yaml_tag_prefix;
+#define ASDF_YAML_TAG_PREFIX_SIZE 4
+
+
 /**
  * A hard-coded string containg an empty YAML 1.1 document
  *
@@ -126,4 +130,6 @@ typedef asdf_yaml_path asdf_yaml_path_t;
 typedef asdf_yaml_path_iter asdf_yaml_path_iter_t;
 
 
+ASDF_LOCAL char *asdf_yaml_tag_canonicalize(const char *tag);
+ASDF_LOCAL char *asdf_yaml_tag_normalize(const char *tag, const asdf_yaml_tag_handle_t *handles);
 ASDF_LOCAL bool asdf_yaml_path_parse(const char *path, asdf_yaml_path_t *out_path);

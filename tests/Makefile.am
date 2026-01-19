@@ -122,7 +122,8 @@ test_parse_util_unit_SOURCES = \
     $(top_srcdir)/src/error.c \
     $(top_srcdir)/src/log.c \
     $(top_srcdir)/src/parse_util.c \
-    $(top_srcdir)/src/yaml.c
+    $(top_srcdir)/src/yaml.c \
+    $(top_srcdir)/third_party/STC/src/cstr_core.c
 test_parse_util_unit_CPPFLAGS = $(unit_test_cppflags)
 test_parse_util_unit_CFLAGS = $(unit_test_cflags)
 test_parse_util_unit_LDFLAGS = $(unit_test_ldflags)

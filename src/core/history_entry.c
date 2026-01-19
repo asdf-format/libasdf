@@ -252,6 +252,7 @@ ASDF_REGISTER_EXTENSION(
     ASDF_CORE_TAG_PREFIX "history_entry-1.0.0",
     asdf_history_entry_t,
     &libasdf_software,
+    NULL,
     asdf_history_entry_deserialize,
     asdf_history_entry_dealloc,
     NULL);

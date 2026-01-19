@@ -6,42 +6,16 @@
 #include "file.h"
 #include "log.h"
 #include "types/asdf_extension_map.h"
+#include "yaml.h"
 
 
 static asdf_extension_map_t extension_map = {0};
 static atomic_bool extension_map_initialized = false;
 
 
-static const char asdf_yaml_tag_prefix[] = "tag:";
-#define ASDF_YAML_TAG_PREFIX_SIZE 4
-
-
-/* Prefix a tag string with tag: if not already prefixed
- *
- * Memory is always allocated for the new string even if unmodified
- */
-static char *asdf_canonicalize_tag(const char *tag) {
-    char *full_tag = NULL;
-    if (0 != strncmp(tag, "tag:", ASDF_YAML_TAG_PREFIX_SIZE)) {
-        size_t taglen = strlen(tag);
-        full_tag = malloc(ASDF_YAML_TAG_PREFIX_SIZE + taglen + 1);
-
-        if (!full_tag)
-            return NULL;
-
-        memcpy(full_tag, asdf_yaml_tag_prefix, ASDF_YAML_TAG_PREFIX_SIZE);
-        memcpy(full_tag + ASDF_YAML_TAG_PREFIX_SIZE, tag, taglen + 1);
-    } else {
-        full_tag = strdup(tag);
-    }
-
-    return full_tag;
-}
-
-
 const asdf_extension_t *asdf_extension_get(asdf_file_t *file, const char *tag) {
     const asdf_extension_map_value *ext = NULL;
-    char *full_tag = asdf_canonicalize_tag(tag);
+    char *full_tag = asdf_yaml_tag_canonicalize(tag);
 
     if (!full_tag) {
         ASDF_ERROR_OOM(file);
@@ -87,7 +61,7 @@ void asdf_extension_register(asdf_extension_t *ext) {
     asdf_global_context_t *ctx = asdf_global_context_get();
 #endif
 
-    char *full_tag = asdf_canonicalize_tag(tag);
+    char *full_tag = asdf_yaml_tag_canonicalize(tag);
     if (!full_tag) {
 #ifdef ASDF_LOG_ENABLED
         ASDF_LOG(ctx, ASDF_LOG_FATAL, "failed to allocate memory for extension tag %s", tag);

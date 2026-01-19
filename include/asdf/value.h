@@ -543,6 +543,10 @@ ASDF_EXPORT bool asdf_value_is_extension_type(asdf_value_t *value, const asdf_ex
 ASDF_EXPORT asdf_value_err_t
 asdf_value_as_extension_type(asdf_value_t *value, const asdf_extension_t *ext, void **out);
 
+
+ASDF_EXPORT asdf_value_t *asdf_value_of_extension_type(
+    asdf_file_t *file, void *obj, const asdf_extension_t *ext);
+
 /** Generic value functions */
 
 /**
