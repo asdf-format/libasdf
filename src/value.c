@@ -134,7 +134,9 @@ void asdf_value_destroy(asdf_value_t *value) {
 }
 
 
-static asdf_value_t *asdf_value_clone_impl(asdf_value_t *value, bool preserve_type_inference) {
+static asdf_value_t *asdf_value_clone_impl(
+    asdf_value_t *value, asdf_file_t *to_file, bool preserve_type_inference) {
+
     if (!value)
         return NULL;
 
@@ -145,15 +147,17 @@ static asdf_value_t *asdf_value_clone_impl(asdf_value_t *value, bool preserve_ty
         return NULL;
     }
 
-    struct fy_node *new_node = fy_node_copy(value->file->tree, value->node);
+    to_file = to_file ? to_file : value->file;
+    struct fy_document *tree = asdf_file_tree_document(to_file);
+    struct fy_node *new_node = fy_node_copy(tree, value->node);
 
     if (!new_node) {
         free(new_value);
-        ASDF_ERROR_OOM(value->file);
+        ASDF_ERROR_OOM(to_file);
         return NULL;
     }
 
-    new_value->file = value->file;
+    new_value->file = to_file;
     new_value->node = new_node;
 
     if (value->tag)
@@ -180,7 +184,7 @@ static asdf_value_t *asdf_value_clone_impl(asdf_value_t *value, bool preserve_ty
             if (!new_ext) {
                 fy_node_free(new_node);
                 free(new_value);
-                ASDF_ERROR_OOM(value->file);
+                ASDF_ERROR_OOM(to_file);
                 return NULL;
             }
 
@@ -207,7 +211,12 @@ static asdf_value_t *asdf_value_clone_impl(asdf_value_t *value, bool preserve_ty
 
 
 asdf_value_t *asdf_value_clone(asdf_value_t *value) {
-    return asdf_value_clone_impl(value, true);
+    return asdf_value_clone_impl(value, NULL, true);
+}
+
+
+asdf_value_t *asdf_value_clone_to_file(asdf_value_t *value, asdf_file_t *file) {
+    return asdf_value_clone_impl(value, file, true);
 }
 
 
@@ -314,6 +323,18 @@ asdf_mapping_t *asdf_mapping_create(asdf_file_t *file) {
     }
 
     return (asdf_mapping_t *)asdf_value_create(file, mapping);
+}
+
+
+asdf_mapping_t *asdf_mapping_clone(asdf_mapping_t *mapping) {
+    asdf_value_t *clone = asdf_value_clone(&mapping->value);
+    return (asdf_mapping_t *)clone;
+}
+
+
+asdf_mapping_t *asdf_mapping_clone_to_file(asdf_mapping_t *mapping, asdf_file_t *file) {
+    asdf_value_t *clone = asdf_value_clone_to_file(&mapping->value, file);
+    return (asdf_mapping_t *)clone;
 }
 
 
@@ -433,30 +454,35 @@ asdf_value_err_t asdf_mapping_set_null(asdf_mapping_t *mapping, const char *key)
     }
 
 
+asdf_value_err_t asdf_mapping_set(asdf_mapping_t *mapping, const char *key, asdf_value_t *value) {
+    asdf_value_err_t err = ASDF_VALUE_ERR_UNKNOWN;
+    if (!mapping || !value)
+        goto cleanup;
+    struct fy_document *tree = asdf_file_tree_document(mapping->value.file);
+    if (!tree) {
+        err = ASDF_VALUE_ERR_OOM;
+        goto cleanup;
+    }
+    struct fy_node *key_node = asdf_node_of_string0(tree, key);
+    if (fy_node_mapping_append(mapping->value.node, key_node, value->node) != 0) {
+        ASDF_ERROR_OOM(mapping->value.file);
+        err = ASDF_VALUE_ERR_OOM;
+        goto cleanup;
+    }
+    err = ASDF_VALUE_OK;
+cleanup:
+    /* fy_node_mapping_append implicitly frees the original node, so here set it
+     * to null to avoid double-freeing it and then just destroy the asdf_value_t */
+    value->node = NULL;
+    asdf_value_destroy(value);
+    return err;
+}
+
+
 #define ASDF_MAPPING_SET_COLLECTION_TYPE(type) \
     asdf_value_err_t asdf_mapping_set_##type( \
         asdf_mapping_t *mapping, const char *key, asdf_##type##_t *value) { \
-        asdf_value_err_t err = ASDF_VALUE_ERR_UNKNOWN; \
-        if (!mapping || !value) \
-            goto cleanup; \
-        struct fy_document *tree = asdf_file_tree_document(mapping->value.file); \
-        if (!tree) { \
-            err = ASDF_VALUE_ERR_OOM; \
-            goto cleanup; \
-        } \
-        struct fy_node *key_node = asdf_node_of_string0(tree, key); \
-        if (fy_node_mapping_append(mapping->value.node, key_node, value->value.node) != 0) { \
-            ASDF_ERROR_OOM(mapping->value.file); \
-            err = ASDF_VALUE_ERR_OOM; \
-            goto cleanup; \
-        } \
-        err = ASDF_VALUE_OK; \
-    cleanup: \
-        /* fy_node_mapping_append implicitly frees the original node, so here set it \
-         * to null to avoid double-freeing it and then just destroy the asdf_value_t */ \
-        value->value.node = NULL; \
-        asdf_value_destroy(&value->value); \
-        return err; \
+        return asdf_mapping_set(mapping, key, &value->value); \
     }
 
 
@@ -567,6 +593,20 @@ cleanup:
     asdf_mapping_item_destroy(impl);
     *iter = NULL;
     return NULL;
+}
+
+
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+asdf_value_err_t asdf_mapping_update(asdf_mapping_t *mapping, asdf_mapping_t *update) {
+    asdf_mapping_iter_t iter = asdf_mapping_iter_init();
+    asdf_mapping_item_t *item = NULL;
+    asdf_value_err_t err = ASDF_VALUE_OK;
+
+    while ((item = asdf_mapping_iter(update, &iter))) {
+        err = asdf_mapping_set(mapping, item->key, asdf_value_clone(item->value));
+    }
+
+    return err;
 }
 
 
@@ -813,29 +853,37 @@ asdf_value_err_t asdf_sequence_append_null(asdf_sequence_t *sequence) {
     }
 
 
+asdf_value_err_t asdf_sequence_append(asdf_sequence_t *sequence, asdf_value_t *value) {
+    asdf_value_err_t err = ASDF_VALUE_ERR_UNKNOWN;
+    if (!sequence || !value)
+        goto cleanup;
+
+    struct fy_document *tree = asdf_file_tree_document(sequence->value.file);
+
+    if (!tree) {
+        err = ASDF_VALUE_ERR_OOM;
+        goto cleanup;
+    }
+
+    if (fy_node_sequence_append(sequence->value.node, value->node) != 0) {
+        ASDF_ERROR_OOM(sequence->value.file);
+        err = ASDF_VALUE_ERR_OOM;
+        goto cleanup;
+    }
+    err = ASDF_VALUE_OK;
+cleanup:
+    /* fy_node_sequence_append implicitly frees the original node, so here set it
+     * to null to avoid double-freeing it and then just destroy the asdf_value_t */
+    value->node = NULL;
+    asdf_value_destroy(value);
+    return err;
+}
+
+
 #define ASDF_SEQUENCE_APPEND_COLLECTION_TYPE(type) \
     asdf_value_err_t asdf_sequence_append_##type( \
         asdf_sequence_t *sequence, asdf_##type##_t *value) { \
-        asdf_value_err_t err = ASDF_VALUE_ERR_UNKNOWN; \
-        if (!sequence || !value) \
-            goto cleanup; \
-        struct fy_document *tree = asdf_file_tree_document(sequence->value.file); \
-        if (!tree) { \
-            err = ASDF_VALUE_ERR_OOM; \
-            goto cleanup; \
-        } \
-        if (fy_node_sequence_append(sequence->value.node, value->value.node) != 0) { \
-            ASDF_ERROR_OOM(sequence->value.file); \
-            err = ASDF_VALUE_ERR_OOM; \
-            goto cleanup; \
-        } \
-        err = ASDF_VALUE_OK; \
-    cleanup: \
-        /* fy_node_sequence_append implicitly frees the original node, so here set it \
-         * to null to avoid double-freeing it and then just destroy the asdf_value_t */ \
-        value->value.node = NULL; \
-        asdf_value_destroy(&value->value); \
-        return err; \
+        return asdf_sequence_append(sequence, &value->value); \
     }
 
 
@@ -1024,14 +1072,14 @@ asdf_value_err_t asdf_value_as_extension_type(
     asdf_extension_value_t *extval = value->scalar.ext;
 
     if (extval->object) {
-        *out = extval->object;
+        *out = (void *)extval->object;
         return ASDF_VALUE_OK;
     }
 
     assert(ext->deserialize);
     // Clone the raw value without existing extension inference to pass to the the extension's
     // deserialize method.
-    asdf_value_t *raw_value = asdf_value_clone_impl(value, false);
+    asdf_value_t *raw_value = asdf_value_clone_impl(value, NULL, false);
 
     if (!raw_value) {
         ASDF_ERROR_OOM(value->file);
@@ -1050,7 +1098,7 @@ asdf_value_err_t asdf_value_as_extension_type(
 
 
 asdf_value_t *asdf_value_of_extension_type(
-    asdf_file_t *file, void *obj, const asdf_extension_t *ext) {
+    asdf_file_t *file, const void *obj, const asdf_extension_t *ext) {
 
     if (!ext->serialize) {
         const char

@@ -18,14 +18,14 @@ typedef struct {
 
 typedef struct {
     const char *name;
+    const char *version;
     const char *author;
     const char *homepage;
-    const char *version;
 } asdf_software_t;
 
 
 typedef asdf_value_t *(*asdf_extension_serialize_t)(
-    asdf_file_t *file, void *obj, const void *userdata);
+    asdf_file_t *file, const void *obj, const void *userdata);
 
 
 typedef asdf_value_err_t (*asdf_extension_deserialize_t)(
@@ -94,7 +94,7 @@ ASDF_EXPORT const asdf_extension_t *asdf_extension_get(asdf_file_t *file, const 
 
 
 #define ASDF_EXT_DEFINE_VALUE_OF_TYPE(extname, type) \
-    ASDF_EXPORT asdf_value_t *asdf_value_of_##extname(asdf_file_t *file, type *obj) { \
+    ASDF_EXPORT asdf_value_t *asdf_value_of_##extname(asdf_file_t *file, const type *obj) { \
         return asdf_value_of_extension_type(file, obj, &ASDF_EXT_STATIC_NAME(extname)); \
     }
 
@@ -137,7 +137,7 @@ ASDF_EXPORT const asdf_extension_t *asdf_extension_get(asdf_file_t *file, const 
 #define ASDF_DECLARE_EXTENSION(extname, type) \
     ASDF_EXPORT asdf_value_err_t asdf_value_as_##extname(asdf_value_t *value, type **out); \
     ASDF_EXPORT bool asdf_value_is_##extname(asdf_value_t *value); \
-    ASDF_EXPORT asdf_value_t *asdf_value_of_##extname(asdf_file_t *file, type *obj); \
+    ASDF_EXPORT asdf_value_t *asdf_value_of_##extname(asdf_file_t *file, const type *obj); \
     ASDF_EXPORT bool asdf_is_##extname(asdf_file_t *file, const char *path); \
     ASDF_EXPORT asdf_value_err_t asdf_get_##extname( \
         asdf_file_t *file, const char *path, type **out); \

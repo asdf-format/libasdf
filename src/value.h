@@ -16,7 +16,7 @@
 
 typedef struct {
     const asdf_extension_t *ext;
-    void *object;
+    const void *object;
 } asdf_extension_value_t;
 
 

@@ -166,6 +166,10 @@ typedef enum {
 } asdf_value_err_t;
 
 
+// Forward-declaration
+typedef struct asdf_file asdf_file_t;
+
+
 /**
  * Free memory held by an `asdf_value_t`
  *
@@ -177,6 +181,7 @@ typedef enum {
  */
 ASDF_EXPORT void asdf_value_destroy(asdf_value_t *value);
 ASDF_EXPORT asdf_value_t *asdf_value_clone(asdf_value_t *value);
+ASDF_EXPORT asdf_value_t *asdf_value_clone_to_file(asdf_value_t *value, asdf_file_t *file);
 
 /**
  * Get the specific `asdf_value_type_t` of a generic `asdf_value_t`
@@ -221,6 +226,8 @@ ASDF_EXPORT int asdf_mapping_size(asdf_mapping_t *mapping);
 ASDF_EXPORT asdf_value_err_t asdf_value_as_mapping(asdf_value_t *value, asdf_mapping_t **out);
 ASDF_EXPORT asdf_value_t *asdf_value_of_mapping(asdf_mapping_t *mapping);
 ASDF_EXPORT asdf_mapping_t *asdf_mapping_create(asdf_file_t *file);
+ASDF_EXPORT asdf_mapping_t *asdf_mapping_clone(asdf_mapping_t *mapping);
+ASDF_EXPORT asdf_mapping_t *asdf_mapping_clone_to_file(asdf_mapping_t *mapping, asdf_file_t *file);
 ASDF_EXPORT void asdf_mapping_destroy(asdf_mapping_t *mapping);
 
 /**
@@ -266,6 +273,22 @@ ASDF_EXPORT asdf_value_t *asdf_mapping_item_value(asdf_mapping_item_t *item);
 ASDF_EXPORT asdf_mapping_item_t *asdf_mapping_iter(
     asdf_mapping_t *mapping, asdf_mapping_iter_t *iter);
 
+
+/**
+ * Update / merge a mapping with key/value pairs from a second mapping
+ *
+ * If keys in the RHS mapping already exist in the LHS they are overwritten,
+ * otherwise appended.
+ *
+ * Values in the RHS mapping are *copied* during the update process, so the
+ * RHS mapping remains valid.
+ *
+ * .. todo::
+ *
+ *   Finish documenting me.
+ */
+ASDF_EXPORT asdf_value_err_t asdf_mapping_update(asdf_mapping_t *mapping, asdf_mapping_t *update);
+
 /**
  * Set values on mappings
  *
@@ -273,6 +296,8 @@ ASDF_EXPORT asdf_mapping_item_t *asdf_mapping_iter(
  *
  *   Document these.
  */
+ASDF_EXPORT asdf_value_err_t
+asdf_mapping_set(asdf_mapping_t *mapping, const char *key, asdf_value_t *value);
 ASDF_EXPORT asdf_value_err_t
 asdf_mapping_set_string(asdf_mapping_t *mapping, const char *key, const char *str, size_t len);
 ASDF_EXPORT asdf_value_err_t
@@ -374,6 +399,7 @@ ASDF_EXPORT asdf_value_t *asdf_sequence_iter(asdf_sequence_t *sequence, asdf_seq
  *
  *   Document these.
  */
+ASDF_EXPORT asdf_value_err_t asdf_sequence_append(asdf_sequence_t *sequence, asdf_value_t *value);
 ASDF_EXPORT asdf_value_err_t
 asdf_sequence_append_string(asdf_sequence_t *sequence, const char *str, size_t len);
 ASDF_EXPORT asdf_value_err_t
@@ -545,7 +571,7 @@ asdf_value_as_extension_type(asdf_value_t *value, const asdf_extension_t *ext, v
 
 
 ASDF_EXPORT asdf_value_t *asdf_value_of_extension_type(
-    asdf_file_t *file, void *obj, const asdf_extension_t *ext);
+    asdf_file_t *file, const void *obj, const asdf_extension_t *ext);
 
 /** Generic value functions */
 

@@ -15,6 +15,8 @@
 #include "software.h"
 
 
+#define ASDF_CORE_HISTORY_ENTRY_TAG ASDF_CORE_TAG_PREFIX "history_entry-1.0.0"
+
 /*
  * Parse a YAML-serialized timestamp
  *
@@ -102,6 +104,83 @@ static int asdf_parse_datetime(UNUSED(const char *s), struct timespec *out) {
     return 0;
 }
 #endif
+
+
+static asdf_value_t *asdf_history_entry_serialize(
+    asdf_file_t *file,
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+    const void *obj,
+    UNUSED(const void *userdata)) {
+
+    if (UNLIKELY(!file || !obj))
+        return NULL;
+
+    const asdf_history_entry_t *entry = obj;
+    asdf_mapping_t *entry_map = NULL;
+    asdf_value_t *value = NULL;
+    asdf_value_err_t err = ASDF_VALUE_ERR_PARSE_FAILURE;
+    asdf_value_t *software_val = NULL;
+    asdf_sequence_t *software_seq = NULL;
+    size_t software_count = 0;
+    const asdf_software_t **softwarep = entry->software;
+
+    while (*(softwarep++) != NULL)
+        software_count++;
+
+    if (software_count == 1) {
+        software_val = asdf_value_of_software(file, *entry->software);
+    } else if (software_count > 1) {
+        software_seq = asdf_sequence_create(file);
+
+        if (!software_seq)
+            goto cleanup;
+
+        softwarep = entry->software;
+        while (*softwarep != NULL) {
+            software_val = asdf_value_of_software(file, *softwarep);
+
+            if (software_val != NULL)
+                err = asdf_sequence_append(software_seq, software_val);
+
+            softwarep++;
+        }
+
+        software_val = asdf_value_of_sequence(software_seq);
+    }
+
+    if (!software_val)
+        ASDF_LOG(
+            file,
+            ASDF_LOG_WARN,
+            ASDF_CORE_HISTORY_ENTRY_TAG " should have at least one software entry");
+
+    entry_map = asdf_mapping_create(file);
+
+    if (UNLIKELY(!entry_map))
+        goto cleanup;
+
+    err = asdf_mapping_set_string0(
+        entry_map, "description", entry->description ? entry->description : "");
+
+    if (UNLIKELY(err != ASDF_VALUE_OK))
+        goto cleanup;
+
+    err = asdf_mapping_set(entry_map, "software", software_val);
+
+    if (UNLIKELY(err != ASDF_VALUE_OK))
+        goto cleanup;
+
+    // TODO: Serialize the .time field if set; wait on #91 for that since it
+    // refactors a lot of timestamp handling
+
+    value = asdf_value_of_mapping(entry_map);
+cleanup:
+    if (UNLIKELY(err != ASDF_VALUE_OK)) {
+        asdf_value_destroy(software_val);
+        asdf_mapping_destroy(entry_map);
+    }
+    return value;
+}
 
 
 static asdf_software_t **asdf_history_entry_deserialize_software(asdf_value_t *value) {
@@ -249,10 +328,10 @@ static void asdf_history_entry_dealloc(void *value) {
  */
 ASDF_REGISTER_EXTENSION(
     history_entry,
-    ASDF_CORE_TAG_PREFIX "history_entry-1.0.0",
+    ASDF_CORE_HISTORY_ENTRY_TAG,
     asdf_history_entry_t,
     &libasdf_software,
-    NULL,
+    asdf_history_entry_serialize,
     asdf_history_entry_deserialize,
     asdf_history_entry_dealloc,
     NULL);
