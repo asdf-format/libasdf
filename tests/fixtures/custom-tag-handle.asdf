@@ -3,5 +3,5 @@
 %YAML 1.1
 %TAG ! tag:stsci.edu:asdf/
 %TAG !foo tag:example.com:foo/
---- 
+--- !core/asdf-1.1.0 
 ...

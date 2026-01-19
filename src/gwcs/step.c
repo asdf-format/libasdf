@@ -112,6 +112,7 @@ ASDF_REGISTER_EXTENSION(
     ASDF_GWCS_TAG_PREFIX "step-1.3.0",
     asdf_gwcs_step_t,
     &libasdf_software,
+    NULL,
     asdf_gwcs_step_deserialize,
     asdf_gwcs_step_dealloc,
     NULL);

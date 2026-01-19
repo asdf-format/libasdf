@@ -57,6 +57,7 @@ src_headers = \
     src/types/asdf_block_info_vec.h \
     src/types/asdf_common_tag_map.h \
     src/types/asdf_extension_map.h \
+    src/types/asdf_str_map.h \
     src/util.h \
     src/value.h \
     src/value_util.h \

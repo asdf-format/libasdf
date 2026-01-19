@@ -52,6 +52,7 @@ ASDF_REGISTER_EXTENSION(
     ASDF_GWCS_TAG_PREFIX "celestial_frame-1.2.0",
     asdf_gwcs_frame_celestial_t,
     &libasdf_software,
+    NULL,
     asdf_gwcs_frame_celestial_deserialize,
     asdf_gwcs_frame_celestial_dealloc,
     NULL);

@@ -301,7 +301,7 @@ asdf_value_t *asdf_value_of_mapping(asdf_mapping_t *mapping) {
 
 
 asdf_mapping_t *asdf_mapping_create(asdf_file_t *file) {
-    struct fy_document *tree = asdf_file_get_tree_document(file);
+    struct fy_document *tree = asdf_file_tree_document(file);
 
     if (!tree)
         return NULL;
@@ -332,7 +332,7 @@ asdf_value_err_t asdf_mapping_set_string(
     if (!mapping)
         return ASDF_VALUE_ERR_UNKNOWN;
 
-    struct fy_document *tree = asdf_file_get_tree_document(mapping->value.file);
+    struct fy_document *tree = asdf_file_tree_document(mapping->value.file);
 
     if (!tree)
         return ASDF_VALUE_ERR_OOM;
@@ -358,7 +358,7 @@ asdf_value_err_t asdf_mapping_set_string0(
     if (!mapping)
         return ASDF_VALUE_ERR_UNKNOWN;
 
-    struct fy_document *tree = asdf_file_get_tree_document(mapping->value.file);
+    struct fy_document *tree = asdf_file_tree_document(mapping->value.file);
 
     if (!tree)
         return ASDF_VALUE_ERR_OOM;
@@ -379,7 +379,7 @@ asdf_value_err_t asdf_mapping_set_null(asdf_mapping_t *mapping, const char *key)
     if (!mapping)
         return ASDF_VALUE_ERR_UNKNOWN;
 
-    struct fy_document *tree = asdf_file_get_tree_document(mapping->value.file);
+    struct fy_document *tree = asdf_file_tree_document(mapping->value.file);
 
     if (!tree)
         return ASDF_VALUE_ERR_OOM;
@@ -402,7 +402,7 @@ asdf_value_err_t asdf_mapping_set_null(asdf_mapping_t *mapping, const char *key)
         asdf_mapping_t *mapping, const char *key, type value) { \
         if (!mapping) \
             return ASDF_VALUE_ERR_UNKNOWN; \
-        struct fy_document *tree = asdf_file_get_tree_document(mapping->value.file); \
+        struct fy_document *tree = asdf_file_tree_document(mapping->value.file); \
         if (!tree) \
             return ASDF_VALUE_ERR_OOM; \
         struct fy_node *key_node = asdf_node_of_string0(tree, key); \
@@ -420,7 +420,7 @@ asdf_value_err_t asdf_mapping_set_null(asdf_mapping_t *mapping, const char *key)
         asdf_mapping_t *mapping, const char *key, type##_t value) { \
         if (!mapping) \
             return ASDF_VALUE_ERR_UNKNOWN; \
-        struct fy_document *tree = asdf_file_get_tree_document(mapping->value.file); \
+        struct fy_document *tree = asdf_file_tree_document(mapping->value.file); \
         if (!tree) \
             return ASDF_VALUE_ERR_OOM; \
         struct fy_node *key_node = asdf_node_of_string0(tree, key); \
@@ -439,7 +439,7 @@ asdf_value_err_t asdf_mapping_set_null(asdf_mapping_t *mapping, const char *key)
         asdf_value_err_t err = ASDF_VALUE_ERR_UNKNOWN; \
         if (!mapping || !value) \
             goto cleanup; \
-        struct fy_document *tree = asdf_file_get_tree_document(mapping->value.file); \
+        struct fy_document *tree = asdf_file_tree_document(mapping->value.file); \
         if (!tree) { \
             err = ASDF_VALUE_ERR_OOM; \
             goto cleanup; \
@@ -631,7 +631,7 @@ asdf_value_t *asdf_value_of_sequence(asdf_sequence_t *sequence) {
 
 
 asdf_sequence_t *asdf_sequence_create(asdf_file_t *file) {
-    struct fy_document *tree = asdf_file_get_tree_document(file);
+    struct fy_document *tree = asdf_file_tree_document(file);
 
     if (!tree)
         return NULL;
@@ -723,7 +723,7 @@ asdf_value_err_t asdf_sequence_append_string(
     if (!sequence)
         return ASDF_VALUE_ERR_UNKNOWN;
 
-    struct fy_document *tree = asdf_file_get_tree_document(sequence->value.file);
+    struct fy_document *tree = asdf_file_tree_document(sequence->value.file);
 
     if (!tree)
         return ASDF_VALUE_ERR_OOM;
@@ -744,7 +744,7 @@ asdf_value_err_t asdf_sequence_append_string0(asdf_sequence_t *sequence, const c
     if (!sequence)
         return ASDF_VALUE_ERR_UNKNOWN;
 
-    struct fy_document *tree = asdf_file_get_tree_document(sequence->value.file);
+    struct fy_document *tree = asdf_file_tree_document(sequence->value.file);
 
     if (!tree)
         return ASDF_VALUE_ERR_OOM;
@@ -764,7 +764,7 @@ asdf_value_err_t asdf_sequence_append_null(asdf_sequence_t *sequence) {
     if (!sequence)
         return ASDF_VALUE_ERR_UNKNOWN;
 
-    struct fy_document *tree = asdf_file_get_tree_document(sequence->value.file);
+    struct fy_document *tree = asdf_file_tree_document(sequence->value.file);
 
     if (!tree)
         return ASDF_VALUE_ERR_OOM;
@@ -785,7 +785,7 @@ asdf_value_err_t asdf_sequence_append_null(asdf_sequence_t *sequence) {
     asdf_value_err_t asdf_sequence_append_##type(asdf_sequence_t *sequence, type value) { \
         if (!sequence) \
             return ASDF_VALUE_ERR_UNKNOWN; \
-        struct fy_document *tree = asdf_file_get_tree_document(sequence->value.file); \
+        struct fy_document *tree = asdf_file_tree_document(sequence->value.file); \
         if (!tree) \
             return ASDF_VALUE_ERR_OOM; \
         struct fy_node *value_node = asdf_node_of_##type(tree, value); \
@@ -801,7 +801,7 @@ asdf_value_err_t asdf_sequence_append_null(asdf_sequence_t *sequence) {
     asdf_value_err_t asdf_sequence_append_##type(asdf_sequence_t *sequence, type##_t value) { \
         if (!sequence) \
             return ASDF_VALUE_ERR_UNKNOWN; \
-        struct fy_document *tree = asdf_file_get_tree_document(sequence->value.file); \
+        struct fy_document *tree = asdf_file_tree_document(sequence->value.file); \
         if (!tree) \
             return ASDF_VALUE_ERR_OOM; \
         struct fy_node *value_node = asdf_node_of_##type(tree, value); \
@@ -819,7 +819,7 @@ asdf_value_err_t asdf_sequence_append_null(asdf_sequence_t *sequence) {
         asdf_value_err_t err = ASDF_VALUE_ERR_UNKNOWN; \
         if (!sequence || !value) \
             goto cleanup; \
-        struct fy_document *tree = asdf_file_get_tree_document(sequence->value.file); \
+        struct fy_document *tree = asdf_file_tree_document(sequence->value.file); \
         if (!tree) { \
             err = ASDF_VALUE_ERR_OOM; \
             goto cleanup; \
@@ -1038,7 +1038,7 @@ asdf_value_err_t asdf_value_as_extension_type(
         return ASDF_VALUE_ERR_OOM;
     }
 
-    asdf_value_err_t err = ext->deserialize(raw_value, extval->object, out);
+    asdf_value_err_t err = ext->deserialize(raw_value, ext->userdata, out);
     asdf_value_destroy(raw_value);
 
     if (ASDF_VALUE_OK == err)
@@ -1046,6 +1046,54 @@ asdf_value_err_t asdf_value_as_extension_type(
 
     value->err = err;
     return err;
+}
+
+
+asdf_value_t *asdf_value_of_extension_type(
+    asdf_file_t *file, void *obj, const asdf_extension_t *ext) {
+
+    if (!ext->serialize) {
+        const char
+            *fmt = "no serializer registered for the %s extension; no YAML value will be created";
+        ASDF_LOG(file, ASDF_LOG_WARN, fmt, ext->tag);
+        ASDF_ERROR(file, fmt, ext->tag);
+        return NULL;
+    }
+
+    asdf_extension_value_t *new_ext = calloc(1, sizeof(asdf_extension_value_t));
+
+    if (!new_ext) {
+        ASDF_ERROR_OOM(file);
+        return NULL;
+    }
+
+    asdf_value_t *value = ext->serialize(file, obj, ext->userdata);
+
+    // serialize *may* return NULL if an error occurred in the serializer
+    // in this case the serializer should the serializer be responsible for setting an error?
+    new_ext->object = obj;
+    new_ext->ext = ext;
+    value->scalar.ext = new_ext;
+    value->extension_checked = true;
+    value->type = ASDF_VALUE_EXTENSION;
+    value->tag = strdup(ext->tag);
+
+    const char *normalized_tag = asdf_file_tag_normalize(file, ext->tag);
+
+    if (!normalized_tag) {
+        ASDF_ERROR_OOM(file);
+        asdf_value_destroy(value);
+        return NULL;
+    }
+
+    // Set the tag on the underlying fy_node
+    if (fy_node_set_tag(value->node, normalized_tag, FY_NT) != 0) {
+        ASDF_ERROR_OOM(file);
+        asdf_value_destroy(value);
+        return NULL;
+    }
+
+    return value;
 }
 
 
@@ -2245,7 +2293,7 @@ asdf_value_t *asdf_value_of_string(asdf_file_t *file, const char *value, size_t 
     if (UNLIKELY(!file))
         return NULL;
 
-    struct fy_document *doc = asdf_file_get_tree_document(file);
+    struct fy_document *doc = asdf_file_tree_document(file);
     struct fy_node *node = asdf_node_of_string(doc, value, len);
 
     if (UNLIKELY((!node)))
@@ -2266,7 +2314,7 @@ asdf_value_t *asdf_value_of_string0(asdf_file_t *file, const char *value) {
     if (UNLIKELY(!file))
         return NULL;
 
-    struct fy_document *doc = asdf_file_get_tree_document(file);
+    struct fy_document *doc = asdf_file_tree_document(file);
     struct fy_node *node = asdf_node_of_string0(doc, value);
 
     if (UNLIKELY((!node)))
@@ -2287,7 +2335,7 @@ asdf_value_t *asdf_value_of_null(asdf_file_t *file) {
     if (UNLIKELY(!file))
         return NULL;
 
-    struct fy_document *doc = asdf_file_get_tree_document(file);
+    struct fy_document *doc = asdf_file_tree_document(file);
     struct fy_node *node = asdf_node_of_null(doc);
 
     if (UNLIKELY((!node)))
@@ -2308,7 +2356,7 @@ asdf_value_t *asdf_value_of_null(asdf_file_t *file) {
     asdf_value_t *asdf_value_of_##typename(asdf_file_t * file, typ value) { \
         if (UNLIKELY(!file)) \
             return NULL; \
-        struct fy_document *doc = asdf_file_get_tree_document(file); \
+        struct fy_document *doc = asdf_file_tree_document(file); \
         struct fy_node *node = asdf_node_of_##typename(doc, value); \
         if (UNLIKELY((!node))) \
             return NULL; \

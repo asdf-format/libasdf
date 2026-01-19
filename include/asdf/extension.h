@@ -24,14 +24,21 @@ typedef struct {
 } asdf_software_t;
 
 
+typedef asdf_value_t *(*asdf_extension_serialize_t)(
+    asdf_file_t *file, void *obj, const void *userdata);
+
+
 typedef asdf_value_err_t (*asdf_extension_deserialize_t)(
     asdf_value_t *value, const void *userdata, void **out);
+
+
 typedef void (*asdf_extension_dealloc_t)(void *userdata);
 
 
 struct _asdf_extension {
     const char *tag;
     asdf_software_t *software;
+    asdf_extension_serialize_t serialize;
     asdf_extension_deserialize_t deserialize;
     asdf_extension_dealloc_t dealloc;
     void *userdata;
@@ -51,20 +58,21 @@ ASDF_EXPORT const asdf_extension_t *asdf_extension_get(asdf_file_t *file, const 
 #define ASDF_EXT_PREFIX asdf
 
 /* Macro helpers */
-#define _ASDF_PASTE(a, b) a##b
-#define _ASDF_EXPAND(a, b) _ASDF_PASTE(a, b)
+#define ASDF_PASTE(a, b) a##b
+#define ASDF_EXPAND(a, b) ASDF_PASTE(a, b)
 
 
-#define ASDF_EXT_STATIC_NAME(extname) _ASDF_EXPAND(ASDF_EXT_PREFIX, _##extname##_extension)
+#define ASDF_EXT_STATIC_NAME(extname) ASDF_EXPAND(ASDF_EXT_PREFIX, _##extname##_extension)
 
 
-#define ASDF_EXT_DEFINE(extname, _tag, _software, _deserialize, _dealloc, _userdata) \
+#define ASDF_EXT_DEFINE(extname, _tag, _software, _serialize, _deserialize, _dealloc, _userdata) \
     static asdf_extension_t ASDF_EXT_STATIC_NAME(extname) = { \
-        .tag = _tag, \
-        .software = _software, \
-        .deserialize = _deserialize, \
-        .dealloc = _dealloc, \
-        .userdata = _userdata}
+        .tag = (_tag), \
+        .software = (_software), \
+        .serialize = (_serialize), \
+        .deserialize = (_deserialize), \
+        .dealloc = (_dealloc), \
+        .userdata = (_userdata)}
 
 
 #define ASDF_EXT_DEFINE_VALUE_IS_TYPE(extname) \
@@ -85,9 +93,15 @@ ASDF_EXPORT const asdf_extension_t *asdf_extension_get(asdf_file_t *file, const 
     }
 
 
+#define ASDF_EXT_DEFINE_VALUE_OF_TYPE(extname, type) \
+    ASDF_EXPORT asdf_value_t *asdf_value_of_##extname(asdf_file_t *file, type *obj) { \
+        return asdf_value_of_extension_type(file, obj, &ASDF_EXT_STATIC_NAME(extname)); \
+    }
+
+
 #define ASDF_EXT_DEFINE_GET(extname, type) \
-    ASDF_EXPORT asdf_value_err_t \
-        asdf_get_##extname(asdf_file_t *file, const char *path, type **out) { \
+    ASDF_EXPORT asdf_value_err_t asdf_get_##extname( \
+        asdf_file_t *file, const char *path, type **out) { \
         return asdf_get_extension_type(file, path, &ASDF_EXT_STATIC_NAME(extname), (void **)out); \
     }
 
@@ -104,26 +118,29 @@ ASDF_EXPORT const asdf_extension_t *asdf_extension_get(asdf_file_t *file, const 
     }
 
 
-#define ASDF_REGISTER_EXTENSION(extname, tag, type, software, deserialize, dealloc, userdata) \
-    ASDF_EXT_DEFINE(extname, tag, software, deserialize, dealloc, userdata); \
-    ASDF_EXT_DEFINE_VALUE_IS_TYPE(extname) \
+#define ASDF_REGISTER_EXTENSION( \
+    extname, tag, type, software, serialize, deserialize, dealloc, userdata) \
+    ASDF_EXT_DEFINE(extname, tag, software, serialize, deserialize, dealloc, userdata); \
     ASDF_EXT_DEFINE_VALUE_AS_TYPE(extname, type) \
+    ASDF_EXT_DEFINE_VALUE_IS_TYPE(extname) \
+    ASDF_EXT_DEFINE_VALUE_OF_TYPE(extname, type) \
     ASDF_EXT_DEFINE_IS_TYPE(extname, type) \
     ASDF_EXT_DEFINE_GET(extname, type) \
     ASDF_EXT_DEFINE_DESTROY(extname, type) \
-    static ASDF_CONSTRUCTOR void _ASDF_EXPAND(ASDF_EXT_PREFIX, _register_##extname##_extension)( \
-        void) { \
+    static ASDF_CONSTRUCTOR void ASDF_EXPAND( \
+        ASDF_EXT_PREFIX, _register_##extname##_extension)(void) { \
         asdf_extension_register(&ASDF_EXT_STATIC_NAME(extname)); \
     }
 
 
 /* Provides declarations for auto-generated extension type APIs, for use in headers */
 #define ASDF_DECLARE_EXTENSION(extname, type) \
-    ASDF_EXPORT bool asdf_value_is_##extname(asdf_value_t *value); \
     ASDF_EXPORT asdf_value_err_t asdf_value_as_##extname(asdf_value_t *value, type **out); \
+    ASDF_EXPORT bool asdf_value_is_##extname(asdf_value_t *value); \
+    ASDF_EXPORT asdf_value_t *asdf_value_of_##extname(asdf_file_t *file, type *obj); \
     ASDF_EXPORT bool asdf_is_##extname(asdf_file_t *file, const char *path); \
-    ASDF_EXPORT asdf_value_err_t \
-        asdf_get_##extname(asdf_file_t *file, const char *path, type **out); \
+    ASDF_EXPORT asdf_value_err_t asdf_get_##extname( \
+        asdf_file_t *file, const char *path, type **out); \
     ASDF_EXPORT void asdf_##extname##_destroy(type *object)
 
 ASDF_END_DECLS

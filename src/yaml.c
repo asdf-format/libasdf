@@ -1,6 +1,10 @@
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 #include <assert.h>
 #include <ctype.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <string.h>
 
 #include <libfyaml.h>
@@ -15,6 +19,7 @@ const char *asdf_yaml_directive = ASDF_YAML_DIRECTIVE;
 const char *asdf_yaml_document_end_marker = ASDF_YAML_DOCUMENT_END_MARKER;
 const char *asdf_yaml_empty_document = ASDF_YAML_DIRECTIVE ASDF_YAML_DOCUMENT_BEGIN_MARKER
     ASDF_YAML_DOCUMENT_END_MARKER;
+const char *asdf_yaml_tag_prefix = "tag:";
 
 
 static const asdf_yaml_event_type_t fyet_to_asdf_event[] = {
@@ -89,6 +94,108 @@ const char *asdf_yaml_event_tag(const asdf_event_t *event, size_t *lenp) {
     struct fy_token *token = fy_event_get_tag_token(event->payload.yaml);
     // Is safe to call if there is no token, just returns empty string/0
     return fy_token_get_text(token, lenp);
+}
+
+
+/**
+ * Prefix a tag string with tag: if not already prefixed
+ *
+ * Memory is always allocated for the new string even if unmodified
+ */
+char *asdf_yaml_tag_canonicalize(const char *tag) {
+    char *full_tag = NULL;
+    if (0 != strncmp(tag, "tag:", ASDF_YAML_TAG_PREFIX_SIZE)) {
+        size_t taglen = strlen(tag);
+        full_tag = malloc(ASDF_YAML_TAG_PREFIX_SIZE + taglen + 1);
+
+        if (!full_tag)
+            return NULL;
+
+        memcpy(full_tag, asdf_yaml_tag_prefix, ASDF_YAML_TAG_PREFIX_SIZE);
+        memcpy(full_tag + ASDF_YAML_TAG_PREFIX_SIZE, tag, taglen + 1);
+    } else {
+        full_tag = strdup(tag);
+    }
+
+    return full_tag;
+}
+
+
+static asdf_yaml_tag_handle_t asdf_yaml_default_tag_handle = {
+    .handle = ASDF_YAML_DEFAULT_TAG_HANDLE, .prefix = ASDF_STANDARD_TAG_PREFIX};
+
+
+/**
+ * Normalize tags to their shortened form taking into account tag handles to
+ * be used in the document
+ *
+ * The libfyaml function fy_node_set_tag, nor its document emitter code has
+ * any intelligence (that I've found so far) to shorten tags added to new
+ * nodes based on what tag handles are available in the document, and just
+ * takes the tag to write verbatim (as long as it correctly matches YAML
+ * syntax for tags--must start with '!')
+ *
+ * This looks at all the available tag handles to be written to the document
+ * (typically set in the emitter config) and chooses the handle with the
+ * longest prefix matching the tag to normalize.  It also takes into
+ * account the default behavior of using the '!' handle for asdf/core, if it
+ * was not already explicitly included in the array of tag handles.
+ *
+ * .. todo::
+ *
+ *   This is a bit slow and cumbersome if we're writing a lot of tagged values,
+ *   so might be useful to cache the handles to use for each tag written.  This
+ *   should be done on the level of the asdf_file_t, maybe.
+ */
+char *asdf_yaml_tag_normalize(const char *tag, const asdf_yaml_tag_handle_t *handles) {
+    char *normal_tag = NULL;
+    bool has_default_tag_handle = false;
+    size_t prefix_len = 0;
+    size_t longest_prefix = 0;
+    const asdf_yaml_tag_handle_t *handle = NULL;
+    const asdf_yaml_tag_handle_t *tmp_handle = handles;
+    char *canonical_tag = asdf_yaml_tag_canonicalize(tag);
+
+    if (!canonical_tag)
+        return NULL;
+
+    while (tmp_handle && tmp_handle->prefix && tmp_handle->handle) {
+        prefix_len = strlen(tmp_handle->prefix);
+        if (strncmp(canonical_tag, tmp_handle->prefix, prefix_len) == 0) {
+            if (prefix_len > longest_prefix) {
+                handle = tmp_handle;
+                longest_prefix = prefix_len;
+            }
+        }
+
+        if (strcmp(tmp_handle->handle, ASDF_YAML_DEFAULT_TAG_HANDLE) == 0)
+            has_default_tag_handle = true;
+
+        tmp_handle++;
+    }
+
+    // Check if it matches the standard asdf/core tag prefix
+    if (!handle && !has_default_tag_handle) {
+        prefix_len = strlen(ASDF_STANDARD_TAG_PREFIX);
+        if (strncmp(canonical_tag, ASDF_STANDARD_TAG_PREFIX, prefix_len) == 0)
+            handle = &asdf_yaml_default_tag_handle;
+    }
+
+    int ret = -1;
+
+    if (!handle)
+        // Does not match any tag handle, so write the tag in full verbatim
+        // format
+        ret = asprintf(&normal_tag, "!<%s>", canonical_tag);
+    else
+        ret = asprintf(&normal_tag, "%s%s", handle->handle, canonical_tag + prefix_len);
+
+    free(canonical_tag);
+
+    if (ret <= 0)
+        return NULL;
+
+    return normal_tag;
 }
 
 

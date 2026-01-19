@@ -23,7 +23,31 @@ static asdf_software_t asdf_foo_software = {
 };
 
 
-// TODO: Not used yet, just needs to be defined
+static const char *foo_prefix = "foo:";
+
+
+static asdf_value_t *asdf_foo_serialize(asdf_file_t *file, void *obj, UNUSED(const void *userdata)) {
+    if (!obj)
+        return NULL;
+
+    asdf_foo_t *foo = obj;
+    /* The "foo" extension reads a string tagged 'foo' from the file and adds the
+     * prefix "foo:" to it.  That's all it is.  So if we receive an asdf_foo_t
+     * it must store a string prefixed with "foo:"; when serializing it
+     * as a string with the "foo:" prefix again removed */
+    if (!foo->foo)
+        return NULL;
+
+    size_t prefix_len = strlen(foo_prefix);
+    size_t len = strlen(foo->foo);
+
+    if (len < prefix_len)
+        return NULL;
+
+    return asdf_value_of_string(file, foo->foo + prefix_len, len - prefix_len);
+}
+
+
 static asdf_value_err_t asdf_foo_deserialize(asdf_value_t *value,
                                              UNUSED(const void *userdata), void **out) {
     size_t foo_len = 0;
@@ -33,7 +57,6 @@ static asdf_value_err_t asdf_foo_deserialize(asdf_value_t *value,
     if (ASDF_VALUE_OK != err)
         return err;
 
-    const char *foo_prefix = "foo:";
     size_t prefix_len = strlen(foo_prefix);
     char *buf = malloc(prefix_len + foo_len + 1);
 
@@ -71,6 +94,7 @@ ASDF_REGISTER_EXTENSION(
     "stsci.edu:asdf/tests/foo-1.0.0",
     asdf_foo_t,
     &asdf_foo_software,
+    asdf_foo_serialize,
     asdf_foo_deserialize,
     asdf_foo_dealloc,
     NULL
@@ -121,6 +145,23 @@ MU_TEST(test_asdf_value_as_foo) {
 }
 
 
+// TODO: Replace with in-memory temp file
+MU_TEST(test_asdf_value_of_foo) {
+    const char *path = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    asdf_file_t *file = asdf_open(path, "w");
+    assert_not_null(file);
+    asdf_foo_t foo = { .foo = "foo:foo" };
+    asdf_value_t *value = asdf_value_of_foo(file, &foo);
+    assert_not_null(value);
+    asdf_set_value(file, "foo", value);
+    asdf_close(file);
+
+    const char *expected = get_fixture_file_path("trivial-extension.asdf");
+    assert_true(compare_files(path, expected));
+    return MUNIT_OK;
+}
+
+
 MU_TEST(test_asdf_is_foo) {
     const char *path = get_fixture_file_path("trivial-extension.asdf");
     asdf_file_t *file = asdf_open_file(path, "r");
@@ -152,6 +193,7 @@ MU_TEST_SUITE(
     MU_RUN_TEST(extension_registered),
     MU_RUN_TEST(test_asdf_value_is_foo),
     MU_RUN_TEST(test_asdf_value_as_foo),
+    MU_RUN_TEST(test_asdf_value_of_foo),
     MU_RUN_TEST(test_asdf_is_foo),
     MU_RUN_TEST(test_asdf_get_foo)
 );

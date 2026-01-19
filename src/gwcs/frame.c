@@ -267,6 +267,7 @@ ASDF_REGISTER_EXTENSION(
     ASDF_GWCS_TAG_PREFIX "frame-1.2.0",
     asdf_gwcs_base_frame_t,
     &libasdf_software,
+    NULL,
     asdf_gwcs_base_frame_deserialize,
     asdf_gwcs_base_frame_dealloc,
     NULL);

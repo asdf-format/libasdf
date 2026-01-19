@@ -51,6 +51,7 @@ ASDF_REGISTER_EXTENSION(
     ASDF_GWCS_TAG_PREFIX "frame2d-1.2.0",
     asdf_gwcs_frame2d_t,
     &libasdf_software,
+    NULL,
     asdf_gwcs_frame2d_deserialize,
     asdf_gwcs_frame2d_dealloc,
     NULL);
