@@ -446,8 +446,8 @@ MU_TEST(ndarray_numeric_conversion) {
     const char *src_dtype = munit_parameters_get(params, "src_dtype");
     const char *dst_dtype = munit_parameters_get(params, "dst_dtype");
     const char *src_byteorder = munit_parameters_get(params, "src_byteorder");
-    asdf_scalar_datatype_t src_t = asdf_ndarray_datatype_from_string(src_dtype);
-    asdf_scalar_datatype_t dst_t = asdf_ndarray_datatype_from_string(dst_dtype);
+    asdf_scalar_datatype_t src_t = asdf_scalar_datatype_from_string(src_dtype);
+    asdf_scalar_datatype_t dst_t = asdf_scalar_datatype_from_string(dst_dtype);
     assert_int(src_t, !=, ASDF_DATATYPE_UNKNOWN);
     assert_int(dst_t, !=, ASDF_DATATYPE_UNKNOWN);
     const char *path = get_fixture_file_path("numeric.asdf");
@@ -475,16 +475,16 @@ MU_TEST(ndarray_numeric_conversion) {
 }
 
 
-MU_TEST(ndarray_record_datatype) {
+MU_TEST(ndarray_structured_datatype) {
     const char *path = get_fixture_file_path("datatypes.asdf");
     asdf_file_t *file = asdf_open_file(path, "r");
     assert_not_null(file);
     asdf_ndarray_t *ndarray = NULL;
-    asdf_value_err_t err = asdf_get_ndarray(file, "record", &ndarray);
+    asdf_value_err_t err = asdf_get_ndarray(file, "structured", &ndarray);
     assert_int(err, ==, ASDF_VALUE_OK);
     assert_not_null(ndarray);
     asdf_datatype_t *datatype = &ndarray->datatype;
-    assert_int(datatype->type, ==, ASDF_DATATYPE_RECORD);
+    assert_int(datatype->type, ==, ASDF_DATATYPE_STRUCTURED);
     // sizeof(S4) + sizeof(U4) + sizeof(int16) + 3 * 3 * sizeof(float)
     assert_int(datatype->size, ==, 58);
     assert_null(datatype->name);
@@ -561,7 +561,7 @@ MU_TEST(heap_use_after_free_issue_63) {
     assert_not_null(ndarray);
 
     asdf_datatype_t *datatype = &ndarray->datatype;
-    assert_int(datatype->type, ==, ASDF_DATATYPE_RECORD);
+    assert_int(datatype->type, ==, ASDF_DATATYPE_STRUCTURED);
     // sizeof(S21) + sizeof(S21)
     assert_int(datatype->size, ==, 42);
     assert_null(datatype->name);
@@ -606,7 +606,7 @@ MU_TEST_SUITE(
     MU_RUN_TEST(ndarray_read_3d_tile),
     MU_RUN_TEST(ndarray_read_tile_byteswap),
     MU_RUN_TEST(ndarray_numeric_conversion, test_numeric_conversion_params),
-    MU_RUN_TEST(ndarray_record_datatype),
+    MU_RUN_TEST(ndarray_structured_datatype),
     MU_RUN_TEST(heap_use_after_free_issue_63)
 );
 

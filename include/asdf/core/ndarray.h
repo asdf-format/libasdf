@@ -47,94 +47,13 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <asdf/core/datatype.h>
 #include <asdf/extension.h>
 #include <asdf/util.h>
 
 ASDF_BEGIN_DECLS
 
 #define ASDF_CORE_NDARRAY_TAG ASDF_CORE_TAG_PREFIX "ndarray-1.1.0"
-
-/**
- * Enum for basic ndarray scalar datatypes
- *
- * The special datatype `ASDF_DATATYPE_RECORD` is reserved for the case where
- * the datatype is a structured record (not yet supported beyond setting this
- * datatype).
- *
- * See `asdf_datatype_t` which represents a full datatype (including
- * compound/record datatypes).
- *
- * This should not be confused with `asdf_value_t` which are the scalar value
- * types supported for YAML tree values.
- */
-typedef enum {
-    /** Reserved for invalid/unsupported datatypes */
-    ASDF_DATATYPE_UNKNOWN = 0,
-    ASDF_DATATYPE_INT8,
-    ASDF_DATATYPE_UINT8,
-    ASDF_DATATYPE_INT16,
-    ASDF_DATATYPE_UINT16,
-    ASDF_DATATYPE_INT32,
-    ASDF_DATATYPE_UINT32,
-    ASDF_DATATYPE_INT64,
-    ASDF_DATATYPE_UINT64,
-    ASDF_DATATYPE_FLOAT16,
-    ASDF_DATATYPE_FLOAT32,
-    ASDF_DATATYPE_FLOAT64,
-    ASDF_DATATYPE_COMPLEX64,
-    ASDF_DATATYPE_COMPLEX128,
-    ASDF_DATATYPE_BOOL8,
-    ASDF_DATATYPE_ASCII,
-    ASDF_DATATYPE_UCS4,
-    /**
-     * Indicates that a datatype is non-scalar / is a compound-type/record array
-     */
-    ASDF_DATATYPE_RECORD
-} asdf_scalar_datatype_t;
-
-
-/**
- * Alias for `ASDF_DATATYPE_UNKNOWN`
- *
- * This is used primarily in the `asdf_ndarray_read_tile_ndim` family of functions indicating
- * that the destination data type is the same as the source datatype.  This alias is clearer
- * in intent than `ASDF_DATATYPE_UNKNOWN` in this context.
- */
-#define ASDF_DATATYPE_SOURCE ASDF_DATATYPE_UNKNOWN
-
-
-/**
- * Struct representing the byte order/endianness of elements in an ndarray
- * or field in a record datatype
- */
-typedef enum {
-    /** Litle-endian **/
-    ASDF_BYTEORDER_BIG = '>',
-    /** Big-endian **/
-    ASDF_BYTEORDER_LITTLE = '<'
-} asdf_byteorder_t;
-
-
-// Forward-declaration of asdf_datatype_t;
-typedef struct asdf_datatype asdf_datatype_t;
-
-
-struct asdf_datatype {
-    asdf_scalar_datatype_t type;
-    uint64_t size;
-    const char *name;
-    asdf_byteorder_t byteorder;
-    uint32_t ndim;
-    const uint64_t *shape;
-    uint32_t nfields;
-    const asdf_datatype_t *fields;
-};
-
-
-/**
- * Struct representing an ndarray datatype
- */
-typedef struct asdf_datatype asdf_datatype_t;
 
 
 /**
@@ -351,81 +270,6 @@ ASDF_EXPORT asdf_ndarray_err_t asdf_ndarray_read_tile_2d(
     asdf_scalar_datatype_t dst_t,
     void **dst);
 
-
-/**
- * Parse an ASDF ndarray scalar datatype and return the corresponding `asdf_scalar_datatype_t`
- *
- * :param s: Null-terminated string
- * :return: The corresponding `asdf_scalar_datatype_t` or `ASDF_DATATYPE_UNKNOWN`
- *
- * .. note::
- *
- *   Resists the urge to name this ``asdf_ndarray_serialize_datatype`` as in the long term
- *   this will be used to serialize a datatype back to YAML, and will need to also support
- *   compound datatypes.
- *
- *   This just provides the string representations for the common scalar datatypes.
- */
-ASDF_EXPORT asdf_scalar_datatype_t asdf_ndarray_datatype_from_string(const char *dtype);
-
-
-/**
- * Convert an `asdf_scalar_datatype_t` to its string representation
- *
- * :param datatype: A member of `asdf_scalar_datatype_t`
- * :return: The string representation of the scalar datatype
- *
- * .. note::
- *
- *   Resists the urge to name this ``asdf_ndarray_serialize_datatype`` as in the long term
- *   this will be used to serialize a datatype back to YAML, and will need to also support
- *   compound datatypes.
- *
- *   This just provides the string representations for the common scalar datatypes.
- */
-ASDF_EXPORT const char *asdf_ndarray_datatype_to_string(asdf_scalar_datatype_t datatype);
-
-
-/**
- * Get the size in bytes of a scalar (numeric) ndarray element for a given
- * `asdf_scalar_datatype_t`
- *
- * :param type: A member of `asdf_datatype_t`
- * :return: Size in bytes of a single element of that datatype, or ``-1`` for
- *   non-scalar datatypes (for the present purposes strings are not considered
- *   scalars, only numeric datatypes)
- */
-static inline size_t asdf_ndarray_scalar_datatype_size(asdf_scalar_datatype_t type) {
-    switch (type) {
-    case ASDF_DATATYPE_INT8:
-    case ASDF_DATATYPE_UINT8:
-    case ASDF_DATATYPE_BOOL8:
-        return 1;
-    case ASDF_DATATYPE_INT16:
-    case ASDF_DATATYPE_UINT16:
-    case ASDF_DATATYPE_FLOAT16:
-        return 2;
-    case ASDF_DATATYPE_INT32:
-    case ASDF_DATATYPE_UINT32:
-    case ASDF_DATATYPE_FLOAT32:
-        return 4;
-    case ASDF_DATATYPE_INT64:
-    case ASDF_DATATYPE_UINT64:
-    case ASDF_DATATYPE_FLOAT64:
-    case ASDF_DATATYPE_COMPLEX64:
-        return 8;
-    case ASDF_DATATYPE_COMPLEX128:
-        return 16;
-
-    case ASDF_DATATYPE_ASCII:
-    case ASDF_DATATYPE_UCS4:
-    case ASDF_DATATYPE_RECORD:
-    case ASDF_DATATYPE_UNKNOWN:
-        return 0;
-    default:
-        return 0;
-    }
-}
 
 ASDF_END_DECLS
 

@@ -5,10 +5,12 @@
 #include "util.h"
 
 #include <asdf/core/asdf.h>
+#include <asdf/core/datatype.h>
 #include <asdf/core/extension_metadata.h>
 #include <asdf/core/history_entry.h>
 #include <asdf/core/ndarray.h>
 #include <asdf/core/software.h>
+#include <asdf/extension.h>
 #include <asdf/file.h>
 #include <asdf/value.h>
 
@@ -363,6 +365,103 @@ MU_TEST(meta_serialize) {
 }
 
 
+/**
+ * Parse a couple example datatypes in files
+ *
+ * Here we use `asdf_value_as_extension_type` since in these examples files the
+ * datatype object is just embedded in an ndarray and not explicitly tagged
+ */
+MU_TEST(datatype) {
+    const char *path = get_reference_file_path("1.6.0/basic.asdf");
+    asdf_file_t *file = asdf_open(path, "r");
+    assert_not_null(file);
+    const asdf_extension_t *ext = asdf_extension_get(file, ASDF_CORE_DATATYPE_TAG);
+    assert_not_null(ext);
+    asdf_datatype_t *datatype = NULL;
+    // We can't use asdf_get_extension_type because it *assumes* the value is
+    // tagged, and so doesn't support implicitly tagged objects
+    // Might be useful to have a variant of this that explicitly supports
+    // implicit tags
+    asdf_value_t *value = asdf_get_value(file, "data/datatype");
+    assert_not_null(value);
+    asdf_value_err_t err = ext->deserialize(value, NULL, (void **)&datatype);
+    assert_int(err, ==, ASDF_VALUE_OK);
+    assert_not_null(datatype);
+    asdf_value_destroy(value);
+
+    // asdf_datatype_t for a scalar can be cast direcyly to an asdf_scalar_datatype_t
+    // TODO: Should maybe have a helper function for checking if a datatype is scalar
+    assert_int(*((asdf_scalar_datatype_t *)datatype), ==, ASDF_DATATYPE_INT64);
+    assert_int(datatype->size, ==, asdf_scalar_datatype_size(ASDF_DATATYPE_INT64));
+    assert_null(datatype->name);
+    assert_int(datatype->byteorder, ==, ASDF_BYTEORDER_LITTLE);
+    assert_int(datatype->ndim, ==, 0);
+    assert_null(datatype->shape);
+    assert_int(datatype->nfields, ==, 0);
+    assert_null(datatype->fields);
+    asdf_datatype_destroy(datatype);
+    asdf_close(file);
+
+    // Test a more complex datatype
+    path = get_reference_file_path("1.6.0/structured.asdf");
+    file = asdf_open(path, "r");
+    assert_not_null(file);
+    datatype = NULL;
+    value = asdf_get_value(file, "structured/datatype");
+    assert_not_null(value);
+    err = ext->deserialize(value, NULL, (void **)&datatype);
+    assert_int(err, ==, ASDF_VALUE_OK);
+    assert_not_null(datatype);
+    asdf_value_destroy(value);
+
+    assert_int(datatype->type, ==, ASDF_DATATYPE_STRUCTURED);
+    // uint8 + ascii(3) + float32
+    assert_int(datatype->size, ==, 1 + 3 + 4);
+    assert_null(datatype->name);
+    // Default to little but ignored in favor of the individual fields'
+    // byte orders
+    assert_int(datatype->byteorder, ==, ASDF_BYTEORDER_LITTLE);
+    assert_int(datatype->ndim, ==, 0);
+    assert_null(datatype->shape);
+    assert_int(datatype->nfields, ==, 3);
+    assert_not_null(datatype->fields);
+
+    asdf_datatype_t *field = &datatype->fields[0];
+    assert_int(field->type, ==, ASDF_DATATYPE_UINT8);
+    assert_int(field->size, ==, 1);
+    assert_string_equal(field->name, "a");
+    assert_int(field->byteorder, ==, ASDF_BYTEORDER_BIG);
+    assert_int(field->ndim, ==, 0);
+    assert_null(field->shape);
+    assert_int(field->nfields, ==, 0);
+    assert_null(field->fields);
+
+    field = &datatype->fields[1];
+    assert_int(field->type, ==, ASDF_DATATYPE_ASCII);
+    assert_int(field->size, ==, 3);
+    assert_string_equal(field->name, "b");
+    assert_int(field->byteorder, ==, ASDF_BYTEORDER_BIG);
+    assert_int(field->ndim, ==, 0);
+    assert_null(field->shape);
+    assert_int(field->nfields, ==, 0);
+    assert_null(field->fields);
+
+    field = &datatype->fields[2];
+    assert_int(field->type, ==, ASDF_DATATYPE_FLOAT32);
+    assert_int(field->size, ==, 4);
+    assert_string_equal(field->name, "c");
+    assert_int(field->byteorder, ==, ASDF_BYTEORDER_LITTLE);
+    assert_int(field->ndim, ==, 0);
+    assert_null(field->shape);
+    assert_int(field->nfields, ==, 0);
+    assert_null(field->fields);
+
+    asdf_datatype_destroy(datatype);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
 /*
  * Very basic test of ndarray parsing; will have more comprehensive ndarray tests in their own suite
  */
@@ -445,6 +544,7 @@ MU_TEST_SUITE(
     MU_RUN_TEST(history_entry_serialize),
     MU_RUN_TEST(meta),
     MU_RUN_TEST(meta_serialize),
+    MU_RUN_TEST(datatype),
     MU_RUN_TEST(ndarray),
     MU_RUN_TEST(software),
     MU_RUN_TEST(software_serialize)

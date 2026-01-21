@@ -95,7 +95,7 @@ def make_datatypes_asdf():
         'formats': ['S4', 'U4', '>i2', '(3,3)f4']
     })
     arr = np.array([], dtype=dt)
-    f['record'] = arr
+    f['structured'] = arr
     return f
 
 

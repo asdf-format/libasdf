@@ -7,6 +7,7 @@ set(libasdf_sources
     compression/lz4.c
     compression/zlib.c
     core/asdf.c
+    core/datatype.c
     core/extension_metadata.c
     core/history_entry.c
     core/ndarray.c
