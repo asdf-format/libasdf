@@ -104,6 +104,9 @@ typedef struct {
      * size ``.ndim`` giving the stride for each dimension)
      */
     int64_t *strides;
+
+    // Reserved for internal use
+    void *_reserved;
 } asdf_ndarray_t;
 #else
 typedef struct asdf_ndarray asdf_ndarray_t;
@@ -168,7 +171,44 @@ ASDF_EXPORT const void *asdf_ndarray_data_raw(asdf_ndarray_t *ndarray, size_t *s
  * :return: Total number of elements in the array (just the product of its
  *   shape)
  */
-ASDF_EXPORT size_t asdf_ndarray_size(asdf_ndarray_t *ndarray);
+ASDF_EXPORT uint64_t asdf_ndarray_size(const asdf_ndarray_t *ndarray);
+
+
+/**
+ * Return the total number of bytes in the ndarray data
+ *
+ * :param ndarray: An `asdf_ndarray_t *`
+ * :return: The byte size of the ndarray (this is just its size times the
+ *   datatype nbytes)
+ */
+ASDF_EXPORT uint64_t asdf_ndarray_nbytes(const asdf_ndarray_t *ndarray);
+
+
+/**
+ * Allocate heap memory large enough to store the data for the ndarray
+ *
+ * Every call to this function should have a corresponding
+ * `asdf_ndarray_data_dealloc` to free the allocated memory when it is
+ * no longer needed (such as after writing the file).  The memory is not
+ * automatically freed.
+ *
+ * :param ndarray: An `asdf_ndarray_t *`
+ * :return: A `void *` to the allocated memory or `NULL` if the memory
+ *   could not be allocated; subsequent calls on the same ndarray will
+ *   return the same memory
+ */
+ASDF_EXPORT void *asdf_ndarray_data_alloc(asdf_ndarray_t *ndarray);
+
+
+/**
+ * Free ndarray data allocated with `asdf_ndarray_data_alloc`
+ *
+ * If the ndarray never had data allocated this is a no-op but does produce
+ * a debug log message if logging is enabled.
+ *
+ * :param ndarray: An `asdf_ndarray_t *`
+ */
+ASDF_EXPORT void asdf_ndarray_data_dealloc(asdf_ndarray_t *ndarray);
 
 
 /**

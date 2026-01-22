@@ -259,6 +259,7 @@ EXTRA_DIST += \
     fixtures/255-no-newline-before-tree.asdf \
     fixtures/255-no-tree-padding-after-header.asdf \
     fixtures/255-no-tree.asdf \
+    fixtures/255-out.asdf \
     fixtures/255-padding-after-header.asdf \
     fixtures/255-padding-after-tree.asdf \
     fixtures/byteorder.asdf \
@@ -291,6 +292,7 @@ EXTRA_DIST += \
     fixtures/multi-block.asdf \
     fixtures/multiple_hdu.asdf \
     fixtures/nested.asdf \
+    fixtures/ndarray-out.asdf \
     fixtures/numeric.asdf \
     fixtures/parse-minimal.asdf \
     fixtures/parse-minimal-empty-tree.asdf \

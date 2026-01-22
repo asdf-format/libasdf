@@ -299,7 +299,9 @@ asdf_value_err_t asdf_value_as_mapping(asdf_value_t *value, asdf_mapping_t **out
     if (value->raw_type != ASDF_VALUE_MAPPING)
         return ASDF_VALUE_ERR_TYPE_MISMATCH;
 
-    *out = (asdf_mapping_t *)value;
+    if (LIKELY(out))
+        *out = (asdf_mapping_t *)value;
+
     return ASDF_VALUE_OK;
 }
 
@@ -725,7 +727,9 @@ asdf_value_err_t asdf_value_as_sequence(asdf_value_t *value, asdf_sequence_t **o
     if (value->raw_type != ASDF_VALUE_SEQUENCE)
         return ASDF_VALUE_ERR_TYPE_MISMATCH;
 
-    *out = (asdf_sequence_t *)value;
+    if (LIKELY(out))
+        *out = (asdf_sequence_t *)value;
+
     return ASDF_VALUE_OK;
 }
 
@@ -1144,7 +1148,9 @@ asdf_value_err_t asdf_value_as_extension_type(
     asdf_extension_value_t *extval = value->scalar.ext;
 
     if (extval->object) {
-        *out = (void *)extval->object;
+        if (LIKELY(out))
+            *out = (void *)extval->object;
+
         return ASDF_VALUE_OK;
     }
 
@@ -1187,6 +1193,13 @@ asdf_value_t *asdf_value_of_extension_type(
         return NULL;
     }
 
+    // TODO: This *immediately* serializes the value before its node is even
+    // attached anywhere in the tree document.  It would be better to do this
+    // lazily (only when attaching) since otherwise can result in a foot-gun
+    // especially with ndarrays
+    //
+    // Should also look into better managing exactly when to attach a new block
+    // to the file for an ndarray; look to the Python library for inspiration
     asdf_value_t *value = ext->serialize(file, obj, ext->userdata);
 
     // TODO: Might be better if serialize also returned an asdf_value_t so we
@@ -1670,7 +1683,9 @@ asdf_value_err_t asdf_value_as_string(asdf_value_t *value, const char **out, siz
     if (value->type != ASDF_VALUE_STRING)
         return ASDF_VALUE_ERR_TYPE_MISMATCH;
 
-    *out = fy_node_get_scalar(value->node, len);
+    if (LIKELY(out))
+        *out = fy_node_get_scalar(value->node, len);
+
     return ASDF_VALUE_OK;
 }
 
@@ -1684,7 +1699,9 @@ asdf_value_err_t asdf_value_as_string0(asdf_value_t *value, const char **out) {
     if (value->type != ASDF_VALUE_STRING)
         return ASDF_VALUE_ERR_TYPE_MISMATCH;
 
-    *out = fy_node_get_scalar0(value->node);
+    if (LIKELY(out))
+        *out = fy_node_get_scalar0(value->node);
+
     return ASDF_VALUE_OK;
 }
 
@@ -1710,7 +1727,9 @@ asdf_value_err_t asdf_value_as_scalar(asdf_value_t *value, const char **out, siz
         break;
     }
 
-    *out = fy_node_get_scalar(value->node, len);
+    if (LIKELY(out))
+        *out = fy_node_get_scalar(value->node, len);
+
     return ASDF_VALUE_OK;
 }
 
@@ -1727,7 +1746,9 @@ asdf_value_err_t asdf_value_as_scalar0(asdf_value_t *value, const char **out) {
         break;
     }
 
-    *out = fy_node_get_scalar0(value->node);
+    if (LIKELY(out))
+        *out = fy_node_get_scalar0(value->node);
+
     return ASDF_VALUE_OK;
 }
 
@@ -1770,7 +1791,9 @@ asdf_value_err_t asdf_value_as_bool(asdf_value_t *value, bool *out) {
         return ASDF_VALUE_ERR_TYPE_MISMATCH;
     }
 
-    *out = value->scalar.b;
+    if (LIKELY(out))
+        *out = value->scalar.b;
+
     return ASDF_VALUE_OK;
 }
 
@@ -1832,7 +1855,8 @@ asdf_value_err_t asdf_value_as_int8(asdf_value_t *value, int8_t *out) {
     case ASDF_VALUE_INT16:
     case ASDF_VALUE_INT8:
         // Return anyways but indicate an overflow
-        *out = (int8_t)value->scalar.i;
+        if (LIKELY(out))
+            *out = (int8_t)value->scalar.i;
 
         if (value->scalar.i > INT8_MAX || value->scalar.i < INT8_MIN)
             return ASDF_VALUE_ERR_OVERFLOW;
@@ -1842,7 +1866,8 @@ asdf_value_err_t asdf_value_as_int8(asdf_value_t *value, int8_t *out) {
     case ASDF_VALUE_UINT32:
     case ASDF_VALUE_UINT16:
     case ASDF_VALUE_UINT8:
-        *out = (int8_t)value->scalar.u;
+        if (LIKELY(out))
+            *out = (int8_t)value->scalar.u;
 
         // Return anyways but indicate an overflow
         if (value->scalar.u > INT8_MAX)
@@ -1887,7 +1912,8 @@ asdf_value_err_t asdf_value_as_int16(asdf_value_t *value, int16_t *out) {
     case ASDF_VALUE_INT32:
     case ASDF_VALUE_INT16:
     case ASDF_VALUE_INT8:
-        *out = (int16_t)value->scalar.i;
+        if (LIKELY(out))
+            *out = (int16_t)value->scalar.i;
 
         if (value->scalar.i > INT16_MAX || value->scalar.i < INT16_MIN)
             return ASDF_VALUE_ERR_OVERFLOW;
@@ -1897,7 +1923,8 @@ asdf_value_err_t asdf_value_as_int16(asdf_value_t *value, int16_t *out) {
     case ASDF_VALUE_UINT32:
     case ASDF_VALUE_UINT16:
     case ASDF_VALUE_UINT8:
-        *out = (int16_t)value->scalar.u;
+        if (LIKELY(out))
+            *out = (int16_t)value->scalar.u;
 
         if (value->scalar.u > INT16_MAX)
             return ASDF_VALUE_ERR_OVERFLOW;
@@ -1941,7 +1968,8 @@ asdf_value_err_t asdf_value_as_int32(asdf_value_t *value, int32_t *out) {
     case ASDF_VALUE_INT32:
     case ASDF_VALUE_INT16:
     case ASDF_VALUE_INT8:
-        *out = (int32_t)value->scalar.i;
+        if (LIKELY(out))
+            *out = (int32_t)value->scalar.i;
 
         if (value->scalar.i > INT32_MAX || value->scalar.i < INT32_MIN)
             return ASDF_VALUE_ERR_OVERFLOW;
@@ -1952,7 +1980,8 @@ asdf_value_err_t asdf_value_as_int32(asdf_value_t *value, int32_t *out) {
     case ASDF_VALUE_UINT16:
     case ASDF_VALUE_UINT8:
         // Return anyways but indicate an overflow
-        *out = (int32_t)value->scalar.u;
+        if (LIKELY(out))
+            *out = (int32_t)value->scalar.u;
 
         if (value->scalar.u > INT32_MAX)
             return ASDF_VALUE_ERR_OVERFLOW;
@@ -1995,13 +2024,15 @@ asdf_value_err_t asdf_value_as_int64(asdf_value_t *value, int64_t *out) {
     case ASDF_VALUE_INT32:
     case ASDF_VALUE_INT16:
     case ASDF_VALUE_INT8:
-        *out = value->scalar.i;
+        if (LIKELY(out))
+            *out = value->scalar.i;
         return ASDF_VALUE_OK;
     case ASDF_VALUE_UINT64:
     case ASDF_VALUE_UINT32:
     case ASDF_VALUE_UINT16:
     case ASDF_VALUE_UINT8:
-        *out = (int64_t)value->scalar.u;
+        if (LIKELY(out))
+            *out = (int64_t)value->scalar.u;
 
         if (value->scalar.u > INT64_MAX)
             return ASDF_VALUE_ERR_OVERFLOW;
@@ -2042,13 +2073,15 @@ asdf_value_err_t asdf_value_as_uint8(asdf_value_t *value, uint8_t *out) {
 
     switch (value->type) {
     case ASDF_VALUE_UINT8:
-        *out = value->scalar.u;
+        if (LIKELY(out))
+            *out = value->scalar.u;
         return ASDF_VALUE_OK;
     case ASDF_VALUE_UINT64:
     case ASDF_VALUE_UINT32:
     case ASDF_VALUE_UINT16:
         // Return anyways but indicate an overflow
-        *out = (int64_t)value->scalar.u;
+        if (LIKELY(out))
+            *out = (int64_t)value->scalar.u;
 
         if (value->scalar.u > UINT8_MAX)
             return ASDF_VALUE_ERR_OVERFLOW;
@@ -2057,7 +2090,8 @@ asdf_value_err_t asdf_value_as_uint8(asdf_value_t *value, uint8_t *out) {
     case ASDF_VALUE_INT8:
         // Allow if it doesn't underflow, otherwise still return the value but
         // indicate underflow (but we use OVERFLOW here; doesn't distinguish)
-        *out = value->scalar.i;
+        if (LIKELY(out))
+            *out = value->scalar.i;
 
         if (value->scalar.i < 0)
             return ASDF_VALUE_ERR_OVERFLOW;
@@ -2067,7 +2101,8 @@ asdf_value_err_t asdf_value_as_uint8(asdf_value_t *value, uint8_t *out) {
     case ASDF_VALUE_INT32:
     case ASDF_VALUE_INT16:
         // Return anyways but indicate an overflow
-        *out = value->scalar.i;
+        if (LIKELY(out))
+            *out = value->scalar.i;
 
         if (value->scalar.i < 0 || value->scalar.i > UINT8_MAX)
             return ASDF_VALUE_ERR_OVERFLOW;
@@ -2110,12 +2145,14 @@ asdf_value_err_t asdf_value_as_uint16(asdf_value_t *value, uint16_t *out) {
     switch (value->type) {
     case ASDF_VALUE_UINT16:
     case ASDF_VALUE_UINT8:
-        *out = (uint16_t)value->scalar.u;
+        if (LIKELY(out))
+            *out = (uint16_t)value->scalar.u;
         return ASDF_VALUE_OK;
     case ASDF_VALUE_UINT64:
     case ASDF_VALUE_UINT32:
         // Return anyways but indicate an overflow
-        *out = (uint16_t)value->scalar.u;
+        if (LIKELY(out))
+            *out = (uint16_t)value->scalar.u;
 
         if (value->scalar.u > UINT16_MAX)
             return ASDF_VALUE_ERR_OVERFLOW;
@@ -2125,7 +2162,8 @@ asdf_value_err_t asdf_value_as_uint16(asdf_value_t *value, uint16_t *out) {
     case ASDF_VALUE_INT8:
         // Allow if it doesn't underflow, otherwise still return the value but
         // indicate underflow (but we use OVERFLOW here; doesn't distinguish)
-        *out = (uint16_t)value->scalar.i;
+        if (LIKELY(out))
+            *out = (uint16_t)value->scalar.i;
 
         if (value->scalar.i < 0)
             return ASDF_VALUE_ERR_OVERFLOW;
@@ -2134,7 +2172,8 @@ asdf_value_err_t asdf_value_as_uint16(asdf_value_t *value, uint16_t *out) {
     case ASDF_VALUE_INT64:
     case ASDF_VALUE_INT32:
         // Return anyways but indicate an overflow
-        *out = (uint16_t)value->scalar.i;
+        if (LIKELY(out))
+            *out = (uint16_t)value->scalar.i;
 
         if (value->scalar.i < 0 || value->scalar.i > UINT16_MAX)
             return ASDF_VALUE_ERR_OVERFLOW;
@@ -2178,14 +2217,16 @@ asdf_value_err_t asdf_value_as_uint32(asdf_value_t *value, uint32_t *out) {
     case ASDF_VALUE_UINT32:
     case ASDF_VALUE_UINT16:
     case ASDF_VALUE_UINT8:
-        *out = (uint32_t)value->scalar.u;
+        if (LIKELY(out))
+            *out = (uint32_t)value->scalar.u;
         return ASDF_VALUE_OK;
     case ASDF_VALUE_INT32:
     case ASDF_VALUE_INT16:
     case ASDF_VALUE_INT8:
         // Allow if it doesn't underflow, otherwise still return the value but
         // indicate underflow (but we use OVERFLOW here; doesn't distinguish)
-        *out = (uint32_t)value->scalar.i;
+        if (LIKELY(out))
+            *out = (uint32_t)value->scalar.i;
 
         if (value->scalar.i < 0)
             return ASDF_VALUE_ERR_OVERFLOW;
@@ -2194,7 +2235,8 @@ asdf_value_err_t asdf_value_as_uint32(asdf_value_t *value, uint32_t *out) {
     case ASDF_VALUE_UINT64:
     case ASDF_VALUE_INT64:
         // Return anyways but indicate an overflow
-        *out = (uint32_t)value->scalar.u;
+        if (LIKELY(out))
+            *out = (uint32_t)value->scalar.u;
 
         if (value->scalar.u > UINT32_MAX)
             return ASDF_VALUE_ERR_OVERFLOW;
@@ -2237,7 +2279,8 @@ asdf_value_err_t asdf_value_as_uint64(asdf_value_t *value, uint64_t *out) {
     case ASDF_VALUE_UINT32:
     case ASDF_VALUE_UINT16:
     case ASDF_VALUE_UINT8:
-        *out = value->scalar.u;
+        if (LIKELY(out))
+            *out = value->scalar.u;
         return ASDF_VALUE_OK;
     case ASDF_VALUE_INT64:
     case ASDF_VALUE_INT32:
@@ -2245,7 +2288,8 @@ asdf_value_err_t asdf_value_as_uint64(asdf_value_t *value, uint64_t *out) {
     case ASDF_VALUE_INT8:
         // Allow if it doesn't underflow, otherwise still return the value but
         // indicate underflow (but we use OVERFLOW here; doesn't distinguish)
-        *out = (uint64_t)value->scalar.i;
+        if (LIKELY(out))
+            *out = (uint64_t)value->scalar.i;
 
         if (value->scalar.i < 0)
             return ASDF_VALUE_ERR_OVERFLOW;
@@ -2278,11 +2322,13 @@ asdf_value_err_t asdf_value_as_float(asdf_value_t *value, float *out) {
 
     switch (value->type) {
     case ASDF_VALUE_FLOAT:
-        *out = (float)value->scalar.d;
+        if (LIKELY(out))
+            *out = (float)value->scalar.d;
         return ASDF_VALUE_OK;
     case ASDF_VALUE_DOUBLE: {
         float flt = (float)value->scalar.d;
-        *out = flt;
+        if (LIKELY(out))
+            *out = flt;
 
         if (!isfinite(flt))
             return ASDF_VALUE_ERR_OVERFLOW;
@@ -2306,7 +2352,8 @@ asdf_value_err_t asdf_value_as_double(asdf_value_t *value, double *out) {
     switch (value->type) {
     case ASDF_VALUE_DOUBLE:
     case ASDF_VALUE_FLOAT:
-        *out = value->scalar.d;
+        if (LIKELY(out))
+            *out = value->scalar.d;
         return ASDF_VALUE_OK;
     default:
         return ASDF_VALUE_ERR_TYPE_MISMATCH;
@@ -2360,19 +2407,25 @@ bool asdf_value_is_type(asdf_value_t *value, asdf_value_type_t type) {
 asdf_value_err_t asdf_value_as_type(asdf_value_t *value, asdf_value_type_t type, void *out) {
     switch (type) {
     case ASDF_VALUE_UNKNOWN:
-        (*(asdf_value_t **)out) = asdf_value_clone(value);
+        if (LIKELY(out))
+            (*(asdf_value_t **)out) = asdf_value_clone(value);
+
         return ASDF_VALUE_OK;
     case ASDF_VALUE_SEQUENCE:
         if (!asdf_value_is_sequence(value))
             return ASDF_VALUE_ERR_TYPE_MISMATCH;
 
-        (*(asdf_value_t **)out) = asdf_value_clone(value);
+        if (LIKELY(out))
+            (*(asdf_value_t **)out) = asdf_value_clone(value);
+
         return ASDF_VALUE_OK;
     case ASDF_VALUE_MAPPING:
         if (!asdf_value_is_mapping(value))
             return ASDF_VALUE_ERR_TYPE_MISMATCH;
 
-        (*(asdf_value_t **)out) = asdf_value_clone(value);
+        if (LIKELY(out))
+            (*(asdf_value_t **)out) = asdf_value_clone(value);
+
         return ASDF_VALUE_OK;
     case ASDF_VALUE_SCALAR:
         return asdf_value_as_scalar0(value, (const char **)out);

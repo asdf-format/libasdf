@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string.h>
+
 #define ASDF_CORE_NDARRAY_INTERNAL
 #include "asdf/core/datatype.h" // IWYU pragma: export
 
@@ -29,3 +31,31 @@ asdf_datatype_byteorder_parse(asdf_mapping_t *parent, const char *path, asdf_byt
 
 ASDF_LOCAL asdf_value_err_t
 asdf_datatype_shape_parse(asdf_sequence_t *value, asdf_datatype_shape_t *out);
+
+
+static inline asdf_byteorder_t asdf_byteorder_from_string(const char *str) {
+    if (!str)
+        return ASDF_BYTEORDER_INVALID;
+
+    if (strcmp(str, "little") == 0)
+        return ASDF_BYTEORDER_LITTLE;
+
+    if (strcmp(str, "big") == 0)
+        return ASDF_BYTEORDER_BIG;
+
+    return ASDF_BYTEORDER_INVALID;
+}
+
+
+static inline const char *asdf_byteorder_to_string(asdf_byteorder_t byteorder) {
+    switch (byteorder) {
+    case ASDF_BYTEORDER_LITTLE:
+        return "little";
+    case ASDF_BYTEORDER_BIG:
+        return "big";
+    case ASDF_BYTEORDER_DEFAULT:
+    case ASDF_BYTEORDER_INVALID:
+    default:
+        return NULL;
+    }
+}

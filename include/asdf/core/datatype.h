@@ -145,6 +145,24 @@ ASDF_EXPORT const char *asdf_scalar_datatype_to_string(asdf_scalar_datatype_t da
 
 
 /**
+ * Get the size of an `asdf_datatype_t` in bytes
+ *
+ * This is equivalent to looking up the public field `asdf_datatype_t.size`.
+ * However, the difference is that for user-defined datatypes it is not
+ * required to set the size explicitly--in that case this computes, sets, and
+ * returns `asdf_datatype_t.size`.
+ *
+ * The exception is that for string datatypes (`ASDF_DATATYPE_ASCII` and
+ * `ASDF_DATATYPE_UCS4`) the user *must* provide the correct size, and a size
+ * of 0 is taken to mean "0-length string".
+ *
+ * :param datatype: An `asdf_datatype_t *`
+ * :return: The size in bytes of the datatype
+ */
+ASDF_EXPORT uint64_t asdf_datatype_size(asdf_datatype_t *datatype);
+
+
+/**
  * Get the size in bytes of a scalar (numeric) ndarray element for a given
  * `asdf_scalar_datatype_t`
  *

@@ -543,6 +543,55 @@ MU_TEST(write_blocks_and_index) {
 }
 
 
+/**
+ * Test tries to write a simple file containing a single ndarray
+ *
+ * This attempts to reproduce the fixture file 255.asdf (which is generated
+ * with the Python asdf library).  It is not yet anywhere near byte-for-byte
+ * equivalent so for now we compare it to the test file 255-out.asdf.
+ *
+ * TODO: The goal is to make this output as close as possible and eventually
+ * equivalent to the file written by Python.  This would require a function
+ * that allows overriding the asdf_library software.  This might also prove
+ * difficult to achieve *exactly* due to differences in how the respective
+ * YAML libraries emit.
+ */
+MU_TEST(write_ndarray) {
+#ifndef HAVE_MD5
+    return MUNIT_SKIP;
+#else
+    const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    asdf_file_t *file = asdf_open(filename, "w");
+    assert_not_null(file);
+
+    asdf_ndarray_t ndarray = {
+        .datatype = (asdf_datatype_t){.type = ASDF_DATATYPE_UINT8},
+        .byteorder = ASDF_BYTEORDER_BIG,
+        .ndim = 1,
+        .shape = (const uint64_t[]){255},
+    };
+
+    uint8_t *data = asdf_ndarray_data_alloc(&ndarray);
+    assert_not_null(data);
+
+    for (int idx = 0; idx < 255; idx++)
+        data[idx] = idx;
+
+    asdf_value_t *value = asdf_value_of_ndarray(file, &ndarray);
+    assert_not_null(value);
+    assert_int(asdf_set_value(file, "data", value), ==, ASDF_VALUE_OK);
+    asdf_close(file);
+    asdf_ndarray_data_dealloc(&ndarray);
+
+    // Known good reference file containing two blocks and a block index with
+    // known-good offsets
+    const char *reference = get_fixture_file_path("255-out.asdf");
+    assert_true(compare_files(filename, reference));
+    return MUNIT_OK;
+#endif
+}
+
+
 MU_TEST(test_asdf_set_scalar_type) {
     const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
     asdf_file_t *file = asdf_open(filename, "w");
@@ -1128,6 +1177,7 @@ MU_TEST_SUITE(
     MU_RUN_TEST(write_block_no_index),
     MU_RUN_TEST(write_block_no_checksum),
     MU_RUN_TEST(write_blocks_and_index),
+    MU_RUN_TEST(write_ndarray),
     MU_RUN_TEST(test_asdf_set_scalar_type),
     MU_RUN_TEST(test_asdf_set_scalar_overwrite),
     MU_RUN_TEST(test_asdf_set_path_materialization),

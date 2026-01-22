@@ -156,10 +156,10 @@ bool compare_files(const char *filename_a, const char *filename_b) {
     size_t len_b = 0;
     char *contents_b = read_file(filename_b, &len_b);
 
-    if (len_a != len_b)
+    if (contents_a == NULL || contents_b == NULL)
         return false;
 
-    if (contents_a == NULL || contents_b == NULL)
+    if (len_a != len_b)
         return false;
 
     bool ret = (memcmp(contents_a, contents_b, len_a) == 0);

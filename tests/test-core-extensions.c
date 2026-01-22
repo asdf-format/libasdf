@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -536,7 +537,7 @@ MU_TEST(datatype_serialize) {
 
     // Test expected output bytewise to check node style formatting
     const char *fixture_filename = get_fixture_file_path("datatypes-out.asdf");
-    compare_files(filename, fixture_filename);
+    assert_true(compare_files(filename, fixture_filename));
     return MUNIT_OK;
 }
 
@@ -570,6 +571,68 @@ MU_TEST(ndarray) {
     }
     asdf_ndarray_destroy(ndarray);
     asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+static void assert_ndarray_equal(const asdf_ndarray_t *ndarray0, const asdf_ndarray_t *ndarray1) {
+    assert_int(ndarray0->source, ==, ndarray1->source);
+    assert_int(ndarray0->ndim, ==, ndarray1->ndim);
+
+    for (uint32_t idx = 0; idx < ndarray0->ndim; idx++)
+        assert_int(ndarray0->shape[idx], ==, ndarray1->shape[idx]);
+
+    assert_datatype_equal(&ndarray0->datatype, &ndarray1->datatype);
+    assert_byteorder_equal(ndarray0->byteorder, ndarray1->byteorder);
+    assert_int(ndarray0->offset, ==, ndarray1->offset);
+
+    // Strides are optional
+    assert_true((ndarray0->strides == NULL) == (ndarray1->strides == NULL));
+
+    if (ndarray0->strides) {
+        for (uint32_t idx = 0; idx < ndarray0->ndim; idx++)
+            assert_int(ndarray0->strides[idx], ==, ndarray1->strides[idx]);
+    }
+}
+
+
+/*
+ * Basic test of ndarray serialization; this does not test the block data, just
+ * serialization of the ndarray metadata to the tree
+ */
+MU_TEST(ndarray_serialize) {
+    asdf_ndarray_t ndarray = {
+        .source = 0,
+        .datatype = (asdf_datatype_t){.type = ASDF_DATATYPE_INT8},
+        .ndim = 2,
+        .shape = (const uint64_t[]){5, 5},
+        .offset = 256,
+        .strides = (const int64_t[]){-1, 1}
+    };
+
+    const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    asdf_file_t *file = asdf_open(filename, "w");
+    assert_not_null(file);
+    void *data = asdf_ndarray_data_alloc(&ndarray);
+    assert_not_null(data);
+    asdf_value_t *value = asdf_value_of_ndarray(file, &ndarray);
+    assert_not_null(value);
+    assert_int(asdf_set_value(file, "data", value), ==, ASDF_VALUE_OK);
+    asdf_close(file);
+    asdf_ndarray_data_dealloc(&ndarray);
+
+    file = asdf_open(filename, "r");
+    assert_not_null(file);
+    asdf_ndarray_t *ndarray_in = NULL;
+    assert_int(asdf_get_ndarray(file, "data", &ndarray_in), ==, ASDF_VALUE_OK);
+    assert_not_null(ndarray_in);
+    assert_ndarray_equal(ndarray_in, &ndarray);
+    asdf_ndarray_destroy(ndarray_in);
+    asdf_close(file);
+
+    // Test expected output bytewise to check node style formatting
+    const char *fixture_filename = get_fixture_file_path("ndarray-out.asdf");
+    assert_true(compare_files(filename, fixture_filename));
     return MUNIT_OK;
 }
 
@@ -626,6 +689,7 @@ MU_TEST_SUITE(
     MU_RUN_TEST(datatype),
     MU_RUN_TEST(datatype_serialize),
     MU_RUN_TEST(ndarray),
+    MU_RUN_TEST(ndarray_serialize),
     MU_RUN_TEST(software),
     MU_RUN_TEST(software_serialize)
 );

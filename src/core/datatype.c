@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -181,34 +182,6 @@ static asdf_value_err_t asdf_string_datatype_parse(
 
     datatype->size = size;
     return err;
-}
-
-
-static inline asdf_byteorder_t asdf_byteorder_from_string(const char *str) {
-    if (!str)
-        return ASDF_BYTEORDER_INVALID;
-
-    if (strcmp(str, "little") == 0)
-        return ASDF_BYTEORDER_LITTLE;
-
-    if (strcmp(str, "big") == 0)
-        return ASDF_BYTEORDER_BIG;
-
-    return ASDF_BYTEORDER_INVALID;
-}
-
-
-static inline const char *asdf_byteorder_to_string(asdf_byteorder_t byteorder) {
-    switch (byteorder) {
-    case ASDF_BYTEORDER_LITTLE:
-        return "little";
-    case ASDF_BYTEORDER_BIG:
-        return "big";
-    case ASDF_BYTEORDER_DEFAULT:
-    case ASDF_BYTEORDER_INVALID:
-    default:
-        return NULL;
-    }
 }
 
 
@@ -813,3 +786,38 @@ ASDF_REGISTER_EXTENSION(
     asdf_datatype_deserialize,
     asdf_datatype_dealloc,
     NULL);
+
+
+/** Additional public datatype APIs */
+
+// NOLINTNEXTLINE(misc-no-recursion)
+uint64_t asdf_datatype_size(asdf_datatype_t *datatype) {
+    if (!datatype)
+        return 0;
+
+    // NOTE: A zero-sized datatype *is* allowed--in that case we have
+    // recompute the size since there is no flag to distinguish
+    // "size already computed"
+    // That's OK because this case is rare and will be fast to recompute
+    // except in some pathological case like a huge number of 0-sized
+    // dimensions
+    if (datatype->size || asdf_datatype_is_string(datatype))
+        return datatype->size;
+
+    uint64_t size = 0;
+
+    if (!asdf_datatype_is_structured(datatype)) {
+        size = asdf_scalar_datatype_size(datatype->type);
+    } else {
+        for (uint32_t idx = 0; idx < datatype->nfields; idx++)
+            size += asdf_datatype_size((asdf_datatype_t *)&datatype->fields[idx]);
+    }
+
+    if (size && datatype->ndim > 0) {
+        for (uint32_t idx = 0; idx < datatype->ndim; idx++)
+            size *= datatype->shape[idx];
+    }
+
+    datatype->size = size;
+    return size;
+}

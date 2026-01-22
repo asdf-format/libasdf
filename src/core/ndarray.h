@@ -4,6 +4,14 @@
 #include "asdf/core/ndarray.h" // IWYU pragma: export
 
 
+typedef struct {
+    asdf_block_t *block;
+    asdf_file_t *file;
+    // User-provided data array for new ndarrays not written to a file
+    void *data;
+} asdf_ndarray_internal_t;
+
+
 /** Internal definition of the asdf_ndarray_t type with extended internal fields */
 typedef struct asdf_ndarray {
     size_t source;
@@ -15,6 +23,5 @@ typedef struct asdf_ndarray {
     int64_t *strides;
 
     // Internal fields
-    asdf_block_t *block;
-    asdf_file_t *file;
+    asdf_ndarray_internal_t *internal;
 } asdf_ndarray_t;
