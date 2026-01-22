@@ -271,7 +271,7 @@ struct fy_node *asdf_yaml_node_set_style(
     if (!out)
         return NULL;
 
-    return fy_node_build_from_string(doc, out, FY_NT);
+    return fy_node_build_from_malloc_string(doc, out, FY_NT);
 }
 
 
