@@ -45,14 +45,14 @@ static asdf_value_t *asdf_software_serialize(
     if (err != ASDF_VALUE_OK)
         goto cleanup;
 
-    if (software->author) {
+    if (software->author && strlen(software->author) > 0) {
         err = asdf_mapping_set_string0(software_map, "author", software->author);
 
         if (err != ASDF_VALUE_OK)
             goto cleanup;
     }
 
-    if (software->homepage) {
+    if (software->homepage && strlen(software->homepage) > 0) {
         err = asdf_mapping_set_string0(software_map, "homepage", software->homepage);
 
         if (err != ASDF_VALUE_OK)
