@@ -22,7 +22,7 @@ static asdf_value_t *asdf_extension_metadata_serialize(
 
     const asdf_extension_metadata_t *extension = obj;
     asdf_value_t *value = NULL;
-    asdf_value_err_t err = ASDF_VALUE_ERR_PARSE_FAILURE;
+    asdf_value_err_t err = ASDF_VALUE_ERR_EMIT_FAILURE;
     asdf_mapping_t *extension_map = NULL;
 
     if (!extension->extension_class) {

@@ -73,6 +73,11 @@ typedef enum {
 typedef enum {
     /** Sentinel value for an invalid byte order */
     ASDF_BYTEORDER_INVALID = -1,
+    /**
+     * Sentinel value for user-defined datatypes indicating that the byteorder
+     * should not be explicitly written (just use the default)
+     */
+    ASDF_BYTEORDER_DEFAULT = 0,
     /** Litle-endian **/
     ASDF_BYTEORDER_BIG = '>',
     /** Big-endian **/

@@ -462,6 +462,81 @@ MU_TEST(datatype) {
 }
 
 
+static void assert_byteorder_equal(asdf_byteorder_t byteorder0, asdf_byteorder_t byteorder1) {
+    byteorder0 = byteorder0 == ASDF_BYTEORDER_DEFAULT ? ASDF_BYTEORDER_LITTLE : byteorder0;
+    byteorder1 = byteorder1 == ASDF_BYTEORDER_DEFAULT ? ASDF_BYTEORDER_LITTLE : byteorder1;
+    assert_int(byteorder0, ==, byteorder1);
+    assert_true(byteorder0 == ASDF_BYTEORDER_LITTLE || byteorder0 == ASDF_BYTEORDER_BIG);
+    assert_true(byteorder1 == ASDF_BYTEORDER_LITTLE || byteorder1 == ASDF_BYTEORDER_BIG);
+}
+
+
+// NOLINTNEXTLINE(misc-no-recursion)
+static void assert_datatype_equal(const asdf_datatype_t *datatype0, const asdf_datatype_t *datatype1) {
+    assert_int(datatype0->type, ==, datatype1->type);
+    // Only compare the .size field if either both are 0 or both are non-zero
+    // or if the type is ASCII or UCS4; at present user-defined datatypes
+    // don't require the size field to be set unless it is a string type
+    if ((datatype0->size == 0 && datatype1->size == 0) ||
+        (datatype0->size != 0 && datatype1->size != 0) ||
+        (datatype0->type == ASDF_DATATYPE_ASCII) ||
+        (datatype0->type == ASDF_DATATYPE_UCS4))
+        assert_int(datatype0->size, ==, datatype1->size);
+
+    assert_true((datatype0->name == NULL) == (datatype1->name == NULL));
+
+    if (datatype0->name && datatype1->name)
+        assert_string_equal(datatype0->name, datatype1->name);
+
+    assert_byteorder_equal(datatype0->byteorder, datatype1->byteorder);
+    assert_int(datatype0->ndim, ==, datatype1->ndim);
+
+    if (datatype0->ndim > 0) {
+        for (uint32_t idx = 0; idx < datatype0->ndim; idx++)
+            assert_int(datatype0->shape[idx], ==, datatype1->shape[idx]);
+    }
+
+    assert_int(datatype0->nfields, ==, datatype1->nfields);
+
+    if (datatype0->nfields > 0) {
+        for (uint32_t idx = 0; idx < datatype0->ndim; idx++)
+            assert_datatype_equal(&datatype0->fields[idx], &datatype1->fields[idx]);
+    }
+}
+
+
+MU_TEST(datatype_serialize) {
+    const asdf_datatype_t datatype = {
+        .type = ASDF_DATATYPE_STRUCTURED,
+        .nfields = 4,
+        .fields = (const asdf_datatype_t []){
+            {.name = "string", .type = ASDF_DATATYPE_ASCII, .size = 4, .byteorder = ASDF_BYTEORDER_BIG},
+            {.name = "unicode", .type = ASDF_DATATYPE_UCS4, .size = 16, .byteorder = ASDF_BYTEORDER_LITTLE},
+            {.name = "int", .type = ASDF_DATATYPE_INT16, .byteorder = ASDF_BYTEORDER_BIG},
+            {.name = "matrix", .type = ASDF_DATATYPE_FLOAT32, .byteorder = ASDF_BYTEORDER_LITTLE,
+             .ndim=2, .shape=(const uint64_t[]){3, 3}}
+        }
+    };
+    const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    asdf_file_t *file = asdf_open(filename, "w");
+    assert_not_null(file);
+    asdf_value_t *value = asdf_value_of_datatype(file, &datatype);
+    assert_not_null(value);
+    assert_int(asdf_set_value(file, "datatype", value), ==, ASDF_VALUE_OK);
+    asdf_close(file);
+
+    file = asdf_open(filename, "r");
+    assert_not_null(file);
+    asdf_datatype_t *datatype_in = NULL;
+    assert_int(asdf_get_datatype(file, "datatype", &datatype_in), ==, ASDF_VALUE_OK);
+    assert_not_null(datatype_in);
+    assert_datatype_equal(datatype_in, &datatype);
+    asdf_datatype_destroy(datatype_in);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
 /*
  * Very basic test of ndarray parsing; will have more comprehensive ndarray tests in their own suite
  */
@@ -545,6 +620,7 @@ MU_TEST_SUITE(
     MU_RUN_TEST(meta),
     MU_RUN_TEST(meta_serialize),
     MU_RUN_TEST(datatype),
+    MU_RUN_TEST(datatype_serialize),
     MU_RUN_TEST(ndarray),
     MU_RUN_TEST(software),
     MU_RUN_TEST(software_serialize)

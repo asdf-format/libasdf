@@ -1117,6 +1117,11 @@ asdf_value_t *asdf_value_of_extension_type(
 
     asdf_value_t *value = ext->serialize(file, obj, ext->userdata);
 
+    // TODO: Might be better if serialize also returned an asdf_value_t so we
+    // can report serialization errors better
+    if (!value)
+        return NULL;
+
     // serialize *may* return NULL if an error occurred in the serializer
     // in this case the serializer should the serializer be responsible for setting an error?
     new_ext->object = obj;

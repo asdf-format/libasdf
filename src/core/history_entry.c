@@ -118,7 +118,7 @@ static asdf_value_t *asdf_history_entry_serialize(
     const asdf_history_entry_t *entry = obj;
     asdf_mapping_t *entry_map = NULL;
     asdf_value_t *value = NULL;
-    asdf_value_err_t err = ASDF_VALUE_ERR_PARSE_FAILURE;
+    asdf_value_err_t err = ASDF_VALUE_ERR_EMIT_FAILURE;
     asdf_value_t *software_val = NULL;
     asdf_sequence_t *software_seq = NULL;
     size_t software_count = 0;

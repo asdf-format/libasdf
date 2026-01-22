@@ -17,7 +17,7 @@ static asdf_value_t *asdf_software_serialize(
     const asdf_software_t *software = obj;
     asdf_mapping_t *software_map = NULL;
     asdf_value_t *value = NULL;
-    asdf_value_err_t err = ASDF_VALUE_ERR_PARSE_FAILURE;
+    asdf_value_err_t err = ASDF_VALUE_ERR_EMIT_FAILURE;
 
     if (!software->name) {
         ASDF_LOG(file, ASDF_LOG_WARN, ASDF_CORE_SOFTWARE_TAG " requires a name");

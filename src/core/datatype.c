@@ -1,3 +1,5 @@
+#include <assert.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -192,6 +194,20 @@ static inline asdf_byteorder_t asdf_byteorder_from_string(const char *str) {
         return ASDF_BYTEORDER_BIG;
 
     return ASDF_BYTEORDER_INVALID;
+}
+
+
+static inline const char *asdf_byteorder_to_string(asdf_byteorder_t byteorder) {
+    switch (byteorder) {
+    case ASDF_BYTEORDER_LITTLE:
+        return "little";
+    case ASDF_BYTEORDER_BIG:
+        return "big";
+    case ASDF_BYTEORDER_DEFAULT:
+    case ASDF_BYTEORDER_INVALID:
+    default:
+        return NULL;
+    }
 }
 
 
@@ -504,13 +520,281 @@ static asdf_value_err_t asdf_datatype_deserialize(
 }
 
 
+// TODO: Might be useful to add to public API
+static inline bool asdf_datatype_is_structured(const asdf_datatype_t *datatype) {
+    return datatype->type == ASDF_DATATYPE_STRUCTURED;
+}
+
+
+static inline bool asdf_datatype_is_scalar(const asdf_datatype_t *datatype) {
+    return datatype->type != ASDF_DATATYPE_STRUCTURED;
+}
+
+
+static inline bool asdf_datatype_is_simple_scalar(const asdf_datatype_t *datatype) {
+    return (
+        datatype->type != ASDF_DATATYPE_STRUCTURED &&
+        (datatype->byteorder == ASDF_BYTEORDER_DEFAULT ||
+         datatype->byteorder == ASDF_BYTEORDER_LITTLE) &&
+        datatype->name == NULL && datatype->ndim == 0 && datatype->nfields == 0);
+}
+
+
+static inline bool asdf_datatype_is_string(const asdf_datatype_t *datatype) {
+    return datatype->type == ASDF_DATATYPE_ASCII || datatype->type == ASDF_DATATYPE_UCS4;
+}
+
+
+// Forward declaration
+static asdf_value_err_t asdf_datatype_serialize_impl(
+    asdf_file_t *file, const asdf_datatype_t *datatype, bool is_field, asdf_value_t **out);
+
+
+static asdf_value_err_t asdf_datatype_serialize_string(
+    asdf_file_t *file, const asdf_datatype_t *datatype, asdf_value_t **out) {
+    assert(file);
+    assert(out);
+
+    asdf_value_t *value = NULL;
+    asdf_value_err_t err = ASDF_VALUE_ERR_EMIT_FAILURE;
+    asdf_sequence_t *datatype_seq = asdf_sequence_create(file);
+
+    if (!datatype_seq) {
+        err = ASDF_VALUE_ERR_OOM;
+        goto cleanup;
+    }
+
+    err = asdf_sequence_append_string0(
+        datatype_seq, asdf_scalar_datatype_to_string(datatype->type));
+
+    if (err != ASDF_VALUE_OK)
+        goto cleanup;
+
+    uint32_t size = datatype->size;
+
+    if (datatype->type == ASDF_DATATYPE_UCS4) {
+        if (size % 4 != 0) {
+            ASDF_LOG(
+                file,
+                ASDF_LOG_ERROR,
+                "size of UCS4 datatypes is expected to be a multiple of 4 (got %d); "
+                "the datatype will not be serialized",
+                size);
+            err = ASDF_VALUE_ERR_EMIT_FAILURE;
+            goto cleanup;
+        }
+    }
+
+    err = asdf_sequence_append_uint32(datatype_seq, size);
+
+    if (err != ASDF_VALUE_OK)
+        goto cleanup;
+
+    value = asdf_value_of_sequence(datatype_seq);
+cleanup:
+    if (err != ASDF_VALUE_OK)
+        asdf_sequence_destroy(datatype_seq);
+    else
+        *out = value;
+
+    return err;
+}
+
+
+static asdf_value_err_t asdf_datatype_serialize_scalar(
+    asdf_file_t *file, const asdf_datatype_t *datatype, asdf_value_t **out) {
+    assert(file);
+    assert(out);
+
+    asdf_value_t *value = NULL;
+    asdf_value_err_t err = ASDF_VALUE_OK;
+
+    if (asdf_datatype_is_string(datatype)) {
+        err = asdf_datatype_serialize_string(file, datatype, &value);
+
+        if (err != ASDF_VALUE_OK)
+            return err;
+    } else {
+        value = asdf_value_of_string0(file, asdf_scalar_datatype_to_string(datatype->type));
+
+        if (!value)
+            return ASDF_VALUE_ERR_OOM;
+    }
+
+    *out = value;
+    return err;
+}
+
+
+// NOLINTNEXTLINE(misc-no-recursion)
+static asdf_value_err_t asdf_datatype_serialize_field(
+    asdf_file_t *file, const asdf_datatype_t *field, asdf_value_t **out) {
+    assert(file);
+    assert(field);
+    assert(out);
+    asdf_value_t *value = NULL;
+    asdf_value_err_t err = ASDF_VALUE_ERR_EMIT_FAILURE;
+    asdf_mapping_t *field_map = asdf_mapping_create(file);
+    asdf_sequence_t *shape_seq = NULL;
+    asdf_value_t *datatype_val = NULL;
+
+    if (!field_map) {
+        err = ASDF_VALUE_ERR_OOM;
+        goto cleanup;
+    }
+
+    if (field->name) {
+        err = asdf_mapping_set_string0(field_map, "name", field->name);
+
+        if (err != ASDF_VALUE_OK)
+            goto cleanup;
+    }
+
+    if (asdf_datatype_is_scalar(field))
+        err = asdf_datatype_serialize_scalar(file, field, &datatype_val);
+    else
+        err = asdf_datatype_serialize_impl(file, field, false, &datatype_val);
+
+    if (err != ASDF_VALUE_OK)
+        goto cleanup;
+
+    err = asdf_mapping_set(field_map, "datatype", datatype_val);
+
+    if (err != ASDF_VALUE_OK)
+        goto cleanup;
+
+    if (field->byteorder != ASDF_BYTEORDER_DEFAULT) {
+        err = asdf_mapping_set_string0(
+            field_map, "byteorder", asdf_byteorder_to_string(field->byteorder));
+
+        if (err != ASDF_VALUE_OK)
+            goto cleanup;
+    }
+
+    if (field->ndim > 0) {
+        shape_seq = asdf_sequence_create(file);
+
+        if (!shape_seq) {
+            err = ASDF_VALUE_ERR_OOM;
+            goto cleanup;
+        }
+
+        for (uint32_t idx = 0; idx < field->ndim; idx++) {
+            err = asdf_sequence_append_uint32(shape_seq, field->shape[idx]);
+
+            if (err != ASDF_VALUE_OK)
+                goto cleanup;
+        }
+
+        err = asdf_mapping_set_sequence(field_map, "shape", shape_seq);
+
+        if (err != ASDF_VALUE_OK)
+            goto cleanup;
+    }
+
+    value = asdf_value_of_mapping(field_map);
+cleanup:
+    if (err != ASDF_VALUE_OK) {
+        asdf_mapping_destroy(field_map);
+        asdf_sequence_destroy(shape_seq);
+        asdf_value_destroy(datatype_val);
+    } else {
+        *out = value;
+    }
+
+    return err;
+}
+
+
+// TODO: Since this uses recursion it would not be a bad idea to set a
+// maximum nesting level, though I'm not sure the standard actually defines one
+
+// NOLINTNEXTLINE(misc-no-recursion)
+static asdf_value_err_t asdf_datatype_serialize_impl(
+    asdf_file_t *file, const asdf_datatype_t *datatype, bool is_field, asdf_value_t **out) {
+    assert(file);
+    assert(datatype);
+    assert(out);
+    asdf_value_t *value = NULL;
+    asdf_value_t *field = NULL;
+    asdf_value_err_t err = ASDF_VALUE_ERR_EMIT_FAILURE;
+    asdf_sequence_t *datatype_seq = NULL;
+
+    if (asdf_datatype_is_simple_scalar(datatype)) {
+        err = asdf_datatype_serialize_scalar(file, datatype, &value);
+    } else if (is_field) {
+        err = asdf_datatype_serialize_field(file, datatype, &value);
+    } else if (asdf_datatype_is_structured(datatype)) {
+        datatype_seq = asdf_sequence_create(file);
+
+        if (!datatype_seq) {
+            err = ASDF_VALUE_ERR_OOM;
+            goto cleanup;
+        }
+
+        if (datatype->nfields == 0)
+            err = ASDF_VALUE_OK;
+
+        for (uint32_t idx = 0; idx < datatype->nfields; idx++) {
+            err = asdf_datatype_serialize_impl(file, &datatype->fields[idx], true, &field);
+
+            if (err != ASDF_VALUE_OK)
+                goto cleanup;
+
+            err = asdf_sequence_append(datatype_seq, field);
+
+            if (err != ASDF_VALUE_OK)
+                goto cleanup;
+        }
+
+        value = asdf_value_of_sequence(datatype_seq);
+    } else {
+        ASDF_LOG(
+            file,
+            ASDF_LOG_ERROR,
+            "non-trivial datatype fields are not allowed at this level of nesting (it must "
+            "appear in an array datatype); the datatype will not be written");
+    }
+
+cleanup:
+    if (err != ASDF_VALUE_OK) {
+        asdf_sequence_destroy(datatype_seq);
+        asdf_value_destroy(field);
+    } else {
+        *out = value;
+    }
+
+    return err;
+}
+
+
+static asdf_value_t *asdf_datatype_serialize(
+    asdf_file_t *file,
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+    const void *obj,
+    UNUSED(const void *userdata)) {
+
+    if (UNLIKELY(!file || !obj))
+        return NULL;
+
+    asdf_value_t *value = NULL;
+    asdf_value_err_t err = asdf_datatype_serialize_impl(
+        file, (const asdf_datatype_t *)obj, false, &value);
+
+    if (err != ASDF_VALUE_OK)
+        return NULL;
+
+    return value;
+}
+
+
 // Declare the extension for datatype-1.0.0
 ASDF_REGISTER_EXTENSION(
     datatype,
     ASDF_CORE_DATATYPE_TAG,
     asdf_datatype_t,
     &libasdf_software,
-    NULL,
+    asdf_datatype_serialize,
     asdf_datatype_deserialize,
     asdf_datatype_dealloc,
     NULL);

@@ -145,6 +145,12 @@ typedef enum {
     ASDF_VALUE_ERR_PARSE_FAILURE,
 
     /**
+     * Error that can be returned when attempting to serialize values that are
+     * not in a valid state (e.g. user-defined extension values)
+     */
+    ASDF_VALUE_ERR_EMIT_FAILURE,
+
+    /**
      * Error that occurs mostly in the ``asdf_get_(u)int<N>`` such as
      * `asdf_get_int8` or `asdf_get_float` or `asdf_get_double` functions if
      * the value looks like a numeric value but cannot be represented in the C
