@@ -499,7 +499,7 @@ static void assert_datatype_equal(const asdf_datatype_t *datatype0, const asdf_d
     assert_int(datatype0->nfields, ==, datatype1->nfields);
 
     if (datatype0->nfields > 0) {
-        for (uint32_t idx = 0; idx < datatype0->ndim; idx++)
+        for (uint32_t idx = 0; idx < datatype0->nfields; idx++)
             assert_datatype_equal(&datatype0->fields[idx], &datatype1->fields[idx]);
     }
 }

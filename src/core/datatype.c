@@ -583,6 +583,7 @@ static asdf_value_err_t asdf_datatype_serialize_string(
             err = ASDF_VALUE_ERR_EMIT_FAILURE;
             goto cleanup;
         }
+        size /= 4;
     }
 
     err = asdf_sequence_append_uint32(datatype_seq, size);
