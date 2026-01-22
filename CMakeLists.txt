@@ -6,6 +6,9 @@ set(PACKAGE_VERSION 0.1.0a2)
 # CMake-compatible project version
 set(PROJECT_VERSION 0.1.0)
 
+set(PACKAGE_URL https://github.com/asdf-format/libasdf)
+set(PACKAGE_BUGREPORT https://github.com/asdf-format/libasdf/issues)
+
 # Shared library compatibility version
 set(PROJECT_SOVERSION 0.0.0)
 
