@@ -17,6 +17,7 @@
 #include <sys/types.h>
 
 #include <asdf/util.h>
+#include <asdf/yaml.h>
 
 ASDF_BEGIN_DECLS
 
@@ -232,6 +233,7 @@ ASDF_EXPORT int asdf_mapping_size(asdf_mapping_t *mapping);
 ASDF_EXPORT asdf_value_err_t asdf_value_as_mapping(asdf_value_t *value, asdf_mapping_t **out);
 ASDF_EXPORT asdf_value_t *asdf_value_of_mapping(asdf_mapping_t *mapping);
 ASDF_EXPORT asdf_mapping_t *asdf_mapping_create(asdf_file_t *file);
+ASDF_EXPORT void asdf_mapping_set_style(asdf_mapping_t *mapping, asdf_yaml_node_style_t style);
 ASDF_EXPORT asdf_mapping_t *asdf_mapping_clone(asdf_mapping_t *mapping);
 ASDF_EXPORT asdf_mapping_t *asdf_mapping_clone_to_file(asdf_mapping_t *mapping, asdf_file_t *file);
 ASDF_EXPORT void asdf_mapping_destroy(asdf_mapping_t *mapping);
@@ -380,6 +382,7 @@ ASDF_EXPORT asdf_value_t *asdf_sequence_get(asdf_sequence_t *sequence, int index
 ASDF_EXPORT asdf_value_err_t asdf_value_as_sequence(asdf_value_t *value, asdf_sequence_t **out);
 ASDF_EXPORT asdf_value_t *asdf_value_of_sequence(asdf_sequence_t *sequence);
 ASDF_EXPORT asdf_sequence_t *asdf_sequence_create(asdf_file_t *file);
+ASDF_EXPORT void asdf_sequence_set_style(asdf_sequence_t *sequence, asdf_yaml_node_style_t style);
 ASDF_EXPORT void asdf_sequence_destroy(asdf_sequence_t *sequence);
 
 /** Opaque struct holding sequence iterator state */

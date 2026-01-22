@@ -326,6 +326,70 @@ asdf_mapping_t *asdf_mapping_create(asdf_file_t *file) {
 }
 
 
+/**
+ * Currently can only be used on mappings and sequences
+ *
+ * For strings we may also want an equivalent for rendering to a specific
+ * string node style.
+ *
+ * This takes a very long way around achieving the desired effect--it renders
+ * the node to a string using the desired style, then re-parses the entire
+ * node, so not terribly efficient e.g. for large sequences.  This is an
+ * end-run around the currenly missing feature in libfyaml of allowing to set
+ * the desired style on a node.  See
+ * https://github.com/pantoniou/libfyaml/pull/78
+ *
+ * TODO: If that is ever fixed we can do away with this hack.
+ */
+static void asdf_value_set_style(asdf_value_t *value, asdf_yaml_node_style_t style) {
+    asdf_yaml_node_style_t current_style = value->style;
+
+    // By default all container types are rendered in block style, so unless
+    // the node has been explicitly set to flow style at some point we don't
+    // need to do anything
+    if ((style == current_style) ||
+        (style == ASDF_YAML_NODE_STYLE_BLOCK && current_style != ASDF_YAML_NODE_STYLE_FLOW))
+        return;
+
+    struct fy_document *tree = asdf_file_tree_document(value->file);
+    struct fy_node *node = asdf_yaml_node_set_style(tree, value->node, style);
+
+    if (!node) {
+        ASDF_ERROR_OOM(value->file);
+        return;
+    }
+
+    value->node = node;
+}
+
+
+struct fy_node *asdf_value_normalized_node(asdf_value_t *value) {
+    struct fy_node *node = value->node;
+
+    if (!node)
+        return node;
+
+    struct fy_document *tree = asdf_file_tree_document(value->file);
+
+    // Workaround to weird/annoying default behavior of libfyaml: when using
+    // FYECF_MODE_MANUAL, if a mapping or sequence is empty it doesn't render
+    // anything for the node, just a blank (resulting in a null value)
+    // In a way this is "prettier" but can break the structure of the file in
+    // subtle, unintended ways.  Here I think explicit is better than implict
+    if ((value->raw_type == ASDF_VALUE_MAPPING && fy_node_mapping_is_empty(node)) ||
+        (value->type == ASDF_VALUE_SEQUENCE && fy_node_sequence_is_empty(node))) {
+        node = asdf_yaml_node_set_style(tree, node, ASDF_YAML_NODE_STYLE_FLOW);
+    }
+
+    return node;
+}
+
+
+void asdf_mapping_set_style(asdf_mapping_t *mapping, asdf_yaml_node_style_t style) {
+    asdf_value_set_style(&mapping->value, style);
+}
+
+
 asdf_mapping_t *asdf_mapping_clone(asdf_mapping_t *mapping) {
     asdf_value_t *clone = asdf_value_clone(&mapping->value);
     return (asdf_mapping_t *)clone;
@@ -464,7 +528,8 @@ asdf_value_err_t asdf_mapping_set(asdf_mapping_t *mapping, const char *key, asdf
         goto cleanup;
     }
     struct fy_node *key_node = asdf_node_of_string0(tree, key);
-    if (fy_node_mapping_append(mapping->value.node, key_node, value->node) != 0) {
+    struct fy_node *value_node = asdf_value_normalized_node(value);
+    if (fy_node_mapping_append(mapping->value.node, key_node, value_node) != 0) {
         ASDF_ERROR_OOM(mapping->value.file);
         err = ASDF_VALUE_ERR_OOM;
         goto cleanup;
@@ -479,7 +544,7 @@ cleanup:
 }
 
 
-#define ASDF_MAPPING_SET_COLLECTION_TYPE(type) \
+#define ASDF_MAPPING_SET_CONTAINER_TYPE(type) \
     asdf_value_err_t asdf_mapping_set_##type( \
         asdf_mapping_t *mapping, const char *key, asdf_##type##_t *value) { \
         return asdf_mapping_set(mapping, key, &value->value); \
@@ -497,8 +562,8 @@ ASDF_MAPPING_SET_INT_TYPE(uint32);
 ASDF_MAPPING_SET_INT_TYPE(uint64);
 ASDF_MAPPING_SET_TYPE(float);
 ASDF_MAPPING_SET_TYPE(double);
-ASDF_MAPPING_SET_COLLECTION_TYPE(mapping);
-ASDF_MAPPING_SET_COLLECTION_TYPE(sequence);
+ASDF_MAPPING_SET_CONTAINER_TYPE(mapping);
+ASDF_MAPPING_SET_CONTAINER_TYPE(sequence);
 
 
 asdf_mapping_iter_t asdf_mapping_iter_init() {
@@ -687,6 +752,11 @@ asdf_sequence_t *asdf_sequence_create(asdf_file_t *file) {
 }
 
 
+void asdf_sequence_set_style(asdf_sequence_t *sequence, asdf_yaml_node_style_t style) {
+    asdf_value_set_style(&sequence->value, style);
+}
+
+
 void asdf_sequence_destroy(asdf_sequence_t *sequence) {
     asdf_value_destroy(&sequence->value);
 }
@@ -865,7 +935,9 @@ asdf_value_err_t asdf_sequence_append(asdf_sequence_t *sequence, asdf_value_t *v
         goto cleanup;
     }
 
-    if (fy_node_sequence_append(sequence->value.node, value->node) != 0) {
+    struct fy_node *value_node = asdf_value_normalized_node(value);
+
+    if (fy_node_sequence_append(sequence->value.node, value_node) != 0) {
         ASDF_ERROR_OOM(sequence->value.file);
         err = ASDF_VALUE_ERR_OOM;
         goto cleanup;
@@ -880,7 +952,7 @@ cleanup:
 }
 
 
-#define ASDF_SEQUENCE_APPEND_COLLECTION_TYPE(type) \
+#define ASDF_SEQUENCE_APPEND_CONTAINER_TYPE(type) \
     asdf_value_err_t asdf_sequence_append_##type( \
         asdf_sequence_t *sequence, asdf_##type##_t *value) { \
         return asdf_sequence_append(sequence, &value->value); \
@@ -898,8 +970,8 @@ ASDF_SEQUENCE_APPEND_INT_TYPE(uint32);
 ASDF_SEQUENCE_APPEND_INT_TYPE(uint64);
 ASDF_SEQUENCE_APPEND_TYPE(float);
 ASDF_SEQUENCE_APPEND_TYPE(double);
-ASDF_SEQUENCE_APPEND_COLLECTION_TYPE(mapping);
-ASDF_SEQUENCE_APPEND_COLLECTION_TYPE(sequence);
+ASDF_SEQUENCE_APPEND_CONTAINER_TYPE(mapping);
+ASDF_SEQUENCE_APPEND_CONTAINER_TYPE(sequence);
 
 
 /** Generic container functions */

@@ -6,6 +6,14 @@
 
 ASDF_BEGIN_DECLS
 
+
+typedef enum {
+    ASDF_YAML_NODE_STYLE_AUTO = 0,
+    ASDF_YAML_NODE_STYLE_FLOW,
+    ASDF_YAML_NODE_STYLE_BLOCK
+} asdf_yaml_node_style_t;
+
+
 typedef enum {
     // Not a YAML event
     ASDF_YAML_NONE_EVENT = 0,

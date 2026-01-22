@@ -8,6 +8,7 @@
 #include "../log.h"
 #include "../util.h"
 #include "../value.h"
+#include "../yaml.h"
 #include "datatype.h"
 
 
@@ -591,6 +592,7 @@ static asdf_value_err_t asdf_datatype_serialize_string(
     if (err != ASDF_VALUE_OK)
         goto cleanup;
 
+    asdf_sequence_set_style(datatype_seq, ASDF_YAML_NODE_STYLE_FLOW);
     value = asdf_value_of_sequence(datatype_seq);
 cleanup:
     if (err != ASDF_VALUE_OK)
@@ -687,12 +689,24 @@ static asdf_value_err_t asdf_datatype_serialize_field(
                 goto cleanup;
         }
 
+        asdf_sequence_set_style(shape_seq, ASDF_YAML_NODE_STYLE_FLOW);
         err = asdf_mapping_set_sequence(field_map, "shape", shape_seq);
 
         if (err != ASDF_VALUE_OK)
             goto cleanup;
     }
 
+    // Determine best node style to use for the field. Would be good to
+    // more precisely reverse-engineer how Python asdf determines this (or if
+    // it's just using the defaults from the yaml library) but ISTM: if the
+    // datatype is a non-string scalar and there isn't a shape, then it writes
+    // it in flow style; otherwise in block style
+    asdf_yaml_node_style_t style = ASDF_YAML_NODE_STYLE_AUTO;
+
+    if (asdf_datatype_is_scalar(field) && !asdf_datatype_is_string(field) && field->ndim == 0)
+        style = ASDF_YAML_NODE_STYLE_FLOW;
+
+    asdf_mapping_set_style(field_map, style);
     value = asdf_value_of_mapping(field_map);
 cleanup:
     if (err != ASDF_VALUE_OK) {

@@ -533,6 +533,10 @@ MU_TEST(datatype_serialize) {
     assert_datatype_equal(datatype_in, &datatype);
     asdf_datatype_destroy(datatype_in);
     asdf_close(file);
+
+    // Test expected output bytewise to check node style formatting
+    const char *fixture_filename = get_fixture_file_path("datatypes-out.asdf");
+    compare_files(filename, fixture_filename);
     return MUNIT_OK;
 }
 
