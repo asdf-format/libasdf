@@ -19,6 +19,10 @@ file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/fixtures
 # Build munit static library
 add_library(munit ${MUNIT_DIR}/munit.c)
 
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_definitions(munit PRIVATE MUNIT_NO_FORK)
+endif()
+
 # Build util static library
 set(REFERENCE_FILES_DIR "${ASDFSTD_DIR}/reference_files")
 set(FIXTURES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
