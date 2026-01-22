@@ -426,7 +426,7 @@ MU_TEST(datatype) {
     assert_int(datatype->nfields, ==, 3);
     assert_not_null(datatype->fields);
 
-    asdf_datatype_t *field = &datatype->fields[0];
+    const asdf_datatype_t *field = &datatype->fields[0];
     assert_int(field->type, ==, ASDF_DATATYPE_UINT8);
     assert_int(field->size, ==, 1);
     assert_string_equal(field->name, "a");
