@@ -54,6 +54,7 @@ unit_test_cflags = \
 
 if DEBUG
 unit_test_cflags += -DMUNIT_NO_FORK
+unit_test_cflags += -rdynamic
 endif
 
 unit_test_ldflags = $(LDFLAGS) $(CODE_COVERAGE_LDFLAGS)
