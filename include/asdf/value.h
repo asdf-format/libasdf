@@ -188,7 +188,6 @@ typedef struct asdf_file asdf_file_t;
  */
 ASDF_EXPORT void asdf_value_destroy(asdf_value_t *value);
 ASDF_EXPORT asdf_value_t *asdf_value_clone(asdf_value_t *value);
-ASDF_EXPORT asdf_value_t *asdf_value_clone_to_file(asdf_value_t *value, asdf_file_t *file);
 
 /**
  * Get the specific `asdf_value_type_t` of a generic `asdf_value_t`
@@ -235,7 +234,6 @@ ASDF_EXPORT asdf_value_t *asdf_value_of_mapping(asdf_mapping_t *mapping);
 ASDF_EXPORT asdf_mapping_t *asdf_mapping_create(asdf_file_t *file);
 ASDF_EXPORT void asdf_mapping_set_style(asdf_mapping_t *mapping, asdf_yaml_node_style_t style);
 ASDF_EXPORT asdf_mapping_t *asdf_mapping_clone(asdf_mapping_t *mapping);
-ASDF_EXPORT asdf_mapping_t *asdf_mapping_clone_to_file(asdf_mapping_t *mapping, asdf_file_t *file);
 ASDF_EXPORT void asdf_mapping_destroy(asdf_mapping_t *mapping);
 
 /**

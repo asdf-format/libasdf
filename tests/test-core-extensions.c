@@ -119,13 +119,8 @@ static void assert_extension_metadata_equal(const asdf_extension_metadata_t *ext
 }
 
 
-MU_TEST(extension_metadata_serialize) {
-    const char *path = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
-    asdf_file_t *file = asdf_open(path, "w");
-    assert_not_null(file);
-    asdf_software_t manifest_software = {
-        .name = "asdf_standard", .version = "1.1.1"};
-    asdf_value_t *manifest_software_val = asdf_value_of_software(file, &manifest_software);
+static asdf_mapping_t *make_extra_meta(asdf_file_t *file, asdf_software_t* software) {
+    asdf_value_t *manifest_software_val = asdf_value_of_software(file, software);
     assert_not_null(manifest_software_val);
     asdf_mapping_t *extra_meta = asdf_mapping_create(file);
     assert_not_null(extra_meta);
@@ -134,12 +129,24 @@ MU_TEST(extension_metadata_serialize) {
     assert_int(err, ==, ASDF_VALUE_OK);
     err = asdf_mapping_set(extra_meta, "manifest_software", manifest_software_val);
     assert_int(err, ==, ASDF_VALUE_OK);
+    return extra_meta;
+}
+
+
+MU_TEST(extension_metadata_serialize) {
+    const char *path = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    asdf_file_t *file = asdf_open(path, "w");
+    assert_not_null(file);
+    asdf_software_t manifest_software = {
+        .name = "asdf_standard", .version = "1.1.1"};
+    asdf_mapping_t *extra_meta = make_extra_meta(file, &manifest_software);
     asdf_extension_metadata_t extension = {
         .metadata = extra_meta, .extension_class = "asdf.extension._manifest.ManifestExtension",
         .package = &libasdf_software};
     asdf_value_t *extension_val = asdf_value_of_extension_metadata(file, &extension);
     assert_not_null(extension_val);
     assert_int(asdf_set_value(file, "extension", extension_val), ==, ASDF_VALUE_OK);
+    asdf_mapping_destroy(extra_meta);
     asdf_close(file);
 
     // Re-open file and see if it round-tripped
@@ -148,13 +155,15 @@ MU_TEST(extension_metadata_serialize) {
 
     // This is a bit of a hack but, the original extension.metadata was
     // associated with the now closed original file, so trying to read it again
-    // will invoke undefined behavior.  We have to clone it first (which is OK
-    // to do) over to the new file handle (and also later free it)
-    extension.metadata = asdf_mapping_clone_to_file(extension.metadata, file);
-    asdf_mapping_destroy(extra_meta);
+    // will invoke undefined behavior.  We have to recreated it first on the
+    // new file handle.  Tried earlier to write a helper for cloning values
+    // between values but it turns out to be quite dangerous especially
+    // after the source file is closed.
+    extra_meta = make_extra_meta(file, &manifest_software);
+    extension.metadata = extra_meta;
     assert_true(asdf_is_extension_metadata(file, "extension"));
     asdf_extension_metadata_t *extension_in = NULL;
-    err = asdf_get_extension_metadata(file, "extension", &extension_in);
+    asdf_value_err_t err = asdf_get_extension_metadata(file, "extension", &extension_in);
     assert_int(err, ==, ASDF_VALUE_OK);
     assert_extension_metadata_equal(extension_in, &extension);
     asdf_mapping_destroy(extension.metadata);
@@ -321,15 +330,8 @@ MU_TEST(meta_serialize) {
     assert_not_null(file);
     asdf_software_t manifest_software = {
         .name = "asdf_standard", .version = "1.1.1"};
-    asdf_value_t *manifest_software_val = asdf_value_of_software(file, &manifest_software);
-    assert_not_null(manifest_software_val);
-    asdf_mapping_t *extra_meta = asdf_mapping_create(file);
+    asdf_mapping_t *extra_meta = make_extra_meta(file, &manifest_software);
     assert_not_null(extra_meta);
-    asdf_value_err_t err = asdf_mapping_set_string0(
-        extra_meta, "extension_uri", "asdf://asdf-format.org/core/extensions/core-1.6.0");
-    assert_int(err, ==, ASDF_VALUE_OK);
-    err = asdf_mapping_set(extra_meta, "manifest_software", manifest_software_val);
-    assert_int(err, ==, ASDF_VALUE_OK);
     asdf_extension_metadata_t extension = {
         .metadata = extra_meta, .extension_class = "asdf.extension._manifest.ManifestExtension",
         .package = &libasdf_software};
@@ -344,15 +346,17 @@ MU_TEST(meta_serialize) {
 
     asdf_value_t *meta_val = asdf_value_of_meta(file, &meta);
     assert_not_null(meta_val);
-    err = asdf_set_value(file, "", meta_val);
+    asdf_value_err_t err = asdf_set_value(file, "", meta_val);
     assert_int(err, ==, ASDF_VALUE_OK);
+    asdf_mapping_destroy(extension.metadata);
     asdf_close(file);
 
     file = asdf_open(path, "r");
     assert_not_null(file);
 
-    extension.metadata = asdf_mapping_clone_to_file(extension.metadata, file);
-    asdf_mapping_destroy(extra_meta);
+    extra_meta = make_extra_meta(file, &manifest_software);
+    assert_not_null(extra_meta);
+    extension.metadata = extra_meta;
 
     assert_true(asdf_is_meta(file, ""));
     asdf_meta_t *meta_in = NULL;

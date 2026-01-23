@@ -134,8 +134,7 @@ void asdf_value_destroy(asdf_value_t *value) {
 }
 
 
-static asdf_value_t *asdf_value_clone_impl(
-    asdf_value_t *value, asdf_file_t *to_file, bool preserve_type_inference) {
+static asdf_value_t *asdf_value_clone_impl(asdf_value_t *value, bool preserve_type_inference) {
 
     if (!value)
         return NULL;
@@ -147,17 +146,16 @@ static asdf_value_t *asdf_value_clone_impl(
         return NULL;
     }
 
-    to_file = to_file ? to_file : value->file;
-    struct fy_document *tree = asdf_file_tree_document(to_file);
+    struct fy_document *tree = asdf_file_tree_document(value->file);
     struct fy_node *new_node = fy_node_copy(tree, value->node);
 
     if (!new_node) {
         free(new_value);
-        ASDF_ERROR_OOM(to_file);
+        ASDF_ERROR_OOM(value->file);
         return NULL;
     }
 
-    new_value->file = to_file;
+    new_value->file = value->file;
     new_value->node = new_node;
 
     if (value->tag)
@@ -184,7 +182,7 @@ static asdf_value_t *asdf_value_clone_impl(
             if (!new_ext) {
                 fy_node_free(new_node);
                 free(new_value);
-                ASDF_ERROR_OOM(to_file);
+                ASDF_ERROR_OOM(value->file);
                 return NULL;
             }
 
@@ -211,12 +209,7 @@ static asdf_value_t *asdf_value_clone_impl(
 
 
 asdf_value_t *asdf_value_clone(asdf_value_t *value) {
-    return asdf_value_clone_impl(value, NULL, true);
-}
-
-
-asdf_value_t *asdf_value_clone_to_file(asdf_value_t *value, asdf_file_t *file) {
-    return asdf_value_clone_impl(value, file, true);
+    return asdf_value_clone_impl(value, true);
 }
 
 
@@ -398,12 +391,6 @@ void asdf_mapping_set_style(asdf_mapping_t *mapping, asdf_yaml_node_style_t styl
 
 asdf_mapping_t *asdf_mapping_clone(asdf_mapping_t *mapping) {
     asdf_value_t *clone = asdf_value_clone(&mapping->value);
-    return (asdf_mapping_t *)clone;
-}
-
-
-asdf_mapping_t *asdf_mapping_clone_to_file(asdf_mapping_t *mapping, asdf_file_t *file) {
-    asdf_value_t *clone = asdf_value_clone_to_file(&mapping->value, file);
     return (asdf_mapping_t *)clone;
 }
 
@@ -1161,7 +1148,7 @@ asdf_value_err_t asdf_value_as_extension_type(
     assert(ext->deserialize);
     // Clone the raw value without existing extension inference to pass to the the extension's
     // deserialize method.
-    asdf_value_t *raw_value = asdf_value_clone_impl(value, NULL, false);
+    asdf_value_t *raw_value = asdf_value_clone_impl(value, false);
 
     if (!raw_value) {
         ASDF_ERROR_OOM(value->file);
