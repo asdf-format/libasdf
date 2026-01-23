@@ -47,7 +47,14 @@ typedef enum {
     ASDF_DATATYPE_COMPLEX64,
     ASDF_DATATYPE_COMPLEX128,
     ASDF_DATATYPE_BOOL8,
+    /** ASCII text datatype */
     ASDF_DATATYPE_ASCII,
+    /**
+     * UCS4 Unicode datatype
+     *
+     * When using this datatype in `asdf_datatype_t` make sure to set the
+     * ``.size`` field to 4 * the string field length in characters.
+     */
     ASDF_DATATYPE_UCS4,
     /**
      * Indicates that a datatype is non-scalar / is a compound-type/structured array
@@ -147,10 +154,10 @@ ASDF_EXPORT const char *asdf_scalar_datatype_to_string(asdf_scalar_datatype_t da
 /**
  * Get the size of an `asdf_datatype_t` in bytes
  *
- * This is equivalent to looking up the public field `asdf_datatype_t.size`.
+ * This is equivalent to looking up the public field ``asdf_datatype_t.size``.
  * However, the difference is that for user-defined datatypes it is not
  * required to set the size explicitly--in that case this computes, sets, and
- * returns `asdf_datatype_t.size`.
+ * returns ``asdf_datatype_t.size``.
  *
  * The exception is that for string datatypes (`ASDF_DATATYPE_ASCII` and
  * `ASDF_DATATYPE_UCS4`) the user *must* provide the correct size, and a size
