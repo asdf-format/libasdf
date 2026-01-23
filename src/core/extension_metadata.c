@@ -8,6 +8,79 @@
 #include "software.h"
 
 
+#define ASDF_CORE_EXTENSION_METADATA_TAG ASDF_CORE_TAG_PREFIX "extension_metadata-1.0.0"
+
+
+static asdf_value_t *asdf_extension_metadata_serialize(
+    asdf_file_t *file,
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+    const void *obj,
+    UNUSED(const void *userdata)) {
+
+    if (UNLIKELY(!file || !obj))
+        return NULL;
+
+    const asdf_extension_metadata_t *extension = obj;
+    asdf_value_t *value = NULL;
+    asdf_value_err_t err = ASDF_VALUE_ERR_EMIT_FAILURE;
+    asdf_mapping_t *extension_map = NULL;
+
+    if (!extension->extension_class) {
+        ASDF_LOG(
+            file, ASDF_LOG_WARN, ASDF_CORE_EXTENSION_METADATA_TAG " requires an extension_class");
+        goto cleanup;
+    }
+
+    extension_map = asdf_mapping_create(file);
+
+    if (!extension_map)
+        goto cleanup;
+
+    err = asdf_mapping_set_string0(extension_map, "extension_class", extension->extension_class);
+
+    if (err != ASDF_VALUE_OK)
+        goto cleanup;
+
+    if (extension->package) {
+        asdf_value_t *package = asdf_value_of_software(file, extension->package);
+
+        if (package)
+            err = asdf_mapping_set(extension_map, "package", package);
+    }
+
+    if (err != ASDF_VALUE_OK)
+        goto cleanup;
+
+    if (extension->metadata) {
+        asdf_mapping_iter_t iter = asdf_mapping_iter_init();
+        asdf_mapping_item_t *item = NULL;
+        while ((item = asdf_mapping_iter(extension->metadata, &iter))) {
+            if (strcmp(item->key, "extension_class") == 0)
+                continue;
+
+            if (strcmp(item->key, "package") == 0)
+                continue;
+
+            err = asdf_mapping_set(extension_map, item->key, asdf_value_clone(item->value));
+
+            if (err != ASDF_VALUE_OK)
+                goto cleanup;
+        }
+    }
+
+    if (err != ASDF_VALUE_OK)
+        goto cleanup;
+
+    value = asdf_value_of_mapping(extension_map);
+cleanup:
+    if (err != ASDF_VALUE_OK) {
+        asdf_mapping_destroy(extension_map);
+    }
+
+    return value;
+}
+
+
 static asdf_value_err_t asdf_extension_metadata_deserialize(
     asdf_value_t *value, UNUSED(const void *userdata), void **out) {
     const char *extension_class = NULL;
@@ -75,10 +148,10 @@ static void asdf_extension_metadata_dealloc(void *value) {
 
 ASDF_REGISTER_EXTENSION(
     extension_metadata,
-    ASDF_CORE_TAG_PREFIX "extension_metadata-1.0.0",
+    ASDF_CORE_EXTENSION_METADATA_TAG,
     asdf_extension_metadata_t,
     &libasdf_software,
-    NULL,
+    asdf_extension_metadata_serialize,
     asdf_extension_metadata_deserialize,
     asdf_extension_metadata_dealloc,
     NULL);

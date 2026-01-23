@@ -27,8 +27,8 @@ ASDF_EXPORT extern asdf_software_t libasdf_software;
  * ``history_entry-1.0.0``)
  */
 typedef struct {
-    asdf_extension_metadata_t **extensions;
-    asdf_history_entry_t **entries;
+    const asdf_extension_metadata_t **extensions;
+    const asdf_history_entry_t **entries;
 } asdf_meta_history_t;
 
 

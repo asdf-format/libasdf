@@ -54,6 +54,7 @@ unit_test_cflags = \
 
 if DEBUG
 unit_test_cflags += -DMUNIT_NO_FORK
+unit_test_cflags += -rdynamic
 endif
 
 unit_test_ldflags = $(LDFLAGS) $(CODE_COVERAGE_LDFLAGS)
@@ -259,6 +260,7 @@ EXTRA_DIST += \
     fixtures/255-no-newline-before-tree.asdf \
     fixtures/255-no-tree-padding-after-header.asdf \
     fixtures/255-no-tree.asdf \
+    fixtures/255-out.asdf \
     fixtures/255-padding-after-header.asdf \
     fixtures/255-padding-after-tree.asdf \
     fixtures/byteorder.asdf \
@@ -266,6 +268,7 @@ EXTRA_DIST += \
     fixtures/cube.asdf \
     fixtures/custom-tag-handle.asdf \
     fixtures/datatypes.asdf \
+    fixtures/datatypes-out.asdf \
     fixtures/events/basic.events.txt \
     fixtures/events/basic.log \
     fixtures/events/complex.events.txt \
@@ -290,6 +293,7 @@ EXTRA_DIST += \
     fixtures/multi-block.asdf \
     fixtures/multiple_hdu.asdf \
     fixtures/nested.asdf \
+    fixtures/ndarray-out.asdf \
     fixtures/numeric.asdf \
     fixtures/parse-minimal.asdf \
     fixtures/parse-minimal-empty-tree.asdf \

@@ -7,6 +7,7 @@ set(libasdf_sources
     compression/lz4.c
     compression/zlib.c
     core/asdf.c
+    core/datatype.c
     core/extension_metadata.c
     core/history_entry.c
     core/ndarray.c
@@ -54,8 +55,7 @@ set_property(TARGET libasdf_objs PROPERTY POSITION_INDEPENDENT_CODE 1)
 # Generate a shared library (always)
 add_library(libasdf SHARED $<TARGET_OBJECTS:libasdf_objs>)
 
-target_link_libraries(libasdf PUBLIC
-    stc
+set(all_libraries
     ${FYAML_LIBRARIES}
     ${BZIP2_LIBRARIES}
     ${ZLIB_LIBRARIES}
@@ -63,14 +63,23 @@ target_link_libraries(libasdf PUBLIC
     ${STATGRAB_LIBRARIES}
     ${MD5_LIBRARIES}
 )
+list(REMOVE_DUPLICATES all_libraries)
 
-target_link_directories(libasdf PUBLIC
+target_link_libraries(libasdf PUBLIC
+    stc
+    ${all_libraries}
+)
+
+set(all_libdir
     ${BZIP2_LIBDIR}
     ${FYAML_LIBDIR}
     ${LZ4_LIBDIR}
     ${STATGRAB_LIBDIR}
     ${ZLIB_LIBDIR}
 )
+list(REMOVE_DUPLICATES all_libdir)
+
+target_link_directories(libasdf PUBLIC ${all_libdir})
 
 target_include_directories(libasdf_objs PUBLIC
     ${CMAKE_SOURCE_DIR}/third_party/STC/include
@@ -78,21 +87,27 @@ target_include_directories(libasdf_objs PUBLIC
     ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-target_include_directories(libasdf_objs SYSTEM PRIVATE
+set(all_includedir
     ${BZIP2_INCLUDEDIR}
     ${FYAML_INCLUDEDIR}
     ${LZ4_INCLUDEDIR}
     ${STATGRAB_INCLUDEDIR}
     ${ZLIB_INCLUDEDIR}
 )
+list(REMOVE_DUPLICATES all_includedir)
 
-target_compile_options(libasdf_objs PUBLIC
+target_include_directories(libasdf_objs SYSTEM PRIVATE ${all_includedir})
+
+set(all_cflags
     ${BZIP2_CFLAGS}
     ${FYAML_CFLAGS}
     ${LZ4_CFLAGS}
     ${STATGRAB_CFLAGS}
     ${ZLIB_CFLAGS}
 )
+list(REMOVE_DUPLICATES all_cflags)
+
+target_compile_options(libasdf_objs PUBLIC ${all_cflags})
 
 # Make __FILE__ names relative to source root
 target_compile_options(libasdf_objs PRIVATE

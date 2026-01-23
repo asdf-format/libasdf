@@ -1,0 +1,18 @@
+#ASDF 1.0.0
+#ASDF_STANDARD 1.6.0
+%YAML 1.1
+%TAG ! tag:stsci.edu:asdf/
+--- !core/asdf-1.1.0
+datatype: !core/datatype-1.0.0
+- name: string
+  datatype: [ascii, 4]
+  byteorder: big
+- name: unicode
+  datatype: [ucs4, 4]
+  byteorder: little
+- {name: int, datatype: int16, byteorder: big}
+- name: matrix
+  datatype: float32
+  byteorder: little
+  shape: [3, 3]
+...

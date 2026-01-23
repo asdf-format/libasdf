@@ -26,11 +26,11 @@ static asdf_software_t asdf_foo_software = {
 static const char *foo_prefix = "foo:";
 
 
-static asdf_value_t *asdf_foo_serialize(asdf_file_t *file, void *obj, UNUSED(const void *userdata)) {
+static asdf_value_t *asdf_foo_serialize(asdf_file_t *file, const void *obj, UNUSED(const void *userdata)) {
     if (!obj)
         return NULL;
 
-    asdf_foo_t *foo = obj;
+    const asdf_foo_t *foo = obj;
     /* The "foo" extension reads a string tagged 'foo' from the file and adds the
      * prefix "foo:" to it.  That's all it is.  So if we receive an asdf_foo_t
      * it must store a string prefixed with "foo:"; when serializing it

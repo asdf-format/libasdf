@@ -35,6 +35,7 @@ including ``asdf.h``.  This in turn includes the following headers:
   api/asdf/file.h
   api/asdf/value.h
   api/asdf/core/ndarray.h
+  api/asdf/core/datatype.h
 
 Additional less commonly used APIs can be used by including the relevant
 headers.

@@ -7,6 +7,7 @@ src_files = \
     src/compression/zlib.c \
     src/context.c \
     src/core/asdf.c \
+    src/core/datatype.c \
     src/core/extension_metadata.c \
     src/core/history_entry.c \
     src/core/ndarray.c \
@@ -36,6 +37,7 @@ src_headers = \
     src/compression/compressor_registry.h \
     src/context.h \
     src/core/asdf.h \
+    src/core/datatype.h \
     src/core/extension_metadata.h \
     src/core/history_entry.h \
     src/core/ndarray.h \

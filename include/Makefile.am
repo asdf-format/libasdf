@@ -1,6 +1,7 @@
 nobase_include_HEADERS = \
     asdf.h \
     asdf/core/asdf.h \
+    asdf/core/datatype.h \
     asdf/core/extension_metadata.h \
     asdf/core/history_entry.h \
     asdf/core/ndarray.h \

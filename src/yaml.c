@@ -259,6 +259,22 @@ error:
 }
 
 
+struct fy_node *asdf_yaml_node_set_style(
+    struct fy_document *doc, struct fy_node *node, asdf_yaml_node_style_t style) {
+    // We might have some other interesting options here to control wrapping,
+    // etc. that can be later determined by the global emitter configuration for
+    // the file
+    enum fy_emitter_cfg_flags flags = style == ASDF_YAML_NODE_STYLE_BLOCK ? FYECF_MODE_BLOCK
+                                                                          : FYECF_MODE_FLOW;
+    char *out = fy_emit_node_to_string(node, flags);
+
+    if (!out)
+        return NULL;
+
+    return fy_node_build_from_malloc_string(doc, out, FY_NT);
+}
+
+
 /** Utilities for path parser */
 
 

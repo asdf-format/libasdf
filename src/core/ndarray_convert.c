@@ -68,8 +68,8 @@ typedef void (*asdf_ndarray_tile_convert_fn_t)(
  *
  * The third dimension is for whether or not to perform byteswap.
  */
-static asdf_ndarray_convert_fn_t conversion_table[ASDF_DATATYPE_RECORD][ASDF_DATATYPE_RECORD][2] = {
-    0};
+static asdf_ndarray_convert_fn_t conversion_table[ASDF_DATATYPE_STRUCTURED]
+                                                 [ASDF_DATATYPE_STRUCTURED][2] = {0};
 static atomic_bool conversion_table_initialized = false;
 
 
@@ -400,8 +400,8 @@ ASDF_CONSTRUCTOR static void asdf_conversion_table_init() {
 
 asdf_ndarray_convert_fn_t asdf_ndarray_get_convert_fn(
     asdf_scalar_datatype_t src_t, asdf_scalar_datatype_t dst_t, bool byteswap) {
-    if (src_t < ASDF_DATATYPE_INT8 || src_t > ASDF_DATATYPE_RECORD || dst_t < ASDF_DATATYPE_INT8 ||
-        dst_t > ASDF_DATATYPE_RECORD)
+    if (src_t < ASDF_DATATYPE_INT8 || src_t > ASDF_DATATYPE_STRUCTURED ||
+        dst_t < ASDF_DATATYPE_INT8 || dst_t > ASDF_DATATYPE_STRUCTURED)
         return NULL;
 
     return conversion_table[src_t][dst_t][byteswap];

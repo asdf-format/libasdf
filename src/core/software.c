@@ -2,7 +2,70 @@
 #include "../util.h"
 #include "../value.h"
 
-#include "asdf.h"
+
+#define ASDF_CORE_SOFTWARE_TAG ASDF_CORE_TAG_PREFIX "software-1.0.0"
+
+
+static asdf_value_t *asdf_software_serialize(
+    asdf_file_t *file,
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+    const void *obj,
+    UNUSED(const void *userdata)) {
+    if (UNLIKELY(!file || !obj))
+        return NULL;
+
+    const asdf_software_t *software = obj;
+    asdf_mapping_t *software_map = NULL;
+    asdf_value_t *value = NULL;
+    asdf_value_err_t err = ASDF_VALUE_ERR_EMIT_FAILURE;
+
+    if (!software->name) {
+        ASDF_LOG(file, ASDF_LOG_WARN, ASDF_CORE_SOFTWARE_TAG " requires a name");
+        goto cleanup;
+    }
+
+    if (!software->version) {
+        ASDF_LOG(file, ASDF_LOG_WARN, ASDF_CORE_SOFTWARE_TAG " requires a version");
+        goto cleanup;
+    }
+
+
+    software_map = asdf_mapping_create(file);
+
+    if (!software_map)
+        return NULL;
+
+    err = asdf_mapping_set_string0(software_map, "name", software->name);
+
+    if (err != ASDF_VALUE_OK)
+        goto cleanup;
+
+    err = asdf_mapping_set_string0(software_map, "version", software->version);
+
+    if (err != ASDF_VALUE_OK)
+        goto cleanup;
+
+    if (software->author && strlen(software->author) > 0) {
+        err = asdf_mapping_set_string0(software_map, "author", software->author);
+
+        if (err != ASDF_VALUE_OK)
+            goto cleanup;
+    }
+
+    if (software->homepage && strlen(software->homepage) > 0) {
+        err = asdf_mapping_set_string0(software_map, "homepage", software->homepage);
+
+        if (err != ASDF_VALUE_OK)
+            goto cleanup;
+    }
+
+    value = asdf_value_of_mapping(software_map);
+cleanup:
+    if (err != ASDF_VALUE_OK)
+        asdf_mapping_destroy(software_map);
+
+    return value;
+}
 
 
 static asdf_value_err_t asdf_software_deserialize(
@@ -80,10 +143,10 @@ static void asdf_software_dealloc(void *value) {
 
 ASDF_REGISTER_EXTENSION(
     software,
-    ASDF_CORE_TAG_PREFIX "software-1.0.0",
+    ASDF_CORE_SOFTWARE_TAG,
     asdf_software_t,
     &libasdf_software,
-    NULL,
+    asdf_software_serialize,
     asdf_software_deserialize,
     asdf_software_dealloc,
     NULL);

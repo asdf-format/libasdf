@@ -73,6 +73,8 @@ extern ASDF_LOCAL const char *asdf_yaml_empty_document;
 
 
 ASDF_LOCAL struct fy_document *asdf_yaml_create_empty_document(asdf_config_t *config);
+ASDF_LOCAL struct fy_node *asdf_yaml_node_set_style(
+    struct fy_document *doc, struct fy_node *node, asdf_yaml_node_style_t style);
 
 
 /**

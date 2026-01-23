@@ -189,7 +189,7 @@ static struct fy_emitter *asdf_fy_emitter_create(asdf_emitter_t *emitter) {
     // opportunities to control this, and also determine which options hew
     // closest to the Python output
     struct fy_emitter_cfg config = {
-        .flags = FYECF_DEFAULT | FYECF_DOC_END_MARK_ON,
+        .flags = FYECF_DEFAULT | FYECF_DOC_END_MARK_ON | FYECF_MODE_MANUAL,
         .output = fy_emitter_stream_output,
         .userdata = userdata};
 

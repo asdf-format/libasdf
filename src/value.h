@@ -16,7 +16,7 @@
 
 typedef struct {
     const asdf_extension_t *ext;
-    void *object;
+    const void *object;
 } asdf_extension_value_t;
 
 
@@ -38,6 +38,7 @@ typedef struct asdf_value {
         asdf_extension_value_t *ext;
     } scalar;
     const char *path;
+    asdf_yaml_node_style_t style;
 } asdf_value_t;
 
 
@@ -187,6 +188,10 @@ ASDF_NODE_OF_VALUE_TYPE(uint64, uint64_t, "%" PRIu64)
 ASDF_NODE_OF_FLOAT_VALUE_TYPE(float, float, "%.9g")
 ASDF_NODE_OF_FLOAT_VALUE_TYPE(double, double, "%.17g")
 
+/**
+ * Utility to wrap empty container value workaround
+ */
+ASDF_LOCAL struct fy_node *asdf_value_normalize_node(asdf_value_t *value);
 
 ASDF_LOCAL asdf_value_err_t asdf_node_insert_at(
     struct fy_document *doc, const char *path, struct fy_node *node, bool materialize);

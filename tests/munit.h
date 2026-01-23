@@ -5,7 +5,9 @@
  */
 
 #include <dirent.h>
+#include <execinfo.h>
 #include <limits.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -34,6 +36,28 @@
 #else
 #define UNUSED(x) (void)(x)
 #endif
+
+
+
+static int orig_stderr;
+
+
+/** Enable backtraces from tests when they segfault */
+static void crash_handler(int sig) {
+    void *bt[64];
+    int n = write(orig_stderr, "\n", 1);
+    n = backtrace(bt, 64);
+    backtrace_symbols_fd(bt, n, orig_stderr);
+    _exit(128 + sig);
+}
+
+
+__attribute__((constructor))
+static void install_crash_handler(void) {
+    orig_stderr = dup(STDERR_FILENO);
+    signal(SIGSEGV, crash_handler);
+    signal(SIGABRT, crash_handler);
+}
 
 
 typedef struct {

@@ -10,7 +10,6 @@
 #endif
 
 #include <stdatomic.h>
-#include <stdio.h>
 
 #include "asdf/log.h"
 
