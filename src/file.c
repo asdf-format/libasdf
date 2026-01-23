@@ -643,7 +643,7 @@ asdf_value_err_t asdf_set_value(asdf_file_t *file, const char *path, asdf_value_
     if (!tree)
         goto cleanup;
 
-    struct fy_node *node = value ? asdf_value_normalized_node(value) : NULL;
+    struct fy_node *node = value ? asdf_value_normalize_node(value) : NULL;
     err = asdf_set_node(file, path, node);
 cleanup:
     value->node = NULL;
@@ -731,7 +731,7 @@ asdf_value_err_t asdf_set_mapping(asdf_file_t *file, const char *path, asdf_mapp
     if (!tree)
         goto cleanup;
 
-    err = asdf_set_node(file, path, asdf_value_normalized_node(&mapping->value));
+    err = asdf_set_node(file, path, asdf_value_normalize_node(&mapping->value));
 cleanup:
     /* asdf_set_node implicitly frees the original node, so here set it
      * to null to avoid double-freeing it and then just destroy the asdf_value_t */
@@ -748,7 +748,7 @@ asdf_value_err_t asdf_set_sequence(asdf_file_t *file, const char *path, asdf_seq
     if (!tree)
         goto cleanup;
 
-    err = asdf_set_node(file, path, asdf_value_normalized_node(&sequence->value));
+    err = asdf_set_node(file, path, asdf_value_normalize_node(&sequence->value));
 cleanup:
     /* asdf_set_node implicitly frees the original node, so here set it
      * to null to avoid double-freeing it and then just destroy the asdf_value_t */

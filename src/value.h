@@ -191,7 +191,7 @@ ASDF_NODE_OF_FLOAT_VALUE_TYPE(double, double, "%.17g")
 /**
  * Utility to wrap empty container value workaround
  */
-ASDF_LOCAL struct fy_node *asdf_value_normalized_node(asdf_value_t *value);
+ASDF_LOCAL struct fy_node *asdf_value_normalize_node(asdf_value_t *value);
 
 ASDF_LOCAL asdf_value_err_t asdf_node_insert_at(
     struct fy_document *doc, const char *path, struct fy_node *node, bool materialize);

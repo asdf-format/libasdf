@@ -876,6 +876,7 @@ MU_TEST(test_asdf_value_of_mapping) {
     asdf_value_t *value = asdf_value_of_mapping(mapping);
     assert_int(asdf_set_value(file, "mapping", value), ==, ASDF_VALUE_OK);
     asdf_close(file);
+
     file = asdf_open(path, "r");
     mapping = NULL;
     asdf_get_mapping(file, "mapping", &mapping);

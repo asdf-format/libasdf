@@ -149,11 +149,8 @@ static asdf_value_err_t asdf_ndarray_parse_block_data(
     ndarray->strides = strides;
     err = ASDF_VALUE_OK;
 cleanup:
-    if (ASDF_IS_ERR(err)) {
-        asdf_sequence_destroy(shape_seq);
-        asdf_sequence_destroy(strides_seq);
-    }
-
+    asdf_sequence_destroy(shape_seq);
+    asdf_sequence_destroy(strides_seq);
     return err;
 }
 

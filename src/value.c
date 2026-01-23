@@ -361,11 +361,13 @@ static void asdf_value_set_style(asdf_value_t *value, asdf_yaml_node_style_t sty
         return;
     }
 
+    // Free the old node as we are now replacing it
+    fy_node_free(value->node);
     value->node = node;
 }
 
 
-struct fy_node *asdf_value_normalized_node(asdf_value_t *value) {
+struct fy_node *asdf_value_normalize_node(asdf_value_t *value) {
     struct fy_node *node = value->node;
 
     if (!node)
@@ -381,6 +383,8 @@ struct fy_node *asdf_value_normalized_node(asdf_value_t *value) {
     if ((value->raw_type == ASDF_VALUE_MAPPING && fy_node_mapping_is_empty(node)) ||
         (value->type == ASDF_VALUE_SEQUENCE && fy_node_sequence_is_empty(node))) {
         node = asdf_yaml_node_set_style(tree, node, ASDF_YAML_NODE_STYLE_FLOW);
+        fy_node_free(value->node);
+        value->node = node;
     }
 
     return node;
@@ -530,7 +534,7 @@ asdf_value_err_t asdf_mapping_set(asdf_mapping_t *mapping, const char *key, asdf
         goto cleanup;
     }
     struct fy_node *key_node = asdf_node_of_string0(tree, key);
-    struct fy_node *value_node = asdf_value_normalized_node(value);
+    struct fy_node *value_node = asdf_value_normalize_node(value);
     if (fy_node_mapping_append(mapping->value.node, key_node, value_node) != 0) {
         ASDF_ERROR_OOM(mapping->value.file);
         err = ASDF_VALUE_ERR_OOM;
@@ -939,7 +943,7 @@ asdf_value_err_t asdf_sequence_append(asdf_sequence_t *sequence, asdf_value_t *v
         goto cleanup;
     }
 
-    struct fy_node *value_node = asdf_value_normalized_node(value);
+    struct fy_node *value_node = asdf_value_normalize_node(value);
 
     if (fy_node_sequence_append(sequence->value.node, value_node) != 0) {
         ASDF_ERROR_OOM(sequence->value.file);

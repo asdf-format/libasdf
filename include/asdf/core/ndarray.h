@@ -92,7 +92,7 @@ typedef struct {
     /** The number of dimensions of the array */
     uint32_t ndim;
     /** The shape of the array, itself an array of size ``.ndim`` */
-    uint64_t *shape;
+    const uint64_t *shape;
     /** The datatype of the array as represented by `asdf_datatype_t` */
     asdf_datatype_t datatype;
     /** The byteorder of the array data where appliable */
@@ -103,7 +103,7 @@ typedef struct {
      * Optional strides to use when iterating/index array data (an array of
      * size ``.ndim`` giving the stride for each dimension)
      */
-    int64_t *strides;
+    const int64_t *strides;
 
     // Reserved for internal use
     void *_reserved;
