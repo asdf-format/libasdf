@@ -143,9 +143,7 @@ MU_TEST(extension_metadata_serialize) {
     asdf_extension_metadata_t extension = {
         .metadata = extra_meta, .extension_class = "asdf.extension._manifest.ManifestExtension",
         .package = &libasdf_software};
-    asdf_value_t *extension_val = asdf_value_of_extension_metadata(file, &extension);
-    assert_not_null(extension_val);
-    assert_int(asdf_set_value(file, "extension", extension_val), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_extension_metadata(file, "extension", &extension), ==, ASDF_VALUE_OK);
     asdf_mapping_destroy(extra_meta);
     asdf_close(file);
 
@@ -226,9 +224,7 @@ MU_TEST(history_entry_serialize) {
     // TODO: Test time serialization
     const asdf_software_t *software[2] = {&libasdf_software, NULL};
     asdf_history_entry_t entry = {.description = "description", .software = software};
-    asdf_value_t *entry_val = asdf_value_of_history_entry(file, &entry);
-    assert_not_null(entry_val);
-    assert_int(asdf_set_value(file, "entry", entry_val), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_history_entry(file, "entry", &entry), ==, ASDF_VALUE_OK);
     asdf_close(file);
 
     // Re-open file and see if it round-tripped
@@ -344,9 +340,7 @@ MU_TEST(meta_serialize) {
     asdf_meta_t meta = {.asdf_library = &libasdf_software, .history = {
         .extensions = extensions, .entries = entries}};
 
-    asdf_value_t *meta_val = asdf_value_of_meta(file, &meta);
-    assert_not_null(meta_val);
-    asdf_value_err_t err = asdf_set_value(file, "", meta_val);
+    asdf_value_err_t err = asdf_set_meta(file, "", &meta);
     assert_int(err, ==, ASDF_VALUE_OK);
     asdf_mapping_destroy(extension.metadata);
     asdf_close(file);
@@ -525,9 +519,7 @@ MU_TEST(datatype_serialize) {
     const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
     asdf_file_t *file = asdf_open(filename, "w");
     assert_not_null(file);
-    asdf_value_t *value = asdf_value_of_datatype(file, &datatype);
-    assert_not_null(value);
-    assert_int(asdf_set_value(file, "datatype", value), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_datatype(file, "datatype", &datatype), ==, ASDF_VALUE_OK);
     asdf_close(file);
 
     file = asdf_open(filename, "r");
@@ -621,9 +613,7 @@ MU_TEST(ndarray_serialize) {
     assert_not_null(file);
     void *data = asdf_ndarray_data_alloc(&ndarray);
     assert_not_null(data);
-    asdf_value_t *value = asdf_value_of_ndarray(file, &ndarray);
-    assert_not_null(value);
-    assert_int(asdf_set_value(file, "data", value), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_ndarray(file, "data", &ndarray), ==, ASDF_VALUE_OK);
     asdf_close(file);
     asdf_ndarray_data_dealloc(&ndarray);
 
@@ -667,9 +657,7 @@ MU_TEST(software_serialize) {
     const char *path = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
     asdf_file_t *file = asdf_open(path, "w");
     assert_not_null(file);
-    asdf_value_t *software_val = asdf_value_of_software(file, &libasdf_software);
-    assert_not_null(software_val);
-    assert_int(asdf_set_value(file, "software", software_val), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_software(file, "software", &libasdf_software), ==, ASDF_VALUE_OK);
     asdf_close(file);
 
     // Re-open file and see if it round-tripped
