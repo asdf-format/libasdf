@@ -710,6 +710,10 @@ ASDF_EXPORT asdf_value_err_t
 asdf_get_extension_type(asdf_file_t *file, const char *path, asdf_extension_t *ext, void **out);
 
 
+ASDF_EXPORT asdf_value_err_t asdf_set_extension_type(
+    asdf_file_t *file, const char *path, const void *obj, asdf_extension_t *ext);
+
+
 /**
  * .. _file-value-setters:
  *

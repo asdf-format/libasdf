@@ -614,11 +614,24 @@ bool asdf_is_extension_type(asdf_file_t *file, const char *path, asdf_extension_
 asdf_value_err_t asdf_get_extension_type(
     asdf_file_t *file, const char *path, asdf_extension_t *ext, void **out) {
     asdf_value_t *value = asdf_get_value(file, path);
+
     if (!value)
         return ASDF_VALUE_ERR_NOT_FOUND;
+
     asdf_value_err_t err = asdf_value_as_extension_type(value, ext, out);
     asdf_value_destroy(value);
     return err;
+}
+
+
+asdf_value_err_t asdf_set_extension_type(
+    asdf_file_t *file, const char *path, const void *obj, asdf_extension_t *ext) {
+    asdf_value_t *value = asdf_value_of_extension_type(file, obj, ext);
+
+    if (!value)
+        return ASDF_VALUE_ERR_EMIT_FAILURE;
+
+    return asdf_set_value(file, path, value);
 }
 
 

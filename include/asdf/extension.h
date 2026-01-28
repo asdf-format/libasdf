@@ -106,6 +106,14 @@ ASDF_EXPORT const asdf_extension_t *asdf_extension_get(asdf_file_t *file, const 
     }
 
 
+#define ASDF_EXT_DEFINE_SET(extname, type) \
+    ASDF_EXPORT asdf_value_err_t asdf_set_##extname( \
+        asdf_file_t *file, const char *path, const type *obj) { \
+        return asdf_set_extension_type( \
+            file, path, (const void *)obj, &ASDF_EXT_STATIC_NAME(extname)); \
+    }
+
+
 /* Auto-generated helper to free extension type objects */
 #define ASDF_EXT_DEFINE_DESTROY(extname, type) \
     ASDF_EXPORT void asdf_##extname##_destroy(type *object) { \
@@ -126,6 +134,7 @@ ASDF_EXPORT const asdf_extension_t *asdf_extension_get(asdf_file_t *file, const 
     ASDF_EXT_DEFINE_VALUE_OF_TYPE(extname, type) \
     ASDF_EXT_DEFINE_IS_TYPE(extname, type) \
     ASDF_EXT_DEFINE_GET(extname, type) \
+    ASDF_EXT_DEFINE_SET(extname, type) \
     ASDF_EXT_DEFINE_DESTROY(extname, type) \
     static ASDF_CONSTRUCTOR void ASDF_EXPAND( \
         ASDF_EXT_PREFIX, _register_##extname##_extension)(void) { \
@@ -141,6 +150,8 @@ ASDF_EXPORT const asdf_extension_t *asdf_extension_get(asdf_file_t *file, const 
     ASDF_EXPORT bool asdf_is_##extname(asdf_file_t *file, const char *path); \
     ASDF_EXPORT asdf_value_err_t asdf_get_##extname( \
         asdf_file_t *file, const char *path, type **out); \
+    ASDF_EXPORT asdf_value_err_t asdf_set_##extname( \
+        asdf_file_t *file, const char *path, const type *obj); \
     ASDF_EXPORT void asdf_##extname##_destroy(type *object)
 
 ASDF_END_DECLS
