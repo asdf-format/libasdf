@@ -365,7 +365,7 @@ static size_t file_write(asdf_stream_t *stream, const void *buf, size_t count) {
 
     if (!stream->is_writeable) {
         ASDF_ERROR_COMMON(stream, ASDF_ERR_STREAM_READ_ONLY);
-        return -1;
+        return 0;
     }
 
     file_userdata_t *data = stream->userdata;
@@ -661,7 +661,7 @@ asdf_stream_t *asdf_stream_from_fp(
 
     stream->base.ctx = ctx;
     stream->is_seekable = file_is_seekable(file);
-    stream->is_writeable = is_writeable; // TODO: Should actually test if it's writeable
+    stream->is_writeable = is_writeable;
     stream->userdata = data;
     stream->next = file_next;
     stream->consume = file_consume;
@@ -689,9 +689,9 @@ asdf_stream_t *asdf_stream_from_fp(
 
 
 asdf_stream_t *asdf_stream_from_file(asdf_context_t *ctx, const char *filename, bool is_writeable) {
-    FILE *file = fopen(filename, is_writeable ? "wb" : "rb");
-
+    FILE *file = fopen(filename, is_writeable ? "r+b" : "rb");
     if (!file) {
+        asdf_context_error_set_errno(ctx, errno);
         return NULL;
     }
 
@@ -817,16 +817,36 @@ static off_t mem_tell(asdf_stream_t *stream) {
 }
 
 
-static size_t mem_write(
-    UNUSED(asdf_stream_t *stream), UNUSED(const void *buf), UNUSED(size_t count)) {
-    assert(0); // TODO: #102
-    return -1;
+static size_t mem_write(asdf_stream_t *stream, const void *buf, size_t count) {
+    mem_userdata_t *data = stream->userdata;
+
+    if (data->pos + count >= data->size && data->is_resizeable) {
+        // Make the new buffer to hold at least +count and then some
+        void *new_buf = realloc((void *)data->buf, data->size + count);
+
+        if (!new_buf) {
+            ASDF_ERROR_OOM(stream);
+            return 0;
+        }
+
+        data->buf = new_buf;
+        data->size = data->size + count;
+    }
+
+    size_t avail = data->size - data->pos;
+    size_t to_copy = avail < count ? avail : count;
+    memcpy((void *)(data->buf + data->pos), buf, to_copy);
+
+    if (to_copy < count)
+        ASDF_ERROR_COMMON(stream, ASDF_ERR_UNEXPECTED_EOF);
+
+    data->pos += to_copy;
+    return to_copy;
 }
 
 
 static int mem_flush(UNUSED(asdf_stream_t *stream)) {
-    assert(0); // TODO: #102
-    return -1;
+    return 0;
 }
 
 
@@ -925,6 +945,7 @@ asdf_stream_t *asdf_stream_from_memory(asdf_context_t *ctx, const void *buf, siz
     }
 
     stream->base.ctx = ctx;
+    stream->is_writeable = true;
     stream->is_seekable = true;
     stream->userdata = data;
     stream->next = mem_next;
@@ -947,5 +968,17 @@ asdf_stream_t *asdf_stream_from_memory(asdf_context_t *ctx, const void *buf, siz
     stream->unconsumed_next_count = 0;
 #endif
 
+    return stream;
+}
+
+
+asdf_stream_t *asdf_stream_from_malloc(asdf_context_t *ctx, const void *buf, size_t size) {
+    asdf_stream_t *stream = asdf_stream_from_memory(ctx, buf, size);
+
+    if (UNLIKELY(!stream))
+        return stream;
+
+    mem_userdata_t *userdata = stream->userdata;
+    userdata->is_resizeable = true;
     return stream;
 }

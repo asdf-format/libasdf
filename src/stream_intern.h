@@ -41,4 +41,5 @@ typedef struct {
     const uint8_t *buf;
     size_t size;
     size_t pos;
+    bool is_resizeable;
 } mem_userdata_t;

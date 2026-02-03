@@ -26,6 +26,7 @@ ASDF_LOCAL void asdf_context_error_set_oom(asdf_context_t *ctx);
 ASDF_LOCAL void asdf_context_error_set_static(asdf_context_t *ctx, const char *error);
 ASDF_LOCAL void asdf_context_error_set_common(asdf_context_t *ctx, asdf_error_code_t code);
 ASDF_LOCAL void asdf_context_error_set_errno(asdf_context_t *ctx, int errnum);
+ASDF_LOCAL void asdf_context_error_copy(asdf_context_t *dst, const asdf_context_t *src);
 
 /**
  * Macros for setting errors on arbitrary ASDF base types

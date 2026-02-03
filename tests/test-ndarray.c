@@ -13,7 +13,7 @@
 /* Read contiguous 1-D "tiles" from arrays of different shapes */
 MU_TEST(ndarray_read_1d_tile_contiguous) {
     const char *path = get_fixture_file_path("tiles.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
 
     asdf_ndarray_t *ndarray = NULL;
@@ -69,7 +69,7 @@ MU_TEST(ndarray_read_1d_tile_contiguous) {
 /* Read 2-D tiles from 2-D and 3-D arrays */
 MU_TEST(test_asdf_ndarray_read_tile_2d) {
     const char *path = get_fixture_file_path("tiles.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
 
     asdf_ndarray_t *ndarray = NULL;
@@ -108,7 +108,7 @@ MU_TEST(test_asdf_ndarray_read_tile_2d) {
 /* Read a 3-D cube from a a 3-D array */
 MU_TEST(ndarray_read_3d_tile) {
     const char *path = get_fixture_file_path("tiles.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
 
     asdf_ndarray_t *ndarray = NULL;
@@ -161,7 +161,7 @@ MU_TEST(ndarray_read_3d_tile) {
 /* Test reading from (1-D) arrays with different byte orders */
 MU_TEST(ndarray_read_tile_byteswap) {
     const char *path = get_fixture_file_path("byteorder.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     CHECK_BYTEORDER_ARRAY(uint16, ASDF_BYTEORDER_LITTLE);
     CHECK_BYTEORDER_ARRAY(uint16, ASDF_BYTEORDER_BIG);
@@ -451,7 +451,7 @@ MU_TEST(ndarray_numeric_conversion) {
     assert_int(src_t, !=, ASDF_DATATYPE_UNKNOWN);
     assert_int(dst_t, !=, ASDF_DATATYPE_UNKNOWN);
     const char *path = get_fixture_file_path("numeric.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     char *key = append_char(src_dtype, src_byteorder[0]);
     asdf_ndarray_t *ndarray = NULL;
@@ -477,7 +477,7 @@ MU_TEST(ndarray_numeric_conversion) {
 
 MU_TEST(ndarray_structured_datatype) {
     const char *path = get_fixture_file_path("datatypes.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     asdf_ndarray_t *ndarray = NULL;
     asdf_value_err_t err = asdf_get_ndarray(file, "structured", &ndarray);
@@ -553,7 +553,7 @@ MU_TEST(ndarray_structured_datatype) {
 
 MU_TEST(heap_use_after_free_issue_63) {
     const char *path = get_fixture_file_path("multiple_hdu.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     asdf_ndarray_t *ndarray = NULL;
     asdf_value_err_t err = asdf_get_ndarray(file, "TABLE", &ndarray);

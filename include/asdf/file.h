@@ -130,6 +130,33 @@ typedef struct {
 asdf_file_t *asdf_open_file_ex(const char *filename, const char *mode, asdf_config_t *config);
 asdf_file_t *asdf_open_fp_ex(FILE *fp, const char *filename, asdf_config_t *config);
 asdf_file_t *asdf_open_mem_ex(const void *buf, size_t size, asdf_config_t *config);
+static asdf_file_t *asdf_open_file(const char *filename, const char *mode);
+static asdf_file_t *asdf_open_fp(FILE *fp, const char *filename);
+static asdf_file_t *asdf_open_mem(const void *buf, size_t size);
+
+
+// Helpers to build the `asdf_open` multiple-dispatch macro
+#define ASDF__PP_NARGS(...) ASDF__PP_NARGS_(__VA_ARGS__, 2, 1, 0)
+#define ASDF__PP_NARGS_(_1, _2, N, ...) N // NOLINT
+#define ASDF__PP_CAT(a, b) ASDF__PP_CAT_(a, b)
+#define ASDF__PP_CAT_(a, b) a##b // NOLINT
+
+
+#define ASDF__OPEN_1(source) \
+    _Generic((source), \
+        FILE *: asdf_open_fp(source, NULL), \
+        const char *: asdf_open_file(source, "r"), \
+        char *: asdf_open_file(source, "r"), \
+        void *: asdf_open_mem(NULL, 0) \
+    )
+#define ASDF__OPEN_2(source, ...) \
+    _Generic((source), \
+        FILE *: asdf_open_fp, \
+        const char *: asdf_open_file, \
+        char *: asdf_open_file, \
+        const void *: asdf_open_mem \
+    )(source, __VA_ARGS__)
+
 
 /**
  * .. _file-openers:
@@ -141,17 +168,37 @@ asdf_file_t *asdf_open_mem_ex(const void *buf, size_t size, asdf_config_t *confi
 /**
  * Opens an ASDF file for reading
  *
- * In fact this is just a convenience alias for `asdf_open_file`.
- *
- * :param filename: A null-terminated string containing the local filesystem
- *   path to open
- * :param mode: Currently must always be just ``"r"``.  This will support other
- *   opening modes in the future (e.g. for writes, updates).
- * :return: An `asdf_file_t *`
+ * This is a convenience macro for `asdf_open_file`, `asdf_open_fp`, or `asdf_open_mem`
+ * depending on the argument types
  */
-static inline asdf_file_t *asdf_open(const char *filename, const char *mode) {
-    return asdf_open_file_ex(filename, mode, NULL);
-}
+#define asdf_open(...) /* NOLINT(readability-identifier-naming) */ \
+    ASDF__PP_CAT(ASDF__OPEN_, ASDF__PP_NARGS(__VA_ARGS__))(__VA_ARGS__)
+
+
+/**
+ * Opens an ASDF file for reading with extended options
+ *
+ * Extended version of `asdf_open` taking an optional pointer to
+ * :c:type:`asdf_config_t` configuration options as the last argument, or
+ * `NULL` to use the default options (equivalent to `asdf_open`).
+ *
+ * When passing in an `asdf_config_t *`, the config struct is *copied*:
+ *
+ * * This allows passing in the options from a local variable
+ * * Prevents modifications of the options while the file is open
+ * * In many cases you can leave options set to zero, and they will be filled
+ *   in with defaults.
+ *
+ * This is a convenience macro for `asdf_open_file_ex`, `asdf_open_fp_ex`, or
+ * `asdf_open_mem_ex` depending on the argument types
+ */
+#define asdf_open_ex(source, ...) /* NOLINT(readability-identifier-naming) */ \
+    _Generic((source), \
+        const char *: asdf_open_file_ex, \
+        char *: asdf_open_file_ex, \
+        FILE *: asdf_open_fp_ex, \
+        void *: asdf_open_mem_ex \
+    )(source, __VA_ARGS__)
 
 /**
  * Opens an ASDF file for reading
@@ -189,18 +236,47 @@ static inline asdf_file_t *asdf_open_mem(const void *buf, size_t size) {
 }
 
 
+#define ASDF__WRITE_TO_1(source, dest) \
+    _Generic((dest), \
+        const char *: asdf_write_to_file, \
+        char *: asdf_write_to_file, \
+        FILE *: asdf_write_to_fp \
+    )(file, dest)
+
+
+#define ASDF__WRITE_TO_2(source, dest, ...) asdf_write_to_mem(source, dest, __VA_ARGS__)
+
+
+#define asdf_write_to(file, ...) /* NOLINT(readability-identifier-naming) */ \
+    ASDF__PP_CAT(ASDF__WRITE_TO_, ASDF__PP_NARGS(__VA_ARGS__))(file, __VA_ARGS__)
+
+
 /**
- * Flush changes to disk if the file is open for writing
- *
- * .. todo::
- *
- *   Clarify error handling on flush.
- *
- * :param file: The `asdf_file_t *` to close
- * :return: 0 on success or a negative value if the file is not open for
- *   writing or another error occurred on write.
+ * Write the contents of the ``asdf_file_t`` to the given filesystem path
  */
-ASDF_EXPORT int asdf_flush(asdf_file_t *file);
+ASDF_EXPORT int asdf_write_to_file(asdf_file_t *file, const char *filename);
+
+
+/**
+ * Write the contents of the ``asdf_file_t`` to the given writeable ``FILE *``
+ * stream
+ */
+ASDF_EXPORT int asdf_write_to_fp(asdf_file_t *file, FILE *fp);
+
+
+/**
+ * Write the contents of the ``asdf_file_t`` to a memory buffer
+ *
+ * If the value of ``*buf`` is non-NULL then a user-provided buffer is assumed
+ * and its size is read from ``*size``.  If the size is not large enough to
+ * hold the file, then it is simply truncated and a non-zero return value is
+ * returned.
+ *
+ * Otherwise, memory is allocated with `malloc()` and the size of the buffer is
+ * returned into the ``size`` argument.  The user is responsible for freeing
+ * the buffer with `free()`.
+ */
+ASDF_EXPORT int asdf_write_to_mem(asdf_file_t *file, void **buf, size_t *size);
 
 
 /**
@@ -209,9 +285,6 @@ ASDF_EXPORT int asdf_flush(asdf_file_t *file);
  * Any other resources associated with that file handle, such as ndarrays,
  * should no longer be expected to work and should ideally be freed before
  * closing the file.
- *
- * If the file was open for writing, also attempts to call `asdf_flush` to
- * ensure any unwriten changes are written.
  *
  * :param file: The `asdf_file_t *` to close
  */
@@ -240,16 +313,6 @@ ASDF_EXPORT void asdf_close(asdf_file_t *file);
  *   opening modes in the future (e.g. for writes, updates).
  * :param config: A pointer to an `asdf_config_t` (may be partially initialized)
  * :return: An `asdf_file_t *`
- */
-static inline asdf_file_t *asdf_open_ex(
-    const char *filename, const char *mode, asdf_config_t *config) {
-    return asdf_open_file_ex(filename, mode, config);
-}
-
-/**
- * Opens an ASDF file for reading, with optional extended options
- *
- * Equivalent to `asdf_open`.
  */
 ASDF_EXPORT asdf_file_t *asdf_open_file_ex(
     const char *filename, const char *mode, asdf_config_t *config);

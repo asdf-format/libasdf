@@ -21,7 +21,7 @@
  */
 MU_TEST(extension_metadata) {
     const char *path = get_reference_file_path("1.6.0/basic.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     asdf_value_t *value = asdf_get_value(file, "history/extensions/0");
     assert_not_null(value);
@@ -135,7 +135,7 @@ static asdf_mapping_t *make_extra_meta(asdf_file_t *file, asdf_software_t* softw
 
 MU_TEST(extension_metadata_serialize) {
     const char *path = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
-    asdf_file_t *file = asdf_open(path, "w");
+    asdf_file_t *file = asdf_open(NULL);
     assert_not_null(file);
     asdf_software_t manifest_software = {
         .name = "asdf_standard", .version = "1.1.1"};
@@ -145,6 +145,7 @@ MU_TEST(extension_metadata_serialize) {
         .package = &libasdf_software};
     assert_int(asdf_set_extension_metadata(file, "extension", &extension), ==, ASDF_VALUE_OK);
     asdf_mapping_destroy(extra_meta);
+    assert_int(asdf_write_to(file, path), ==, 0);
     asdf_close(file);
 
     // Re-open file and see if it round-tripped
@@ -173,7 +174,7 @@ MU_TEST(extension_metadata_serialize) {
 
 MU_TEST(history_entry) {
     const char *path = get_fixture_file_path("255.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     asdf_value_t *value = asdf_get_value(file, "history/entries/0");
     assert_not_null(value);
@@ -219,12 +220,13 @@ static void assert_history_entry_equal(const asdf_history_entry_t *entry0, const
 
 MU_TEST(history_entry_serialize) {
     const char *path = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
-    asdf_file_t *file = asdf_open(path, "w");
+    asdf_file_t *file = asdf_open(NULL);
     assert_not_null(file);
     // TODO: Test time serialization
     const asdf_software_t *software[2] = {&libasdf_software, NULL};
     asdf_history_entry_t entry = {.description = "description", .software = software};
     assert_int(asdf_set_history_entry(file, "entry", &entry), ==, ASDF_VALUE_OK);
+    assert_int(asdf_write_to(file, path), ==, 0);
     asdf_close(file);
 
     // Re-open file and see if it round-tripped
@@ -243,7 +245,7 @@ MU_TEST(history_entry_serialize) {
 
 MU_TEST(meta) {
     const char *path = get_fixture_file_path("255.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     // Get the root of the tree as an asdf_value_t;
     asdf_value_t *root = asdf_get_value(file, "");
@@ -321,7 +323,7 @@ static void assert_meta_equal(asdf_meta_t *meta0, asdf_meta_t *meta1) {
 
 MU_TEST(meta_serialize) {
     const char *path = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
-    asdf_file_t *file = asdf_open(path, "w");
+    asdf_file_t *file = asdf_open(NULL);
 
     assert_not_null(file);
     asdf_software_t manifest_software = {
@@ -343,6 +345,7 @@ MU_TEST(meta_serialize) {
     asdf_value_err_t err = asdf_set_meta(file, "", &meta);
     assert_int(err, ==, ASDF_VALUE_OK);
     asdf_mapping_destroy(extension.metadata);
+    assert_int(asdf_write_to(file, path), ==, 0);
     asdf_close(file);
 
     file = asdf_open(path, "r");
@@ -516,13 +519,14 @@ MU_TEST(datatype_serialize) {
              .ndim=2, .shape=(const uint64_t[]){3, 3}}
         }
     };
-    const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
-    asdf_file_t *file = asdf_open(filename, "w");
+    const char *path = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    asdf_file_t *file = asdf_open(NULL);
     assert_not_null(file);
     assert_int(asdf_set_datatype(file, "datatype", &datatype), ==, ASDF_VALUE_OK);
+    assert_int(asdf_write_to(file, path), ==, 0);
     asdf_close(file);
 
-    file = asdf_open(filename, "r");
+    file = asdf_open(path, "r");
     assert_not_null(file);
     asdf_datatype_t *datatype_in = NULL;
     assert_int(asdf_get_datatype(file, "datatype", &datatype_in), ==, ASDF_VALUE_OK);
@@ -545,7 +549,7 @@ MU_TEST(datatype_serialize) {
  */
 MU_TEST(ndarray) {
     const char *path = get_reference_file_path("1.6.0/basic.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     assert_true(asdf_is_ndarray(file, "data"));
     asdf_ndarray_t *ndarray = NULL;
@@ -608,16 +612,17 @@ MU_TEST(ndarray_serialize) {
         .strides = (const int64_t[]){-1, 1}
     };
 
-    const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
-    asdf_file_t *file = asdf_open(filename, "w");
+    const char *path = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    asdf_file_t *file = asdf_open(NULL);
     assert_not_null(file);
     void *data = asdf_ndarray_data_alloc(&ndarray);
     assert_not_null(data);
     assert_int(asdf_set_ndarray(file, "data", &ndarray), ==, ASDF_VALUE_OK);
+    assert_int(asdf_write_to(file, path), ==, 0);
     asdf_close(file);
     asdf_ndarray_data_dealloc(&ndarray);
 
-    file = asdf_open(filename, "r");
+    file = asdf_open(path, "r");
     assert_not_null(file);
     asdf_ndarray_t *ndarray_in = NULL;
     assert_int(asdf_get_ndarray(file, "data", &ndarray_in), ==, ASDF_VALUE_OK);
@@ -637,7 +642,7 @@ MU_TEST(ndarray_serialize) {
 
 MU_TEST(software) {
     const char *path = get_reference_file_path("1.6.0/basic.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     assert_true(asdf_is_software(file, "asdf_library"));
     asdf_software_t *software = NULL;
@@ -655,9 +660,10 @@ MU_TEST(software) {
 
 MU_TEST(software_serialize) {
     const char *path = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
-    asdf_file_t *file = asdf_open(path, "w");
+    asdf_file_t *file = asdf_open(NULL);
     assert_not_null(file);
     assert_int(asdf_set_software(file, "software", &libasdf_software), ==, ASDF_VALUE_OK);
+    assert_int(asdf_write_to(file, path), ==, 0);
     asdf_close(file);
 
     // Re-open file and see if it round-tripped

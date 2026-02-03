@@ -158,6 +158,9 @@ static inline int asdf_stream_flush(asdf_stream_t *stream) {
 
 
 static inline void asdf_stream_close(asdf_stream_t *stream) {
+    if (!stream)
+        return;
+
     return stream->close(stream);
 }
 
@@ -169,6 +172,8 @@ ASDF_LOCAL asdf_stream_t *asdf_stream_from_file(
 ASDF_LOCAL asdf_stream_t *asdf_stream_from_fp(
     asdf_context_t *ctx, FILE *file, const char *filename, bool is_writeable);
 ASDF_LOCAL asdf_stream_t *asdf_stream_from_memory(
+    asdf_context_t *ctx, const void *buf, size_t size);
+ASDF_LOCAL asdf_stream_t *asdf_stream_from_malloc(
     asdf_context_t *ctx, const void *buf, size_t size);
 
 ASDF_LOCAL void asdf_stream_set_capture(

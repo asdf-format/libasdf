@@ -115,6 +115,15 @@ MU_TEST(test_asdf_open_file_invalid_mode) {
 }
 
 
+/* This is more of an interface test to ensure it compiles */
+MU_TEST(test_asdf_open_null_arg) {
+    asdf_file_t *file = asdf_open(NULL);
+    assert_not_null(file);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
 #define CHECK_GET_INT(type, key, expected) \
     do { \
         type##_t __v = 0; \
@@ -209,15 +218,17 @@ MU_TEST(test_asdf_get_sequence) {
 
 MU_TEST(test_asdf_set_mapping) {
     // TODO: Change this test to use an in-memory file
-    const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
-    asdf_file_t *file = asdf_open_file(filename, "w");
+    asdf_file_t *file = asdf_open(NULL);
     assert_not_null(file);
     asdf_mapping_t *mapping = asdf_mapping_create(file);
     assert_not_null(mapping);
     assert_int(asdf_set_mapping(file, "mapping", mapping), ==, ASDF_VALUE_OK);
+    void *buf = NULL;
+    size_t size = 0;
+    assert_int(asdf_write_to(file, &buf, &size), ==, 0);
     asdf_close(file);
 
-    file = asdf_open(filename, "r");
+    file = asdf_open((const void *)buf, size);
     assert_not_null(file);
     assert_true(asdf_is_mapping(file, "mapping"));
     assert_int(asdf_get_mapping(file, "mapping", &mapping), ==, ASDF_VALUE_OK);
@@ -225,21 +236,23 @@ MU_TEST(test_asdf_set_mapping) {
     assert_int(asdf_mapping_size(mapping), ==, 0);
     asdf_mapping_destroy(mapping);
     asdf_close(file);
+    free(buf);
     return MUNIT_OK;
 }
 
 
 MU_TEST(test_asdf_set_sequence) {
-    // TODO: Change this test to use an in-memory file
-    const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
-    asdf_file_t *file = asdf_open_file(filename, "w");
+    asdf_file_t *file = asdf_open(NULL);
     assert_not_null(file);
     asdf_sequence_t *sequence = asdf_sequence_create(file);
     assert_not_null(sequence);
     assert_int(asdf_set_sequence(file, "sequence", sequence), ==, ASDF_VALUE_OK);
+    void *buf = NULL;
+    size_t size = 0;
+    assert_int(asdf_write_to(file, &buf, &size), ==, 0);
     asdf_close(file);
 
-    file = asdf_open(filename, "r");
+    file = asdf_open((const void *)buf, size);
     assert_not_null(file);
     assert_true(asdf_is_sequence(file, "sequence"));
     assert_int(asdf_get_sequence(file, "sequence", &sequence), ==, ASDF_VALUE_OK);
@@ -247,6 +260,7 @@ MU_TEST(test_asdf_set_sequence) {
     assert_int(asdf_sequence_size(sequence), ==, 0);
     asdf_sequence_destroy(sequence);
     asdf_close(file);
+    free(buf);
     return MUNIT_OK;
 }
 
@@ -456,7 +470,7 @@ MU_TEST(write_block_no_index) {
     const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
     asdf_config_t config = {.emitter = {
         .flags = ASDF_EMITTER_OPT_NO_EMIT_EMPTY_TREE | ASDF_EMITTER_OPT_NO_BLOCK_INDEX}};
-    asdf_file_t *file = asdf_open_ex(filename, "w", &config);
+    asdf_file_t *file = asdf_open_ex(NULL, 0, &config);
     assert_not_null(file);
 
     size_t size = (UINT8_MAX + 1) * sizeof(uint8_t);
@@ -469,6 +483,7 @@ MU_TEST(write_block_no_index) {
         data[idx] = idx;
 
     assert_int(asdf_block_append(file, data, size), ==, 0);
+    assert_int(asdf_write_to(file, filename), ==, 0);
     asdf_close(file);
 
     const char *reference = get_fixture_file_path("255-block-no-index.asdf");
@@ -483,7 +498,7 @@ MU_TEST(write_block_no_checksum) {
     const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
     asdf_config_t config = {.emitter = {
         .flags = ASDF_EMITTER_OPT_NO_EMIT_EMPTY_TREE | ASDF_EMITTER_OPT_NO_BLOCK_CHECKSUM}};
-    asdf_file_t *file = asdf_open_ex(filename, "w", &config);
+    asdf_file_t *file = asdf_open_ex(NULL, 0, &config);
     assert_not_null(file);
 
     size_t size = (UINT8_MAX + 1) * sizeof(uint8_t);
@@ -496,6 +511,7 @@ MU_TEST(write_block_no_checksum) {
         data[idx] = idx;
 
     assert_int(asdf_block_append(file, data, size), ==, 0);
+    assert_int(asdf_write_to(file, filename), ==, 0);
     asdf_close(file);
     free(data);
 
@@ -517,7 +533,7 @@ MU_TEST(write_blocks_and_index) {
 #else
     const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
     asdf_config_t config = {.emitter = { .flags = ASDF_EMITTER_OPT_NO_EMIT_EMPTY_TREE }};
-    asdf_file_t *file = asdf_open_ex(filename, "w", &config);
+    asdf_file_t *file = asdf_open_ex(NULL, 0, &config);
     assert_not_null(file);
 
     size_t size = (UINT8_MAX + 1) * sizeof(uint8_t);
@@ -531,6 +547,7 @@ MU_TEST(write_blocks_and_index) {
 
     assert_int(asdf_block_append(file, data, size), ==, 0);
     assert_int(asdf_block_append(file, data, size), ==, 1);
+    assert_int(asdf_write_to(file, filename), ==, 0);
     asdf_close(file);
 
     // Known good reference file containing two blocks and a block index with
@@ -594,7 +611,7 @@ MU_TEST(write_ndarray) {
 
 MU_TEST(test_asdf_set_scalar_type) {
     const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
-    asdf_file_t *file = asdf_open(filename, "w");
+    asdf_file_t *file = asdf_open(NULL);
     assert_not_null(file);
     assert_int(asdf_set_string(file, "string", "string", 6), ==, ASDF_VALUE_OK);
     assert_int(asdf_set_string0(file, "string0", "string0"), ==, ASDF_VALUE_OK);
@@ -611,6 +628,7 @@ MU_TEST(test_asdf_set_scalar_type) {
     assert_int(asdf_set_uint64(file, "uint64", UINT64_MAX), ==, ASDF_VALUE_OK);
     assert_int(asdf_set_float(file, "float", FLT_MAX), ==, ASDF_VALUE_OK);
     assert_int(asdf_set_double(file, "double", DBL_MAX), ==, ASDF_VALUE_OK);
+    assert_int(asdf_write_to(file, filename), ==, 0);
     asdf_close(file);
 
     const char *reference = get_fixture_file_path("scalars-out.asdf");
@@ -620,19 +638,22 @@ MU_TEST(test_asdf_set_scalar_type) {
 
 
 MU_TEST(test_asdf_set_scalar_overwrite) {
-    const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
-    asdf_file_t *file = asdf_open(filename, "w");
+    asdf_file_t *file = asdf_open(NULL);
     assert_not_null(file);
     assert_int(asdf_set_string0(file, "string", "string"), ==, ASDF_VALUE_OK);
     assert_int(asdf_set_string0(file, "string", "newstring"), ==, ASDF_VALUE_OK);
+    void *buf = NULL;
+    size_t buf_size = 0;
+    assert_int(asdf_write_to(file, &buf, &buf_size), ==, 0);
     asdf_close(file);
 
-    file = asdf_open(filename, "r");
+    file = asdf_open((const void *)buf, buf_size);
     assert_not_null(file);
     const char *read = NULL;
     assert_int(asdf_get_string0(file, "string", &read), ==, ASDF_VALUE_OK);
     assert_string_equal(read, "newstring");
     asdf_close(file);
+    free(buf);
     return MUNIT_OK;
 }
 
@@ -645,16 +666,18 @@ MU_TEST(test_asdf_set_scalar_overwrite) {
  * This tests a simple case of that.
  */
 MU_TEST(test_asdf_set_path_materialization) {
-    const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
-    asdf_file_t *file = asdf_open(filename, "w");
+    asdf_file_t *file = asdf_open(NULL);
     assert_not_null(file);
     const char *val = "val";
     const char *path = "a/b/c/[1]/d";
     assert_int(asdf_set_string0(file, path, val), ==, ASDF_VALUE_OK);
+    void *buf = NULL;
+    size_t buf_size = 0;
+    assert_int(asdf_write_to(file, &buf, &buf_size), ==, 0);
     asdf_close(file);
 
     // Re-open the file in read mode and check the structure
-    file = asdf_open(filename, "r");
+    file = asdf_open((const void *)buf, buf_size);
     assert_not_null(file);
     const char *read_val = NULL;
     assert_int(asdf_get_string0(file, path, &read_val), ==, ASDF_VALUE_OK);
@@ -673,6 +696,7 @@ MU_TEST(test_asdf_set_path_materialization) {
     asdf_value_destroy(null);
     asdf_sequence_destroy(seq);
     asdf_close(file);
+    free(buf);
     return MUNIT_OK;
 }
 
@@ -1095,8 +1119,9 @@ MU_TEST(write_minimal) {
     // Allow emitting an "empty" ASDF file that is still a valid ASDF file
     // (has the ASDF header) but contains no tree or blocks.
     asdf_config_t config = { .emitter = { .flags = ASDF_EMITTER_OPT_EMIT_EMPTY }};
-    asdf_file_t *file = asdf_open_ex(filename, "w", &config);
+    asdf_file_t *file = asdf_open_ex(NULL, 0, &config);
     assert_not_null(file);
+    assert_int(asdf_write_to(file, filename), ==, 0);
     asdf_close(file);
     assert_true(compare_files(filename, get_fixture_file_path("parse-minimal.asdf")));
     return MUNIT_OK;
@@ -1112,8 +1137,9 @@ MU_TEST(write_minimal_empty_tree) {
     // (has the ASDF header) but contains no tree or blocks.
     asdf_config_t config = { .emitter = {
         .flags = ASDF_EMITTER_OPT_EMIT_EMPTY_TREE }};
-    asdf_file_t *file = asdf_open_ex(filename, "w", &config);
+    asdf_file_t *file = asdf_open_ex(NULL, 0, &config);
     assert_not_null(file);
+    assert_int(asdf_write_to(file, filename), ==, 0);
     asdf_close(file);
     assert_true(compare_files(filename, get_fixture_file_path("parse-minimal-empty-tree.asdf")));
     return MUNIT_OK;
@@ -1132,8 +1158,9 @@ MU_TEST(write_custom_tag_handle) {
         .flags = ASDF_EMITTER_OPT_EMIT_EMPTY_TREE,
         .tag_handles = tag_handles
     }};
-    asdf_file_t *file = asdf_open_ex(filename, "w", &config);
+    asdf_file_t *file = asdf_open_ex(NULL, 0, &config);
     assert_not_null(file);
+    assert_int(asdf_write_to(file, filename), ==, 0);
     asdf_close(file);
     assert_true(compare_files(filename, get_fixture_file_path("custom-tag-handle.asdf")));
     return MUNIT_OK;
@@ -1162,6 +1189,7 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_open_file_empty),
     MU_RUN_TEST(test_asdf_open_file_not_asdf),
     MU_RUN_TEST(test_asdf_open_file_invalid_mode),
+    MU_RUN_TEST(test_asdf_open_null_arg),
     MU_RUN_TEST(scalar_getters),
     MU_RUN_TEST(test_asdf_get_mapping),
     MU_RUN_TEST(test_asdf_get_sequence),

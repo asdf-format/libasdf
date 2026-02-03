@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <unistd.h>
 
 #include <libfyaml.h>
 
@@ -19,6 +20,7 @@
 #include "file.h"
 #include "log.h"
 #include "parser.h"
+#include "stream.h"
 #include "types/asdf_block_info_vec.h"
 #include "util.h"
 #include "value.h"
@@ -148,43 +150,46 @@ static asdf_file_t *asdf_file_create(asdf_config_t *user_config, asdf_file_mode_
 
     file->config = config;
     file->mode = mode;
-
-    switch (mode) {
-    case ASDF_FILE_MODE_READ_ONLY: {
-        asdf_parser_t *parser = asdf_parser_create(&config->parser);
-
-        if (UNLIKELY(!parser)) {
-            asdf_close(file);
-            return NULL;
-        }
-
-        file->base.ctx = parser->base.ctx;
-        asdf_context_retain(file->base.ctx);
-        file->parser = parser;
-        break;
-    }
-    case ASDF_FILE_MODE_WRITE_ONLY: {
-        file->base.ctx = asdf_context_create(NULL);
-        asdf_emitter_t *emitter = asdf_emitter_create(file, &config->emitter);
-
-        if (UNLIKELY(!emitter)) {
-            asdf_close(file);
-            return NULL;
-        }
-
-        file->emitter = emitter;
-        // Initialize the tag map
-        asdf_str_map_reserve(&file->tag_map, ASDF_FILE_TAG_MAP_DEFAULT_SIZE);
-        break;
-    }
-    default:
-        UNREACHABLE();
-        return NULL;
-    }
-
+    file->base.ctx = asdf_context_create(&config->log);
     asdf_config_validate(file);
+    // Initialize the tag map
+    asdf_str_map_reserve(&file->tag_map, ASDF_FILE_TAG_MAP_DEFAULT_SIZE);
     /* Now we can start cooking */
     return file;
+}
+
+
+static asdf_parser_t *asdf_file_parser(asdf_file_t *file) {
+    if (UNLIKELY(!file))
+        return NULL;
+
+    if (!file->stream)
+        return NULL;
+
+    if (file->parser)
+        return file->parser;
+
+    asdf_parser_t *parser = asdf_parser_create_ctx(file->base.ctx, &file->config->parser);
+    asdf_parser_set_input_stream(parser, file->stream);
+    file->parser = parser;
+    return parser;
+}
+
+
+static asdf_emitter_t *asdf_file_emitter(asdf_file_t *file) {
+    if (!file)
+        return NULL;
+
+    if (file->emitter)
+        return file->emitter;
+
+    asdf_emitter_t *emitter = asdf_emitter_create(file, &file->config->emitter);
+
+    if (UNLIKELY(!emitter))
+        return NULL;
+
+    file->emitter = emitter;
+    return emitter;
 }
 
 
@@ -195,6 +200,9 @@ static asdf_file_mode_t asdf_file_mode_parse(const char *mode) {
     if ((0 == strcasecmp(mode, "w")))
         return ASDF_FILE_MODE_WRITE_ONLY;
 
+    if ((0 == strcasecmp(mode, "rw")))
+        return ASDF_FILE_MODE_READ_WRITE;
+
     ASDF_ERROR(NULL, "invalid mode string: \"%s\"", mode);
     return ASDF_FILE_MODE_INVALID;
 }
@@ -204,33 +212,27 @@ static asdf_file_mode_t asdf_file_mode_parse(const char *mode) {
 asdf_file_t *asdf_open_file_ex(const char *filename, const char *mode, asdf_config_t *config) {
     asdf_file_t *file = asdf_file_create(config, asdf_file_mode_parse(mode));
 
-    if (!file)
+    if (UNLIKELY(!file))
         return NULL;
 
-    switch (file->mode) {
-    case ASDF_FILE_MODE_READ_ONLY:
-        assert(file->parser);
-        if (asdf_parser_set_input_file(file->parser, filename) != 0) {
-            ASDF_ERROR_ERRNO(NULL, errno);
-            asdf_close(file);
-            return NULL;
+    if (file->mode != ASDF_FILE_MODE_WRITE_ONLY) {
+        asdf_stream_t *stream = asdf_stream_from_file(
+            file->base.ctx, filename, file->mode != ASDF_FILE_MODE_READ_ONLY);
+
+        if (!stream) {
+            // Copy the stream error to the global context
+            asdf_context_error_copy(NULL, file->base.ctx);
+            goto failure;
         }
-        break;
-    case ASDF_FILE_MODE_WRITE_ONLY:
-        assert(file->emitter);
-        if (asdf_emitter_set_output_file(file->emitter, filename) != 0) {
-            ASDF_ERROR_ERRNO(NULL, errno);
-            asdf_close(file);
-            return NULL;
-        }
-        break;
-    default:
-        // Invalid mode
-        asdf_close(file);
-        return NULL;
+
+        file->stream = stream;
     }
 
     return file;
+
+failure:
+    asdf_close(file);
+    return NULL;
 }
 
 
@@ -241,33 +243,196 @@ asdf_file_t *asdf_open_fp_ex(FILE *fp, const char *filename, asdf_config_t *conf
     if (!file)
         return NULL;
 
-    asdf_parser_set_input_fp(file->parser, fp, filename);
+    // TODO: Determine if writeable
+    asdf_stream_t *stream = asdf_stream_from_fp(file->base.ctx, fp, filename, false);
+    file->stream = stream;
     return file;
 }
 
 
 asdf_file_t *asdf_open_mem_ex(const void *buf, size_t size, asdf_config_t *config) {
     // TODO: (#102): Currently only supports read mode
-    asdf_file_t *file = asdf_file_create(config, ASDF_FILE_MODE_READ_ONLY);
+    asdf_file_t *file = asdf_file_create(config, ASDF_FILE_MODE_READ_WRITE);
 
     if (!file)
         return NULL;
 
-    // TODO: (#102): Currently only supports read mode
-    asdf_parser_set_input_mem(file->parser, buf, size);
+    if (buf) {
+        asdf_stream_t *stream = asdf_stream_from_memory(file->base.ctx, buf, size);
+        file->stream = stream;
+    }
+
     return file;
 }
 
 
-int asdf_flush(asdf_file_t *file) {
-    if (!file || file->mode != ASDF_FILE_MODE_WRITE_ONLY)
+int asdf_write_to_file(asdf_file_t *file, const char *filename) {
+    if (UNLIKELY(!file))
         return -1;
 
-    assert(file->emitter);
-    if (asdf_emitter_emit(file->emitter) == ASDF_EMITTER_STATE_ERROR)
+    asdf_emitter_t *emitter = asdf_file_emitter(file);
+
+    if (!emitter)
         return -1;
 
-    return 0;
+    int ret = asdf_emitter_set_output_file(emitter, filename);
+
+    if (ret != 0)
+        goto cleanup;
+
+    if (asdf_emitter_emit(file->emitter) == ASDF_EMITTER_STATE_ERROR) {
+        ret = -1;
+        goto cleanup;
+    }
+
+    ret = 0;
+cleanup:
+    asdf_emitter_destroy(emitter);
+    file->emitter = NULL;
+    return ret;
+}
+
+
+int asdf_write_to_fp(asdf_file_t *file, FILE *fp) {
+    if (UNLIKELY(!file))
+        return -1;
+
+    asdf_emitter_t *emitter = asdf_file_emitter(file);
+
+    if (!emitter)
+        return -1;
+
+    int ret = asdf_emitter_set_output_fp(emitter, fp);
+
+    if (ret != 0)
+        goto cleanup;
+
+    if (asdf_emitter_emit(file->emitter) == ASDF_EMITTER_STATE_ERROR) {
+        ret = -1;
+        goto cleanup;
+    }
+
+    ret = 0;
+cleanup:
+    asdf_emitter_destroy(emitter);
+    file->emitter = NULL;
+    return ret;
+}
+
+
+static size_t asdf_file_estimate_blocks_size(asdf_file_t *file) {
+    size_t n_bytes = 0;
+    isize n_blocks = asdf_block_info_vec_size(&file->blocks);
+
+    for (isize idx = 0; idx < n_blocks; idx++) {
+        const asdf_block_info_t *block_info = asdf_block_info_vec_at(&file->blocks, idx);
+        n_bytes += block_info->header.allocated_size + ASDF_BLOCK_MAGIC_SIZE + 2;
+    }
+
+    return n_bytes;
+}
+
+
+int asdf_write_to_mem(asdf_file_t *file, void **buf, size_t *size) {
+    if (UNLIKELY(!file || !buf))
+        return -1;
+
+    asdf_emitter_t *emitter = asdf_file_emitter(file);
+
+    if (!emitter)
+        return -1;
+
+    bool do_alloc = false;
+    size_t blocks_size = 0;
+    size_t alloc_size = 0;
+    void *alloc_buf = NULL;
+    int ret = 0;
+
+    if (*buf) {
+        if (UNLIKELY(!size))
+            return -1;
+
+        alloc_size = *size;
+        alloc_buf = *buf;
+    } else {
+        do_alloc = true;
+        /* We don't know exactly how many bytes we need to allocate for the
+         * file yet but we can make some reasonable guesses:
+         *
+         * - enough for each binary block
+         * - an initial page for the tree
+         * - a page for the block index if enabled
+         *
+         * Then we write up through the tree--that will give us some idea
+         * of how much we really need and immediately reallocate if needed
+         *
+         * TODO: In order to reasonably estimate the size to reserve for each
+         * block we also need to know it's *compressed* size if compression is
+         * enabled on that block.  We haven't implemented compressed writing
+         * yet so fix that later.  Probably we'll need to compress each block
+         * individually first in order to do that; lots of refactoring
+         * involved...
+         */
+        bool emit_block_index = (file->config->emitter.flags & ASDF_EMITTER_OPT_NO_BLOCK_INDEX) !=
+                                ASDF_EMITTER_OPT_NO_BLOCK_INDEX;
+        blocks_size = asdf_file_estimate_blocks_size(file);
+        alloc_size = (sysconf(_SC_PAGE_SIZE) * (emit_block_index ? 2 : 1)) + blocks_size;
+
+        alloc_buf = malloc(alloc_size);
+
+        if (!alloc_buf) {
+            ASDF_ERROR_OOM(file);
+            ret = -1;
+            goto cleanup;
+        }
+    }
+
+    if (do_alloc) {
+        ret = asdf_emitter_set_output_malloc(emitter, alloc_buf, alloc_size);
+        if (asdf_emitter_emit_until(emitter, ASDF_EMITTER_STATE_BLOCKS) ==
+            ASDF_EMITTER_STATE_BLOCKS) {
+            off_t offset = asdf_stream_tell(emitter->stream);
+            // How much did we really write?
+            if (offset >= 0 && (alloc_size - (size_t)offset) < blocks_size) {
+                // Go ahead and realloc again with enough additional space for the blocks
+                // TODO: We should also take into account the block index here; ideally have
+                // a separate routine for just pre-rendering the block index to a buffer
+                size_t new_size = alloc_size + blocks_size - offset;
+                void *new_buf = realloc(alloc_buf, new_size);
+
+                if (!new_buf) {
+                    ASDF_ERROR_OOM(file);
+                    free(alloc_buf);
+                    goto cleanup;
+                }
+
+                alloc_buf = new_buf;
+                alloc_size = new_size;
+                ret = asdf_emitter_set_output_malloc(emitter, alloc_buf, alloc_size);
+            }
+        }
+    } else {
+        ret = asdf_emitter_set_output_mem(emitter, alloc_buf, alloc_size);
+    }
+
+    if (ret != 0)
+        goto cleanup;
+
+    if (asdf_emitter_emit(file->emitter) == ASDF_EMITTER_STATE_ERROR) {
+        ret = -1;
+        goto cleanup;
+    }
+
+    ret = 0;
+
+    if (do_alloc && size) {
+        *buf = alloc_buf;
+        *size = alloc_size;
+    }
+cleanup:
+    asdf_emitter_destroy(emitter);
+    file->emitter = NULL;
+    return ret;
 }
 
 
@@ -275,17 +440,15 @@ void asdf_close(asdf_file_t *file) {
     if (!file)
         return;
 
-    if (file->mode == ASDF_FILE_MODE_WRITE_ONLY)
-        asdf_flush(file);
-
-    asdf_context_release(file->base.ctx);
     fy_document_destroy(file->tree);
     asdf_emitter_destroy(file->emitter);
     asdf_parser_destroy(file->parser);
     asdf_block_info_vec_drop(&file->blocks);
     asdf_str_map_drop(&file->tag_map);
-    free(file->config);
+    asdf_stream_close(file->stream);
+    asdf_context_release(file->base.ctx);
     /* Clean up */
+    free(file->config);
     ZERO_MEMORY(file, sizeof(asdf_file_t));
     free(file);
 }
@@ -354,7 +517,7 @@ struct fy_document *asdf_file_tree_document(asdf_file_t *file) {
         /* Already exists and ready to go */
         return file->tree;
 
-    asdf_parser_t *parser = file->parser;
+    asdf_parser_t *parser = asdf_file_parser(file);
 
     // If no parser (e.g. we are in write-only mode) create a new empty document
     if (!parser) {
@@ -782,7 +945,7 @@ size_t asdf_block_count(asdf_file_t *file) {
      * only a hint (a hint that nonetheless allows the parser to complete much faster when
      * possible).  So here we ensure the file is parsed to completion then return the block count.
      */
-    asdf_parser_t *parser = file->parser;
+    asdf_parser_t *parser = asdf_file_parser(file);
 
     if (parser && !parser->done) {
         while (!parser->done) {
