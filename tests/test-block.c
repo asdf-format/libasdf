@@ -6,7 +6,7 @@
 
 MU_TEST(block_data) {
     const char *filename = get_fixture_file_path("255.asdf");
-    asdf_file_t *file = asdf_open_file(filename, "r");
+    asdf_file_t *file = asdf_open(filename, "r");
     assert_not_null(file);
     asdf_block_t *block = asdf_block_open(file, 0);
     assert_not_null(block);

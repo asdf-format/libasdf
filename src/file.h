@@ -35,7 +35,8 @@
 typedef enum {
     ASDF_FILE_MODE_INVALID = -1,
     ASDF_FILE_MODE_READ_ONLY,
-    ASDF_FILE_MODE_WRITE_ONLY
+    ASDF_FILE_MODE_WRITE_ONLY,
+    ASDF_FILE_MODE_READ_WRITE
 } asdf_file_mode_t;
 
 
@@ -46,6 +47,7 @@ typedef struct asdf_file {
     asdf_base_t base;
     asdf_config_t *config;
     asdf_file_mode_t mode;
+    asdf_stream_t *stream;
     asdf_parser_t *parser;
     asdf_emitter_t *emitter;
     struct fy_document *tree;

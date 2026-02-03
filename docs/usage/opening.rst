@@ -20,10 +20,21 @@ from stdlib functions like `open()`) using `asdf_open`:
 The second argument ``"r"`` is a mode string.  Currently ``"r"`` is the only
 accepted value, but more will be added when write support is added.
 
-In addition to `asdf_open`, `asdf_open_fp` can read from an existing `FILE *`,
-and `asdf_open_mem` can read from a sized memory buffer.  These functions also
-have ``_ex`` variants that can accept additioanl configuration parameters; see
-:ref:`configuration`.
+In addition to `asdf_open` can read from an existing `FILE *`, or memory buffer
+passed as a `const void *` and `size_t` arguments.  See equivalently
+`asdf_open_file`, `asdf_open_fp`, and `asdf_open_mem` respectively.
+These functions also have ``_ex`` variants that can accept additional
+configuration parameters; see :ref:`configuration`.
+
+In all these cases it is also valid to pass a ``NULL`` pointer as the first
+argument, like:
+
+.. code:: c
+
+   asdf_file_t *file = asdf_open(NULL);
+
+This indicates creation of a new file.
+
 
 .. _error-handling:
 

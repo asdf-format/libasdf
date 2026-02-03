@@ -103,7 +103,7 @@ ASDF_REGISTER_EXTENSION(
 
 MU_TEST(extension_registered) {
     const char *path = get_fixture_file_path("trivial-extension.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     const asdf_extension_t *ext = asdf_extension_get(file, "stsci.edu:asdf/tests/foo-1.0.0");
     assert_not_null(ext);
@@ -115,7 +115,7 @@ MU_TEST(extension_registered) {
 
 MU_TEST(test_asdf_value_is_foo) {
     const char *path = get_fixture_file_path("trivial-extension.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     asdf_value_t *value = asdf_get_value(file, "foo");
     assert_not_null(value);
@@ -128,7 +128,7 @@ MU_TEST(test_asdf_value_is_foo) {
 
 MU_TEST(test_asdf_value_as_foo) {
     const char *path = get_fixture_file_path("trivial-extension.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     asdf_value_t *value = asdf_get_value(file, "foo");
     assert_not_null(value);
@@ -145,15 +145,15 @@ MU_TEST(test_asdf_value_as_foo) {
 }
 
 
-// TODO: Replace with in-memory temp file
 MU_TEST(test_asdf_value_of_foo) {
     const char *path = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
-    asdf_file_t *file = asdf_open(path, "w");
+    asdf_file_t *file = asdf_open(NULL);
     assert_not_null(file);
     asdf_foo_t foo = { .foo = "foo:foo" };
     asdf_value_t *value = asdf_value_of_foo(file, &foo);
     assert_not_null(value);
     asdf_set_value(file, "foo", value);
+    assert_int(asdf_write_to(file, path), ==, 0);
     asdf_close(file);
 
     const char *expected = get_fixture_file_path("trivial-extension.asdf");
@@ -164,7 +164,7 @@ MU_TEST(test_asdf_value_of_foo) {
 
 MU_TEST(test_asdf_is_foo) {
     const char *path = get_fixture_file_path("trivial-extension.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     assert_true(asdf_is_foo(file, "foo"));
     asdf_close(file);
@@ -174,7 +174,7 @@ MU_TEST(test_asdf_is_foo) {
 
 MU_TEST(test_asdf_get_foo) {
     const char *path = get_fixture_file_path("trivial-extension.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     asdf_foo_t *foo = NULL;
     assert_int(asdf_get_foo(file, "foo", &foo), ==, ASDF_VALUE_OK);

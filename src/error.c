@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "context.h"
 #include "error.h"
 
 
@@ -93,4 +94,23 @@ void asdf_context_error_set_common(asdf_context_t *ctx, asdf_error_code_t code) 
 void asdf_context_error_set_errno(asdf_context_t *ctx, int errnum) {
     ctx->error = strdup(strerror(errnum));
     ctx->error_type = ASDF_ERROR_HEAP;
+}
+
+
+void asdf_context_error_copy(asdf_context_t *dst, const asdf_context_t *src) {
+    if (!dst)
+        dst = asdf_get_context_helper(NULL);
+
+    if (!src)
+        src = asdf_get_context_helper(NULL);
+
+    if (dst == src || !dst || !src)
+        return;
+
+    if (src->error_type == ASDF_ERROR_HEAP && src->error)
+        dst->error = strdup(src->error);
+    else
+        dst->error = src->error;
+
+    dst->error_type = src->error_type;
 }

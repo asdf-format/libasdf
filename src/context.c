@@ -1,10 +1,8 @@
 #include <stdatomic.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 #include "context.h"
-#include "error.h"
 #include "log.h"
 #include "util.h"
 

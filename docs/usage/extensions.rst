@@ -225,7 +225,7 @@ Our extension type can now be used in code like:
 
 .. code:: c
 
-  asdf_file_t *file = asdf_open_file(path, "r");
+  asdf_file_t *file = asdf_open(path, "r");
   asdf_foo_t *foo = NULL;
   asdf_value_err_t err = asdf_get_foo(file, "foo", &foo);
 

@@ -85,6 +85,8 @@ typedef struct asdf_parser {
     asdf_parser_cfg_t config;
     asdf_parser_state_t state;
     asdf_stream_t *stream;
+    /** Is the parser responsible for closing the stream? */
+    bool should_close;
     struct asdf_event_p *event_freelist;
     struct asdf_event_p *current_event_p;
     char asdf_version[ASDF_ASDF_VERSION_BUFFER_SIZE];
@@ -96,7 +98,13 @@ typedef struct asdf_parser {
 } asdf_parser_t;
 
 
+/** Internal parser API */
 static inline bool asdf_parser_has_opt(asdf_parser_t *parser, asdf_parser_opt_t opt) {
     assert(parser);
     return ((parser->config.flags & opt) == opt);
 }
+
+
+ASDF_LOCAL asdf_parser_t *asdf_parser_create_ctx(
+    asdf_context_t *ctx, const asdf_parser_cfg_t *config);
+ASDF_EXPORT int asdf_parser_set_input_stream(asdf_parser_t *parser, asdf_stream_t *stream);

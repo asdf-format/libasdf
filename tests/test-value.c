@@ -26,7 +26,7 @@
 
 MU_TEST(test_asdf_value_get_type) {
     const char *path = get_fixture_file_path("scalars.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     assert_int(asdf_value_get_type(NULL), ==, ASDF_VALUE_UNKNOWN);
     CHECK_VALUE_TYPE("single_quoted", ASDF_VALUE_STRING);
@@ -98,7 +98,7 @@ MU_TEST(test_asdf_value_get_type) {
 
 MU_TEST(test_asdf_value_as_string) {
     const char *path = get_fixture_file_path("scalars.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     CHECK_STR_VALUE("plain", "string");
     CHECK_STR_VALUE("single_quoted", "string");
@@ -131,7 +131,7 @@ MU_TEST(test_asdf_value_as_string) {
  */
 MU_TEST(test_asdf_value_as_string0) {
     const char *path = get_fixture_file_path("scalars.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     const char *str = NULL;
     asdf_value_t *value = asdf_get_value(file, "plain");
@@ -157,7 +157,7 @@ MU_TEST(test_asdf_value_as_string0) {
 
 MU_TEST(test_asdf_value_as_scalar) {
     const char *path = get_fixture_file_path("scalars.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     const char *s = NULL;
     size_t len = 0;
@@ -191,7 +191,7 @@ MU_TEST(test_asdf_value_as_scalar) {
 
 MU_TEST(test_asdf_value_as_scalar0) {
     const char *path = get_fixture_file_path("scalars.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     const char *s = NULL;
     int8_t i = 0;
@@ -248,7 +248,7 @@ MU_TEST(test_asdf_value_as_scalar0) {
 
 MU_TEST(test_asdf_value_as_bool) {
     const char *path = get_fixture_file_path("scalars.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     CHECK_BOOL_VALUE("false", false);
     CHECK_BOOL_VALUE("False", false);
@@ -273,7 +273,7 @@ MU_TEST(test_asdf_value_as_bool) {
 
 MU_TEST(test_asdf_value_is_bool) {
     const char *path = get_fixture_file_path("scalars.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     asdf_value_t *int_value = asdf_value_of_int8(file, 0);
     assert_true(asdf_value_is_bool(int_value));
@@ -309,7 +309,7 @@ MU_TEST(test_asdf_value_is_bool) {
 
 MU_TEST(test_asdf_value_is_null) {
     const char *path = get_fixture_file_path("scalars.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     CHECK_NULL_VALUE("null", true);
     CHECK_NULL_VALUE("Null", true);
@@ -324,7 +324,7 @@ MU_TEST(test_asdf_value_is_null) {
 
 MU_TEST(test_asdf_value_is_int) {
     const char *path = get_fixture_file_path("scalars.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     asdf_value_t *value = asdf_get_value(file, "");
     assert_not_null(value);
@@ -376,7 +376,7 @@ MU_TEST(test_asdf_value_is_int) {
 
 MU_TEST(test_asdf_value_as_int8) {
     const char *path = get_fixture_file_path("scalars.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     CHECK_INT_VALUE(int8, "int8", ASDF_VALUE_OK, -127);
     CHECK_INT_VALUE(int8, "uint8", ASDF_VALUE_ERR_OVERFLOW, -1);
@@ -395,7 +395,7 @@ MU_TEST(test_asdf_value_as_int8) {
 
 MU_TEST(test_asdf_value_is_int8) {
     const char *path = get_fixture_file_path("scalars.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     CHECK_VALUE_IS_INT(int8, "", false);
     CHECK_VALUE_IS_INT(int8, "int8", true);
@@ -408,7 +408,7 @@ MU_TEST(test_asdf_value_is_int8) {
 
 MU_TEST(test_asdf_value_as_int16) {
     const char *path = get_fixture_file_path("scalars.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     CHECK_INT_VALUE(int16, "int8", ASDF_VALUE_OK, -127);
     CHECK_INT_VALUE(int16, "uint8", ASDF_VALUE_OK, 255);
@@ -427,7 +427,7 @@ MU_TEST(test_asdf_value_as_int16) {
 
 MU_TEST(test_asdf_value_is_int16) {
     const char *path = get_fixture_file_path("scalars.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     CHECK_VALUE_IS_INT(int16, "", false);
     CHECK_VALUE_IS_INT(int16, "int8", true);
@@ -441,7 +441,7 @@ MU_TEST(test_asdf_value_is_int16) {
 
 MU_TEST(test_asdf_value_as_int32) {
     const char *path = get_fixture_file_path("scalars.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     CHECK_INT_VALUE(int32, "int8", ASDF_VALUE_OK, -127);
     CHECK_INT_VALUE(int32, "uint8", ASDF_VALUE_OK, 255);
@@ -460,7 +460,7 @@ MU_TEST(test_asdf_value_as_int32) {
 
 MU_TEST(test_asdf_value_is_int32) {
     const char *path = get_fixture_file_path("scalars.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     CHECK_VALUE_IS_INT(int32, "", false);
     CHECK_VALUE_IS_INT(int32, "int8", true);
@@ -475,7 +475,7 @@ MU_TEST(test_asdf_value_is_int32) {
 
 MU_TEST(test_asdf_value_as_int64) {
     const char *path = get_fixture_file_path("scalars.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     CHECK_INT_VALUE(int64, "int64", ASDF_VALUE_OK, -9223372036854775807LL);
     CHECK_INT_VALUE(int64, "int32", ASDF_VALUE_OK, -2147483647);
@@ -494,7 +494,7 @@ MU_TEST(test_asdf_value_as_int64) {
 
 MU_TEST(test_asdf_value_is_int64) {
     const char *path = get_fixture_file_path("scalars.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     CHECK_VALUE_IS_INT(int64, "", false);
     CHECK_VALUE_IS_INT(int64, "int8", true);
@@ -512,7 +512,7 @@ MU_TEST(test_asdf_value_is_int64) {
 
 MU_TEST(test_asdf_value_as_uint8) {
     const char *path = get_fixture_file_path("scalars.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     CHECK_INT_VALUE(uint8, "int8", ASDF_VALUE_ERR_OVERFLOW, -127);
     CHECK_INT_VALUE(uint8, "uint8", ASDF_VALUE_OK, 255);
@@ -549,7 +549,7 @@ MU_TEST(test_asdf_value_as_uint8) {
 
 MU_TEST(test_asdf_value_is_uint8) {
     const char *path = get_fixture_file_path("scalars.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     CHECK_VALUE_IS_INT(uint8, "", false);
     CHECK_VALUE_IS_INT(uint8, "int8", false);
@@ -562,7 +562,7 @@ MU_TEST(test_asdf_value_is_uint8) {
 
 MU_TEST(test_asdf_value_as_uint16) {
     const char *path = get_fixture_file_path("scalars.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     CHECK_INT_VALUE(uint16, "int8", ASDF_VALUE_ERR_OVERFLOW, -127);
     CHECK_INT_VALUE(uint16, "uint8", ASDF_VALUE_OK, 255);
@@ -600,7 +600,7 @@ MU_TEST(test_asdf_value_as_uint16) {
 
 MU_TEST(test_asdf_value_is_uint16) {
     const char *path = get_fixture_file_path("scalars.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     CHECK_VALUE_IS_INT(uint16, "", false);
     CHECK_VALUE_IS_INT(uint16, "int8", false);
@@ -615,7 +615,7 @@ MU_TEST(test_asdf_value_is_uint16) {
 
 MU_TEST(test_asdf_value_as_uint32) {
     const char *path = get_fixture_file_path("scalars.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     CHECK_INT_VALUE(uint32, "int8", ASDF_VALUE_ERR_OVERFLOW, -127);
     CHECK_INT_VALUE(uint32, "uint8", ASDF_VALUE_OK, 255);
@@ -653,7 +653,7 @@ MU_TEST(test_asdf_value_as_uint32) {
 
 MU_TEST(test_asdf_value_is_uint32) {
     const char *path = get_fixture_file_path("scalars.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     CHECK_VALUE_IS_INT(uint32, "", false);
     CHECK_VALUE_IS_INT(uint32, "int8", false);
@@ -670,7 +670,7 @@ MU_TEST(test_asdf_value_is_uint32) {
 
 MU_TEST(test_asdf_value_as_uint64) {
     const char *path = get_fixture_file_path("scalars.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     CHECK_INT_VALUE(uint64, "int8", ASDF_VALUE_ERR_OVERFLOW, -127);
     CHECK_INT_VALUE(uint64, "uint8", ASDF_VALUE_OK, 255);
@@ -696,7 +696,7 @@ MU_TEST(test_asdf_value_as_uint64) {
 
 MU_TEST(test_asdf_value_is_uint64) {
     const char *path = get_fixture_file_path("scalars.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     CHECK_VALUE_IS_INT(uint64, "", false);
     CHECK_VALUE_IS_INT(uint64, "int8", false);
@@ -707,7 +707,7 @@ MU_TEST(test_asdf_value_is_uint64) {
 
 MU_TEST(test_asdf_value_as_uint64_on_bigint) {
     const char *path = get_fixture_file_path("scalars.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     asdf_value_t *value = asdf_get_value(file, "bigint");
     assert_not_null(value);
@@ -748,7 +748,7 @@ MU_TEST(test_asdf_value_as_uint64_on_bigint) {
 
 MU_TEST(test_asdf_value_as_float) {
     const char *path = get_fixture_file_path("scalars.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     CHECK_FLOAT_VALUE(float, "float32", ASDF_VALUE_OK, 0.15625);
     CHECK_FLOAT_VALUE(float, "float64", ASDF_VALUE_OK, 1.000000059604644775390625);
@@ -766,7 +766,7 @@ MU_TEST(test_asdf_value_as_float) {
 
 MU_TEST(test_asdf_value_is_float) {
     const char *path = get_fixture_file_path("scalars.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     assert_false(asdf_is_float(file, ""));
     asdf_close(file);
@@ -776,7 +776,7 @@ MU_TEST(test_asdf_value_is_float) {
 
 MU_TEST(test_asdf_value_as_double) {
     const char *path = get_fixture_file_path("scalars.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     CHECK_FLOAT_VALUE(double, "float32", ASDF_VALUE_OK, 0.15625);
     CHECK_FLOAT_VALUE(double, "float64", ASDF_VALUE_OK, 1.000000059604644775390625);
@@ -796,7 +796,7 @@ MU_TEST(test_asdf_value_as_double) {
 
 MU_TEST(test_asdf_value_as_type) {
     const char *path = get_fixture_file_path("scalars.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     asdf_value_t *value = asdf_get_value(file, "plain");
     asdf_value_t *clone = NULL;
     const char *str = NULL;
@@ -840,7 +840,7 @@ MU_TEST(test_asdf_value_as_type) {
 
 MU_TEST(test_asdf_value_is_type) {
     const char *path = get_fixture_file_path("scalars.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     asdf_value_t *value = asdf_get_value(file, "plain");
     assert_false(asdf_value_is_type(value, -2));
     assert_false(asdf_value_is_type(value, ASDF_VALUE_UNKNOWN));
@@ -869,12 +869,13 @@ MU_TEST(test_asdf_value_is_type) {
 
 MU_TEST(test_asdf_value_of_mapping) {
     const char *path = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
-    asdf_file_t *file = asdf_open_file(path, "w");
+    asdf_file_t *file = asdf_open(NULL);
     assert_not_null(file);
     asdf_mapping_t *mapping = asdf_mapping_create(file);
     assert_not_null(mapping);
     asdf_value_t *value = asdf_value_of_mapping(mapping);
     assert_int(asdf_set_value(file, "mapping", value), ==, ASDF_VALUE_OK);
+    assert_int(asdf_write_to(file, path), ==, 0);
     asdf_close(file);
 
     file = asdf_open(path, "r");
@@ -890,13 +891,15 @@ MU_TEST(test_asdf_value_of_mapping) {
 
 MU_TEST(test_asdf_value_of_sequence) {
     const char *path = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
-    asdf_file_t *file = asdf_open_file(path, "w");
+    asdf_file_t *file = asdf_open(NULL);
     assert_not_null(file);
     asdf_sequence_t *sequence = asdf_sequence_create(file);
     assert_not_null(sequence);
     asdf_value_t *value = asdf_value_of_sequence(sequence);
     assert_int(asdf_set_value(file, "sequence", value), ==, ASDF_VALUE_OK);
+    assert_int(asdf_write_to(file, path), ==, 0);
     asdf_close(file);
+
     file = asdf_open(path, "r");
     sequence = NULL;
     asdf_get_sequence(file, "sequence", &sequence);
@@ -917,7 +920,7 @@ MU_TEST(test_asdf_value_of_sequence) {
 
 MU_TEST(test_asdf_value_of_type) {
     const char *path = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
-    asdf_file_t *file = asdf_open_file(path, "w");
+    asdf_file_t *file = asdf_open(NULL);
     assert_not_null(file);
 
     asdf_value_t *value = asdf_value_of_string(file, "string", 6);
@@ -948,6 +951,7 @@ MU_TEST(test_asdf_value_of_type) {
     CHECK_SET_VALUE_OF_TYPE(uint64, UINT64_MAX);
     CHECK_SET_VALUE_OF_TYPE(float, FLT_MAX);
     CHECK_SET_VALUE_OF_TYPE(double, DBL_MAX);
+    assert_int(asdf_write_to(file, path), ==, 0);
     asdf_close(file);
 
     const char *fixture_path = get_fixture_file_path("scalars-out.asdf");
@@ -961,7 +965,7 @@ MU_TEST(test_asdf_value_of_type) {
  */
 MU_TEST(test_value_tagged_strings) {
     const char *path = get_fixture_file_path("tagged-scalars.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     CHECK_STR_VALUE("string", "string");
     CHECK_STR_VALUE("bool_string", "true");
@@ -974,8 +978,6 @@ MU_TEST(test_value_tagged_strings) {
 
 
 MU_TEST(test_asdf_mapping_create) {
-    // TODO: For this test change it to just an in-memory file; we won't write anything anyways
-    // But we need an open file with which to associate the mapping
     const char *path = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
     asdf_file_t *file = asdf_open(path, "w");
     assert_not_null(file);
@@ -995,7 +997,7 @@ MU_TEST(test_asdf_mapping_item_destroy) {
 
 MU_TEST(test_asdf_mapping_iter) {
     const char *path = get_fixture_file_path("value-types.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     asdf_mapping_t *mapping = NULL;
     asdf_value_err_t err = asdf_get_mapping(file, "mapping", &mapping);
@@ -1033,7 +1035,7 @@ MU_TEST(test_asdf_mapping_iter) {
 
 MU_TEST(test_asdf_mapping_get) {
     const char *path = get_fixture_file_path("value-types.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     asdf_mapping_t *mapping = NULL;
     asdf_value_err_t err = asdf_get_mapping(file, "mapping", &mapping);
@@ -1066,10 +1068,9 @@ MU_TEST(test_asdf_mapping_get) {
 
 
 /** Test basic mapping setters */
-// TODO: Change to use in-memory file
 MU_TEST(test_asdf_mapping_set_scalars) {
     const char *path = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
-    asdf_file_t *file = asdf_open_file(path, "w");
+    asdf_file_t *file = asdf_open(NULL);
     assert_not_null(file);
     asdf_mapping_t *mapping = asdf_mapping_create(file);
     assert_not_null(mapping);
@@ -1091,6 +1092,7 @@ MU_TEST(test_asdf_mapping_set_scalars) {
 
     // Assign the mapping as the root
     assert_int(asdf_set_mapping(file, "", mapping), ==, ASDF_VALUE_OK);
+    assert_int(asdf_write_to(file, path), ==, 0);
     asdf_close(file);
 
     const char *fixture_path = get_fixture_file_path("scalars-out.asdf");
@@ -1110,10 +1112,7 @@ MU_TEST(test_asdf_mapping_set_scalars) {
 
 
 MU_TEST(test_asdf_sequence_append) {
-    // TODO: For this test change it to just an in-memory file; we won't write anything anyways
-    // But we need an open file with which to associate the sequence
-    const char *path = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
-    asdf_file_t *file = asdf_open(path, "w");
+    asdf_file_t *file = asdf_open(NULL);
     assert_not_null(file);
     asdf_sequence_t *sequence = asdf_sequence_create(file);
     assert_not_null(sequence);
@@ -1144,9 +1143,12 @@ MU_TEST(test_asdf_sequence_append) {
     assert_int(asdf_sequence_append_mapping(sequence, mapping_val), ==, ASDF_VALUE_OK);
 
     assert_int(asdf_set_sequence(file, "sequence", sequence), ==, ASDF_VALUE_OK);
+    void *buf = NULL;
+    size_t buf_size = 0;
+    assert_int(asdf_write_to(file, &buf, &buf_size), ==, 0);
     asdf_close(file);
 
-    file = asdf_open(path, "r");
+    file = asdf_open((const void *)buf, buf_size);
     sequence = NULL;
     assert_not_null(file);
     assert_int(asdf_get_sequence(file, "sequence", &sequence), ==, ASDF_VALUE_OK);
@@ -1223,13 +1225,12 @@ MU_TEST(test_asdf_sequence_append) {
 
     asdf_sequence_destroy(sequence);
     asdf_close(file);
+    free(buf);
     return MUNIT_OK;
 }
 
 
 MU_TEST(test_asdf_sequence_create) {
-    // TODO: For this test change it to just an in-memory file; we won't write anything anyways
-    // But we need an open file with which to associate the sequence
     const char *path = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
     asdf_file_t *file = asdf_open(path, "w");
     assert_not_null(file);
@@ -1243,7 +1244,7 @@ MU_TEST(test_asdf_sequence_create) {
 
 MU_TEST(test_asdf_sequence_iter) {
     const char *path = get_fixture_file_path("value-types.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     asdf_sequence_t *sequence = NULL;
     asdf_value_err_t err = asdf_get_sequence(file, "sequence", &sequence);
@@ -1272,7 +1273,7 @@ MU_TEST(test_asdf_sequence_iter) {
 
 MU_TEST(test_asdf_sequence_get) {
     const char *path = get_fixture_file_path("value-types.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     asdf_sequence_t *sequence = NULL;
     asdf_value_err_t err = asdf_get_sequence(file, "sequence", &sequence);
@@ -1314,7 +1315,7 @@ MU_TEST(test_asdf_sequence_get) {
 
 MU_TEST(test_asdf_container_iter) {
     const char *path = get_fixture_file_path("value-types.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     asdf_value_t *container = asdf_get_value(file, "sequence");
     assert_not_null(container);
@@ -1357,7 +1358,7 @@ MU_TEST(test_asdf_container_iter) {
 /** Regression test for :issue:`69` */
 MU_TEST(test_value_copy_with_parent_path) {
     const char *filename = get_reference_file_path("1.6.0/basic.asdf");
-    asdf_file_t *file = asdf_open_file(filename, "r");
+    asdf_file_t *file = asdf_open(filename, "r");
     assert_not_null(file);
     asdf_value_t *value = asdf_get_value(file, "/history/extensions/0");
     assert_not_null(value);
@@ -1391,7 +1392,7 @@ MU_TEST(test_value_copy_with_parent_path) {
 
 MU_TEST(test_asdf_value_file) {
     const char *filename = get_reference_file_path("1.6.0/basic.asdf");
-    asdf_file_t *file = asdf_open_file(filename, "r");
+    asdf_file_t *file = asdf_open(filename, "r");
     assert_not_null(file);
     asdf_value_t *value = asdf_get_value(file, "/history/extensions/0");
     assert_not_null(value);
@@ -1426,7 +1427,7 @@ static bool value_find_pred_b(asdf_value_t *value) {
 
 MU_TEST(test_asdf_value_find_iter_ex_descend_mapping_only) {
     const char *filename = get_fixture_file_path("nested.asdf");
-    asdf_file_t *file = asdf_open_file(filename, "r");
+    asdf_file_t *file = asdf_open(filename, "r");
     assert_not_null(file);
     asdf_value_t *root = asdf_get_value(file, "/");
     assert_not_null(root);
@@ -1466,7 +1467,7 @@ MU_TEST(test_asdf_value_find_iter_ex_descend_mapping_only) {
 
 MU_TEST(test_asdf_value_find_iter_ex_descend_sequence_only) {
     const char *filename = get_fixture_file_path("nested.asdf");
-    asdf_file_t *file = asdf_open_file(filename, "r");
+    asdf_file_t *file = asdf_open(filename, "r");
     assert_not_null(file);
     asdf_value_t *root = asdf_get_value(file, "/");
     assert_not_null(root);
@@ -1506,7 +1507,7 @@ MU_TEST(test_asdf_value_find_iter_ex_descend_sequence_only) {
 
 MU_TEST(test_asdf_value_find_iter_max_depth) {
     const char *filename = get_fixture_file_path("nested.asdf");
-    asdf_file_t *file = asdf_open_file(filename, "r");
+    asdf_file_t *file = asdf_open(filename, "r");
     assert_not_null(file);
     asdf_value_t *root = asdf_get_value(file, "/");
     assert_not_null(root);
@@ -1540,7 +1541,7 @@ MU_TEST(test_asdf_value_find_iter_max_depth) {
 
 MU_TEST(test_asdf_value_find_ex) {
     const char *filename = get_fixture_file_path("nested.asdf");
-    asdf_file_t *file = asdf_open_file(filename, "r");
+    asdf_file_t *file = asdf_open(filename, "r");
     assert_not_null(file);
     asdf_value_t *root = asdf_get_value(file, "/");
     assert_not_null(root);
@@ -1567,7 +1568,7 @@ MU_TEST(test_asdf_value_find_ex) {
 
 MU_TEST(test_asdf_value_find_iter) {
     const char *filename = get_fixture_file_path("nested.asdf");
-    asdf_file_t *file = asdf_open_file(filename, "r");
+    asdf_file_t *file = asdf_open(filename, "r");
     assert_not_null(file);
     asdf_value_t *root = asdf_get_value(file, "/");
     assert_not_null(root);
@@ -1615,7 +1616,7 @@ MU_TEST(test_asdf_value_find_iter) {
 
 MU_TEST(test_asdf_value_find) {
     const char *filename = get_fixture_file_path("nested.asdf");
-    asdf_file_t *file = asdf_open_file(filename, "r");
+    asdf_file_t *file = asdf_open(filename, "r");
     assert_not_null(file);
     asdf_value_t *root = asdf_get_value(file, "/");
     assert_not_null(root);
@@ -1641,7 +1642,7 @@ MU_TEST(test_asdf_value_find) {
 
 MU_TEST(test_asdf_value_find_on_scalar) {
     const char *filename = get_fixture_file_path("nested.asdf");
-    asdf_file_t *file = asdf_open_file(filename, "r");
+    asdf_file_t *file = asdf_open(filename, "r");
     assert_not_null(file);
     asdf_value_t *root = asdf_get_value(file, "/a");
     assert_not_null(root);
@@ -1714,7 +1715,7 @@ MU_TEST(test_asdf_value_type_string) {
 /** Regression test for issue #75 */
 MU_TEST(test_raw_value_type_preserved_after_type_resolution) {
     const char *filename = get_fixture_file_path("nested.asdf");
-    asdf_file_t *file = asdf_open_file(filename, "r");
+    asdf_file_t *file = asdf_open(filename, "r");
     assert_not_null(file);
     asdf_value_t *root = asdf_get_value(file, "/");
     assert_not_null(root);
@@ -1748,7 +1749,7 @@ MU_TEST(test_raw_value_type_preserved_after_type_resolution) {
 /** Regression test for double-free bug on cloned extension values */
 MU_TEST(regression_clone_extension_value) {
     const char *path = get_reference_file_path("1.6.0/basic.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     asdf_value_t *value = asdf_get_value(file, "data");
     assert_not_null(value);
@@ -1765,7 +1766,7 @@ MU_TEST(regression_clone_extension_value) {
 /** Regression test for overflow bug when reading negative integers */
 MU_TEST(regression_read_min_int) {
     const char *path = get_fixture_file_path("scalars-out.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     CHECK_INT_VALUE(int8, "int8", ASDF_VALUE_OK, INT8_MIN);
     CHECK_INT_VALUE(int16, "int16", ASDF_VALUE_OK, INT16_MIN);
@@ -1778,7 +1779,7 @@ MU_TEST(regression_read_min_int) {
 
 MU_TEST(regression_read_flt_max) {
     const char *path = get_fixture_file_path("scalars-out.asdf");
-    asdf_file_t *file = asdf_open_file(path, "r");
+    asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     CHECK_FLOAT_VALUE(float, "float", ASDF_VALUE_OK, FLT_MAX);
     CHECK_FLOAT_VALUE(double, "double", ASDF_VALUE_OK, DBL_MAX);

@@ -1033,14 +1033,22 @@ asdf_event_t *asdf_parser_parse(asdf_parser_t *parser) {
 static const asdf_parser_cfg_t default_asdf_parser_cfg = {.flags = 0};
 
 
-asdf_parser_t *asdf_parser_create(const asdf_parser_cfg_t *config) {
+/**
+ * Internal helper to create a parser with an existing context pointer,
+ * or create a new context if ``ctx=NULL``
+ */
+asdf_parser_t *asdf_parser_create_ctx(asdf_context_t *ctx, const asdf_parser_cfg_t *config) {
     asdf_parser_t *parser = calloc(1, sizeof(asdf_parser_t));
 
     if (!parser)
         return parser;
 
     config = config ? config : &default_asdf_parser_cfg;
-    asdf_context_t *ctx = asdf_context_create(config->log);
+
+    if (!ctx)
+        ctx = asdf_context_create(config->log);
+    else
+        asdf_context_retain(ctx);
 
     if (!ctx) {
         free(parser);
@@ -1059,6 +1067,11 @@ asdf_parser_t *asdf_parser_create(const asdf_parser_cfg_t *config) {
 }
 
 
+asdf_parser_t *asdf_parser_create(const asdf_parser_cfg_t *config) {
+    return asdf_parser_create_ctx(NULL, config);
+}
+
+
 int asdf_parser_set_input_file(asdf_parser_t *parser, const char *filename) {
     assert(parser);
     parser->stream = asdf_stream_from_file(parser->base.ctx, filename, false);
@@ -1070,6 +1083,7 @@ int asdf_parser_set_input_file(asdf_parser_t *parser, const char *filename) {
         return 1;
     }
     parser->state = ASDF_PARSER_STATE_ASDF_VERSION;
+    parser->should_close = true;
     return 0;
 }
 
@@ -1085,6 +1099,7 @@ int asdf_parser_set_input_fp(asdf_parser_t *parser, FILE *fp, const char *filena
         return 1;
     }
     parser->state = ASDF_PARSER_STATE_ASDF_VERSION;
+    parser->should_close = true;
     return 0;
 }
 
@@ -1100,6 +1115,15 @@ int asdf_parser_set_input_mem(asdf_parser_t *parser, const void *buf, size_t siz
         return 1;
     }
     parser->state = ASDF_PARSER_STATE_ASDF_VERSION;
+    parser->should_close = true;
+    return 0;
+}
+
+
+int asdf_parser_set_input_stream(asdf_parser_t *parser, asdf_stream_t *stream) {
+    parser->stream = stream;
+    parser->state = ASDF_PARSER_STATE_ASDF_VERSION;
+    parser->should_close = false;
     return 0;
 }
 
@@ -1120,7 +1144,7 @@ void asdf_parser_destroy(asdf_parser_t *parser) {
 
     fy_parser_destroy(parser->yaml_parser);
 
-    if (parser->stream)
+    if (parser->should_close && parser->stream)
         parser->stream->close(parser->stream);
 
     free(parser->tree.buf);
