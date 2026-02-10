@@ -434,8 +434,9 @@ void print_field(FILE *file, field_align_t align, const char *fmt, ...) {
         break;
     }
     case CENTER: {
-        int pad = (BOX_WIDTH - (int)strlen(field_buf)) / 2 - 1;
-        fprintf(file, "%*s%s%*s", pad, "", field_buf, pad, "");
+        int left_pad = (BOX_WIDTH - (int)strlen(field_buf)) / 2 - 1;
+        int right_pad = BOX_WIDTH - (int)strlen(field_buf) - left_pad - 2;
+        fprintf(file, "%*s%s%*s", left_pad, "", field_buf, right_pad, "");
         break;
     }
     }
