@@ -969,6 +969,25 @@ ASDF_SEQUENCE_APPEND_CONTAINER_TYPE(mapping);
 ASDF_SEQUENCE_APPEND_CONTAINER_TYPE(sequence);
 
 
+asdf_value_t *asdf_sequence_pop(asdf_sequence_t *sequence, int index) {
+    if (UNLIKELY(!sequence))
+        return NULL;
+
+    asdf_value_t *value = &sequence->value;
+    struct fy_node *node = fy_node_sequence_get_by_index(value->node, index);
+
+    if (!node)
+        return NULL;
+
+    node = fy_node_sequence_remove(value->node, node);
+
+    if (!node)
+        return NULL;
+
+    return asdf_value_create(value->file, node);
+}
+
+
 /** Generic container functions */
 asdf_container_iter_t asdf_container_iter_init() {
     return NULL;
