@@ -295,6 +295,17 @@ ASDF_EXPORT asdf_mapping_item_t *asdf_mapping_iter(
  */
 ASDF_EXPORT asdf_value_err_t asdf_mapping_update(asdf_mapping_t *mapping, asdf_mapping_t *update);
 
+
+/**
+ * Remove a value from a mapping and return the removed value
+ *
+ * :param mapping: The `asdf_mapping_t *` handle
+ * :param key: The of the item to remove
+ * :return: The generic `asdf_value_t *` of the removed value if any, or NULL if the key did not
+ *     exist or on errors
+ */
+ASDF_EXPORT asdf_value_t *asdf_mapping_pop(asdf_mapping_t *mapping, const char *key);
+
 /**
  * Set values on mappings
  *
@@ -441,7 +452,7 @@ asdf_sequence_append_sequence(asdf_sequence_t *sequence, asdf_sequence_t *value)
  * If the index is greater than the size of the sequence, nothing is changed and returns
  * ``NULL``.  Items following the removed item in the sequence are shifted down.
  *
- * :param item: The `asdf_sequence_t *` handle
+ * :param sequence: The `asdf_sequence_t *` handle
  * :param index: The index of the item to remove; negative indices are also supported (e.g.
  *     ``asdf_sequence_pop(sequence, -1)`` removes the last item
  * :return: The generic `asdf_value_t *` of the removed value if any, or NULL

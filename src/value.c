@@ -668,6 +668,32 @@ asdf_value_err_t asdf_mapping_update(asdf_mapping_t *mapping, asdf_mapping_t *up
 }
 
 
+asdf_value_t *asdf_mapping_pop(asdf_mapping_t *mapping, const char *key) {
+    if (UNLIKELY(!mapping || !key))
+        return NULL;
+
+    asdf_value_t *value = &mapping->value;
+    struct fy_document *tree = asdf_file_tree_document(value->file);
+
+    if (!tree)
+        return NULL;
+
+    struct fy_node *key_node = asdf_node_of_string0(tree, key);
+
+    if (UNLIKELY(!key)) {
+        ASDF_ERROR_OOM(value->file);
+        return NULL;
+    }
+
+    struct fy_node *node = fy_node_mapping_remove_by_key(value->node, key_node);
+
+    if (!node)
+        return NULL;
+
+    return asdf_value_create(value->file, node);
+}
+
+
 /* Sequence functions */
 bool asdf_value_is_sequence(asdf_value_t *value) {
     return value->raw_type == ASDF_VALUE_SEQUENCE;
