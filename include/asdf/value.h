@@ -295,6 +295,17 @@ ASDF_EXPORT asdf_mapping_item_t *asdf_mapping_iter(
  */
 ASDF_EXPORT asdf_value_err_t asdf_mapping_update(asdf_mapping_t *mapping, asdf_mapping_t *update);
 
+
+/**
+ * Remove a value from a mapping and return the removed value
+ *
+ * :param mapping: The `asdf_mapping_t *` handle
+ * :param key: The of the item to remove
+ * :return: The generic `asdf_value_t *` of the removed value if any, or NULL if the key did not
+ *     exist or on errors
+ */
+ASDF_EXPORT asdf_value_t *asdf_mapping_pop(asdf_mapping_t *mapping, const char *key);
+
 /**
  * Set values on mappings
  *
@@ -383,6 +394,7 @@ ASDF_EXPORT asdf_sequence_t *asdf_sequence_create(asdf_file_t *file);
 ASDF_EXPORT void asdf_sequence_set_style(asdf_sequence_t *sequence, asdf_yaml_node_style_t style);
 ASDF_EXPORT void asdf_sequence_destroy(asdf_sequence_t *sequence);
 
+
 /** Opaque struct holding sequence iterator state */
 typedef void *asdf_sequence_iter_t;
 
@@ -432,6 +444,20 @@ ASDF_EXPORT asdf_value_err_t
 asdf_sequence_append_mapping(asdf_sequence_t *sequence, asdf_mapping_t *value);
 ASDF_EXPORT asdf_value_err_t
 asdf_sequence_append_sequence(asdf_sequence_t *sequence, asdf_sequence_t *value);
+
+
+/**
+ * Remove a value from a sequence and return the removed value
+ *
+ * If the index is greater than the size of the sequence, nothing is changed and returns
+ * ``NULL``.  Items following the removed item in the sequence are shifted down.
+ *
+ * :param sequence: The `asdf_sequence_t *` handle
+ * :param index: The index of the item to remove; negative indices are also supported (e.g.
+ *     ``asdf_sequence_pop(sequence, -1)`` removes the last item
+ * :return: The generic `asdf_value_t *` of the removed value if any, or NULL
+ */
+ASDF_EXPORT asdf_value_t *asdf_sequence_pop(asdf_sequence_t *sequence, int index);
 
 
 /**
