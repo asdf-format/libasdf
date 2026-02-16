@@ -569,6 +569,15 @@ ASDF_EXPORT void asdf_container_item_destroy(asdf_container_item_t *item);
 ASDF_EXPORT bool asdf_value_is_container(asdf_value_t *value);
 
 
+/**
+ * Generic container size
+ *
+ * :param value: `asdf_value_t *` containing a mapping or a sequence
+ * :return: The size of the mapping or container, or -1 if the value is not a container type
+ */
+ASDF_EXPORT int asdf_container_size(asdf_value_t *container);
+
+
 /** Extension-related functions */
 
 // Forward declaration for asdf_extension_t

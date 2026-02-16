@@ -1134,6 +1134,21 @@ bool asdf_value_is_container(asdf_value_t *value) {
 }
 
 
+int asdf_container_size(asdf_value_t *container) {
+    if (UNLIKELY(!container))
+        return -1;
+
+    switch (container->raw_type) {
+    case ASDF_VALUE_MAPPING:
+        return asdf_mapping_size((asdf_mapping_t *)container);
+    case ASDF_VALUE_SEQUENCE:
+        return asdf_sequence_size((asdf_sequence_t *)container);
+    default:
+        return -1;
+    }
+}
+
+
 /* Extension value functions */
 
 /**
