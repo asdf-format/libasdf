@@ -226,6 +226,19 @@ const char *asdf_value_path(asdf_value_t *value) {
 }
 
 
+asdf_value_t *asdf_value_parent(asdf_value_t *value) {
+    if (UNLIKELY(!value))
+        return NULL;
+
+    struct fy_node *parent = fy_node_get_parent(value->node);
+
+    if (!parent)
+        return NULL;
+
+    return asdf_value_create(value->file, parent);
+}
+
+
 const char *asdf_value_tag(asdf_value_t *value) {
     if (!value)
         return NULL;
