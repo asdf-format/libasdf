@@ -81,17 +81,21 @@ static char info_args_doc[] = "FILENAME";
 
 
 #define INFO_OPT_NO_TREE_KEY 0x100
+#define INFO_OPT_VERIFY_CHECKSUMS 0x101
 
 
 static struct argp_option info_options[] = {
     {"no-tree", INFO_OPT_NO_TREE_KEY, 0, 0, "Do not show the tree", 0},
     {"blocks", 'b', 0, 0, "Show information about blocks", 0},
+    {"verify-checksums", INFO_OPT_VERIFY_CHECKSUMS, 0, 0, "Verify block checksums (implies -b)", 0},
     {0}};
+
 
 struct info_args {
     const char *filename;
     bool print_tree;
     bool print_blocks;
+    bool verify_checksums;
 };
 
 
@@ -105,6 +109,9 @@ static error_t parse_info_opt(int key, char *arg, struct argp_state *state) {
         break;
     case 'b':
         args->print_blocks = true;
+        break;
+    case INFO_OPT_VERIFY_CHECKSUMS:
+        args->verify_checksums = true;
         break;
     case ARGP_KEY_ARG:
         if (!args->filename)
@@ -127,8 +134,8 @@ static error_t parse_info_opt(int key, char *arg, struct argp_state *state) {
 static struct argp info_argp = {info_options, parse_info_opt, info_args_doc, info_doc, 0, 0, 0};
 
 
-static int info_main(const char *filename, bool print_tree, bool print_blocks) {
-    asdf_file_t *file = asdf_open(filename, "r");
+static int info_main(struct info_args args) {
+    asdf_file_t *file = asdf_open(args.filename, "r");
 
     if (!file) {
         perror("error");
@@ -136,10 +143,10 @@ static int info_main(const char *filename, bool print_tree, bool print_blocks) {
     }
 
     asdf_info_cfg_t cfg = {
-        .filename = filename,
-        .print_tree = print_tree,
-        .print_blocks = print_blocks,
-    };
+        .filename = args.filename,
+        .print_tree = args.print_tree,
+        .print_blocks = args.print_blocks || args.verify_checksums,
+        .verify_checksums = args.verify_checksums};
     int status = asdf_info(file, stdout, &cfg);
     asdf_close(file);
     return status ? EXIT_FAILURE : EXIT_SUCCESS;
@@ -266,7 +273,7 @@ int main(int argc, char *argv[]) {
         argp_parse(
             &info_argp, global_args.subcmd_argc, global_args.subcmd_argv, 0, NULL, &info_args);
 
-        return info_main(info_args.filename, info_args.print_tree, info_args.print_blocks);
+        return info_main(info_args);
     }
     case ASDF_SUBCMD_EVENTS: {
         struct events_args events_args = {0};

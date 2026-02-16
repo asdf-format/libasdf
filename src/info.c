@@ -2,6 +2,7 @@
 #include <inttypes.h>
 #include <stdarg.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,6 +17,13 @@
 #define ANSI_DIM "\033[2m"
 #define BOLD(str) ANSI_BOLD str ANSI_RESET
 #define DIM(str) ANSI_DIM str ANSI_RESET
+
+#define COLOR_GREEN "\033[32m"
+#define COLOR_RED "\033[31m"
+#define COLOR(color, str) color str ANSI_RESET
+
+#define UTF8_LEADING_PREFIX 0xc0
+#define UTF8_CONTINUATION_PREFIX 0x80
 
 /** Determines how much indentation to reserve initially, but can be increased */
 #define INITIAL_MAX_DEPTH 16
@@ -36,7 +44,7 @@ typedef struct {
 } node_index_t;
 
 
-void print_indent(FILE *out, node_state_t *state) {
+static void print_indent(FILE *out, node_state_t *state) {
     if (state->depth < 1)
         return;
 
@@ -61,7 +69,7 @@ void print_indent(FILE *out, node_state_t *state) {
 // Easy-enough conversion though unlikely to find many files deep enough to blow the C stack
 
 // NOLINTNEXTLINE(misc-no-recursion)
-int print_node(FILE *out, asdf_value_t *node, node_index_t *index, node_state_t *state) {
+static int print_node(FILE *out, asdf_value_t *node, node_index_t *index, node_state_t *state) {
     if (UNLIKELY(!out || !node || !index || !state))
         return -1;
 
@@ -166,7 +174,7 @@ typedef enum {
 #define BOX_WIDTH 50
 
 
-void print_border(FILE *out, field_border_t border) {
+static void print_border(FILE *out, field_border_t border) {
     fprintf(out, ANSI_DIM);
     for (int idx = 0; idx < BOX_WIDTH; idx++) {
         switch (border) {
@@ -200,23 +208,62 @@ void print_border(FILE *out, field_border_t border) {
 }
 
 
-void print_field(FILE *out, field_align_t align, const char *fmt, ...) {
+/**
+ * Calculate expected display width of a string, excluding ANSI escape sequences
+ * and treating UTF-8 characters as one character width
+ *
+ * This may not be incorrect for non-UTF-8 terminals; if anyone runs into
+ * trouble due to this we can add options to disable unicode or color, but
+ * should be sane on most modern terminals
+ */
+static size_t visible_strlen(const char *str) {
+    size_t len = 0;
+    while (*str) {
+        // Skip escape codes
+        if (*str == '\x1b' && str[1] == '[') {
+            str += 2;
+
+            while (*str && *str != 'm')
+                str++;
+
+            if (*str == 'm')
+                str++;
+
+            continue;
+        }
+
+        // Skip UTF-8 continuation bytes
+        if ((*str & UTF8_LEADING_PREFIX) != UTF8_CONTINUATION_PREFIX) {
+            len++; // Count leading byte as one column
+        }
+
+        str++;
+    }
+
+    return len;
+}
+
+
+static void print_field(FILE *out, field_align_t align, const char *fmt, ...) {
     va_list args;
-    char field_buf[BOX_WIDTH - 2] = {0};
+    // Reserve a little extra width for unicode, escape sequences, etc.
+    char field_buf[BOX_WIDTH * 2] = {0};
     va_start(args, fmt);
     // NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized)
     vsnprintf(field_buf, sizeof(field_buf), fmt, args);
     va_end(args);
     fprintf(out, DIM("│"));
+    int field_len = (int)visible_strlen(field_buf);
+
     switch (align) {
     case LEFT: {
-        int pad = BOX_WIDTH - (int)strlen(field_buf) - 3;
+        int pad = BOX_WIDTH - field_len - 3;
         fprintf(out, " %s%*s", field_buf, pad, "");
         break;
     }
     case CENTER: {
-        int left_pad = ((BOX_WIDTH - (int)strlen(field_buf)) / 2) - 1;
-        int right_pad = BOX_WIDTH - (int)strlen(field_buf) - left_pad - 2;
+        int left_pad = ((BOX_WIDTH - field_len) / 2) - 1;
+        int right_pad = BOX_WIDTH - field_len - left_pad - 2;
         fprintf(out, "%*s%s%*s", left_pad, "", field_buf, right_pad, "");
         break;
     }
@@ -225,7 +272,7 @@ void print_field(FILE *out, field_align_t align, const char *fmt, ...) {
 }
 
 
-int print_block(FILE *out, asdf_file_t *file, size_t block_idx) {
+static int print_block(FILE *out, asdf_file_t *file, size_t block_idx, bool verify) {
     asdf_block_t *block = asdf_block_open(file, block_idx);
 
     if (!block)
@@ -254,7 +301,17 @@ int print_block(FILE *out, asdf_file_t *file, size_t block_idx) {
     for (int idx = 0; idx < ASDF_BLOCK_CHECKSUM_FIELD_SIZE; idx++) {
         p += sprintf(p, "%02x", header->checksum[idx]);
     }
-    print_field(out, LEFT, "checksum: %s", checksum);
+
+    const char *verified = "";
+
+    if (verify) {
+        if (asdf_block_checksum_verify(block))
+            verified = " " COLOR(COLOR_GREEN, "✓");
+        else
+            verified = " " COLOR(COLOR_RED, "✗");
+    }
+
+    print_field(out, LEFT, "checksum: %s%s", checksum, verified);
     print_border(out, BOTTOM);
     asdf_block_close(block);
     return 0;
@@ -262,7 +319,7 @@ int print_block(FILE *out, asdf_file_t *file, size_t block_idx) {
 
 
 static const asdf_info_cfg_t asdf_info_default_cfg = {
-    .filename = NULL, .print_tree = true, .print_blocks = false};
+    .filename = NULL, .print_tree = true, .print_blocks = false, .verify_checksums = false};
 
 
 int asdf_info(asdf_file_t *file, FILE *out, const asdf_info_cfg_t *cfg) {
@@ -296,7 +353,7 @@ int asdf_info(asdf_file_t *file, FILE *out, const asdf_info_cfg_t *cfg) {
 
     if (ret == 0 && cfg->print_blocks) {
         for (size_t idx = 0; idx < asdf_block_count(file); idx++) {
-            ret = print_block(out, file, idx);
+            ret = print_block(out, file, idx, cfg->verify_checksums);
 
             if (ret != 0)
                 break;
