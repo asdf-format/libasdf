@@ -322,5 +322,5 @@ distclean-local:
 	rm -rf $(builddir)/doc_examples
 
 update-fixtures:
-	./test-events.sh --update
-	./test-info.sh --update
+	top_srcdir=$(top_srcdir) srcdir=$(srcdir) $(srcdir)/test-events.sh --update
+	top_srcdir=$(top_srcdir) srcdir=$(srcdir) $(srcdir)/test-info.sh --update

@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "event.h"
+#include "file.h"
 #include "info.h"
 #include "parser.h"
 
@@ -127,7 +128,7 @@ static struct argp info_argp = {info_options, parse_info_opt, info_args_doc, inf
 
 
 static int info_main(const char *filename, bool print_tree, bool print_blocks) {
-    FILE *file = fopen(filename, "r");
+    asdf_file_t *file = asdf_open(filename, "r");
 
     if (!file) {
         perror("error");
@@ -140,7 +141,7 @@ static int info_main(const char *filename, bool print_tree, bool print_blocks) {
         .print_blocks = print_blocks,
     };
     int status = asdf_info(file, stdout, &cfg);
-    fclose(file);
+    asdf_close(file);
     return status ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 // end info
