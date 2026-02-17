@@ -1,0 +1,1 @@
+The extension interface is also extended with ``clone`` feature, e.g. extensions export an ``asdf_<extension_name>_clone()`` function containing the necessary machinery to make a deep copy of an object returned by an extension.  This is still a work-in-progress--e.g., asdf_ndarray_clone has not yet been implemented.
