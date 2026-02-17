@@ -349,6 +349,7 @@ int asdf_info(asdf_file_t *file, FILE *out, const asdf_info_cfg_t *cfg) {
         node_index_t index = {.key = "root"};
         ret = print_node(out, root, &index, &state);
         asdf_value_destroy(root);
+        free(active_levels);
     }
 
     if (ret == 0 && cfg->print_blocks) {
