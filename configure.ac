@@ -251,6 +251,7 @@ AS_IF([test "x$have_md5_h" = "xyes"], [
 AS_IF([test "x$have_md5" = "xyes"], [
     AC_DEFINE([HAVE_MD5], [1], [Define if MD5 support is available])
 ])
+AM_CONDITIONAL([HAVE_MD5], [test "x$have_md5" = "xyes"])
 
 AC_SUBST([MD5_LIBS], [$md5_libs])
 

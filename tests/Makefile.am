@@ -197,7 +197,11 @@ endif
 
 
 # Shell tests
-TOOL_TESTS = test-events.sh test-info.sh test-verify-checksums.sh
+TOOL_TESTS = test-events.sh test-info.sh
+
+if HAVE_MD5
+    TOOL_TESTS += test-verify-checksums.sh
+endif
 
 if ASDF_BUILD_TOOL
 TESTS += $(TOOL_TESTS)

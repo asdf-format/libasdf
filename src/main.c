@@ -54,8 +54,10 @@ static error_t parse_global_opt(int key, char *arg, struct argp_state *state) {
                 args->subcmd = ASDF_SUBCMD_INFO;
             } else if (strcmp(arg, "events") == 0) {
                 args->subcmd = ASDF_SUBCMD_EVENTS;
+#ifdef HAVE_MD5
             } else if (strcmp(arg, "verify-checksums") == 0) {
                 args->subcmd = ASDF_SUBCMD_VERIFY_CHECKSUMS;
+#endif
             } else {
                 argp_state_help(state, stdout, ARGP_HELP_STD_ERR);
             }

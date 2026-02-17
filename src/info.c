@@ -304,12 +304,14 @@ static int print_block(FILE *out, asdf_file_t *file, size_t block_idx, bool veri
 
     const char *verified = "";
 
+#ifdef HAVE_MD5
     if (verify) {
         if (asdf_block_checksum_verify(block, NULL))
             verified = " " COLOR(COLOR_GREEN, "✓");
         else
             verified = " " COLOR(COLOR_RED, "✗");
     }
+#endif
 
     print_field(out, LEFT, "checksum: %s%s", checksum, verified);
     print_border(out, BOTTOM);
