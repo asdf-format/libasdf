@@ -98,8 +98,9 @@ nitpick_ignore = [
     ('c:identifier', 'uint64_t'),
     ('c:identifier', 'uint8_t'),
 
-# Should be documented but aren't yet
+# libasdf identifiers that should be documented but aren't yet
     ('c:identifier', 'asdf_emitter_cfg_t'),
+    ('c:identifier', 'asdf_history_entry_t'),
     ('c:identifier', 'asdf_parser_cfg_t'),
 ]
 
