@@ -16,6 +16,7 @@ typedef struct {
     const char *version;
 } asdf_tag_t;
 
+
 typedef struct {
     const char *name;
     const char *version;
@@ -32,7 +33,10 @@ typedef asdf_value_err_t (*asdf_extension_deserialize_t)(
     asdf_value_t *value, const void *userdata, void **out);
 
 
-typedef void (*asdf_extension_dealloc_t)(void *userdata);
+typedef void *(*asdf_extension_copy_t)(const void *obj);
+
+
+typedef void (*asdf_extension_dealloc_t)(void *obj);
 
 
 struct _asdf_extension {
@@ -40,6 +44,7 @@ struct _asdf_extension {
     asdf_software_t *software;
     asdf_extension_serialize_t serialize;
     asdf_extension_deserialize_t deserialize;
+    asdf_extension_copy_t copy;
     asdf_extension_dealloc_t dealloc;
     void *userdata;
 };
@@ -65,12 +70,14 @@ ASDF_EXPORT const asdf_extension_t *asdf_extension_get(asdf_file_t *file, const 
 #define ASDF_EXT_STATIC_NAME(extname) ASDF_EXPAND(ASDF_EXT_PREFIX, _##extname##_extension)
 
 
-#define ASDF_EXT_DEFINE(extname, _tag, _software, _serialize, _deserialize, _dealloc, _userdata) \
+#define ASDF_EXT_DEFINE( \
+    extname, _tag, _software, _serialize, _deserialize, _copy, _dealloc, _userdata) \
     static asdf_extension_t ASDF_EXT_STATIC_NAME(extname) = { \
         .tag = (_tag), \
         .software = (_software), \
         .serialize = (_serialize), \
         .deserialize = (_deserialize), \
+        .copy = (_copy), \
         .dealloc = (_dealloc), \
         .userdata = (_userdata)}
 
@@ -114,7 +121,59 @@ ASDF_EXPORT const asdf_extension_t *asdf_extension_get(asdf_file_t *file, const 
     }
 
 
-/* Auto-generated helper to free extension type objects */
+/**
+ * Auto-generated helper to clone extension types
+ *
+ * Extension types may optionally not implement the copy method, in which case a shallow
+ * copy is performed.  This may result in undesired effects (double-frees, etc.) so do make
+ * sure to implement this if the extension object contains nested data structures.
+ */
+#define ASDF_EXT_DEFINE_CLONE(extname, type) \
+    ASDF_EXPORT type *asdf_##extname##_clone(const type *object) { \
+        if (!object) \
+            return NULL; \
+        asdf_extension_t *ext = &ASDF_EXT_STATIC_NAME(extname); \
+        if (!ext) \
+            return NULL; \
+        if (!ext->copy) { \
+            void *clone = malloc(sizeof(type)); \
+            if (!clone) \
+                return NULL; \
+            memcpy(clone, object, sizeof(type)); \
+            return clone; \
+        } \
+        return (type *)ext->copy(object); \
+    }
+
+
+/**
+ * Helper to clone a NULL-terminated array of pointers to an extension object
+ *
+ * For example, clones an `asdf_history_entry_t **` array.
+ */
+#define ASDF_EXT_DEFINE_ARRAY_CLONE(extname, type) \
+    ASDF_EXPORT type **asdf_##extname##_array_clone(const type **src) { \
+        size_t nelem = 0; \
+        while (src[nelem]) \
+            nelem++; \
+        type **dst = (type **)malloc((nelem + 1) * sizeof(type *)); \
+        if (!dst) \
+            return NULL; \
+        for (size_t idx = 0; idx < nelem; idx++) { \
+            dst[idx] = asdf_##extname##_clone(src[idx]); \
+            if (!dst[idx]) { \
+                for (size_t jdx = 0; jdx < idx; jdx++) \
+                    asdf_##extname##_destroy(dst[jdx]); \
+                free((void *)dst); \
+                return NULL; \
+            } \
+        } \
+        dst[nelem] = NULL; \
+        return dst; \
+    }
+
+
+/** Auto-generated helper to free extension type objects */
 #define ASDF_EXT_DEFINE_DESTROY(extname, type) \
     ASDF_EXPORT void asdf_##extname##_destroy(type *object) { \
         if (!object) \
@@ -127,8 +186,8 @@ ASDF_EXPORT const asdf_extension_t *asdf_extension_get(asdf_file_t *file, const 
 
 
 #define ASDF_REGISTER_EXTENSION( \
-    extname, tag, type, software, serialize, deserialize, dealloc, userdata) \
-    ASDF_EXT_DEFINE(extname, tag, software, serialize, deserialize, dealloc, userdata); \
+    extname, tag, type, software, serialize, deserialize, copy, dealloc, userdata) \
+    ASDF_EXT_DEFINE(extname, tag, software, serialize, deserialize, copy, dealloc, userdata); \
     ASDF_EXT_DEFINE_VALUE_AS_TYPE(extname, type) \
     ASDF_EXT_DEFINE_VALUE_IS_TYPE(extname) \
     ASDF_EXT_DEFINE_VALUE_OF_TYPE(extname, type) \
@@ -136,6 +195,8 @@ ASDF_EXPORT const asdf_extension_t *asdf_extension_get(asdf_file_t *file, const 
     ASDF_EXT_DEFINE_GET(extname, type) \
     ASDF_EXT_DEFINE_SET(extname, type) \
     ASDF_EXT_DEFINE_DESTROY(extname, type) \
+    ASDF_EXT_DEFINE_CLONE(extname, type) \
+    ASDF_EXT_DEFINE_ARRAY_CLONE(extname, type) \
     static ASDF_CONSTRUCTOR void ASDF_EXPAND( \
         ASDF_EXT_PREFIX, _register_##extname##_extension)(void) { \
         asdf_extension_register(&ASDF_EXT_STATIC_NAME(extname)); \
@@ -152,6 +213,8 @@ ASDF_EXPORT const asdf_extension_t *asdf_extension_get(asdf_file_t *file, const 
         asdf_file_t *file, const char *path, type **out); \
     ASDF_EXPORT asdf_value_err_t asdf_set_##extname( \
         asdf_file_t *file, const char *path, const type *obj); \
+    ASDF_EXPORT type *asdf_##extname##_clone(const type *object); \
+    ASDF_EXPORT type **asdf_##extname##_array_clone(const type **src); \
     ASDF_EXPORT void asdf_##extname##_destroy(type *object)
 
 ASDF_END_DECLS

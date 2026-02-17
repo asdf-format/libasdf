@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 
 #include "munit.h"
 #include "util.h"
@@ -89,6 +90,30 @@ static void asdf_foo_dealloc(void *value) {
 }
 
 
+static void *asdf_foo_copy(const void *value) {
+    if (!value)
+        return NULL;
+
+    const asdf_foo_t *foo = value;
+    asdf_foo_t *copy = calloc(1, sizeof(asdf_foo_t));
+
+    if (!copy)
+        goto failure;
+
+    if (foo->foo) {
+        copy->foo = strdup(foo->foo);
+
+        if (!copy->foo)
+            goto failure;
+    }
+
+    return copy;
+failure:
+    asdf_foo_dealloc(copy);
+    return NULL;
+}
+
+
 ASDF_REGISTER_EXTENSION(
     foo,
     "stsci.edu:asdf/tests/foo-1.0.0",
@@ -96,6 +121,7 @@ ASDF_REGISTER_EXTENSION(
     &asdf_foo_software,
     asdf_foo_serialize,
     asdf_foo_deserialize,
+    asdf_foo_copy,
     asdf_foo_dealloc,
     NULL
 )
@@ -188,6 +214,34 @@ MU_TEST(test_asdf_get_foo) {
 }
 
 
+MU_TEST(test_asdf_foo_clone) {
+    asdf_foo_t foo = {.foo = "foo:foo"};
+    asdf_foo_t *clone = asdf_foo_clone(&foo);
+    assert_not_null(clone);
+    assert_ptr_not_equal(foo.foo, clone->foo);
+    assert_string_equal(foo.foo, clone->foo);
+    asdf_foo_destroy(clone);
+    return MUNIT_OK;
+}
+
+
+MU_TEST(test_asdf_foo_array_clone) {
+    asdf_foo_t foo = {.foo = "foo:foo"};
+    const asdf_foo_t *foos[] = {&foo, NULL};
+    asdf_foo_t **clone = asdf_foo_array_clone(foos);
+    assert_not_null(clone[0]);
+    assert_null(clone[1]);
+    assert_ptr_not_equal(clone[0], foos[0]);
+    assert_string_equal(clone[0]->foo, foos[0]->foo);
+    // TODO: Maybe a convenience method for this as well?
+    for (asdf_foo_t **fp = clone; *fp; ++fp) {
+        asdf_foo_destroy(*fp);
+    }
+    free((void *)clone);
+    return MUNIT_OK;
+}
+
+
 MU_TEST_SUITE(
     extension,
     MU_RUN_TEST(extension_registered),
@@ -195,7 +249,9 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_value_as_foo),
     MU_RUN_TEST(test_asdf_value_of_foo),
     MU_RUN_TEST(test_asdf_is_foo),
-    MU_RUN_TEST(test_asdf_get_foo)
+    MU_RUN_TEST(test_asdf_get_foo),
+    MU_RUN_TEST(test_asdf_foo_clone),
+    MU_RUN_TEST(test_asdf_foo_array_clone)
 );
 
 

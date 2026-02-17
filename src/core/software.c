@@ -1,3 +1,7 @@
+#include <stdlib.h>
+#include <string.h>
+
+#include "../error.h"
 #include "../log.h"
 #include "../util.h"
 #include "../value.h"
@@ -119,10 +123,10 @@ static asdf_value_err_t asdf_software_deserialize(
         goto failure;
     }
 
-    software->name = name;
-    software->version = version;
-    software->homepage = homepage;
-    software->author = author;
+    software->name = name ? strdup(name) : name;
+    software->version = version ? strdup(version) : version;
+    software->homepage = homepage ? strdup(homepage) : homepage;
+    software->author = author ? strdup(author) : author;
     *out = software;
     return ASDF_VALUE_OK;
 failure:
@@ -132,12 +136,59 @@ failure:
 
 
 static void asdf_software_dealloc(void *value) {
-    // The strings that we pointed to in the software object are actually managed
-    // by libfyaml, so they will be cleaned up automatically when we destroy the
-    // fy_node
-    //
-    // This dealloc method is thus redundant, but included for illustration purposes.
+    if (!value)
+        return;
+
+    asdf_software_t *software = value;
+    free((void *)software->name);
+    free((void *)software->version);
+    free((void *)software->homepage);
+    free((void *)software->author);
     free(value);
+}
+
+
+static void *asdf_software_copy(const void *value) {
+    if (!value)
+        return NULL;
+
+    const asdf_software_t *software = value;
+    asdf_software_t *copy = calloc(1, sizeof(asdf_software_t));
+
+    if (!copy)
+        goto failure;
+
+    if (software->name) {
+        copy->name = strdup(software->name);
+
+        if (!copy->name)
+            goto failure;
+    }
+
+    if (software->version) {
+        copy->version = strdup(software->version);
+
+        if (!copy->version)
+            goto failure;
+    }
+
+    if (software->homepage) {
+        copy->homepage = strdup(software->homepage);
+
+        if (!copy->homepage)
+            goto failure;
+    }
+
+    if (software->author) {
+        copy->author = strdup(software->author);
+
+        if (!copy->author)
+            goto failure;
+    }
+failure:
+    asdf_software_dealloc(copy);
+    ASDF_ERROR_OOM(NULL);
+    return NULL;
 }
 
 
@@ -148,5 +199,6 @@ ASDF_REGISTER_EXTENSION(
     &libasdf_software,
     asdf_software_serialize,
     asdf_software_deserialize,
+    asdf_software_copy,
     asdf_software_dealloc,
     NULL);

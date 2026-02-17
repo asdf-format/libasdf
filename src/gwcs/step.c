@@ -114,5 +114,6 @@ ASDF_REGISTER_EXTENSION(
     &libasdf_software,
     NULL,
     asdf_gwcs_step_deserialize,
+    NULL, /* TODO: copy */
     asdf_gwcs_step_dealloc,
     NULL);

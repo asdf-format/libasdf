@@ -3,6 +3,8 @@
 #endif
 
 #include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 #include "../error.h"
@@ -323,6 +325,41 @@ static void asdf_history_entry_dealloc(void *value) {
 }
 
 
+static void *asdf_history_entry_copy(const void *value) {
+    if (!value)
+        return NULL;
+
+    const asdf_history_entry_t *entry = value;
+
+    asdf_history_entry_t *copy = calloc(1, sizeof(asdf_history_entry_t));
+
+    if (!copy)
+        goto failure;
+
+    if (entry->description) {
+        copy->description = strdup(entry->description);
+
+        if (!copy->description)
+            goto failure;
+    }
+
+    copy->time = entry->time;
+
+    if (entry->software) {
+        copy->software = (const asdf_software_t **)asdf_software_array_clone(entry->software);
+
+        if (!copy->software)
+            goto failure;
+    }
+
+    return copy;
+failure:
+    asdf_history_entry_destroy(copy);
+    ASDF_ERROR_OOM(NULL);
+    return NULL;
+}
+
+
 /* Define the extension for the core/history_entry-1.0.0 schema
  *
  */
@@ -333,5 +370,6 @@ ASDF_REGISTER_EXTENSION(
     &libasdf_software,
     asdf_history_entry_serialize,
     asdf_history_entry_deserialize,
+    asdf_history_entry_copy,
     asdf_history_entry_dealloc,
     NULL);
