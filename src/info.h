@@ -4,8 +4,10 @@
 #include "config.h"
 #endif
 
+#include <stdbool.h>
 #include <stdio.h>
 
+#include "file.h"
 #include "util.h"
 
 
@@ -16,7 +18,8 @@ typedef struct {
     const char *filename;
     bool print_tree;
     bool print_blocks;
+    bool verify_checksums;
 } asdf_info_cfg_t;
 
 
-ASDF_EXPORT int asdf_info(FILE *in_file, FILE *out_file, const asdf_info_cfg_t *cfg);
+ASDF_EXPORT int asdf_info(asdf_file_t *file, FILE *out, const asdf_info_cfg_t *cfg);

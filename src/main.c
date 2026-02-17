@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "event.h"
+#include "file.h"
 #include "info.h"
 #include "parser.h"
 
@@ -30,7 +31,8 @@ static struct argp_option global_options[] = {{0}};
 typedef enum {
     ASDF_SUBCMD_NONE = 0,
     ASDF_SUBCMD_INFO,
-    ASDF_SUBCMD_EVENTS
+    ASDF_SUBCMD_EVENTS,
+    ASDF_SUBCMD_VERIFY_CHECKSUMS
 } asdf_subcmd_t;
 // clang-format on
 
@@ -52,6 +54,10 @@ static error_t parse_global_opt(int key, char *arg, struct argp_state *state) {
                 args->subcmd = ASDF_SUBCMD_INFO;
             } else if (strcmp(arg, "events") == 0) {
                 args->subcmd = ASDF_SUBCMD_EVENTS;
+#ifdef HAVE_MD5
+            } else if (strcmp(arg, "verify-checksums") == 0) {
+                args->subcmd = ASDF_SUBCMD_VERIFY_CHECKSUMS;
+#endif
             } else {
                 argp_state_help(state, stdout, ARGP_HELP_STD_ERR);
             }
@@ -80,17 +86,21 @@ static char info_args_doc[] = "FILENAME";
 
 
 #define INFO_OPT_NO_TREE_KEY 0x100
+#define INFO_OPT_VERIFY_CHECKSUMS 0x101
 
 
 static struct argp_option info_options[] = {
     {"no-tree", INFO_OPT_NO_TREE_KEY, 0, 0, "Do not show the tree", 0},
     {"blocks", 'b', 0, 0, "Show information about blocks", 0},
+    {"verify-checksums", INFO_OPT_VERIFY_CHECKSUMS, 0, 0, "Verify block checksums (implies -b)", 0},
     {0}};
+
 
 struct info_args {
     const char *filename;
     bool print_tree;
     bool print_blocks;
+    bool verify_checksums;
 };
 
 
@@ -104,6 +114,9 @@ static error_t parse_info_opt(int key, char *arg, struct argp_state *state) {
         break;
     case 'b':
         args->print_blocks = true;
+        break;
+    case INFO_OPT_VERIFY_CHECKSUMS:
+        args->verify_checksums = true;
         break;
     case ARGP_KEY_ARG:
         if (!args->filename)
@@ -126,8 +139,8 @@ static error_t parse_info_opt(int key, char *arg, struct argp_state *state) {
 static struct argp info_argp = {info_options, parse_info_opt, info_args_doc, info_doc, 0, 0, 0};
 
 
-static int info_main(const char *filename, bool print_tree, bool print_blocks) {
-    FILE *file = fopen(filename, "r");
+static int info_main(struct info_args args) {
+    asdf_file_t *file = asdf_open(args.filename, "r");
 
     if (!file) {
         perror("error");
@@ -135,12 +148,12 @@ static int info_main(const char *filename, bool print_tree, bool print_blocks) {
     }
 
     asdf_info_cfg_t cfg = {
-        .filename = filename,
-        .print_tree = print_tree,
-        .print_blocks = print_blocks,
-    };
+        .filename = args.filename,
+        .print_tree = args.print_tree,
+        .print_blocks = args.print_blocks || args.verify_checksums,
+        .verify_checksums = args.verify_checksums};
     int status = asdf_info(file, stdout, &cfg);
-    fclose(file);
+    asdf_close(file);
     return status ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 // end info
@@ -211,12 +224,12 @@ static struct argp events_argp = {
     events_options, parse_events_opt, events_args_doc, events_doc, 0, 0, 0};
 
 
-int events_main(const char *filename, bool verbose, bool no_yaml, bool cap_tree) {
+int events_main(struct events_args args) {
     // Current implementation always outputs YAML events, so this is needed; later update
     // to allow an option to skip YAML events (useful for testing)
-    asdf_parser_optflags_t flags = no_yaml ? 0 : ASDF_PARSER_OPT_EMIT_YAML_EVENTS;
+    asdf_parser_optflags_t flags = args.no_yaml ? 0 : ASDF_PARSER_OPT_EMIT_YAML_EVENTS;
 
-    if (cap_tree)
+    if (args.cap_tree)
         flags |= ASDF_PARSER_OPT_BUFFER_TREE;
 
     asdf_parser_cfg_t parser_cfg = {.flags = flags};
@@ -228,7 +241,7 @@ int events_main(const char *filename, bool verbose, bool no_yaml, bool cap_tree)
         return EXIT_FAILURE;
     }
 
-    if (asdf_parser_set_input_file(parser, filename)) {
+    if (asdf_parser_set_input_file(parser, args.filename)) {
         fprintf(stderr, "error: %s\n", asdf_parser_get_error(parser));
         asdf_parser_destroy(parser);
         return EXIT_FAILURE;
@@ -237,7 +250,7 @@ int events_main(const char *filename, bool verbose, bool no_yaml, bool cap_tree)
     asdf_event_t *event = NULL;
 
     while ((event = asdf_event_iterate(parser))) {
-        asdf_event_print(event, stdout, verbose);
+        asdf_event_print(event, stdout, args.verbose);
     }
 
     int ret = EXIT_SUCCESS;
@@ -253,6 +266,124 @@ int events_main(const char *filename, bool verbose, bool no_yaml, bool cap_tree)
 // end events
 
 
+// verify-checksums sub-command
+static char verify_checksums_doc[] = "Verify binary block MD5 checksums";
+static char verify_checksums_args_doc[] = "FILENAME";
+
+
+static struct argp_option verify_checksums_options[] = {
+    {"verbose",
+     'v',
+     0,
+     0,
+     "Output checksums of all blocks with or without errors; otherwise output is quiet on success",
+     0},
+    {0}};
+
+
+struct verify_checksums_args {
+    const char *filename;
+    bool verbose;
+};
+
+
+// NOLINTNEXTLINE(readability-non-const-parameter)
+static error_t parse_verify_checksums_opt(int key, char *arg, struct argp_state *state) {
+    struct events_args *args = state->input;
+
+    switch (key) {
+    case 'v':
+        args->verbose = true;
+        break;
+    case ARGP_KEY_ARG:
+        if (!args->filename)
+            args->filename = arg;
+        else
+            argp_error(
+                state, "Too many arguments for 'verify-checksums'. Only FILENAME is expected.");
+        break;
+
+    case ARGP_KEY_NO_ARGS:
+        argp_error(state, "'verify-checksums' requires a FILENAME argument.");
+        break;
+
+    default:
+        return ARGP_ERR_UNKNOWN;
+    }
+    return 0;
+}
+
+
+static struct argp verify_checksums_argp = {
+    verify_checksums_options,
+    parse_verify_checksums_opt,
+    verify_checksums_args_doc,
+    verify_checksums_doc,
+    0,
+    0,
+    0};
+
+
+int verify_checksums_main(struct verify_checksums_args args) {
+    asdf_file_t *file = asdf_open(args.filename, "r");
+
+    if (!file) {
+        fprintf(stderr, "error: %s\n", asdf_error(NULL));
+        return EXIT_FAILURE;
+    }
+
+    int ret = EXIT_SUCCESS;
+    FILE *out = args.verbose ? stdout : stderr;
+
+    for (size_t idx = 0; idx < asdf_block_count(file); idx++) {
+        asdf_block_t *block = asdf_block_open(file, idx);
+
+        if (!block) {
+            fprintf(stderr, "fatal error: %s", asdf_error(file));
+            ret = EXIT_FAILURE;
+            goto cleanup;
+        }
+
+        asdf_block_header_t *header = &block->info.header;
+        unsigned char computed_digest[ASDF_BLOCK_CHECKSUM_DIGEST_SIZE] = {0};
+        char computed[(ASDF_BLOCK_CHECKSUM_DIGEST_SIZE * 2) + 1] = {0};
+        char expected[(ASDF_BLOCK_CHECKSUM_DIGEST_SIZE * 2) + 1] = {0};
+        bool valid = asdf_block_checksum_verify(block, computed_digest);
+
+        char *p = expected;
+
+        for (int jdx = 0; jdx < ASDF_BLOCK_CHECKSUM_DIGEST_SIZE; jdx++) {
+            p += sprintf(p, "%02x", header->checksum[jdx]);
+        }
+
+        if (!valid) {
+            p = computed;
+
+            for (int jdx = 0; jdx < ASDF_BLOCK_CHECKSUM_DIGEST_SIZE; jdx++) {
+                p += sprintf(p, "%02x", computed_digest[jdx]);
+            }
+
+            ret = EXIT_FAILURE;
+            fprintf(
+                out,
+                "Block %zu: checksum mismatch\n  expected: %s\n  computed: %s\n",
+                idx,
+                expected,
+                computed);
+        } else if (args.verbose) {
+            fprintf(out, "Block %zu: OK\n  checksum: %s\n", idx, expected);
+        }
+
+        asdf_block_close(block);
+    }
+
+cleanup:
+    asdf_close(file);
+    return ret;
+}
+// end verify-checksums
+
+
 int main(int argc, char *argv[]) {
     struct global_args global_args = {0};
     struct argp global_argp = {global_options, parse_global_opt, args_doc, doc, 0, 0, 0};
@@ -265,15 +396,26 @@ int main(int argc, char *argv[]) {
         argp_parse(
             &info_argp, global_args.subcmd_argc, global_args.subcmd_argv, 0, NULL, &info_args);
 
-        return info_main(info_args.filename, info_args.print_tree, info_args.print_blocks);
+        return info_main(info_args);
     }
     case ASDF_SUBCMD_EVENTS: {
         struct events_args events_args = {0};
         argp_parse(
             &events_argp, global_args.subcmd_argc, global_args.subcmd_argv, 0, NULL, &events_args);
 
-        return events_main(
-            events_args.filename, events_args.verbose, events_args.no_yaml, events_args.cap_tree);
+        return events_main(events_args);
+    }
+    case ASDF_SUBCMD_VERIFY_CHECKSUMS: {
+        struct verify_checksums_args verify_checksums_args = {0};
+        argp_parse(
+            &verify_checksums_argp,
+            global_args.subcmd_argc,
+            global_args.subcmd_argv,
+            0,
+            NULL,
+            &verify_checksums_args);
+
+        return verify_checksums_main(verify_checksums_args);
     }
     case ASDF_SUBCMD_NONE:
         break;

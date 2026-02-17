@@ -156,7 +156,7 @@ static const uint8_t *file_next(asdf_stream_t *stream, size_t count, size_t *ava
     file_userdata_t *data = stream->userdata;
     size_t buf_remain = data->buf_avail - data->buf_pos;
 
-    // Resize buffer if necessary; note if pass a large count request this can
+    // Resize buffer if necessary; note if passed a large count request this can
     // resize effectively unbounded so use with caution
     if (count > data->buf_size) {
         uint8_t *new_buf = realloc(data->buf, count);

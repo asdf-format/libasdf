@@ -9,6 +9,10 @@ file(GLOB source_files "test-*.c")
 file(GLOB shell_files "test-*.sh")
 set(ext_pattern "(^.*/|\\.[^.]*$)")
 
+if (NOT HAVE_MD5)
+    list(REMOVE_ITEM shell_files "${CMAKE_CURRENT_SOURCE_DIR}/test-verify-checksums.sh")
+endif()
+
 if (NOT WITH_GWCS)
     list(REMOVE_ITEM source_files "${CMAKE_CURRENT_SOURCE_DIR}/test-gwcs.c")
 endif()

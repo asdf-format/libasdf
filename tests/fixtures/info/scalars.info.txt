@@ -1,20 +1,20 @@
 [1mroot[0m (tag:stsci.edu:asdf/core/asdf-1.1.0)
 [2m├─[0m[1masdf_library[0m (tag:stsci.edu:asdf/core/software-1.0.0)
-[2m│[0m [2m├─[0m[1mauthor[0m (scalar): The ASDF Developers
-[2m│[0m [2m├─[0m[1mhomepage[0m (scalar): http://github.com/asdf-format/asdf
-[2m│[0m [2m├─[0m[1mname[0m (scalar): asdf
-[2m│[0m [2m└─[0m[1mversion[0m (scalar): 4.1.0
+[2m│ ├─[0m[1mauthor[0m (scalar): The ASDF Developers
+[2m│ ├─[0m[1mhomepage[0m (scalar): http://github.com/asdf-format/asdf
+[2m│ ├─[0m[1mname[0m (scalar): asdf
+[2m│ └─[0m[1mversion[0m (scalar): 4.1.0
 [2m├─[0m[1mhistory[0m (mapping)
-[2m│[0m [2m└─[0m[1mextensions[0m (sequence)
-[2m│[0m   [2m└─[0m[[1m0[0m] (tag:stsci.edu:asdf/core/extension_metadata-1.0.0)
-[2m│[0m     [2m├─[0m[1mextension_class[0m (scalar): asdf.extension._manifest.ManifestExtension
-[2m│[0m     [2m├─[0m[1mextension_uri[0m (scalar): asdf://asdf-format.org/core/extensions/core-1.6.0
-[2m│[0m     [2m├─[0m[1mmanifest_software[0m (tag:stsci.edu:asdf/core/software-1.0.0)
-[2m│[0m     [2m│[0m [2m├─[0m[1mname[0m (scalar): asdf_standard
-[2m│[0m     [2m│[0m [2m└─[0m[1mversion[0m (scalar): 1.1.1
-[2m│[0m     [2m└─[0m[1msoftware[0m (tag:stsci.edu:asdf/core/software-1.0.0)
-[2m│[0m       [2m├─[0m[1mname[0m (scalar): asdf
-[2m│[0m       [2m└─[0m[1mversion[0m (scalar): 4.1.0
+[2m│ └─[0m[1mextensions[0m (sequence)
+[2m│   └─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/core/extension_metadata-1.0.0)
+[2m│     ├─[0m[1mextension_class[0m (scalar): asdf.extension._manifest.ManifestExtension
+[2m│     ├─[0m[1mextension_uri[0m (scalar): asdf://asdf-format.org/core/extensions/core-1.6.0
+[2m│     ├─[0m[1mmanifest_software[0m (tag:stsci.edu:asdf/core/software-1.0.0)
+[2m│     │ ├─[0m[1mname[0m (scalar): asdf_standard
+[2m│     │ └─[0m[1mversion[0m (scalar): 1.1.1
+[2m│     └─[0m[1msoftware[0m (tag:stsci.edu:asdf/core/software-1.0.0)
+[2m│       ├─[0m[1mname[0m (scalar): asdf
+[2m│       └─[0m[1mversion[0m (scalar): 4.1.0
 [2m├─[0m[1mfloat[0m (scalar): 3.14
 [2m├─[0m[1mint[0m (scalar): 42
 [2m└─[0m[1mstring[0m (scalar): foo

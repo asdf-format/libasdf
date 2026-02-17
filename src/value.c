@@ -226,6 +226,19 @@ const char *asdf_value_path(asdf_value_t *value) {
 }
 
 
+asdf_value_t *asdf_value_parent(asdf_value_t *value) {
+    if (UNLIKELY(!value))
+        return NULL;
+
+    struct fy_node *parent = fy_node_get_parent(value->node);
+
+    if (!parent)
+        return NULL;
+
+    return asdf_value_create(value->file, parent);
+}
+
+
 const char *asdf_value_tag(asdf_value_t *value) {
     if (!value)
         return NULL;
@@ -1118,6 +1131,21 @@ cleanup:
 
 bool asdf_value_is_container(asdf_value_t *value) {
     return value->raw_type == ASDF_VALUE_MAPPING || value->raw_type == ASDF_VALUE_SEQUENCE;
+}
+
+
+int asdf_container_size(asdf_value_t *container) {
+    if (UNLIKELY(!container))
+        return -1;
+
+    switch (container->raw_type) {
+    case ASDF_VALUE_MAPPING:
+        return asdf_mapping_size((asdf_mapping_t *)container);
+    case ASDF_VALUE_SEQUENCE:
+        return asdf_sequence_size((asdf_sequence_t *)container);
+    default:
+        return -1;
+    }
 }
 
 

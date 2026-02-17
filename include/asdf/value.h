@@ -200,6 +200,15 @@ ASDF_EXPORT asdf_value_type_t asdf_value_get_type(asdf_value_t *value);
 ASDF_EXPORT const char *asdf_value_path(asdf_value_t *value);
 
 /**
+ * Get the parent value, if any, of the given value
+ *
+ * :param value: The `asdf_value_t *` handle
+ * :return: An `asdf_value_t *` of its parent mapping or sequence; if the input value
+ *   is the root node, or is not an attached value, the parent is NULL
+ */
+ASDF_EXPORT asdf_value_t *asdf_value_parent(asdf_value_t *value);
+
+/**
  * Returns a human-readable string representation of an `asdf_value_type_t`;
  * useful for error-reporting
  */
@@ -558,6 +567,15 @@ ASDF_EXPORT asdf_container_item_t *asdf_container_iter(
 ASDF_EXPORT void asdf_container_item_destroy(asdf_container_item_t *item);
 
 ASDF_EXPORT bool asdf_value_is_container(asdf_value_t *value);
+
+
+/**
+ * Generic container size
+ *
+ * :param value: `asdf_value_t *` containing a mapping or a sequence
+ * :return: The size of the mapping or container, or -1 if the value is not a container type
+ */
+ASDF_EXPORT int asdf_container_size(asdf_value_t *container);
 
 
 /** Extension-related functions */

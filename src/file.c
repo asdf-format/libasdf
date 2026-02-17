@@ -1120,7 +1120,8 @@ const unsigned char *asdf_block_checksum(asdf_block_t *block) {
 }
 
 
-bool asdf_block_checksum_verify(asdf_block_t *block) {
+bool asdf_block_checksum_verify(
+    asdf_block_t *block, unsigned char computed[ASDF_BLOCK_CHECKSUM_DIGEST_SIZE]) {
     if (!block)
         return false;
 
@@ -1131,8 +1132,7 @@ bool asdf_block_checksum_verify(asdf_block_t *block) {
     const asdf_block_header_t *header = &block->info.header;
     size_t size = 0;
     asdf_md5_ctx_t md5_ctx = {0};
-    // NOLINTNEXTLINE(readability-magic-numbers)
-    unsigned char digest[16] = {0};
+    unsigned char digest[ASDF_BLOCK_CHECKSUM_DIGEST_SIZE] = {0};
     const void *data = asdf_block_data(block, &size);
 
     if (!data)
@@ -1141,7 +1141,11 @@ bool asdf_block_checksum_verify(asdf_block_t *block) {
     asdf_md5_init(&md5_ctx);
     asdf_md5_update(&md5_ctx, data, size);
     asdf_md5_final(&md5_ctx, digest);
-    // NOLINTNEXTLINE(readability-magic-numbers)
-    return memcmp(header->checksum, digest, 16) == 0;
+    bool valid = memcmp(header->checksum, digest, ASDF_BLOCK_CHECKSUM_DIGEST_SIZE) == 0;
+
+    if (computed)
+        memcpy(computed, digest, ASDF_BLOCK_CHECKSUM_DIGEST_SIZE);
+
+    return valid;
 #endif
 }

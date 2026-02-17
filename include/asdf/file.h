@@ -910,6 +910,12 @@ ASDF_EXPORT const unsigned char *asdf_block_checksum(asdf_block_t *block);
 
 
 /**
+ * Size in bytes of the MD5 digest for block checksums
+ */
+#define ASDF_BLOCK_CHECKSUM_DIGEST_SIZE 16
+
+
+/**
  * Verify the MD5 checksum of the block
  *
  * By default this is not done automatically when reading the block.
@@ -925,9 +931,12 @@ ASDF_EXPORT const unsigned char *asdf_block_checksum(asdf_block_t *block);
  *   Add and document option to automatically verify checksums.
  *
  * :param block: The `asdf_block_t *` handle
+ * :param computed: Optional pointer to a `uint8_t` buffer to receive the computed
+ *   MD5 digest on return
  * :return: True if the checksum is valid
  */
-ASDF_EXPORT bool asdf_block_checksum_verify(asdf_block_t *block);
+ASDF_EXPORT bool asdf_block_checksum_verify(
+    asdf_block_t *block, uint8_t expected[ASDF_BLOCK_CHECKSUM_DIGEST_SIZE]);
 
 
 /**

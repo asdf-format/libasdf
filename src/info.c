@@ -2,15 +2,14 @@
 #include <inttypes.h>
 #include <stdarg.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "block.h"
-#include "event.h"
+#include "file.h"
 #include "info.h"
-#include "parser.h"
-#include "yaml.h"
+#include "value.h"
 
 
 #define ANSI_RESET "\033[0m"
@@ -19,351 +18,141 @@
 #define BOLD(str) ANSI_BOLD str ANSI_RESET
 #define DIM(str) ANSI_DIM str ANSI_RESET
 
+#define COLOR_GREEN "\033[32m"
+#define COLOR_RED "\033[31m"
+#define COLOR(color, str) color str ANSI_RESET
 
-// clang-format off
-typedef enum {
-    TREE_SCALAR,
-    TREE_MAPPING,
-    TREE_SEQUENCE
-} tree_node_type_t;
-// clang-format on
+#define UTF8_LEADING_PREFIX 0xc0
+#define UTF8_CONTINUATION_PREFIX 0x80
 
-
-typedef struct tree_node {
-    tree_node_type_t type;
-
-    union {
-        char *key;
-        size_t index;
-    } index;
-    char *tag;
-    char *value;
-
-    struct tree_node *parent;
-    struct tree_node *first_child;
-    struct tree_node *last_child;
-    struct tree_node *next_sibling;
-
-    union {
-        struct {
-            char *pending_key;
-        } mapping;
-
-        struct {
-            size_t index;
-        } sequence;
-    } state;
-} tree_node_t;
+/** Determines how much indentation to reserve initially, but can be increased */
+#define INITIAL_MAX_DEPTH 16
 
 
-typedef struct tree_node_stack {
-    tree_node_t *node;
-    struct tree_node_stack *next;
-} tree_node_stack_t;
+typedef struct {
+    size_t depth;
+    size_t max_depth;
+    bool *active_levels;
+    bool is_mapping;
+    bool is_leaf;
+} node_state_t;
 
 
-static tree_node_t *tree_node_new(tree_node_type_t type, const char *key, size_t index) {
-    tree_node_t *node = calloc(1, sizeof(tree_node_t));
-    node->type = type;
-
-    if (key) {
-        node->index.key = strdup(key);
-    } else {
-        node->index.index = index;
-    }
-
-    switch (type) {
-    case TREE_MAPPING:
-        node->state.mapping.pending_key = NULL;
-        break;
-    case TREE_SEQUENCE:
-        node->state.sequence.index = 0;
-        break;
-    default:
-        break;
-    }
-
-    return node;
-}
+typedef struct {
+    const char *key;
+    int index;
+} node_index_t;
 
 
-static void tree_node_add_child(tree_node_t *parent, tree_node_t *child) {
-    child->parent = parent;
-    if (!parent->first_child) {
-        parent->first_child = parent->last_child = child;
-    } else {
-        parent->last_child->next_sibling = child;
-        parent->last_child = child;
-    }
-}
-
-
-// NOLINTNEXTLINE(misc-no-recursion)
-static void tree_node_free(tree_node_t *node) {
-    tree_node_t *child = node->first_child;
-    while (child) {
-        tree_node_t *next = child->next_sibling;
-        tree_node_free(child);
-        child = next;
-    }
-
-    if (node->parent && node->parent->type == TREE_MAPPING)
-        free(node->index.key);
-
-    if (node->type == TREE_MAPPING)
-        free(node->state.mapping.pending_key);
-
-    free(node->tag);
-    free(node->value);
-    free(node);
-}
-
-
-static void tree_node_set_pending_key(tree_node_t *parent, const char *new_key, size_t len) {
-    if (!parent || parent->type != TREE_MAPPING)
+static void print_indent(FILE *out, node_state_t *state) {
+    if (state->depth < 1)
         return;
 
-    // Free old key if present
-    if (parent->state.mapping.pending_key) {
-        free(parent->state.mapping.pending_key);
-        parent->state.mapping.pending_key = NULL;
-    }
+    fputs(ANSI_DIM, out);
 
-    if (new_key && len > 0) {
-        parent->state.mapping.pending_key = strndup(new_key, len);
-    } else {
-        parent->state.mapping.pending_key = NULL;
-    }
-}
-
-
-static void stack_push(tree_node_stack_t **stack, tree_node_t *node) {
-    tree_node_stack_t *new_item = malloc(sizeof(tree_node_stack_t));
-    new_item->node = node;
-    new_item->next = *stack;
-    *stack = new_item;
-}
-
-
-static tree_node_t *stack_pop(tree_node_stack_t **stack) {
-    tree_node_stack_t *top = *stack;
-
-    if (!top)
-        return NULL;
-
-    tree_node_t *node = top->node;
-    *stack = top->next;
-    free(top);
-    return node;
-}
-
-
-static tree_node_t *stack_peek(tree_node_stack_t *stack) {
-    return stack ? stack->node : NULL;
-}
-
-
-static tree_node_t *build_container_node(asdf_event_t *event, tree_node_t *parent) {
-    tree_node_t *root = NULL;
-    tree_node_t *node = NULL;
-    const char *key = NULL;
-    size_t index = 0;
-    const char *tag = NULL;
-    size_t tag_len = 0;
-    asdf_yaml_event_type_t event_type = asdf_yaml_event_type(event);
-    tree_node_type_t node_type = (event_type == ASDF_YAML_MAPPING_START_EVENT) ? TREE_MAPPING
-                                                                               : TREE_SEQUENCE;
-
-    if (parent == NULL) {
-        root = tree_node_new(node_type, NULL, 0);
-        node = root;
-    } else {
-        switch (parent->type) {
-        case TREE_MAPPING:
-            key = parent->state.mapping.pending_key;
-            break;
-        case TREE_SEQUENCE:
-            index = parent->state.sequence.index++;
-            break;
-        default:
-            break;
-        }
-        node = tree_node_new(node_type, key, index);
-        tree_node_set_pending_key(parent, NULL, 0);
-        tree_node_add_child(parent, node);
-    }
-
-    tag = asdf_yaml_event_tag(event, &tag_len);
-
-    if (tag && tag_len > 0)
-        node->tag = strndup(tag, tag_len);
-
-    return node;
-}
-
-
-static tree_node_t *build_scalar_node(asdf_event_t *event, tree_node_t *parent) {
-    tree_node_t *node = NULL;
-    const char *key = NULL;
-    size_t index = 0;
-    size_t val_len = 0;
-    const char *value = asdf_yaml_event_scalar_value(event, &val_len);
-    size_t tag_len = 0;
-    const char *tag = asdf_yaml_event_tag(event, &tag_len);
-
-    if (parent->type == TREE_MAPPING && !parent->state.mapping.pending_key) {
-        tree_node_set_pending_key(parent, value, val_len);
-        return NULL;
-    }
-
-    switch (parent->type) {
-    case TREE_MAPPING:
-        key = parent->state.mapping.pending_key;
-        break;
-    case TREE_SEQUENCE:
-        index = parent->state.sequence.index++;
-        break;
-    default:
-        break;
-    }
-
-    node = tree_node_new(TREE_SCALAR, key, index);
-    tree_node_set_pending_key(parent, NULL, 0);
-    node->value = strndup(value, val_len);
-
-    if (tag && tag_len > 0)
-        node->tag = strndup(tag, tag_len);
-
-    return node;
-}
-
-
-static tree_node_t *build_tree(asdf_parser_t *parser) {
-    asdf_event_t *event = NULL;
-    tree_node_t *root = NULL;
-    tree_node_stack_t *stack = NULL;
-
-    while ((event = asdf_event_iterate(parser))) {
-        asdf_yaml_event_type_t type = asdf_yaml_event_type(event);
-        tree_node_t *parent = stack_peek(stack);
-
-        if (type == ASDF_YAML_STREAM_END_EVENT) {
-            asdf_event_free(parser, event);
-            break;
-        }
-
-        switch (type) {
-        /* TODO: Handle anchor events */
-        case ASDF_YAML_MAPPING_START_EVENT:
-        case ASDF_YAML_SEQUENCE_START_EVENT: {
-            tree_node_t *node = build_container_node(event, parent);
-
-            if (root == NULL)
-                root = node;
-
-            stack_push(&stack, node);
-            break;
-        }
-
-        case ASDF_YAML_MAPPING_END_EVENT:
-        case ASDF_YAML_SEQUENCE_END_EVENT:
-            stack_pop(&stack);
-            break;
-
-        case ASDF_YAML_SCALAR_EVENT: {
-            if (!parent)
-                continue;
-
-            tree_node_t *node = build_scalar_node(event, parent);
-
-            if (!node)
-                continue;
-
-            tree_node_add_child(parent, node);
-            break;
-        }
-
-        default:
-            // ignore other ASDF event types for now
-            break;
+    for (size_t idx = 0; idx < state->depth; idx++) {
+        if (idx == state->depth - 1) {
+            fputs(state->is_leaf ? "└─" : "├─", out);
+        } else {
+            if (state->active_levels[idx])
+                fputs("│ ", out);
+            else
+                fputs("  ", out);
         }
     }
 
-    // Defensive cleanup of the stack; unlikely to be needed but possible in case of
-    // an error or malformed document
-    while (stack != NULL)
-        stack_pop(&stack);
-
-    return root;
+    fputs(ANSI_RESET, out);
 }
 
+
+// TODO: Make this non-recursive using a stack of iterators / states
+// Easy-enough conversion though unlikely to find many files deep enough to blow the C stack
 
 // NOLINTNEXTLINE(misc-no-recursion)
-static void print_indent(FILE *file, const tree_node_t *node) {
-    if (!node)
-        return;
+static int print_node(FILE *out, asdf_value_t *node, node_index_t *index, node_state_t *state) {
+    if (UNLIKELY(!out || !node || !index || !state))
+        return -1;
 
-    print_indent(file, node->parent);
+    const char *tag = asdf_value_tag(node);
 
-    if (node->parent && node->parent->parent) {
-        if (node->parent->next_sibling)
-            fprintf(file, DIM("│") " ");
+    if (!tag) {
+        if (asdf_value_is_mapping(node)) {
+            tag = "mapping";
+        } else if (asdf_value_is_sequence(node)) {
+            tag = "sequence";
+        } else {
+            tag = "scalar";
+        }
+    }
+
+    print_indent(out, state);
+
+    if (state->is_mapping) {
+        fprintf(out, BOLD("%s") " (%s)", index->key, tag);
+    } else {
+        // Print node in sequence
+        fprintf(out, DIM("[") BOLD("%d") DIM("]") " (%s)", index->index, tag);
+    }
+
+    if (!asdf_value_is_container(node)) {
+        const char *value = NULL;
+        asdf_value_as_scalar0(node, &value);
+        fprintf(out, ": %s", value);
+        fputc('\n', out);
+        return 0;
+    }
+
+    fputc('\n', out);
+    bool is_mapping = asdf_value_is_mapping(node);
+    asdf_container_iter_t iter = asdf_container_iter_init();
+    asdf_container_item_t *item = NULL;
+    int size = asdf_container_size(node);
+    int idx = 0;
+
+    if (state->depth > state->max_depth - 1) {
+        // Grow the maximum depth linerally
+        size_t new_max_depth = state->max_depth + INITIAL_MAX_DEPTH;
+        bool *new_active_levels = realloc(state->active_levels, new_max_depth * sizeof(bool));
+
+        if (!new_active_levels)
+            return -1;
+
+        memcpy(new_active_levels, state->active_levels, state->max_depth);
+        state->active_levels = new_active_levels;
+        state->max_depth = new_max_depth;
+    }
+
+    state->active_levels[state->depth] = true;
+
+    node_state_t child_state = {
+        .depth = state->depth + 1,
+        .max_depth = state->max_depth,
+        .active_levels = state->active_levels,
+        .is_mapping = is_mapping,
+        .is_leaf = false};
+
+    while ((item = asdf_container_iter(node, &iter))) {
+        if (idx == size - 1) {
+            child_state.is_leaf = true;
+            state->active_levels[state->depth] = false;
+        }
+
+        node_index_t child_index = {0};
+
+        if (is_mapping)
+            child_index.key = asdf_container_item_key(item);
         else
-            fprintf(file, "  ");
-    }
-}
+            child_index.index = asdf_container_item_index(item);
 
-
-// NOLINTNEXTLINE(misc-no-recursion)
-void print_tree(FILE *file, const tree_node_t *node) {
-    if (!node)
-        return;
-
-    print_indent(file, node);
-
-    if (node->parent) {
-        fprintf(file, node->next_sibling ? DIM("├─") : DIM("└─"));
-
-        switch (node->parent->type) {
-        case TREE_MAPPING:
-            fprintf(file, BOLD("%s") " ", node->index.key);
-            break;
-        case TREE_SEQUENCE:
-            fprintf(file, "[" BOLD("%zu") "] ", node->index.index);
-            break;
-        default:
-            break;
+        if (print_node(out, asdf_container_item_value(item), &child_index, &child_state) != 0) {
+            asdf_container_item_destroy(item);
+            return -1;
         }
-    } else {
-        fprintf(file, BOLD("root") " ");
+
+        idx++;
     }
 
-    if (node->tag) {
-        fprintf(file, "(%s)", node->tag);
-    } else {
-        switch (node->type) {
-        case TREE_SCALAR:
-            fprintf(file, "(scalar)");
-            break;
-        case TREE_MAPPING:
-            fprintf(file, "(mapping)");
-            break;
-        case TREE_SEQUENCE:
-            fprintf(file, "(sequence)");
-            break;
-        }
-    }
-
-    if (node->value)
-        fprintf(file, ": %s", node->value);
-
-    fprintf(file, "\n");
-
-    const tree_node_t *child = node->first_child;
-    while (child) {
-        print_tree(file, child);
-        child = child->next_sibling;
-    }
+    return 0;
 }
 
 
@@ -385,160 +174,201 @@ typedef enum {
 #define BOX_WIDTH 50
 
 
-void print_border(FILE *file, field_border_t border) {
-    fprintf(file, ANSI_DIM);
+static void print_border(FILE *out, field_border_t border) {
+    fprintf(out, ANSI_DIM);
     for (int idx = 0; idx < BOX_WIDTH; idx++) {
         switch (border) {
         case TOP:
             if (idx == 0)
-                fprintf(file, "┌");
+                fprintf(out, "┌");
             else if (idx == BOX_WIDTH - 1)
-                fprintf(file, "┐\n");
+                fprintf(out, "┐\n");
             else
-                fprintf(file, "─");
+                fprintf(out, "─");
             break;
         case MIDDLE:
             if (idx == 0)
-                fprintf(file, "├");
+                fprintf(out, "├");
             else if (idx == BOX_WIDTH - 1)
-                fprintf(file, "┤\n");
+                fprintf(out, "┤\n");
             else
-                fprintf(file, "─");
+                fprintf(out, "─");
             break;
         case BOTTOM:
             if (idx == 0)
-                fprintf(file, "└");
+                fprintf(out, "└");
             else if (idx == BOX_WIDTH - 1)
-                fprintf(file, "┘\n");
+                fprintf(out, "┘\n");
             else
-                fprintf(file, "─");
+                fprintf(out, "─");
             break;
         }
     }
-    fprintf(file, ANSI_RESET);
+    fprintf(out, ANSI_RESET);
 }
 
 
-void print_field(FILE *file, field_align_t align, const char *fmt, ...) {
+/**
+ * Calculate expected display width of a string, excluding ANSI escape sequences
+ * and treating UTF-8 characters as one character width
+ *
+ * This may not be incorrect for non-UTF-8 terminals; if anyone runs into
+ * trouble due to this we can add options to disable unicode or color, but
+ * should be sane on most modern terminals
+ */
+static size_t visible_strlen(const char *str) {
+    size_t len = 0;
+    while (*str) {
+        // Skip escape codes
+        if (*str == '\x1b' && str[1] == '[') {
+            str += 2;
+
+            while (*str && *str != 'm')
+                str++;
+
+            if (*str == 'm')
+                str++;
+
+            continue;
+        }
+
+        // Skip UTF-8 continuation bytes
+        if ((*str & UTF8_LEADING_PREFIX) != UTF8_CONTINUATION_PREFIX) {
+            len++; // Count leading byte as one column
+        }
+
+        str++;
+    }
+
+    return len;
+}
+
+
+static void print_field(FILE *out, field_align_t align, const char *fmt, ...) {
     va_list args;
-    char field_buf[BOX_WIDTH - 2] = {0};
+    // Reserve a little extra width for unicode, escape sequences, etc.
+    char field_buf[BOX_WIDTH * 2] = {0};
     va_start(args, fmt);
     // NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized)
     vsnprintf(field_buf, sizeof(field_buf), fmt, args);
     va_end(args);
-    fprintf(file, DIM("│"));
+    fprintf(out, DIM("│"));
+    int field_len = (int)visible_strlen(field_buf);
+
     switch (align) {
     case LEFT: {
-        int pad = BOX_WIDTH - (int)strlen(field_buf) - 3;
-        fprintf(file, " %s%*s", field_buf, pad, "");
+        int pad = BOX_WIDTH - field_len - 3;
+        fprintf(out, " %s%*s", field_buf, pad, "");
         break;
     }
     case CENTER: {
-        int left_pad = (BOX_WIDTH - (int)strlen(field_buf)) / 2 - 1;
-        int right_pad = BOX_WIDTH - (int)strlen(field_buf) - left_pad - 2;
-        fprintf(file, "%*s%s%*s", left_pad, "", field_buf, right_pad, "");
+        int left_pad = ((BOX_WIDTH - field_len) / 2) - 1;
+        int right_pad = BOX_WIDTH - field_len - left_pad - 2;
+        fprintf(out, "%*s%s%*s", left_pad, "", field_buf, right_pad, "");
         break;
     }
     }
-    fprintf(file, DIM("│") "\n");
+    fprintf(out, DIM("│") "\n");
 }
 
 
-void print_block(FILE *file, const asdf_event_t *event, size_t block_idx) {
-    const asdf_block_info_t *block = asdf_event_block_info(event);
+static int print_block(FILE *out, asdf_file_t *file, size_t block_idx, bool verify) {
+    asdf_block_t *block = asdf_block_open(file, block_idx);
 
     if (!block)
-        return;
+        return -1;
 
-    asdf_block_header_t header = block->header;
+    asdf_block_header_t *header = &block->info.header;
 
     // Print the block header with the block number
-    print_border(file, TOP);
-    print_field(file, CENTER, "Block #%zu", block_idx);
-    print_border(file, MIDDLE);
-    print_field(file, LEFT, "flags: 0x%08x", header.flags);
-    print_border(file, MIDDLE);
+    print_border(out, TOP);
+    print_field(out, CENTER, "Block #%zu", block_idx);
+    print_border(out, MIDDLE);
+    print_field(out, LEFT, "flags: 0x%08x", header->flags);
+    print_border(out, MIDDLE);
     print_field(
-        file, LEFT, "compression: \"%.*s\"", sizeof(header.compression), header.compression);
-    print_border(file, MIDDLE);
-    print_field(file, LEFT, "allocated_size: %" PRIu64, header.allocated_size);
-    print_border(file, MIDDLE);
-    print_field(file, LEFT, "used_size: %" PRIu64, header.used_size);
-    print_border(file, MIDDLE);
-    print_field(file, LEFT, "data_size: %" PRIu64, header.data_size);
-    print_border(file, MIDDLE);
+        out, LEFT, "compression: \"%.*s\"", sizeof(header->compression), header->compression);
+    print_border(out, MIDDLE);
+    print_field(out, LEFT, "allocated_size: %" PRIu64, header->allocated_size);
+    print_border(out, MIDDLE);
+    print_field(out, LEFT, "used_size: %" PRIu64, header->used_size);
+    print_border(out, MIDDLE);
+    print_field(out, LEFT, "data_size: %" PRIu64, header->data_size);
+    print_border(out, MIDDLE);
 
-    char checksum[ASDF_BLOCK_CHECKSUM_FIELD_SIZE * 2 + 1] = {0};
+    char checksum[(ASDF_BLOCK_CHECKSUM_FIELD_SIZE * 2) + 1] = {0};
     char *p = checksum;
     for (int idx = 0; idx < ASDF_BLOCK_CHECKSUM_FIELD_SIZE; idx++) {
-        p += sprintf(p, "%02x", header.checksum[idx]);
+        p += sprintf(p, "%02x", header->checksum[idx]);
     }
-    print_field(file, LEFT, "checksum: %s", checksum);
-    print_border(file, BOTTOM);
+
+    const char *verified = "";
+
+#ifdef HAVE_MD5
+    if (verify) {
+        if (asdf_block_checksum_verify(block, NULL))
+            verified = " " COLOR(COLOR_GREEN, "✓");
+        else
+            verified = " " COLOR(COLOR_RED, "✗");
+    }
+#endif
+
+    print_field(out, LEFT, "checksum: %s%s", checksum, verified);
+    print_border(out, BOTTOM);
+    asdf_block_close(block);
+    return 0;
 }
 
 
 static const asdf_info_cfg_t asdf_info_default_cfg = {
-    .filename = NULL, .print_tree = true, .print_blocks = false};
+    .filename = NULL, .print_tree = true, .print_blocks = false, .verify_checksums = false};
 
 
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-int asdf_info(FILE *in_file, FILE *out_file, const asdf_info_cfg_t *cfg) {
+int asdf_info(asdf_file_t *file, FILE *out, const asdf_info_cfg_t *cfg) {
 
     if (!cfg)
         cfg = &asdf_info_default_cfg;
 
-    // Current implementation needs YAML events unless no-tree
-    asdf_parser_cfg_t parser_cfg = {
-        .flags = cfg->print_tree ? ASDF_PARSER_OPT_EMIT_YAML_EVENTS : 0};
+    if (UNLIKELY(!file))
+        return -1;
 
-    asdf_parser_t *parser = asdf_parser_create(&parser_cfg);
+    int ret = 0;
 
-    if (!parser)
-        return 1;
+    if (cfg->print_tree) {
+        asdf_value_t *root = asdf_get_value(file, "/");
+        // Yes, could use a bitfield too but that's overkill
+        bool *active_levels = calloc(INITIAL_MAX_DEPTH, sizeof(bool));
 
-    if (asdf_parser_set_input_fp(parser, in_file, cfg->filename) != 0) {
-        asdf_parser_destroy(parser);
-        return 1;
+        if (UNLIKELY(!active_levels))
+            return -1;
+
+        node_state_t state = {
+            .depth = 0,
+            .max_depth = INITIAL_MAX_DEPTH,
+            .active_levels = active_levels,
+            .is_mapping = true,
+            .is_leaf = true};
+        node_index_t index = {.key = "root"};
+        ret = print_node(out, root, &index, &state);
+        asdf_value_destroy(root);
+        free(active_levels);
     }
 
-    asdf_event_t *event = NULL;
-    size_t block_count = 0;
+    if (ret == 0 && cfg->print_blocks) {
+        for (size_t idx = 0; idx < asdf_block_count(file); idx++) {
+            ret = print_block(out, file, idx, cfg->verify_checksums);
 
-    while ((event = asdf_event_iterate(parser))) {
-        // Iterate events--if we hit a YAML event start building the tree (
-        // build_tree takes over iteration from there) otherwise for block
-        // events just show the block header details immediately, if the option
-        // is enabled.
-        asdf_event_type_t type = asdf_event_type(event);
-        switch (type) {
-        case ASDF_YAML_EVENT:
-            if (cfg->print_tree) {
-                tree_node_t *root = build_tree(parser);
-                print_tree(out_file, root);
-                tree_node_free(root);
-            }
-            break;
-        case ASDF_BLOCK_EVENT:
-            if (cfg->print_blocks)
-                print_block(out_file, event, block_count);
-
-            block_count++;
-            break;
-        default:
-            break;
+            if (ret != 0)
+                break;
         }
     }
 
-    int retval = 0;
+    const char *error = asdf_error(file);
 
-    if (asdf_parser_has_error(parser)) {
-        const char *error = asdf_parser_get_error(parser);
-        // TODO: (#5) Better error formatting / probably go through logging system
+    if (error) {
+        ret = -1;
         fprintf(stderr, "error: %s\n", error);
-        retval = 1;
     }
 
-    asdf_parser_destroy(parser);
-    return retval;
+    return ret;
 }

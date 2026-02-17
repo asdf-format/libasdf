@@ -1462,6 +1462,26 @@ MU_TEST(test_asdf_container_iter) {
 }
 
 
+MU_TEST(test_asdf_container_size) {
+    const char *path = get_fixture_file_path("nested.asdf");
+    asdf_file_t *file = asdf_open(path, "r");
+    assert_not_null(file);
+    asdf_value_t *root = asdf_get_value(file, "");
+    assert_not_null(root);
+    assert_int(asdf_container_size(root), ==, 4);
+    asdf_value_t *d = asdf_mapping_get((asdf_mapping_t *)root, "d");
+    assert_true(asdf_value_is_sequence(d));
+    assert_int(asdf_container_size(d), ==, 2);
+    asdf_value_t *d0 = asdf_sequence_get((asdf_sequence_t *)d, 0);
+    assert_int(asdf_container_size(d0), ==, -1);
+    asdf_value_destroy(d0);
+    asdf_value_destroy(d);
+    asdf_value_destroy(root);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
 /** Regression test for :issue:`69` */
 MU_TEST(test_value_copy_with_parent_path) {
     const char *filename = get_reference_file_path("1.6.0/basic.asdf");
@@ -1795,6 +1815,28 @@ MU_TEST(test_asdf_value_path) {
 }
 
 
+MU_TEST(test_asdf_value_parent) {
+    assert_null(asdf_value_path(NULL));
+    const char *filename = get_fixture_file_path("nested.asdf");
+    asdf_file_t *file = asdf_open(filename, "r");
+    assert_not_null(file);
+    asdf_value_t *value = asdf_get_value(file, "/d/1");
+    assert_not_null(value);
+    asdf_value_t *parent = asdf_value_parent(value);
+    assert_not_null(parent);
+    assert_string_equal(asdf_value_path(parent), "/d");
+    asdf_value_t *root = asdf_value_parent(parent);
+    assert_not_null(root);
+    assert_string_equal(asdf_value_path(root), "/");
+    assert_null(asdf_value_parent(root));
+    asdf_value_destroy(root);
+    asdf_value_destroy(parent);
+    asdf_value_destroy(value);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
 /** This test is basically tautological :) */
 MU_TEST(test_asdf_value_type_string) {
     assert_string_equal(asdf_value_type_string(-1), "<unknown>");
@@ -1945,6 +1987,7 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_sequence_get),
     MU_RUN_TEST(test_asdf_sequence_pop),
     MU_RUN_TEST(test_asdf_container_iter),
+    MU_RUN_TEST(test_asdf_container_size),
     MU_RUN_TEST(test_value_copy_with_parent_path),
     MU_RUN_TEST(test_asdf_value_file),
     MU_RUN_TEST(test_asdf_value_find_iter_ex_descend_mapping_only),
@@ -1955,6 +1998,7 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_value_find),
     MU_RUN_TEST(test_asdf_value_find_on_scalar),
     MU_RUN_TEST(test_asdf_value_path),
+    MU_RUN_TEST(test_asdf_value_parent),
     MU_RUN_TEST(test_asdf_value_type_string),
     MU_RUN_TEST(test_raw_value_type_preserved_after_type_resolution),
     // TODO: Maybe set up a separate test suite for regression tests

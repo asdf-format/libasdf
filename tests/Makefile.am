@@ -199,6 +199,10 @@ endif
 # Shell tests
 TOOL_TESTS = test-events.sh test-info.sh
 
+if HAVE_MD5
+    TOOL_TESTS += test-verify-checksums.sh
+endif
+
 if ASDF_BUILD_TOOL
 TESTS += $(TOOL_TESTS)
 else
@@ -305,6 +309,8 @@ EXTRA_DIST += \
     fixtures/tiles.asdf \
     fixtures/trivial-extension.asdf \
     fixtures/value-types.asdf \
+    fixtures/verify-checksums/255-2-blocks.verify-checksums.txt \
+    fixtures/verify-checksums/255-invalid-checksum.verify-checksums.txt \
     munit/COPYING \
     munit/munit.c \
     munit/munit.h \
@@ -322,5 +328,6 @@ distclean-local:
 	rm -rf $(builddir)/doc_examples
 
 update-fixtures:
-	./test-events.sh --update
-	./test-info.sh --update
+	top_srcdir=$(top_srcdir) srcdir=$(srcdir) $(srcdir)/test-events.sh --update
+	top_srcdir=$(top_srcdir) srcdir=$(srcdir) $(srcdir)/test-info.sh --update
+	top_srcdir=$(top_srcdir) srcdir=$(srcdir) $(srcdir)/test-verify-checksums.sh --update
