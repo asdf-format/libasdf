@@ -952,6 +952,7 @@ MU_TEST(test_asdf_value_of_type) {
     CHECK_SET_VALUE_OF_TYPE(uint64, UINT64_MAX);
     CHECK_SET_VALUE_OF_TYPE(float, FLT_MAX);
     CHECK_SET_VALUE_OF_TYPE(double, DBL_MAX);
+    asdf_library_set_version(file, "0.0.0");
     assert_int(asdf_write_to(file, path), ==, 0);
     asdf_close(file);
 
@@ -1137,6 +1138,7 @@ MU_TEST(test_asdf_mapping_set_scalars) {
 
     // Assign the mapping as the root
     assert_int(asdf_set_mapping(file, "", mapping), ==, ASDF_VALUE_OK);
+    asdf_library_set_version(file, "0.0.0");
     assert_int(asdf_write_to(file, path), ==, 0);
     asdf_close(file);
 

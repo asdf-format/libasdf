@@ -11,6 +11,7 @@
 #include "asdf/file.h" // IWYU pragma: export
 
 #include "context.h"
+#include "core/history_entry.h"
 #include "emitter.h"
 #include "parser.h"
 #include "types/asdf_block_info_vec.h"
@@ -69,6 +70,16 @@ typedef struct asdf_file {
      *   once in the file, but may have some benefit for frequently used tags.
      */
     asdf_str_map_t tag_map;
+    /**
+     * Optional override of the asdf_library software to set in the file
+     * metadata on output
+     */
+    asdf_software_t *asdf_library;
+    /**
+     * Optional array of user-added history entries to append to the file's
+     * metadata on output
+     */
+    asdf_history_entry_t **history_entries;
 } asdf_file_t;
 
 

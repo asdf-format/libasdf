@@ -117,7 +117,6 @@ static int print_node(FILE *out, asdf_value_t *node, node_index_t *index, node_s
         if (!new_active_levels)
             return -1;
 
-        memcpy(new_active_levels, state->active_levels, state->max_depth);
         state->active_levels = new_active_levels;
         state->max_depth = new_max_depth;
     }

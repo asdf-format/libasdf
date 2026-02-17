@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "../error.h"
+#include "../file.h"
 #include "../log.h"
 #include "../util.h"
 #include "../value.h"
@@ -185,6 +186,8 @@ static void *asdf_software_copy(const void *value) {
         if (!copy->author)
             goto failure;
     }
+
+    return copy;
 failure:
     asdf_software_dealloc(copy);
     ASDF_ERROR_OOM(NULL);
@@ -202,3 +205,25 @@ ASDF_REGISTER_EXTENSION(
     asdf_software_copy,
     asdf_software_dealloc,
     NULL);
+
+
+/** Additional software-related methods */
+void asdf_library_set(asdf_file_t *file, const asdf_software_t *software) {
+    file->asdf_library = asdf_software_clone(software);
+}
+
+
+void asdf_library_set_version(asdf_file_t *file, const char *version) {
+    asdf_software_t *software = asdf_software_clone(&libasdf_software);
+
+    if (!software) {
+        ASDF_ERROR_OOM(file);
+        return;
+    }
+
+    if (software->version)
+        free((void *)software->version);
+
+    software->version = version ? strdup(version) : strdup("");
+    file->asdf_library = software;
+}

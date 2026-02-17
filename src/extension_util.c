@@ -276,3 +276,26 @@ void asdf_tag_free(asdf_tag_t *tag) {
     free((char *)tag->version);
     free(tag);
 }
+
+
+void **asdf_array_concat(void **dst, const void **src) {
+    size_t dst_len = 0;
+    size_t src_len = 0;
+
+    for (const void **p = src; *p; ++p)
+        src_len++;
+
+    if (!dst) {
+        dst = (void **)malloc((src_len + 1) * sizeof(*src));
+
+        if (!dst)
+            return NULL;
+    } else {
+        for (void **p = dst; *p; ++p)
+            dst_len++;
+    }
+
+    void *new_dst = realloc((void *)dst, (dst_len + src_len + 1) * sizeof(*dst));
+    memcpy(new_dst + (dst_len * sizeof(*dst)), (const void *)src, src_len + 1);
+    return (void **)new_dst;
+}

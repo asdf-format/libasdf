@@ -121,7 +121,7 @@ static asdf_value_err_t asdf_extension_metadata_deserialize(
     if (!metadata)
         return ASDF_VALUE_ERR_OOM;
 
-    metadata->extension_class = extension_class;
+    metadata->extension_class = strdup(extension_class);
     metadata->package = package;
     // Clone the mapping value into the metadata so that additional properties can be looked up on
     // it
@@ -140,12 +140,9 @@ static void asdf_extension_metadata_dealloc(void *value) {
         return;
 
     asdf_extension_metadata_t *metadata = value;
-    if (metadata->package)
-        asdf_software_destroy((asdf_software_t *)metadata->package);
-
-    if (metadata->metadata)
-        asdf_mapping_destroy(metadata->metadata);
-
+    free((void *)metadata->extension_class);
+    asdf_software_destroy((asdf_software_t *)metadata->package);
+    asdf_mapping_destroy(metadata->metadata);
     free(metadata);
 }
 

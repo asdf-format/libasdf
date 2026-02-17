@@ -179,6 +179,9 @@ MU_TEST(test_asdf_value_of_foo) {
     asdf_value_t *value = asdf_value_of_foo(file, &foo);
     assert_not_null(value);
     asdf_set_value(file, "foo", value);
+    // Set the library version to 0.0.0 for testing, so that the expected
+    // version doesn't constantly change
+    asdf_library_set_version(file, "0.0.0");
     assert_int(asdf_write_to(file, path), ==, 0);
     asdf_close(file);
 

@@ -631,6 +631,7 @@ MU_TEST(test_asdf_set_scalar_type) {
     assert_int(asdf_set_uint64(file, "uint64", UINT64_MAX), ==, ASDF_VALUE_OK);
     assert_int(asdf_set_float(file, "float", FLT_MAX), ==, ASDF_VALUE_OK);
     assert_int(asdf_set_double(file, "double", DBL_MAX), ==, ASDF_VALUE_OK);
+    asdf_library_set_version(file, "0.0.0");
     assert_int(asdf_write_to(file, filename), ==, 0);
     asdf_close(file);
 

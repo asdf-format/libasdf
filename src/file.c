@@ -1,4 +1,3 @@
-#include <errno.h>
 #include <limits.h>
 #include <math.h>
 #include <stddef.h>
@@ -446,6 +445,8 @@ void asdf_close(asdf_file_t *file) {
     asdf_block_info_vec_drop(&file->blocks);
     asdf_str_map_drop(&file->tag_map);
     asdf_stream_close(file->stream);
+    // Clean up the asdf_library override if any
+    asdf_software_destroy(file->asdf_library);
     asdf_context_release(file->base.ctx);
     /* Clean up */
     free(file->config);
@@ -483,8 +484,6 @@ struct fy_document *asdf_file_tree_document_create_default(asdf_file_t *file) {
         goto failure;
 
     // Create the default document root
-    // TODO: This should create a full asdf/core/asdf object; for now just
-    // create an empty mapping with that tag
     struct fy_node *root = fy_node_create_mapping(tree);
 
     if (!root)
