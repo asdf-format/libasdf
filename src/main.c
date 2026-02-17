@@ -31,7 +31,8 @@ static struct argp_option global_options[] = {{0}};
 typedef enum {
     ASDF_SUBCMD_NONE = 0,
     ASDF_SUBCMD_INFO,
-    ASDF_SUBCMD_EVENTS
+    ASDF_SUBCMD_EVENTS,
+    ASDF_SUBCMD_VERIFY_CHECKSUMS
 } asdf_subcmd_t;
 // clang-format on
 
@@ -53,6 +54,8 @@ static error_t parse_global_opt(int key, char *arg, struct argp_state *state) {
                 args->subcmd = ASDF_SUBCMD_INFO;
             } else if (strcmp(arg, "events") == 0) {
                 args->subcmd = ASDF_SUBCMD_EVENTS;
+            } else if (strcmp(arg, "verify-checksums") == 0) {
+                args->subcmd = ASDF_SUBCMD_VERIFY_CHECKSUMS;
             } else {
                 argp_state_help(state, stdout, ARGP_HELP_STD_ERR);
             }
@@ -219,12 +222,12 @@ static struct argp events_argp = {
     events_options, parse_events_opt, events_args_doc, events_doc, 0, 0, 0};
 
 
-int events_main(const char *filename, bool verbose, bool no_yaml, bool cap_tree) {
+int events_main(struct events_args args) {
     // Current implementation always outputs YAML events, so this is needed; later update
     // to allow an option to skip YAML events (useful for testing)
-    asdf_parser_optflags_t flags = no_yaml ? 0 : ASDF_PARSER_OPT_EMIT_YAML_EVENTS;
+    asdf_parser_optflags_t flags = args.no_yaml ? 0 : ASDF_PARSER_OPT_EMIT_YAML_EVENTS;
 
-    if (cap_tree)
+    if (args.cap_tree)
         flags |= ASDF_PARSER_OPT_BUFFER_TREE;
 
     asdf_parser_cfg_t parser_cfg = {.flags = flags};
@@ -236,7 +239,7 @@ int events_main(const char *filename, bool verbose, bool no_yaml, bool cap_tree)
         return EXIT_FAILURE;
     }
 
-    if (asdf_parser_set_input_file(parser, filename)) {
+    if (asdf_parser_set_input_file(parser, args.filename)) {
         fprintf(stderr, "error: %s\n", asdf_parser_get_error(parser));
         asdf_parser_destroy(parser);
         return EXIT_FAILURE;
@@ -245,7 +248,7 @@ int events_main(const char *filename, bool verbose, bool no_yaml, bool cap_tree)
     asdf_event_t *event = NULL;
 
     while ((event = asdf_event_iterate(parser))) {
-        asdf_event_print(event, stdout, verbose);
+        asdf_event_print(event, stdout, args.verbose);
     }
 
     int ret = EXIT_SUCCESS;
@@ -259,6 +262,124 @@ int events_main(const char *filename, bool verbose, bool no_yaml, bool cap_tree)
     return ret;
 }
 // end events
+
+
+// verify-checksums sub-command
+static char verify_checksums_doc[] = "Verify binary block MD5 checksums";
+static char verify_checksums_args_doc[] = "FILENAME";
+
+
+static struct argp_option verify_checksums_options[] = {
+    {"verbose",
+     'v',
+     0,
+     0,
+     "Output checksums of all blocks with or without errors; otherwise output is quiet on success",
+     0},
+    {0}};
+
+
+struct verify_checksums_args {
+    const char *filename;
+    bool verbose;
+};
+
+
+// NOLINTNEXTLINE(readability-non-const-parameter)
+static error_t parse_verify_checksums_opt(int key, char *arg, struct argp_state *state) {
+    struct events_args *args = state->input;
+
+    switch (key) {
+    case 'v':
+        args->verbose = true;
+        break;
+    case ARGP_KEY_ARG:
+        if (!args->filename)
+            args->filename = arg;
+        else
+            argp_error(
+                state, "Too many arguments for 'verify-checksums'. Only FILENAME is expected.");
+        break;
+
+    case ARGP_KEY_NO_ARGS:
+        argp_error(state, "'verify-checksums' requires a FILENAME argument.");
+        break;
+
+    default:
+        return ARGP_ERR_UNKNOWN;
+    }
+    return 0;
+}
+
+
+static struct argp verify_checksums_argp = {
+    verify_checksums_options,
+    parse_verify_checksums_opt,
+    verify_checksums_args_doc,
+    verify_checksums_doc,
+    0,
+    0,
+    0};
+
+
+int verify_checksums_main(struct verify_checksums_args args) {
+    asdf_file_t *file = asdf_open(args.filename, "r");
+
+    if (!file) {
+        fprintf(stderr, "error: %s\n", asdf_error(NULL));
+        return EXIT_FAILURE;
+    }
+
+    int ret = EXIT_SUCCESS;
+    FILE *out = args.verbose ? stdout : stderr;
+
+    for (size_t idx = 0; idx < asdf_block_count(file); idx++) {
+        asdf_block_t *block = asdf_block_open(file, idx);
+
+        if (!block) {
+            fprintf(stderr, "fatal error: %s", asdf_error(file));
+            ret = EXIT_FAILURE;
+            goto cleanup;
+        }
+
+        asdf_block_header_t *header = &block->info.header;
+        unsigned char computed_digest[ASDF_BLOCK_CHECKSUM_DIGEST_SIZE] = {0};
+        char computed[(ASDF_BLOCK_CHECKSUM_DIGEST_SIZE * 2) + 1] = {0};
+        char expected[(ASDF_BLOCK_CHECKSUM_DIGEST_SIZE * 2) + 1] = {0};
+        bool valid = asdf_block_checksum_verify(block, computed_digest);
+
+        char *p = expected;
+
+        for (int jdx = 0; jdx < ASDF_BLOCK_CHECKSUM_DIGEST_SIZE; jdx++) {
+            p += sprintf(p, "%02x", header->checksum[jdx]);
+        }
+
+        if (!valid) {
+            p = computed;
+
+            for (int jdx = 0; jdx < ASDF_BLOCK_CHECKSUM_DIGEST_SIZE; jdx++) {
+                p += sprintf(p, "%02x", computed_digest[jdx]);
+            }
+
+            ret = EXIT_FAILURE;
+            fprintf(
+                out,
+                "Block %zu: checksum mismatch\n  expected: %s\n  computed: %s\n",
+                idx,
+                expected,
+                computed);
+        } else if (args.verbose) {
+            fprintf(out, "Block %zu: OK\n  checksum: %s\n", idx, expected);
+        }
+
+        asdf_block_close(block);
+    }
+
+cleanup:
+    asdf_close(file);
+    return ret;
+}
+// end verify-checksums
 
 
 int main(int argc, char *argv[]) {
@@ -280,8 +401,19 @@ int main(int argc, char *argv[]) {
         argp_parse(
             &events_argp, global_args.subcmd_argc, global_args.subcmd_argv, 0, NULL, &events_args);
 
-        return events_main(
-            events_args.filename, events_args.verbose, events_args.no_yaml, events_args.cap_tree);
+        return events_main(events_args);
+    }
+    case ASDF_SUBCMD_VERIFY_CHECKSUMS: {
+        struct verify_checksums_args verify_checksums_args = {0};
+        argp_parse(
+            &verify_checksums_argp,
+            global_args.subcmd_argc,
+            global_args.subcmd_argv,
+            0,
+            NULL,
+            &verify_checksums_args);
+
+        return verify_checksums_main(verify_checksums_args);
     }
     case ASDF_SUBCMD_NONE:
         break;

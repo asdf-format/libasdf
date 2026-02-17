@@ -387,7 +387,7 @@ MU_TEST(test_asdf_block_checksum_verify) {
 #ifndef HAVE_MD5
     return MUNIT_SKIP;
 #else
-    assert_false(asdf_block_checksum_verify(NULL));
+    assert_false(asdf_block_checksum_verify(NULL, NULL));
 
     // Verify some of the test fixture files that were actually written by
     // libasdf itself, as well as one of the reference files
@@ -406,8 +406,11 @@ MU_TEST(test_asdf_block_checksum_verify) {
         assert_not_null(file);
         block = asdf_block_open(file, 0);
         assert_not_null(block);
-        assert_memory_not_equal(16, asdf_block_checksum(block), empty_checksum);
-        assert_true(asdf_block_checksum_verify(block));
+        const unsigned char *expected = asdf_block_checksum(block);
+        assert_memory_not_equal(ASDF_BLOCK_CHECKSUM_DIGEST_SIZE, expected , empty_checksum);
+        unsigned char computed[ASDF_BLOCK_CHECKSUM_DIGEST_SIZE] = {0};
+        assert_true(asdf_block_checksum_verify(block, computed));
+        assert_memory_equal(ASDF_BLOCK_CHECKSUM_DIGEST_SIZE, computed, expected);
         asdf_block_close(block);
         asdf_close(file);
     }
@@ -417,7 +420,7 @@ MU_TEST(test_asdf_block_checksum_verify) {
     file = asdf_open(filename, "r");
     assert_not_null(file);
     block = asdf_block_open(file, 0);
-    assert_false(asdf_block_checksum_verify(block));
+    assert_false(asdf_block_checksum_verify(block, NULL));
     assert_not_null(block);
     asdf_block_close(block);
     asdf_close(file);

@@ -305,7 +305,7 @@ static int print_block(FILE *out, asdf_file_t *file, size_t block_idx, bool veri
     const char *verified = "";
 
     if (verify) {
-        if (asdf_block_checksum_verify(block))
+        if (asdf_block_checksum_verify(block, NULL))
             verified = " " COLOR(COLOR_GREEN, "✓");
         else
             verified = " " COLOR(COLOR_RED, "✗");
