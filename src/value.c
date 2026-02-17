@@ -401,15 +401,14 @@ void asdf_mapping_destroy(asdf_mapping_t *mapping) {
 }
 
 
-asdf_value_err_t asdf_mapping_set_string(
-    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-    asdf_mapping_t *mapping,
-    const char *key,
-    const char *str,
-    size_t len) {
-
+/** Helper for asdf_mapping_set_* methods */
+static inline asdf_value_err_t asdf_mapping_set_node(
+    asdf_mapping_t *mapping, const char *key, struct fy_node *value) {
     if (!mapping)
         return ASDF_VALUE_ERR_UNKNOWN;
+
+    if (!value)
+        return ASDF_VALUE_ERR_OOM;
 
     struct fy_document *tree = asdf_file_tree_document(mapping->value.file);
 
@@ -417,14 +416,35 @@ asdf_value_err_t asdf_mapping_set_string(
         return ASDF_VALUE_ERR_OOM;
 
     struct fy_node *key_node = asdf_node_of_string0(tree, key);
-    struct fy_node *value_node = asdf_node_of_string(tree, str, len);
+    struct fy_node_pair *pair = fy_node_mapping_lookup_pair(mapping->value.node, key_node);
 
-    if (fy_node_mapping_append(mapping->value.node, key_node, value_node) != 0) {
-        ASDF_ERROR_OOM(mapping->value.file);
+    // If the key already exists in the mapping, replace its value
+    if (pair) {
+        if (fy_node_pair_set_value(pair, value) != 0) {
+            return ASDF_VALUE_ERR_OOM;
+        }
+        fy_node_free(key_node);
+    } else if (fy_node_mapping_append(mapping->value.node, key_node, value) != 0) {
         return ASDF_VALUE_ERR_OOM;
     }
 
     return ASDF_VALUE_OK;
+}
+
+
+asdf_value_err_t asdf_mapping_set_string(
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+    asdf_mapping_t *mapping,
+    const char *key,
+    const char *str,
+    size_t len) {
+
+    struct fy_document *tree = asdf_file_tree_document(mapping->value.file);
+
+    if (!tree)
+        return ASDF_VALUE_ERR_OOM;
+
+    return asdf_mapping_set_node(mapping, key, asdf_node_of_string(tree, str, len));
 }
 
 
@@ -433,45 +453,22 @@ asdf_value_err_t asdf_mapping_set_string0(
     asdf_mapping_t *mapping,
     const char *key,
     const char *str) {
-
-    if (!mapping)
-        return ASDF_VALUE_ERR_UNKNOWN;
-
     struct fy_document *tree = asdf_file_tree_document(mapping->value.file);
 
     if (!tree)
         return ASDF_VALUE_ERR_OOM;
 
-    struct fy_node *key_node = asdf_node_of_string0(tree, key);
-    struct fy_node *value_node = asdf_node_of_string0(tree, str);
-
-    if (fy_node_mapping_append(mapping->value.node, key_node, value_node) != 0) {
-        ASDF_ERROR_OOM(mapping->value.file);
-        return ASDF_VALUE_ERR_OOM;
-    }
-
-    return ASDF_VALUE_OK;
+    return asdf_mapping_set_node(mapping, key, asdf_node_of_string0(tree, str));
 }
 
 
 asdf_value_err_t asdf_mapping_set_null(asdf_mapping_t *mapping, const char *key) {
-    if (!mapping)
-        return ASDF_VALUE_ERR_UNKNOWN;
-
     struct fy_document *tree = asdf_file_tree_document(mapping->value.file);
 
     if (!tree)
         return ASDF_VALUE_ERR_OOM;
 
-    struct fy_node *key_node = asdf_node_of_string0(tree, key);
-    struct fy_node *value_node = asdf_node_of_null(tree);
-
-    if (fy_node_mapping_append(mapping->value.node, key_node, value_node) != 0) {
-        ASDF_ERROR_OOM(mapping->value.file);
-        return ASDF_VALUE_ERR_OOM;
-    }
-
-    return ASDF_VALUE_OK;
+    return asdf_mapping_set_node(mapping, key, asdf_node_of_null(tree));
 }
 
 
@@ -479,57 +476,25 @@ asdf_value_err_t asdf_mapping_set_null(asdf_mapping_t *mapping, const char *key)
 #define ASDF_MAPPING_SET_TYPE(type) \
     asdf_value_err_t asdf_mapping_set_##type( \
         asdf_mapping_t *mapping, const char *key, type value) { \
-        if (!mapping) \
-            return ASDF_VALUE_ERR_UNKNOWN; \
         struct fy_document *tree = asdf_file_tree_document(mapping->value.file); \
         if (!tree) \
             return ASDF_VALUE_ERR_OOM; \
-        struct fy_node *key_node = asdf_node_of_string0(tree, key); \
-        struct fy_node *value_node = asdf_node_of_##type(tree, value); \
-        if (fy_node_mapping_append(mapping->value.node, key_node, value_node) != 0) { \
-            ASDF_ERROR_OOM(mapping->value.file); \
-            return ASDF_VALUE_ERR_OOM; \
-        } \
-        return ASDF_VALUE_OK; \
+        return asdf_mapping_set_node(mapping, key, asdf_node_of_##type(tree, value)); \
     }
 
 
 #define ASDF_MAPPING_SET_INT_TYPE(type) \
     asdf_value_err_t asdf_mapping_set_##type( \
         asdf_mapping_t *mapping, const char *key, type##_t value) { \
-        if (!mapping) \
-            return ASDF_VALUE_ERR_UNKNOWN; \
         struct fy_document *tree = asdf_file_tree_document(mapping->value.file); \
         if (!tree) \
             return ASDF_VALUE_ERR_OOM; \
-        struct fy_node *key_node = asdf_node_of_string0(tree, key); \
-        struct fy_node *value_node = asdf_node_of_##type(tree, value); \
-        if (fy_node_mapping_append(mapping->value.node, key_node, value_node) != 0) { \
-            ASDF_ERROR_OOM(mapping->value.file); \
-            return ASDF_VALUE_ERR_OOM; \
-        } \
-        return ASDF_VALUE_OK; \
+        return asdf_mapping_set_node(mapping, key, asdf_node_of_##type(tree, value)); \
     }
 
 
 asdf_value_err_t asdf_mapping_set(asdf_mapping_t *mapping, const char *key, asdf_value_t *value) {
-    asdf_value_err_t err = ASDF_VALUE_ERR_UNKNOWN;
-    if (!mapping || !value)
-        goto cleanup;
-    struct fy_document *tree = asdf_file_tree_document(mapping->value.file);
-    if (!tree) {
-        err = ASDF_VALUE_ERR_OOM;
-        goto cleanup;
-    }
-    struct fy_node *key_node = asdf_node_of_string0(tree, key);
-    struct fy_node *value_node = asdf_value_normalize_node(value);
-    if (fy_node_mapping_append(mapping->value.node, key_node, value_node) != 0) {
-        ASDF_ERROR_OOM(mapping->value.file);
-        err = ASDF_VALUE_ERR_OOM;
-        goto cleanup;
-    }
-    err = ASDF_VALUE_OK;
-cleanup:
+    asdf_value_err_t err = asdf_mapping_set_node(mapping, key, asdf_value_normalize_node(value));
     /* fy_node_mapping_append implicitly frees the original node, so here set it
      * to null to avoid double-freeing it and then just destroy the asdf_value_t */
     value->node = NULL;
