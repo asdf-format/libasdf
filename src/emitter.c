@@ -45,12 +45,22 @@ static bool asdf_emitter_should_emit_tree(asdf_emitter_t *emitter) {
     if (asdf_emitter_has_opt(emitter, ASDF_EMITTER_OPT_NO_EMIT_EMPTY_TREE))
         emit_empty = false;
 
+    // If the file has history entries to emit it should emit the tree
+    if (emitter->file->history_entries && emitter->file->history_entries[0])
+        return true;
+
     struct fy_document *tree = emitter->file->tree;
 
     // If the tree was never created, no reason to create it here either,
     // just return based on the emit option
-    if (!tree)
+    if (!tree && !emit_empty)
         return emit_empty;
+
+    tree = asdf_file_tree_document(emitter->file);
+
+    if (!tree)
+        // At this point should be an error
+        return false;
 
     struct fy_node *root = fy_document_root(tree);
 
@@ -295,11 +305,16 @@ static int emit_prepare_root_node(asdf_emitter_t *emitter) {
         goto cleanup;
 
     asdf_software_destroy(meta->asdf_library);
-    asdf_software_t *asdf_library = file->asdf_library ? file->asdf_library : &libasdf_software;
-    meta->asdf_library = asdf_software_clone(asdf_library);
 
-    if (!meta->asdf_library)
-        goto cleanup;
+    if (asdf_emitter_has_opt(emitter, ASDF_EMITTER_OPT_NO_EMIT_ASDF_LIBRARY)) {
+        meta->asdf_library = NULL;
+    } else {
+        asdf_software_t *asdf_library = file->asdf_library ? file->asdf_library : &libasdf_software;
+        meta->asdf_library = asdf_software_clone(asdf_library);
+
+        if (!meta->asdf_library)
+            goto cleanup;
+    }
 
     // Create history entries if any; it feels like a lot of overkill
     // that ought to be avoided somehow.  Either change these to use STC
@@ -310,6 +325,14 @@ static int emit_prepare_root_node(asdf_emitter_t *emitter) {
 
         if (!meta->history.entries)
             goto cleanup;
+        //
+        // This is not obvious but the above transferred ownership of the
+        // history entries from file->history_entries to the asdf_meta_t; so
+        // now we can just free and nullify file->history_entries immediately
+        // and in fact not doing so can result in a double-free of the history
+        // entries
+        free((void *)file->history_entries);
+        file->history_entries = NULL;
     }
 
     // Merge the new meta into the existing document root.  We can't just set
@@ -357,6 +380,13 @@ static int emit_prepare_tree(asdf_emitter_t *emitter, struct fy_document *tree) 
     char *tag0 = tag ? strndup(tag, tag_len) : NULL;
     int ret = -1;
 
+    if (!fy_node_is_mapping(root) || strcmp(tag0, ASDF_CORE_ASDF_TAG) != 0) {
+        ASDF_LOG(emitter, ASDF_LOG_DEBUG, "non-standard root node (not core/asdf mapping)");
+        ret = 0;
+    } else {
+        ret = emit_prepare_root_node(emitter);
+    }
+
     if ((fy_node_is_mapping(root) && fy_node_mapping_is_empty(root)) ||
         UNLIKELY(fy_node_is_sequence(root) && fy_node_sequence_is_empty(root))) {
         // Copy the original tag of the root anyways
@@ -384,13 +414,6 @@ static int emit_prepare_tree(asdf_emitter_t *emitter, struct fy_document *tree) 
             goto cleanup;
 
         root = new_root;
-    }
-
-    if (!fy_node_is_mapping(root) || strcmp(tag0, ASDF_CORE_ASDF_TAG) != 0) {
-        ASDF_LOG(emitter, ASDF_LOG_DEBUG, "non-standard root node (not core/asdf mapping)");
-        ret = 0;
-    } else {
-        ret = emit_prepare_root_node(emitter);
     }
 
 cleanup:

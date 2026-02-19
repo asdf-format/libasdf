@@ -680,6 +680,43 @@ MU_TEST(software_serialize) {
 }
 
 
+MU_TEST(test_asdf_history_entry_add) {
+    asdf_file_t *file = asdf_open(NULL);
+    assert_not_null(file);
+    assert_int(asdf_history_entry_add(file, "A long time ago..."), ==, 0);
+    void *buf = NULL;
+    size_t size = 0;
+
+    // Write and save the file
+    asdf_write_to(file, &buf, &size);
+    asdf_close(file);
+
+    // Re-open and add another entry
+    file = asdf_open((const void *)buf, size);
+    assert_not_null(file);
+    assert_int(asdf_history_entry_add(file, "In a galaxy far, far away..."), ==, 0);
+    asdf_write_to(file, &buf, &size);
+    asdf_close(file);
+
+    // Re-open once more and read out the history entries
+    // TODO: Might be useful to have a shortcut specifically for listing the
+    // main history entries...
+    file = asdf_open((const void *)buf, size);
+    assert_not_null(file);
+    asdf_meta_t *meta = NULL;
+    assert_int(asdf_get_meta(file, "/", &meta), ==, ASDF_VALUE_OK);
+    assert_not_null(meta);
+    assert_not_null((const void *)meta->history.entries);
+    assert_string_equal(meta->history.entries[0]->description, "A long time ago...");
+    assert_string_equal(meta->history.entries[1]->description, "In a galaxy far, far away...");
+    assert_null(meta->history.entries[2]);
+    asdf_meta_destroy(meta);
+    asdf_close(file);
+    free(buf);
+    return MUNIT_OK;
+}
+
+
 MU_TEST_SUITE(
     core_extensions,
     MU_RUN_TEST(extension_metadata),
@@ -693,7 +730,8 @@ MU_TEST_SUITE(
     MU_RUN_TEST(ndarray),
     MU_RUN_TEST(ndarray_serialize),
     MU_RUN_TEST(software),
-    MU_RUN_TEST(software_serialize)
+    MU_RUN_TEST(software_serialize),
+    MU_RUN_TEST(test_asdf_history_entry_add)
 );
 
 

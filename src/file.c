@@ -454,6 +454,15 @@ void asdf_close(asdf_file_t *file) {
     asdf_stream_close(file->stream);
     // Clean up the asdf_library override if any
     asdf_software_destroy(file->asdf_library);
+    // Clean up any appended history entries
+    if (file->history_entries) {
+        asdf_history_entry_t **entryp = file->history_entries;
+        while (*entryp) {
+            asdf_history_entry_destroy(*entryp);
+            entryp++;
+        }
+        free((void *)file->history_entries);
+    }
     asdf_context_release(file->base.ctx);
     /* Clean up */
     free(file->config);

@@ -399,7 +399,8 @@ int asdf_history_entry_add(asdf_file_t *file, const char *description) {
     if (!entry->software)
         goto failure;
 
-    entry->software[0] = asdf_software_clone(&libasdf_software);
+    asdf_software_t *asdf_library = file->asdf_library ? file->asdf_library : &libasdf_software;
+    entry->software[0] = asdf_software_clone(asdf_library);
 
     if (!entry->software[0])
         goto failure;
