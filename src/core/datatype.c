@@ -784,6 +784,7 @@ ASDF_REGISTER_EXTENSION(
     &libasdf_software,
     asdf_datatype_serialize,
     asdf_datatype_deserialize,
+    NULL, /* TODO: copy */
     asdf_datatype_dealloc,
     NULL);
 

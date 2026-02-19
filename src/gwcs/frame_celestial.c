@@ -54,5 +54,6 @@ ASDF_REGISTER_EXTENSION(
     &libasdf_software,
     NULL,
     asdf_gwcs_frame_celestial_deserialize,
+    NULL, /* TODO: copy */
     asdf_gwcs_frame_celestial_dealloc,
     NULL);

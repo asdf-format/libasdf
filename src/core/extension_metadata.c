@@ -1,3 +1,7 @@
+#include <stdlib.h>
+#include <string.h>
+
+#include "../error.h"
 #include "../extension_registry.h"
 #include "../log.h"
 #include "../util.h"
@@ -146,6 +150,47 @@ static void asdf_extension_metadata_dealloc(void *value) {
 }
 
 
+static void *asdf_extension_metadata_copy(const void *value) {
+    if (!value)
+        return NULL;
+
+    const asdf_extension_metadata_t *metadata = value;
+
+    asdf_extension_metadata_t *copy = calloc(1, sizeof(asdf_extension_metadata_t));
+
+    if (!copy)
+        goto failure;
+
+    if (metadata->extension_class) {
+        copy->extension_class = strdup(metadata->extension_class);
+
+        if (!copy->extension_class)
+            goto failure;
+    }
+
+    if (metadata->package) {
+        copy->package = asdf_software_clone(metadata->package);
+
+        if (!copy->package)
+            goto failure;
+    }
+
+    if (metadata->metadata) {
+        copy->metadata = asdf_mapping_clone(metadata->metadata);
+
+        if (!copy->metadata)
+            goto failure;
+    }
+
+    return copy;
+
+failure:
+    asdf_extension_metadata_dealloc(copy);
+    ASDF_ERROR_OOM(NULL);
+    return NULL;
+}
+
+
 ASDF_REGISTER_EXTENSION(
     extension_metadata,
     ASDF_CORE_EXTENSION_METADATA_TAG,
@@ -153,5 +198,6 @@ ASDF_REGISTER_EXTENSION(
     &libasdf_software,
     asdf_extension_metadata_serialize,
     asdf_extension_metadata_deserialize,
+    asdf_extension_metadata_copy,
     asdf_extension_metadata_dealloc,
     NULL);

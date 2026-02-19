@@ -314,6 +314,14 @@ static void asdf_meta_history_dealloc(asdf_meta_history_t *history) {
     if (!history)
         return;
 
+    if (history->extensions) {
+        for (const asdf_extension_metadata_t **ep = history->extensions; *ep; ++ep) {
+            asdf_extension_metadata_destroy((asdf_extension_metadata_t *)*ep);
+        }
+        free((void *)history->extensions);
+    }
+
+
     if (history->entries) {
         for (const asdf_history_entry_t **ep = history->entries; *ep; ++ep) {
             asdf_history_entry_destroy((asdf_history_entry_t *)*ep);
@@ -332,15 +340,51 @@ static void asdf_meta_dealloc(void *value) {
     if (meta->asdf_library)
         asdf_software_destroy(meta->asdf_library);
 
-    if (meta->history.extensions) {
-        for (const asdf_extension_metadata_t **ep = meta->history.extensions; *ep; ++ep) {
-            asdf_extension_metadata_destroy((asdf_extension_metadata_t *)*ep);
-        }
-        free((void *)meta->history.extensions);
-    }
-
     asdf_meta_history_dealloc(&meta->history);
     free(meta);
+}
+
+
+static void *asdf_meta_copy(const void *value) {
+    if (!value)
+        return NULL;
+
+    const asdf_meta_t *meta = value;
+    asdf_meta_t *copy = calloc(1, sizeof(asdf_meta_t));
+
+    if (!copy) {
+        ASDF_ERROR_OOM(NULL);
+        return NULL;
+    }
+
+    if (meta->asdf_library) {
+        copy->asdf_library = asdf_software_clone(meta->asdf_library);
+
+        if (!copy->asdf_library)
+            goto failure;
+    }
+
+    if (meta->history.extensions) {
+        copy->history.extensions = (const asdf_extension_metadata_t **)
+            asdf_extension_metadata_array_clone(meta->history.extensions);
+
+        if (!copy->history.extensions)
+            goto failure;
+    }
+
+    if (meta->history.entries) {
+        copy->history.entries = (const asdf_history_entry_t **)asdf_history_entry_array_clone(
+            meta->history.entries);
+
+        if (!copy->history.entries)
+            goto failure;
+    }
+
+    return copy;
+
+failure:
+    asdf_meta_dealloc(copy);
+    return NULL;
 }
 
 
@@ -399,5 +443,6 @@ ASDF_REGISTER_EXTENSION(
     &libasdf_software,
     asdf_meta_serialize,
     asdf_meta_deserialize,
+    asdf_meta_copy,
     asdf_meta_dealloc,
     NULL);

@@ -134,5 +134,6 @@ ASDF_REGISTER_EXTENSION(
     &libasdf_software,
     NULL,
     asdf_gwcs_deserialize,
+    NULL, /* TODO: copy */
     asdf_gwcs_dealloc,
     NULL);

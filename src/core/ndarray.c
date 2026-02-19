@@ -514,6 +514,7 @@ ASDF_REGISTER_EXTENSION(
     &libasdf_software,
     asdf_ndarray_serialize,
     asdf_ndarray_deserialize,
+    NULL, /* TODO: copy */
     asdf_ndarray_dealloc,
     NULL);
 
