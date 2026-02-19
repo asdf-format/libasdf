@@ -417,10 +417,17 @@ int asdf_write_to_mem(asdf_file_t *file, void **buf, size_t *size) {
     if (ret != 0)
         goto cleanup;
 
-    if (asdf_emitter_emit(file->emitter) == ASDF_EMITTER_STATE_ERROR) {
+    if (asdf_emitter_emit(emitter) == ASDF_EMITTER_STATE_ERROR) {
         ret = -1;
         goto cleanup;
     }
+
+    // Fill any unused part of the buffer with zeros to be on the safe side,
+    // so any trailing bytes aren't garbage
+    off_t offset = asdf_stream_tell(emitter->stream);
+
+    if (offset >= 0 && (size_t)offset < alloc_size)
+        memset(alloc_buf + offset, 0, alloc_size - offset);
 
     ret = 0;
 
