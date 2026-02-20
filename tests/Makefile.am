@@ -51,10 +51,11 @@ unit_test_cppflags = \
     -D_GNU_SOURCE
 unit_test_cflags = \
     $(munit_cflags) $(FYAML_CFLAGS) $(STATGRAB_CFLAGS) $(LZ4_CFLAGS) $(CODE_COVERAGE_CFLAGS) $(ASDF_CFLAGS)
+unit_test_ldflags =
 
 if DEBUG
 unit_test_cflags += -DMUNIT_NO_FORK
-unit_test_cflags += -rdynamic
+unit_test_ldflags += -rdynamic
 endif
 
 unit_test_ldflags = $(LDFLAGS) $(CODE_COVERAGE_LDFLAGS)
