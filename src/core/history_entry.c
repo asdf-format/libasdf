@@ -8,6 +8,8 @@
 #include <time.h>
 
 #include "../error.h"
+#include "../extension_util.h"
+#include "../file.h"
 #include "../log.h"
 #include "../util.h"
 #include "../value.h"
@@ -126,8 +128,10 @@ static asdf_value_t *asdf_history_entry_serialize(
     size_t software_count = 0;
     const asdf_software_t **softwarep = entry->software;
 
-    while (*(softwarep++) != NULL)
-        software_count++;
+    if (softwarep) {
+        while (*(softwarep++) != NULL)
+            software_count++;
+    }
 
     if (software_count == 1) {
         software_val = asdf_value_of_software(file, *entry->software);
@@ -167,7 +171,8 @@ static asdf_value_t *asdf_history_entry_serialize(
     if (UNLIKELY(err != ASDF_VALUE_OK))
         goto cleanup;
 
-    err = asdf_mapping_set(entry_map, "software", software_val);
+    if (software_val)
+        err = asdf_mapping_set(entry_map, "software", software_val);
 
     if (UNLIKELY(err != ASDF_VALUE_OK))
         goto cleanup;
@@ -296,7 +301,7 @@ static asdf_value_err_t asdf_history_entry_deserialize(
         goto failure;
     }
 
-    entry->description = description;
+    entry->description = strdup(description);
     entry->time = time;
     entry->software = (const asdf_software_t **)software;
     *out = entry;
@@ -313,6 +318,8 @@ static void asdf_history_entry_dealloc(void *value) {
         return;
 
     asdf_history_entry_t *entry = value;
+
+    free((void *)entry->description);
 
     if (entry->software) {
         for (asdf_software_t **sp = (asdf_software_t **)entry->software; *sp; ++sp) {
@@ -373,3 +380,41 @@ ASDF_REGISTER_EXTENSION(
     asdf_history_entry_copy,
     asdf_history_entry_dealloc,
     NULL);
+
+
+/** Additional history entry methods */
+
+int asdf_history_entry_add(asdf_file_t *file, const char *description) {
+    // Just use asdf_array_concat to allocate/extend file->history_entries
+    // In practice it will be rare to add more than one entry per opening of
+    // the file (existing entries are prepended to this list when outputting)
+    asdf_history_entry_t *entry = calloc(1, sizeof(asdf_history_entry_t));
+
+    if (!entry)
+        goto failure;
+
+    entry->description = strdup(description);
+    entry->software = (const asdf_software_t **)calloc(2, sizeof(asdf_software_t *));
+
+    if (!entry->software)
+        goto failure;
+
+    asdf_software_t *asdf_library = file->asdf_library ? file->asdf_library : &libasdf_software;
+    entry->software[0] = asdf_software_clone(asdf_library);
+
+    if (!entry->software[0])
+        goto failure;
+
+    asdf_history_entry_t *entries[] = {entry, NULL};
+    file->history_entries = (asdf_history_entry_t **)asdf_array_concat(
+        (void **)file->history_entries, (const void **)entries);
+
+    if (!file->history_entries)
+        goto failure;
+
+    return 0;
+failure:
+    ASDF_ERROR_OOM(file);
+    asdf_history_entry_destroy(entry);
+    return -1;
+}

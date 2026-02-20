@@ -43,3 +43,17 @@ ASDF_LOCAL asdf_value_err_t asdf_get_optional_property(
  */
 ASDF_LOCAL asdf_tag_t *asdf_tag_parse(const char *tag);
 ASDF_LOCAL void asdf_tag_free(asdf_tag_t *tag);
+
+
+/** Array utilities */
+
+/**
+ * Concatenate two NULL-terminated arrays returning a new array
+ *
+ * Elements from ``src`` are concatenated to ``dst`` returning the new
+ * address of the destination array returned via ``realloc()``.
+ *
+ * The destination may also be NULL in which case a new array is
+ * allocated containing a copy of ``src``.
+ */
+ASDF_LOCAL void **asdf_array_concat(void **dst, const void **src);

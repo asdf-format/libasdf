@@ -11,27 +11,28 @@
 ASDF_BEGIN_DECLS
 
 // NOLINTNEXTLINE(readability-identifier-naming)
-#define _ASDF_EMITTER_OPTS(X) \
+#define ASDF__EMITTER_OPTS(X) \
     X(ASDF_EMITTER_OPT_DEFAULT, 0) \
     X(ASDF_EMITTER_OPT_EMIT_EMPTY, 1) \
     X(ASDF_EMITTER_OPT_NO_BLOCK_CHECKSUM, 2) \
     X(ASDF_EMITTER_OPT_NO_BLOCK_INDEX, 3) \
     X(ASDF_EMITTER_OPT_EMIT_EMPTY_TREE, 4) \
-    X(ASDF_EMITTER_OPT_NO_EMIT_EMPTY_TREE, 5)
+    X(ASDF_EMITTER_OPT_NO_EMIT_EMPTY_TREE, 5) \
+    X(ASDF_EMITTER_OPT_NO_EMIT_ASDF_LIBRARY, 6) \
+    X(ASDF_EMITTER_OPT_LAST, 62) // Always keep this option reserved as last
 
 
 typedef enum {
 // clang-format off
 #define X(flag, bit) flag = (1UL << (bit)),
-    _ASDF_EMITTER_OPTS(X)
+    ASDF__EMITTER_OPTS(X)
 #undef X
     // clang-format on
 } asdf_emitter_opt_t;
 
 
 // NOLINTNEXTLINE(readability-magic-numbers)
-ASDF_STATIC_ASSERT(
-    ASDF_EMITTER_OPT_NO_EMIT_EMPTY_TREE < (1UL << 63), "too many flags for 64-bit int");
+ASDF_STATIC_ASSERT(ASDF_EMITTER_OPT_LAST < (1UL << 63), "too many flags for 64-bit int");
 
 
 typedef uint64_t asdf_emitter_optflags_t;

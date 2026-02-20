@@ -631,6 +631,7 @@ MU_TEST(test_asdf_set_scalar_type) {
     assert_int(asdf_set_uint64(file, "uint64", UINT64_MAX), ==, ASDF_VALUE_OK);
     assert_int(asdf_set_float(file, "float", FLT_MAX), ==, ASDF_VALUE_OK);
     assert_int(asdf_set_double(file, "double", DBL_MAX), ==, ASDF_VALUE_OK);
+    asdf_library_set_version(file, "0.0.0");
     assert_int(asdf_write_to(file, filename), ==, 0);
     asdf_close(file);
 
@@ -1139,7 +1140,7 @@ MU_TEST(write_minimal_empty_tree) {
     // Allow emitting an "empty" ASDF file that is still a valid ASDF file
     // (has the ASDF header) but contains no tree or blocks.
     asdf_config_t config = { .emitter = {
-        .flags = ASDF_EMITTER_OPT_EMIT_EMPTY_TREE }};
+        .flags = ASDF_EMITTER_OPT_EMIT_EMPTY_TREE | ASDF_EMITTER_OPT_NO_EMIT_ASDF_LIBRARY }};
     asdf_file_t *file = asdf_open_ex(NULL, 0, &config);
     assert_not_null(file);
     assert_int(asdf_write_to(file, filename), ==, 0);
@@ -1158,7 +1159,7 @@ MU_TEST(write_custom_tag_handle) {
     // (has the ASDF header) but contains no tree or blocks.
     asdf_yaml_tag_handle_t tag_handles[] = {{ "!foo", "tag:example.com:foo/" }, { NULL, NULL }};
     asdf_config_t config = { .emitter = {
-        .flags = ASDF_EMITTER_OPT_EMIT_EMPTY_TREE,
+        .flags = ASDF_EMITTER_OPT_EMIT_EMPTY_TREE | ASDF_EMITTER_OPT_NO_EMIT_ASDF_LIBRARY,
         .tag_handles = tag_handles
     }};
     asdf_file_t *file = asdf_open_ex(NULL, 0, &config);

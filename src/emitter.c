@@ -1,20 +1,21 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <libfyaml.h>
 
-#include "block.h"
 #include "context.h"
 #include "emitter.h"
 #include "error.h"
+#include "extension_util.h"
 #include "file.h"
 #include "parse_util.h"
 #include "stream.h"
 #include "types/asdf_block_info_vec.h"
 #include "util.h"
-#include "yaml.h"
+#include "value.h"
 
 /**
  * Default libasdf emitter configuration
@@ -44,12 +45,22 @@ static bool asdf_emitter_should_emit_tree(asdf_emitter_t *emitter) {
     if (asdf_emitter_has_opt(emitter, ASDF_EMITTER_OPT_NO_EMIT_EMPTY_TREE))
         emit_empty = false;
 
+    // If the file has history entries to emit it should emit the tree
+    if (emitter->file->history_entries && emitter->file->history_entries[0])
+        return true;
+
     struct fy_document *tree = emitter->file->tree;
 
     // If the tree was never created, no reason to create it here either,
     // just return based on the emit option
-    if (!tree)
+    if (!tree && !emit_empty)
         return emit_empty;
+
+    tree = asdf_file_tree_document(emitter->file);
+
+    if (!tree)
+        // At this point should be an error
+        return false;
 
     struct fy_node *root = fy_document_root(tree);
 
@@ -272,6 +283,86 @@ static struct fy_emitter *asdf_fy_emitter_create(asdf_emitter_t *emitter) {
 }
 
 
+/** Prepare asdf/core/asdf object--add asdf_library and history entries */
+static int emit_prepare_root_node(asdf_emitter_t *emitter) {
+    asdf_file_t *file = emitter->file;
+    asdf_meta_t *meta = NULL;
+    asdf_mapping_t *meta_map = NULL;
+    asdf_mapping_t *root = NULL;
+    asdf_value_err_t err = asdf_get_meta(file, "/", &meta);
+    int ret = -1;
+
+    if (UNLIKELY(err != ASDF_VALUE_OK)) {
+        // no existing asdf/core
+        meta = calloc(1, sizeof(asdf_meta_t));
+    } else {
+        asdf_meta_t *orig_meta = meta;
+        meta = asdf_meta_clone(orig_meta);
+        asdf_meta_destroy(orig_meta);
+    }
+
+    if (!meta)
+        goto cleanup;
+
+    asdf_software_destroy(meta->asdf_library);
+
+    if (asdf_emitter_has_opt(emitter, ASDF_EMITTER_OPT_NO_EMIT_ASDF_LIBRARY)) {
+        meta->asdf_library = NULL;
+    } else {
+        asdf_software_t *asdf_library = file->asdf_library ? file->asdf_library : &libasdf_software;
+        meta->asdf_library = asdf_software_clone(asdf_library);
+
+        if (!meta->asdf_library)
+            goto cleanup;
+    }
+
+    // Create history entries if any; it feels like a lot of overkill
+    // that ought to be avoided somehow.  Either change these to use STC
+    // vectors or at least an internal sized array type...
+    if (file->history_entries && *file->history_entries) {
+        meta->history.entries = (const asdf_history_entry_t **)asdf_array_concat(
+            (void **)meta->history.entries, (const void **)file->history_entries);
+
+        if (!meta->history.entries)
+            goto cleanup;
+        //
+        // This is not obvious but the above transferred ownership of the
+        // history entries from file->history_entries to the asdf_meta_t; so
+        // now we can just free and nullify file->history_entries immediately
+        // and in fact not doing so can result in a double-free of the history
+        // entries
+        free((void *)file->history_entries);
+        file->history_entries = NULL;
+    }
+
+    // Merge the new meta into the existing document root.  We can't just set
+    // it to root since that will clobber any other keys already in the root
+    // mapping
+    meta_map = (asdf_mapping_t *)asdf_value_of_meta(file, meta);
+
+    if (!meta_map)
+        goto cleanup;
+
+    if (asdf_get_mapping(file, "/", &root) != ASDF_VALUE_OK)
+        goto cleanup;
+
+    if (asdf_mapping_update(root, meta_map) != ASDF_VALUE_OK)
+        goto cleanup;
+
+    ret = 0;
+cleanup:
+    asdf_mapping_destroy(root);
+    asdf_mapping_destroy(meta_map);
+    asdf_meta_destroy(meta);
+
+    if (ret != 0) {
+        ASDF_ERROR_OOM(file);
+        ASDF_LOG(file, ASDF_LOG_ERROR, "failed to build the new core/asdf metadata entry");
+    }
+    return ret;
+}
+
+
 /**
  * This is such a hassle that it might be worth it to just hand-roll writing
  * the minimal empty file rather than fight with libfyaml's assumptions
@@ -284,42 +375,50 @@ static int emit_prepare_tree(asdf_emitter_t *emitter, struct fy_document *tree) 
     if (UNLIKELY(!root)) // Should not happen
         return -1;
 
+    size_t tag_len = 0;
+    const char *tag = fy_node_get_tag(root, &tag_len);
+    char *tag0 = tag ? strndup(tag, tag_len) : NULL;
+    int ret = -1;
+
+    if (!fy_node_is_mapping(root) || strcmp(tag0, ASDF_CORE_ASDF_TAG) != 0) {
+        ASDF_LOG(emitter, ASDF_LOG_DEBUG, "non-standard root node (not core/asdf mapping)");
+        ret = 0;
+    } else {
+        ret = emit_prepare_root_node(emitter);
+    }
+
     if ((fy_node_is_mapping(root) && fy_node_mapping_is_empty(root)) ||
         UNLIKELY(fy_node_is_sequence(root) && fy_node_sequence_is_empty(root))) {
         // Copy the original tag of the root anyways
-        size_t tag_len = 0;
-        const char *tag = fy_node_get_tag(root, &tag_len);
         // Building a node from an empty string gives a null node
         struct fy_node *new_root = fy_node_create_scalar(tree, "", FY_NT);
         const char *tag_normalized = NULL;
 
         if (UNLIKELY(!new_root))
-            return -1;
+            goto cleanup;
 
-        if (tag) {
-            char *tag0 = strndup(tag, tag_len);
-
+        if (tag0) {
             if (UNLIKELY(!tag0))
-                return -1;
+                goto cleanup;
 
             tag_normalized = asdf_file_tag_normalize(emitter->file, (const char *)tag0);
-            free(tag0);
 
-            if (UNLIKELY(!tag_normalized)) {
-                return -1;
-            }
+            if (UNLIKELY(!tag_normalized))
+                goto cleanup;
 
-            if (UNLIKELY(fy_node_set_tag(new_root, tag_normalized, FY_NT) != 0)) {
-                return -1;
-            }
+            if (UNLIKELY(fy_node_set_tag(new_root, tag_normalized, FY_NT) != 0))
+                goto cleanup;
         }
 
-        if (UNLIKELY(fy_document_set_root(tree, new_root) != 0)) {
-            return -1;
-        }
+        if (UNLIKELY(fy_document_set_root(tree, new_root) != 0))
+            goto cleanup;
+
+        root = new_root;
     }
 
-    return 0;
+cleanup:
+    free(tag0);
+    return ret;
 }
 
 

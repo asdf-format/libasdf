@@ -170,16 +170,19 @@ static asdf_value_t *asdf_meta_serialize(
     asdf_value_err_t err = ASDF_VALUE_OK;
 
     meta_map = asdf_mapping_create(file);
-    software_value = asdf_value_of_software(
-        file, meta->asdf_library ? meta->asdf_library : &libasdf_software);
 
-    if (!software_value)
-        goto cleanup;
+    if (meta->asdf_library) {
+        software_value = asdf_value_of_software(
+            file, meta->asdf_library ? meta->asdf_library : &libasdf_software);
 
-    err = asdf_mapping_set(meta_map, "asdf_library", software_value);
+        if (!software_value)
+            goto cleanup;
 
-    if (UNLIKELY(err != ASDF_VALUE_OK))
-        goto cleanup;
+        err = asdf_mapping_set(meta_map, "asdf_library", software_value);
+
+        if (UNLIKELY(err != ASDF_VALUE_OK))
+            goto cleanup;
+    }
 
     history_value = asdf_meta_history_serialize(file, meta);
 

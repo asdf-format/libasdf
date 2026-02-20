@@ -952,6 +952,7 @@ MU_TEST(test_asdf_value_of_type) {
     CHECK_SET_VALUE_OF_TYPE(uint64, UINT64_MAX);
     CHECK_SET_VALUE_OF_TYPE(float, FLT_MAX);
     CHECK_SET_VALUE_OF_TYPE(double, DBL_MAX);
+    asdf_library_set_version(file, "0.0.0");
     assert_int(asdf_write_to(file, path), ==, 0);
     asdf_close(file);
 
@@ -1137,11 +1138,44 @@ MU_TEST(test_asdf_mapping_set_scalars) {
 
     // Assign the mapping as the root
     assert_int(asdf_set_mapping(file, "", mapping), ==, ASDF_VALUE_OK);
+    asdf_library_set_version(file, "0.0.0");
     assert_int(asdf_write_to(file, path), ==, 0);
     asdf_close(file);
 
     const char *fixture_path = get_fixture_file_path("scalars-out.asdf");
     assert_true(compare_files(path, fixture_path));
+    return MUNIT_OK;
+}
+
+
+MU_TEST(test_asdf_mapping_set_overwrite) {
+    const char *path = get_fixture_file_path("255.asdf");
+    asdf_file_t *file = asdf_open(path, "r");
+    assert_not_null(file);
+    asdf_value_t *software_val = asdf_get_value(file, "/asdf_library");
+    assert_not_null(software_val);
+    asdf_software_t *software = NULL;
+    assert_int(asdf_value_as_software(software_val, &software), ==, ASDF_VALUE_OK);
+    // Current version of this file is written by Python's asdf module
+    assert_string_equal(software->name, "asdf");
+    // Let's overwrite it; casting it as a mapping
+    asdf_mapping_t *software_map = (asdf_mapping_t *)software_val;
+    assert_int(asdf_mapping_set_string0(software_map, "name", "libasdf"), ==, ASDF_VALUE_OK);
+    asdf_software_destroy(software);
+    asdf_value_destroy(software_val);
+
+    void *buf = NULL;
+    size_t size = 0;
+    assert_int(asdf_write_to(file, &buf, &size), ==, 0);
+    asdf_close(file);
+
+    file = asdf_open((const void *)buf, size);
+    assert_not_null(file);
+    const char *name = NULL;
+    assert_int(asdf_get_string0(file, "/asdf_library/name", &name), ==, ASDF_VALUE_OK);
+    assert_string_equal(name, "libasdf");
+    asdf_close(file);
+    free(buf);
     return MUNIT_OK;
 }
 
@@ -1981,6 +2015,7 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_mapping_get),
     MU_RUN_TEST(test_asdf_mapping_pop),
     MU_RUN_TEST(test_asdf_mapping_set_scalars),
+    MU_RUN_TEST(test_asdf_mapping_set_overwrite),
     MU_RUN_TEST(test_asdf_sequence_append),
     MU_RUN_TEST(test_asdf_sequence_create),
     MU_RUN_TEST(test_asdf_sequence_iter),

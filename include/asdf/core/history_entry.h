@@ -4,8 +4,9 @@
 
 #include <time.h>
 
-#include <asdf/extension.h>
 #include <asdf/core/software.h>
+#include <asdf/extension.h>
+#include <asdf/file.h>
 
 
 ASDF_BEGIN_DECLS
@@ -18,6 +19,20 @@ typedef struct {
 
 
 ASDF_DECLARE_EXTENSION(history_entry, asdf_history_entry_t);
+
+/**
+ * Add a history entry to the file
+ *
+ * .. todo::
+ *
+ *   Allow passing a timestamp for the history entry as well, or an extended
+ *   version that accepts a timestamp.
+ *
+ * :params file: Open `asdf_file_t *` handle
+ * :params description: The text to add to the history entry
+ * :return: Non-zero if adding the history entry failed
+ */
+ASDF_EXPORT int asdf_history_entry_add(asdf_file_t *file, const char *description);
 
 ASDF_END_DECLS
 

@@ -320,10 +320,22 @@ ASDF_EXPORT asdf_value_t *asdf_mapping_pop(asdf_mapping_t *mapping, const char *
  *
  * .. todo::
  *
- *   Document these.
+ *   Document the rest of these.
+ */
+
+/**
+ * Set a generic `asdf_value_t *` on a mapping at the given key
+ *
+ * If the key already exists in the mapping its value will be overwritten
+ *
+ * :params mapping: Handle to the `asdf_mapping_t` to update
+ * :params key: The key at which to insert the value
+ * :params value: Generic `asdf_value_t *` to insert into the mapping
+ * :return: `ASDF_VALUE_OK` on success or another `asdf_value_err_t`
  */
 ASDF_EXPORT asdf_value_err_t
 asdf_mapping_set(asdf_mapping_t *mapping, const char *key, asdf_value_t *value);
+
 ASDF_EXPORT asdf_value_err_t
 asdf_mapping_set_string(asdf_mapping_t *mapping, const char *key, const char *str, size_t len);
 ASDF_EXPORT asdf_value_err_t

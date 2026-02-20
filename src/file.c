@@ -1,4 +1,3 @@
-#include <errno.h>
 #include <limits.h>
 #include <math.h>
 #include <stddef.h>
@@ -418,10 +417,17 @@ int asdf_write_to_mem(asdf_file_t *file, void **buf, size_t *size) {
     if (ret != 0)
         goto cleanup;
 
-    if (asdf_emitter_emit(file->emitter) == ASDF_EMITTER_STATE_ERROR) {
+    if (asdf_emitter_emit(emitter) == ASDF_EMITTER_STATE_ERROR) {
         ret = -1;
         goto cleanup;
     }
+
+    // Fill any unused part of the buffer with zeros to be on the safe side,
+    // so any trailing bytes aren't garbage
+    off_t offset = asdf_stream_tell(emitter->stream);
+
+    if (offset >= 0 && (size_t)offset < alloc_size)
+        memset(alloc_buf + offset, 0, alloc_size - offset);
 
     ret = 0;
 
@@ -446,6 +452,17 @@ void asdf_close(asdf_file_t *file) {
     asdf_block_info_vec_drop(&file->blocks);
     asdf_str_map_drop(&file->tag_map);
     asdf_stream_close(file->stream);
+    // Clean up the asdf_library override if any
+    asdf_software_destroy(file->asdf_library);
+    // Clean up any appended history entries
+    if (file->history_entries) {
+        asdf_history_entry_t **entryp = file->history_entries;
+        while (*entryp) {
+            asdf_history_entry_destroy(*entryp);
+            entryp++;
+        }
+        free((void *)file->history_entries);
+    }
     asdf_context_release(file->base.ctx);
     /* Clean up */
     free(file->config);
@@ -483,8 +500,6 @@ struct fy_document *asdf_file_tree_document_create_default(asdf_file_t *file) {
         goto failure;
 
     // Create the default document root
-    // TODO: This should create a full asdf/core/asdf object; for now just
-    // create an empty mapping with that tag
     struct fy_node *root = fy_node_create_mapping(tree);
 
     if (!root)
