@@ -55,6 +55,7 @@ static void crash_handler(int sig) {
 __attribute__((constructor))
 static void install_crash_handler(void) {
     orig_stderr = dup(STDERR_FILENO);
+    signal(SIGBUS, crash_handler);
     signal(SIGSEGV, crash_handler);
     signal(SIGABRT, crash_handler);
 }
