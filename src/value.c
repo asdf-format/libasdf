@@ -62,6 +62,7 @@ static asdf_value_t *asdf_value_create_ex(
     value->err = ASDF_VALUE_ERR_UNKNOWN;
     value->node = node;
     value->tag = NULL;
+    value->shallow = false;
     value->explicit_tag_checked = false;
     value->extension_checked = false;
     value->path = NULL;
@@ -115,7 +116,7 @@ void asdf_value_destroy(asdf_value_t *value) {
     // nodes still attached to a document should not be manually freed
     // Have to include a check if it's the root node as well; it should not be freed
     // see https://github.com/pantoniou/libfyaml/issues/143
-    if (!(fy_node_is_attached(value->node) || is_root_node(value->node)))
+    if (!value->shallow && (!(fy_node_is_attached(value->node) || is_root_node(value->node))))
         fy_node_free(value->node);
 
     free((char *)value->path);
@@ -134,7 +135,7 @@ void asdf_value_destroy(asdf_value_t *value) {
 }
 
 
-static asdf_value_t *asdf_value_clone_impl(asdf_value_t *value, bool preserve_type_inference) {
+static asdf_value_t *asdf_value_clone_impl(asdf_value_t *value, bool raw_shallow) {
 
     if (!value)
         return NULL;
@@ -147,16 +148,9 @@ static asdf_value_t *asdf_value_clone_impl(asdf_value_t *value, bool preserve_ty
     }
 
     struct fy_document *tree = asdf_file_tree_document(value->file);
-    struct fy_node *new_node = fy_node_copy(tree, value->node);
-
-    if (!new_node) {
-        free(new_value);
-        ASDF_ERROR_OOM(value->file);
-        return NULL;
-    }
+    struct fy_node *new_node = NULL;
 
     new_value->file = value->file;
-    new_value->node = new_node;
 
     if (value->tag)
         new_value->tag = strdup(value->tag);
@@ -164,6 +158,7 @@ static asdf_value_t *asdf_value_clone_impl(asdf_value_t *value, bool preserve_ty
         new_value->tag = NULL;
 
     new_value->explicit_tag_checked = value->explicit_tag_checked;
+
     if (value->path)
         new_value->path = strdup(value->path);
     else
@@ -171,37 +166,30 @@ static asdf_value_t *asdf_value_clone_impl(asdf_value_t *value, bool preserve_ty
         // else it will be lost; see issue #69
         new_value->path = fy_node_get_path(value->node);
 
-    if (preserve_type_inference) {
-        // If the cloned value is an extension, copy the asdf_extension_value_t, but not the
-        // deserialized object--it will be re-deserialized lazily since we don't have a means
-        // to clone those currently (would need to at least save their size, which is maybe good
-        // to do...)
-        if (ASDF_VALUE_EXTENSION == value->type && value->scalar.ext) {
-            asdf_extension_value_t *new_ext = calloc(1, sizeof(asdf_extension_value_t));
+    if (raw_shallow) {
+        new_value->node = value->node;
+        new_value->type = value->raw_type;
+        new_value->raw_type = value->raw_type;
+        new_value->err = ASDF_VALUE_ERR_UNKNOWN;
+        new_value->extension_checked = true;
+        new_value->scalar.ext = NULL;
+        new_value->shallow = true;
+    } else {
+        new_node = fy_node_copy(tree, value->node);
 
-            if (!new_ext) {
-                fy_node_free(new_node);
-                free(new_value);
-                ASDF_ERROR_OOM(value->file);
-                return NULL;
-            }
-
-            new_ext->ext = value->scalar.ext->ext;
-            new_value->scalar.ext = new_ext;
-        } else {
-            new_value->scalar = value->scalar;
+        if (!new_node) {
+            free(new_value);
+            ASDF_ERROR_OOM(value->file);
+            return NULL;
         }
 
-        new_value->extension_checked = value->extension_checked;
-        new_value->type = value->type;
-        new_value->raw_type = value->raw_type;
-        new_value->err = value->err;
-    } else {
+        new_value->node = new_node;
         new_value->type = asdf_value_type_from_node(new_node);
         new_value->raw_type = new_value->type;
         new_value->err = ASDF_VALUE_ERR_UNKNOWN;
         new_value->extension_checked = false;
         new_value->scalar.ext = NULL;
+        new_value->shallow = false;
     }
 
     return new_value;
@@ -209,7 +197,7 @@ static asdf_value_t *asdf_value_clone_impl(asdf_value_t *value, bool preserve_ty
 
 
 asdf_value_t *asdf_value_clone(asdf_value_t *value) {
-    return asdf_value_clone_impl(value, true);
+    return asdf_value_clone_impl(value, false);
 }
 
 
@@ -1221,7 +1209,7 @@ asdf_value_err_t asdf_value_as_extension_type(
     assert(ext->deserialize);
     // Clone the raw value without existing extension inference to pass to the the extension's
     // deserialize method.
-    asdf_value_t *raw_value = asdf_value_clone_impl(value, false);
+    asdf_value_t *raw_value = asdf_value_clone_impl(value, true);
 
     if (!raw_value) {
         ASDF_ERROR_OOM(value->file);
