@@ -28,6 +28,7 @@ typedef struct asdf_value {
     asdf_value_err_t err;
     struct fy_node *node;
     const char *tag;
+    bool shallow;
     bool explicit_tag_checked;
     bool extension_checked;
     union {
