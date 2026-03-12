@@ -10,7 +10,10 @@
 
 #include <stc/cstr.h>
 
+#include <errno.h>
+
 #include "asdf/emitter.h"
+#include "asdf/error.h"
 #include "asdf/core/ndarray.h"
 #include "asdf/value.h"
 
@@ -50,6 +53,11 @@ MU_TEST(test_asdf_open_file_nonexistent) {
     const char *error = asdf_error(file);
     assert_not_null(error);
     assert_string_equal(error, "No such file or directory");
+    assert_int(asdf_error_code(file), ==, ASDF_ERR_SYSTEM);
+    assert_int(asdf_error_errno(file), ==, ENOENT);
+    /* NULL safety */
+    (void)asdf_error_code(NULL);
+    (void)asdf_error_errno(NULL);
     return MUNIT_OK;
 }
 
@@ -68,7 +76,8 @@ MU_TEST(test_asdf_open_file_empty) {
     assert_int(asdf_block_count(file), ==, 0);
     const char *error = asdf_error(file);
     assert_not_null(error);
-    assert_string_equal(error, "Unexpected end of file");
+    assert_string_equal(error, "unexpected end of file");
+    assert_int(asdf_error_code(file), ==, ASDF_ERR_UNEXPECTED_EOF);
     asdf_close(file);
     return MUNIT_OK;
 }
@@ -93,7 +102,8 @@ MU_TEST(test_asdf_open_file_not_asdf) {
     assert_int(asdf_block_count(file), ==, 0);
     const char *error = asdf_error(file);
     assert_not_null(error);
-    assert_string_equal(error, "Invalid ASDF header");
+    assert_string_equal(error, "invalid ASDF header");
+    assert_int(asdf_error_code(file), ==, ASDF_ERR_INVALID_ASDF_HEADER);
     asdf_close(file);
     return MUNIT_OK;
 }
@@ -104,7 +114,8 @@ MU_TEST(test_asdf_open_file_invalid_mode) {
     assert_null(file);
     const char *error = asdf_error(file);
     assert_not_null(error);
-    assert_string_equal(error, "invalid mode string: \"x\"");
+    assert_string_equal(error, "invalid argument for mode: x");
+    assert_int(asdf_error_code(file), ==, ASDF_ERR_INVALID_ARGUMENT);
     return MUNIT_OK;
 }
 
@@ -450,7 +461,8 @@ MU_TEST(test_asdf_block_append_read_only) {
     assert_not_null(file);
     assert_int(asdf_block_append(file, NULL, 0), ==, -1);
     const char *error = asdf_error(file);
-    assert_string_equal(error, "cannot append blocks to read-only files");
+    assert_string_equal(error, "cannot write to a read-only stream or file");
+    assert_int(asdf_error_code(file), ==, ASDF_ERR_STREAM_READ_ONLY);
     asdf_close(file);
     return MUNIT_OK;
 }

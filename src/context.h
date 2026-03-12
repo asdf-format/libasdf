@@ -11,6 +11,7 @@
 
 #include <stdatomic.h>
 
+#include "asdf/error.h" // IWYU pragma: export
 #include "asdf/log.h"
 
 #include "util.h"
@@ -27,6 +28,8 @@ typedef struct {
     atomic_uint refcount;
     asdf_error_type_t error_type;
     const char *error;
+    asdf_error_code_t error_code;
+    int saved_errno; /* only meaningful when error_code == ASDF_ERR_SYSTEM */
     asdf_log_cfg_t log;
 } asdf_context_t;
 

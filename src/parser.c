@@ -983,7 +983,7 @@ static parse_result_t parse_block(asdf_parser_t *parser, asdf_event_t *event) {
                 ASDF_LOG_ERROR,
                 "Block allocated size %zd is too large to seek past",
                 block_info->header.allocated_size);
-            ASDF_ERROR_STATIC(parser, "Failed to seek past block data");
+            ASDF_ERROR_COMMON(parser, ASDF_ERR_INVALID_BLOCK_HEADER);
             return ASDF_PARSE_ERROR;
         }
 
@@ -1000,7 +1000,7 @@ static parse_result_t parse_block(asdf_parser_t *parser, asdf_event_t *event) {
         // TODO: When reading the file from a stream we will want the option to return a pointer
         // to the start of the block data, possibly with the option to copy it to a buffer.
         // For now it will suffice to skip past it.
-        ASDF_ERROR_STATIC(parser, "Failed to seek past block data");
+        ASDF_ERROR_COMMON(parser, ASDF_ERR_INVALID_BLOCK_HEADER);
         return ASDF_PARSE_ERROR;
     }
     event->type = ASDF_BLOCK_EVENT;
@@ -1198,6 +1198,22 @@ bool asdf_parser_has_error(const asdf_parser_t *parser) {
 
 const char *asdf_parser_get_error(const asdf_parser_t *parser) {
     return parser->base.ctx->error ? parser->base.ctx->error : "";
+}
+
+
+asdf_error_code_t asdf_parser_error_code(const asdf_parser_t *parser) {
+    if (!parser)
+        return ASDF_ERR_NONE;
+
+    return asdf_context_error_code_get(parser->base.ctx);
+}
+
+
+int asdf_parser_error_errno(const asdf_parser_t *parser) {
+    if (!parser)
+        return 0;
+
+    return asdf_context_saved_errno_get(parser->base.ctx);
 }
 
 

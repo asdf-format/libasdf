@@ -20,6 +20,7 @@
 #include <stdio.h>
 
 #include <asdf/emitter.h>
+#include <asdf/error.h>
 #include <asdf/log.h>
 #include <asdf/parser.h>
 #include <asdf/util.h>
@@ -368,6 +369,31 @@ ASDF_EXPORT asdf_file_t *asdf_open_mem_ex(const void *buf, size_t size, asdf_con
  *   message string
  */
 ASDF_EXPORT const char *asdf_error(asdf_file_t *file);
+
+
+/**
+ * Retrieve the error code set on a file
+ *
+ * Returns `ASDF_ERR_NONE` if no error is set, or if ``file`` is ``NULL`` and
+ * there is no global error.
+ *
+ * :param file: An open `asdf_file_t *` or `NULL`
+ * :return: The `asdf_error_code_t` for the current error
+ */
+ASDF_EXPORT asdf_error_code_t asdf_error_code(asdf_file_t *file);
+
+
+/**
+ * Retrieve the saved OS ``errno`` from the last ``ASDF_ERR_SYSTEM`` error
+ *
+ * Only meaningful when `asdf_error_code` returns `ASDF_ERR_SYSTEM`.
+ * Returns ``0`` when there is no system error or ``file`` is ``NULL`` and
+ * there is no global error.
+ *
+ * :param file: An open `asdf_file_t *` or `NULL`
+ * :return: The saved ``errno`` value
+ */
+ASDF_EXPORT int asdf_error_errno(asdf_file_t *file);
 
 
 /**

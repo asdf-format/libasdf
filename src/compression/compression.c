@@ -272,7 +272,7 @@ static void *asdf_block_comp_userfaultfd_handler(void *arg) {
 
         switch (evt) {
         case ASDF_BLOCK_COMP_UFFD_EVT_ERROR:
-            ASDF_ERROR_ERRNO(state->file, errno);
+            ASDF_ERROR_SYSTEM(state->file, errno);
             break;
         case ASDF_BLOCK_COMP_UFFD_EVT_NOT_READY:
             continue;
@@ -280,7 +280,7 @@ static void *asdf_block_comp_userfaultfd_handler(void *arg) {
             break;
         case ASDF_BLOCK_COMP_UFFD_EVT_PAGEFAULT:
             if (handle_pagefault(uffd, &msg, page_size)) {
-                ASDF_ERROR_ERRNO(state->file, errno);
+                ASDF_ERROR_SYSTEM(state->file, errno);
                 break;
             }
 
@@ -296,7 +296,7 @@ static void *asdf_block_comp_userfaultfd_handler(void *arg) {
     // for the range handled; of course if the thread crashes we're in deep
     // water (main thread may hang)
     if (ioctl(uffd->uffd, UFFDIO_UNREGISTER, &uffd->range) == -1) {
-        ASDF_ERROR_ERRNO(state->file, errno);
+        ASDF_ERROR_SYSTEM(state->file, errno);
     }
 
     return NULL;
@@ -368,7 +368,7 @@ static bool asdf_block_decomp_lazy_available(
         int fd = -1;
         if (asdf_create_temp_file(page_size, config->decomp.tmp_dir, &fd) != 0) {
             // Could not even create temp file so I guess false
-            ASDF_ERROR_ERRNO(state->file, errno);
+            ASDF_ERROR_SYSTEM(state->file, errno);
             return false;
         }
 
@@ -433,7 +433,7 @@ static int asdf_block_decomp_lazy(asdf_block_comp_state_t *state) {
         if (errno == ENOMEM)
             ASDF_ERROR_OOM(state->file);
         else
-            ASDF_ERROR_ERRNO(state->file, errno);
+            ASDF_ERROR_SYSTEM(state->file, errno);
         return -1;
     }
 
@@ -445,7 +445,7 @@ static int asdf_block_decomp_lazy(asdf_block_comp_state_t *state) {
     long maybe_fd = syscall(SYS_userfaultfd, O_CLOEXEC | O_NONBLOCK | UFFD_USER_MODE_ONLY);
 
     if (maybe_fd < 0) {
-        ASDF_ERROR_ERRNO(state->file, errno);
+        ASDF_ERROR_SYSTEM(state->file, errno);
         return -1;
     }
 
@@ -455,7 +455,7 @@ static int asdf_block_decomp_lazy(asdf_block_comp_state_t *state) {
         .api = UFFD_API,
     };
     if (ioctl(uffd->uffd, UFFDIO_API, &uffd_api) == -1) {
-        ASDF_ERROR_ERRNO(state->file, errno);
+        ASDF_ERROR_SYSTEM(state->file, errno);
         return -1;
     }
 
@@ -471,7 +471,7 @@ static int asdf_block_decomp_lazy(asdf_block_comp_state_t *state) {
             state->file,
             ASDF_LOG_ERROR,
             "failed registering memory range for userfaultfd handling");
-        ASDF_ERROR_ERRNO(state->file, errno);
+        ASDF_ERROR_SYSTEM(state->file, errno);
         return -1;
     }
 
@@ -479,7 +479,7 @@ static int asdf_block_decomp_lazy(asdf_block_comp_state_t *state) {
     uffd->evtfd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
 
     if (uffd->evtfd < 0) {
-        ASDF_ERROR_ERRNO(state->file, errno);
+        ASDF_ERROR_SYSTEM(state->file, errno);
         return -1;
     }
 
@@ -510,7 +510,7 @@ static void asdf_block_decomp_lazy_shutdown(asdf_block_comp_state_t *state) {
             ASDF_LOG_ERROR,
             "failed to write the shutdown event to the lazy decompression handler: %s",
             strerror(errno));
-        ASDF_ERROR_ERRNO(state->file, errno);
+        ASDF_ERROR_SYSTEM(state->file, errno);
     }
 
     pthread_join(uffd->handler_thread, NULL);
@@ -698,12 +698,7 @@ int asdf_block_comp_open(asdf_block_t *block) {
     const asdf_compressor_t *comp = asdf_compressor_get(block->file, compression);
 
     if (!comp) {
-        ASDF_LOG(
-            block->file,
-            ASDF_LOG_ERROR,
-            "no compressor extension found for %s compression",
-            compression);
-        ASDF_ERROR(block->file, "no compressor extension found for %s compression", compression);
+        ASDF_ERROR_COMMON(block->file, ASDF_ERR_UNKNOWN_COMPRESSION, compression);
         return ret;
     }
 
@@ -717,12 +712,8 @@ int asdf_block_comp_open(asdf_block_t *block) {
     block->comp_state = state;
 
     if (!state->userdata) {
-        ASDF_LOG(
-            block->file,
-            ASDF_LOG_ERROR,
-            "failed to initialize compressor for %s compression",
-            compression);
-        ASDF_ERROR(block->file, "failed to initialize compressor for %s compression", compression);
+        ASDF_ERROR_COMMON(
+            block->file, ASDF_ERR_COMPRESSION_FAILED, "failed to initialize compressor");
         goto failure;
     }
 

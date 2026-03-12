@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include <asdf/error.h>
 #include <asdf/log.h>
 #include <asdf/util.h>
 
@@ -61,6 +62,8 @@ ASDF_EXPORT asdf_event_t *asdf_parser_parse(asdf_parser_t *parser);
 ASDF_EXPORT void asdf_parser_destroy(asdf_parser_t *parser);
 ASDF_EXPORT bool asdf_parser_has_error(const asdf_parser_t *parser);
 ASDF_EXPORT const char *asdf_parser_get_error(const asdf_parser_t *parser);
+ASDF_EXPORT asdf_error_code_t asdf_parser_error_code(const asdf_parser_t *parser);
+ASDF_EXPORT int asdf_parser_error_errno(const asdf_parser_t *parser);
 
 ASDF_END_DECLS
 

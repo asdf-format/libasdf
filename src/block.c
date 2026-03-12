@@ -68,12 +68,12 @@ bool asdf_block_info_read(asdf_stream_t *stream, asdf_block_info_t *out_block) {
     buf = asdf_stream_next(stream, FIELD_SIZEOF(asdf_block_header_t, header_size), &avail);
 
     if (!buf) {
-        ASDF_ERROR_STATIC(stream, "Failed to seek past block magic");
+        ASDF_ERROR_COMMON(stream, ASDF_ERR_INVALID_BLOCK_HEADER);
         return false;
     }
 
     if (avail < 2) {
-        ASDF_ERROR_STATIC(stream, "Failed to read block header size");
+        ASDF_ERROR_COMMON(stream, ASDF_ERR_UNEXPECTED_EOF);
         return false;
     }
 
@@ -81,7 +81,7 @@ bool asdf_block_info_read(asdf_stream_t *stream, asdf_block_info_t *out_block) {
     // NOLINTNEXTLINE(readability-magic-numbers)
     header->header_size = (buf[0] << 8) | buf[1];
     if (header->header_size < ASDF_BLOCK_HEADER_SIZE) {
-        ASDF_ERROR_STATIC(stream, "Invalid block header size");
+        ASDF_ERROR_COMMON(stream, ASDF_ERR_INVALID_BLOCK_HEADER);
         return false;
     }
 
@@ -93,7 +93,7 @@ bool asdf_block_info_read(asdf_stream_t *stream, asdf_block_info_t *out_block) {
     buf = asdf_stream_next(stream, header->header_size, &avail);
 
     if (avail < header->header_size) {
-        ASDF_ERROR_STATIC(stream, "Failed to read full block header");
+        ASDF_ERROR_COMMON(stream, ASDF_ERR_UNEXPECTED_EOF);
         return false;
     }
 
@@ -230,7 +230,7 @@ int asdf_block_info_compression_set(
     const asdf_compressor_t *comp = asdf_compressor_get(file, compression);
 
     if (!comp) {
-        ASDF_ERROR(file, "no compressor extension found for %s compression", compression);
+        ASDF_ERROR_COMMON(file, ASDF_ERR_UNKNOWN_COMPRESSION, compression);
         return -1;
     }
 

@@ -116,7 +116,7 @@ void asdf_stream_set_capture(asdf_stream_t *stream, uint8_t **buf, size_t *size,
  */
 int asdf_stream_seek(asdf_stream_t *stream, off_t offset, int whence) {
     if (UNLIKELY(!stream->is_seekable && offset < 0 && whence != SEEK_CUR)) {
-        ASDF_ERROR_ERRNO(stream, EINVAL);
+        ASDF_ERROR_SYSTEM(stream, EINVAL);
         return -1;
     }
 
@@ -373,7 +373,7 @@ static size_t file_write(asdf_stream_t *stream, const void *buf, size_t count) {
     size_t n_wrote = fwrite(buf, 1, count, data->file);
 
     if (n_wrote != count) {
-        ASDF_ERROR_ERRNO(stream, errno);
+        ASDF_ERROR_SYSTEM(stream, errno);
         return n_wrote;
     }
 
@@ -396,7 +396,7 @@ static int file_flush(asdf_stream_t *stream) {
     int ret = fflush(data->file);
 
     if (ret != 0) {
-        ASDF_ERROR_ERRNO(stream, errno);
+        ASDF_ERROR_SYSTEM(stream, errno);
     }
 
     return ret;
@@ -415,21 +415,21 @@ static void *file_open_mem(asdf_stream_t *stream, off_t offset, size_t size, siz
     int fd = fileno(data->file);
 
     if (fd < 0) {
-        ASDF_ERROR_ERRNO(stream, errno);
+        ASDF_ERROR_SYSTEM(stream, errno);
         return NULL;
     }
 
     struct stat st;
 
     if (fstat(fd, &st) != 0) {
-        ASDF_ERROR_ERRNO(stream, errno);
+        ASDF_ERROR_SYSTEM(stream, errno);
         return NULL;
     }
 
     size_t file_size = st.st_size;
 
     if ((size_t)offset > file_size) {
-        ASDF_ERROR_ERRNO(stream, EINVAL);
+        ASDF_ERROR_SYSTEM(stream, EINVAL);
         return NULL;
     }
 
@@ -491,7 +491,7 @@ static void *file_open_mem(asdf_stream_t *stream, off_t offset, size_t size, siz
     void *addr = mmap(NULL, map_size_aligned, PROT_READ, MAP_PRIVATE, fd, offset_aligned);
 
     if (MAP_FAILED == addr) {
-        ASDF_ERROR_ERRNO(stream, errno);
+        ASDF_ERROR_SYSTEM(stream, errno);
         return NULL;
     }
 
@@ -521,7 +521,7 @@ static int file_close_mem_impl(asdf_stream_t *stream, file_mmap_info_t *mmap_inf
     void *aligned_addr = mmap_info->addr - offset_delta;
 
     if (0 != munmap(aligned_addr, mmap_info->size)) {
-        ASDF_ERROR_ERRNO(stream, errno);
+        ASDF_ERROR_SYSTEM(stream, errno);
         ret = -1;
     }
 
@@ -553,7 +553,7 @@ static int file_close_mem(asdf_stream_t *stream, void *addr) {
             "address %p is not for a memory buffer managed by the libasdf stream and cannot "
             "be closed",
             addr);
-        ASDF_ERROR_ERRNO(stream, EINVAL);
+        ASDF_ERROR_SYSTEM(stream, EINVAL);
         return -1;
     }
 
@@ -692,7 +692,7 @@ asdf_stream_t *asdf_stream_from_fp(
 asdf_stream_t *asdf_stream_from_file(asdf_context_t *ctx, const char *filename, bool is_writeable) {
     FILE *file = fopen(filename, is_writeable ? "r+b" : "rb");
     if (!file) {
-        asdf_context_error_set_errno(ctx, errno);
+        asdf_context_error_set_system(ctx, errno, __FILE__, __LINE__);
         return NULL;
     }
 
@@ -893,7 +893,7 @@ static int mem_close_mem(asdf_stream_t *stream, void *addr) {
             ASDF_LOG_WARN,
             "stream->close_mem on memory address not belonging to this stream's buffer (%p)",
             addr);
-        ASDF_ERROR_ERRNO(stream, EINVAL);
+        ASDF_ERROR_SYSTEM(stream, EINVAL);
         return -1;
     }
     return 0;

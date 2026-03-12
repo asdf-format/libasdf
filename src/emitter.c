@@ -538,7 +538,10 @@ static bool emit_blocks_prepare(asdf_emitter_t *emitter) {
 
             if (ret != 0) {
                 free((void *)block.compression);
-                ASDF_ERROR(emitter, "failed to decompress block for recompression");
+                ASDF_ERROR_COMMON(
+                    emitter,
+                    ASDF_ERR_COMPRESSION_FAILED,
+                    "failed to decompress block for recompression");
                 return false;
             }
 

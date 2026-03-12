@@ -1196,10 +1196,7 @@ asdf_value_t *asdf_value_of_extension_type(
     asdf_file_t *file, const void *obj, const asdf_extension_t *ext) {
 
     if (!ext->serialize) {
-        const char
-            *fmt = "no serializer registered for the %s extension; no YAML value will be created";
-        ASDF_LOG(file, ASDF_LOG_WARN, fmt, ext->tag);
-        ASDF_ERROR(file, fmt, ext->tag);
+        ASDF_ERROR_COMMON(file, ASDF_ERR_EXTENSION_NOT_FOUND, ext->tag);
         return NULL;
     }
 

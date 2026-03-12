@@ -52,10 +52,8 @@ static asdf_config_t *asdf_config_build(asdf_config_t *user_config) {
     asdf_config_t *config = malloc(sizeof(asdf_config_t));
 
     if (!config) {
-        // TODO: Should have more convenient macros for setting/logging global errors
         asdf_global_context_t *ctx = asdf_global_context_get();
-        ASDF_LOG(ctx, ASDF_LOG_FATAL, "failed to allocate memory for libasdf config");
-        asdf_context_error_set_oom(ctx->base.ctx);
+        ASDF_ERROR_OOM(ctx);
         return NULL;
     }
 
@@ -202,7 +200,7 @@ static asdf_file_mode_t asdf_file_mode_parse(const char *mode) {
     if ((0 == strcasecmp(mode, "rw")))
         return ASDF_FILE_MODE_READ_WRITE;
 
-    ASDF_ERROR(NULL, "invalid mode string: \"%s\"", mode);
+    ASDF_ERROR_COMMON(NULL, ASDF_ERR_INVALID_ARGUMENT, "mode", mode);
     return ASDF_FILE_MODE_INVALID;
 }
 
@@ -489,6 +487,30 @@ const char *asdf_error(asdf_file_t *file) {
         }
     }
     return ASDF_ERROR_GET(base);
+}
+
+
+asdf_error_code_t asdf_error_code(asdf_file_t *file) {
+    asdf_base_t *base = (asdf_base_t *)file;
+
+    if (!base) {
+        base = (asdf_base_t *)asdf_global_context_get();
+        if (!base)
+            return ASDF_ERR_NONE;
+    }
+    return ASDF_ERROR_CODE_GET(base);
+}
+
+
+int asdf_error_errno(asdf_file_t *file) {
+    asdf_base_t *base = (asdf_base_t *)file;
+
+    if (!base) {
+        base = (asdf_base_t *)asdf_global_context_get();
+        if (!base)
+            return 0;
+    }
+    return asdf_context_saved_errno_get(base->ctx);
 }
 
 
@@ -1031,16 +1053,14 @@ void asdf_block_close(asdf_block_t *block) {
 
 ssize_t asdf_block_append(asdf_file_t *file, const void *data, size_t size) {
     if (file->mode == ASDF_FILE_MODE_READ_ONLY) {
-        ASDF_ERROR(file, "cannot append blocks to read-only files");
-        ASDF_LOG(file, ASDF_LOG_DEBUG, ASDF_ERROR_GET(file));
+        ASDF_ERROR_COMMON(file, ASDF_ERR_STREAM_READ_ONLY);
         return -1;
     }
 
     size_t n_blocks = asdf_block_count(file);
 
     if (n_blocks >= SSIZE_MAX) {
-        ASDF_ERROR(file, "cannot append more than %lld blocks to the file", SSIZE_MAX);
-        ASDF_LOG(file, ASDF_LOG_ERROR, ASDF_ERROR_GET(file));
+        ASDF_ERROR_COMMON(file, ASDF_ERR_OVER_LIMIT, "block count exceeds maximum");
         return -1;
     }
 
