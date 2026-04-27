@@ -525,33 +525,36 @@ ASDF_MAPPING_SET_CONTAINER_TYPE(mapping);
 ASDF_MAPPING_SET_CONTAINER_TYPE(sequence);
 
 
-asdf_mapping_iter_t asdf_mapping_iter_init() {
-    return NULL;
+asdf_mapping_iter_t *asdf_mapping_iter_init(asdf_mapping_t *mapping) {
+    asdf_mapping_iter_impl_t *impl = calloc(1, sizeof(asdf_mapping_iter_impl_t));
+
+    if (!impl) {
+        ASDF_ERROR_OOM(mapping->value.file);
+        return NULL;
+    }
+
+    impl->mapping = mapping;
+    return (asdf_mapping_iter_t *)impl;
 }
 
 
-const char *asdf_mapping_item_key(asdf_mapping_item_t *item) {
-    return item->key;
-}
-
-
-asdf_value_t *asdf_mapping_item_value(asdf_mapping_item_t *item) {
-    return item->value;
-}
-
-
-void asdf_mapping_item_destroy(asdf_mapping_item_t *item) {
-    if (!item)
+void asdf_mapping_iter_destroy(asdf_mapping_iter_t *iter) {
+    if (!iter)
         return;
 
-    item->key = NULL;
-    asdf_value_destroy(item->value);
-    item->value = NULL;
-    free(item);
+    asdf_mapping_iter_impl_t *impl = (asdf_mapping_iter_impl_t *)iter;
+    asdf_value_destroy(impl->pub.value);
+    free(impl);
 }
 
 
-asdf_mapping_item_t *asdf_mapping_iter(asdf_mapping_t *mapping, asdf_mapping_iter_t *iter) {
+bool asdf_mapping_iter_next(asdf_mapping_iter_t **iter_ptr) {
+    if (!iter_ptr || !*iter_ptr)
+        return false;
+
+    asdf_mapping_iter_impl_t *impl = (asdf_mapping_iter_impl_t *)*iter_ptr;
+    asdf_mapping_t *mapping = impl->mapping;
+
     if (mapping->value.raw_type != ASDF_VALUE_MAPPING) {
 #ifdef ASDF_LOG_ENABLED
         ASDF_LOG(
@@ -560,28 +563,13 @@ asdf_mapping_item_t *asdf_mapping_iter(asdf_mapping_t *mapping, asdf_mapping_ite
             "%s is not a mapping",
             asdf_value_path(&mapping->value));
 #endif
-        return NULL;
-    }
-
-    _asdf_mapping_iter_impl_t *impl = *iter;
-
-    if (NULL == impl) {
-        impl = calloc(1, sizeof(_asdf_mapping_iter_impl_t));
-
-        if (!impl) {
-            ASDF_ERROR_OOM(mapping->value.file);
-            return false;
-        }
-
-        *iter = impl;
-    }
-
-    struct fy_node_pair *pair = fy_node_mapping_iterate(mapping->value.node, &impl->iter);
-
-    if (!pair) {
-        /* Cleanup and end iteration */
         goto cleanup;
     }
+
+    struct fy_node_pair *pair = fy_node_mapping_iterate(mapping->value.node, &impl->fy_iter);
+
+    if (!pair)
+        goto cleanup;
 
     struct fy_node *key_node = fy_node_pair_key(pair);
 
@@ -595,39 +583,42 @@ asdf_mapping_item_t *asdf_mapping_iter(asdf_mapping_t *mapping, asdf_mapping_ite
             "be set to NULL",
             asdf_value_path(&mapping->value));
 #endif
-        impl->key = NULL;
+        impl->pub.key = NULL;
     } else {
-        impl->key = fy_node_get_scalar0(key_node);
+        impl->pub.key = fy_node_get_scalar0(key_node);
     }
 
     struct fy_node *value_node = fy_node_pair_value(pair);
     asdf_value_t *value = asdf_value_create_ex(
-        mapping->value.file, value_node, &mapping->value, impl->key, -1);
+        mapping->value.file, value_node, &mapping->value, impl->pub.key, -1);
 
-    if (!value) {
+    if (!value)
         goto cleanup;
-    }
 
-    // Destroy previous value if any
-    asdf_value_destroy(impl->value);
-    impl->value = value;
-    return impl;
+    asdf_value_destroy(impl->pub.value);
+    impl->pub.value = value;
+    return true;
 
 cleanup:
-    asdf_mapping_item_destroy(impl);
-    *iter = NULL;
-    return NULL;
+    asdf_mapping_iter_destroy((asdf_mapping_iter_t *)impl);
+    *iter_ptr = NULL;
+    return false;
 }
 
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 asdf_value_err_t asdf_mapping_update(asdf_mapping_t *mapping, asdf_mapping_t *update) {
-    asdf_mapping_iter_t iter = asdf_mapping_iter_init();
-    asdf_mapping_item_t *item = NULL;
+    asdf_mapping_iter_t *iter = asdf_mapping_iter_init(update);
+    if (!iter)
+        return ASDF_VALUE_ERR_OOM;
     asdf_value_err_t err = ASDF_VALUE_OK;
 
-    while ((item = asdf_mapping_iter(update, &iter))) {
-        err = asdf_mapping_set(mapping, item->key, asdf_value_clone(item->value));
+    while (asdf_mapping_iter_next(&iter)) {
+        err = asdf_mapping_set(mapping, iter->key, asdf_value_clone(iter->value));
+        if (err) {
+            asdf_mapping_iter_destroy(iter);
+            break;
+        }
     }
 
     return err;
@@ -749,12 +740,37 @@ void asdf_sequence_destroy(asdf_sequence_t *sequence) {
 }
 
 
-asdf_sequence_iter_t asdf_sequence_iter_init() {
-    return NULL;
+asdf_sequence_iter_t *asdf_sequence_iter_init(asdf_sequence_t *sequence) {
+    asdf_sequence_iter_impl_t *impl = calloc(1, sizeof(asdf_sequence_iter_impl_t));
+
+    if (UNLIKELY(!impl)) {
+        ASDF_ERROR_OOM(sequence->value.file);
+        return NULL;
+    }
+
+    impl->sequence = sequence;
+    impl->pub.index = -1;
+    return (asdf_sequence_iter_t *)impl;
 }
 
 
-asdf_value_t *asdf_sequence_iter(asdf_sequence_t *sequence, asdf_sequence_iter_t *iter) {
+void asdf_sequence_iter_destroy(asdf_sequence_iter_t *iter) {
+    if (!iter)
+        return;
+
+    asdf_sequence_iter_impl_t *impl = (asdf_sequence_iter_impl_t *)iter;
+    asdf_value_destroy(impl->pub.value);
+    free(impl);
+}
+
+
+bool asdf_sequence_iter_next(asdf_sequence_iter_t **iter_ptr) {
+    if (!iter_ptr || !*iter_ptr)
+        return false;
+
+    asdf_sequence_iter_impl_t *impl = (asdf_sequence_iter_impl_t *)*iter_ptr;
+    asdf_sequence_t *sequence = impl->sequence;
+
     if (UNLIKELY(sequence->value.raw_type != ASDF_VALUE_SEQUENCE)) {
 #ifdef ASDF_LOG_ENABLED
         ASDF_LOG(
@@ -763,49 +779,29 @@ asdf_value_t *asdf_sequence_iter(asdf_sequence_t *sequence, asdf_sequence_iter_t
             "%s is not a sequence",
             asdf_value_path(&sequence->value));
 #endif
-        return NULL;
-    }
-
-    asdf_sequence_iter_impl_t *impl = *iter;
-
-    if (NULL == impl) {
-        impl = calloc(1, sizeof(asdf_sequence_iter_impl_t));
-
-        if (UNLIKELY(!impl)) {
-            ASDF_ERROR_OOM(sequence->value.file);
-            return false;
-        }
-
-        impl->index = -1;
-        *iter = impl;
-    }
-
-    struct fy_node *value_node = fy_node_sequence_iterate(sequence->value.node, &impl->iter);
-
-    if (UNLIKELY(!value_node)) {
-        /* Cleanup and end iteration */
         goto cleanup;
     }
 
-    int index = ++impl->index;
+    struct fy_node *value_node = fy_node_sequence_iterate(sequence->value.node, &impl->fy_iter);
+
+    if (UNLIKELY(!value_node))
+        goto cleanup;
+
+    impl->pub.index++;
     asdf_value_t *value = asdf_value_create_ex(
-        sequence->value.file, value_node, &sequence->value, NULL, index);
+        sequence->value.file, value_node, &sequence->value, NULL, impl->pub.index);
 
-    if (!value) {
+    if (!value)
         goto cleanup;
-    }
 
-    // Destroy previous value if any
-    asdf_value_destroy(impl->value);
-    impl->value = value;
-    return value;
+    asdf_value_destroy(impl->pub.value);
+    impl->pub.value = value;
+    return true;
 
 cleanup:
-    asdf_value_destroy(impl->value);
-    impl->value = NULL;
-    free(impl);
-    *iter = NULL;
-    return NULL;
+    asdf_sequence_iter_destroy((asdf_sequence_iter_t *)impl);
+    *iter_ptr = NULL;
+    return false;
 }
 
 
@@ -1109,104 +1105,92 @@ asdf_value_t *asdf_sequence_pop(asdf_sequence_t *sequence, int index) {
 
 
 /** Generic container functions */
-asdf_container_iter_t asdf_container_iter_init() {
-    return NULL;
-}
-
-
-const char *asdf_container_item_key(asdf_container_item_t *item) {
-    return item->is_mapping ? item->path.key : NULL;
-}
-
-
-int asdf_container_item_index(asdf_container_item_t *item) {
-    return item->is_mapping ? -1 : item->path.index;
-}
-
-
-asdf_value_t *asdf_container_item_value(asdf_container_item_t *item) {
-    return item->value;
-}
-
-
-void asdf_container_item_destroy(asdf_container_item_t *item) {
-    if (!item)
-        return;
-
-    if (item->is_mapping) {
-        item->path.key = NULL;
-        free(item->iter.mapping);
-    } else {
-        item->path.index = -1;
-        free(item->iter.sequence);
-    }
-
-    item->value = NULL;
-    free(item);
-}
-
-
-asdf_container_item_t *asdf_container_iter(asdf_value_t *container, asdf_container_iter_t *iter) {
+asdf_container_iter_t *asdf_container_iter_init(asdf_value_t *container) {
     if (!container)
         return NULL;
 
     if (container->raw_type != ASDF_VALUE_MAPPING && container->raw_type != ASDF_VALUE_SEQUENCE) {
 #ifdef ASDF_LOG_ENABLED
-        const char *path = asdf_value_path(container);
-        ASDF_LOG(container->file, ASDF_LOG_WARN, "%s is not a container", path);
+        ASDF_LOG(
+            container->file, ASDF_LOG_WARN, "%s is not a container", asdf_value_path(container));
 #endif
         return NULL;
     }
 
-    asdf_container_item_t *impl = *iter;
+    asdf_container_iter_impl_t *impl = calloc(1, sizeof(asdf_container_iter_impl_t));
 
-    if (NULL == impl) {
-        impl = calloc(1, sizeof(asdf_container_item_t));
-
-        if (!impl) {
-            ASDF_ERROR_OOM(container->file);
-            return false;
-        }
-
-        if (ASDF_VALUE_MAPPING == container->raw_type) {
-            impl->is_mapping = true;
-            impl->iter.mapping = NULL;
-            impl->path.key = NULL;
-        } else {
-            impl->is_mapping = false;
-            impl->iter.sequence = NULL;
-            impl->path.index = -1;
-        }
-
-        *iter = impl;
+    if (!impl) {
+        ASDF_ERROR_OOM(container->file);
+        return NULL;
     }
+
+    impl->container = container;
+    impl->is_mapping = (container->raw_type == ASDF_VALUE_MAPPING);
+    impl->pub.index = -1;
 
     if (impl->is_mapping) {
-        asdf_mapping_item_t *item = asdf_mapping_iter(
-            (asdf_mapping_t *)container, &impl->iter.mapping);
-
-        if (!item)
-            goto cleanup;
-
-        impl->path.key = item->key;
-        impl->value = item->value;
-        return impl;
+        impl->iter.mapping = asdf_mapping_iter_init((asdf_mapping_t *)container);
+        if (!impl->iter.mapping) {
+            free(impl);
+            return NULL;
+        }
+    } else {
+        impl->iter.sequence = asdf_sequence_iter_init((asdf_sequence_t *)container);
+        if (!impl->iter.sequence) {
+            free(impl);
+            return NULL;
+        }
     }
 
-    // Sequence case
-    asdf_value_t *value = asdf_sequence_iter((asdf_sequence_t *)container, &impl->iter.sequence);
+    return (asdf_container_iter_t *)impl;
+}
 
-    if (!value)
+
+void asdf_container_iter_destroy(asdf_container_iter_t *iter) {
+    if (!iter)
+        return;
+
+    asdf_container_iter_impl_t *impl = (asdf_container_iter_impl_t *)iter;
+
+    if (impl->is_mapping)
+        asdf_mapping_iter_destroy(impl->iter.mapping);
+    else
+        asdf_sequence_iter_destroy(impl->iter.sequence);
+
+    /* pub.value aliases the sub-iter's value; not independently freed */
+    free(impl);
+}
+
+
+bool asdf_container_iter_next(asdf_container_iter_t **iter_ptr) {
+    if (!iter_ptr || !*iter_ptr)
+        return false;
+
+    asdf_container_iter_impl_t *impl = (asdf_container_iter_impl_t *)*iter_ptr;
+
+    if (impl->is_mapping) {
+        if (!asdf_mapping_iter_next(&impl->iter.mapping))
+            goto cleanup;
+
+        impl->pub.key = impl->iter.mapping->key;
+        impl->pub.index++;
+        impl->pub.value = impl->iter.mapping->value;
+        return true;
+    }
+
+    if (!asdf_sequence_iter_next(&impl->iter.sequence))
         goto cleanup;
 
-    impl->path.index++;
-    impl->value = value;
-    return impl;
+    impl->pub.key = NULL;
+    impl->pub.index = impl->iter.sequence->index;
+    impl->pub.value = impl->iter.sequence->value;
+    return true;
 
 cleanup:
-    asdf_container_item_destroy(impl);
-    *iter = NULL;
-    return NULL;
+    /* sub-iter already freed and nulled by its _next(); just free our wrapper */
+    free(impl);
+    *iter_ptr = NULL;
+    return false;
 }
 
 
@@ -2706,40 +2690,48 @@ ASDF_VALUE_OF_TYPE(double, double, ASDF_VALUE_DOUBLE, d, double);
 #define ASDF_VALUE_FIND_ITER_MIN_CAPACITY 8
 #define ASDF_VALUE_FIND_ITER_MAX_DEPTH 256
 
-/**
- * Implementation details for `asdf_value_find_iter_ex` which is the workhorse
- * for all the other variants (`asdf_value_find_iter`, `asdf_value_find_ex`,
- * `asdf_value_find`)
- */
-static asdf_find_item_t *asdf_value_find_iter_create(
-    bool depth_first, asdf_value_pred_t descend_pred, ssize_t max_depth) {
-    asdf_find_item_t *item = calloc(1, sizeof(asdf_find_item_t));
+static inline asdf_find_frame_t *asdf_find_iter_push_frame(
+    asdf_find_iter_impl_t *iter, asdf_value_t *container, ssize_t depth);
 
-    if (!item)
+static asdf_find_iter_impl_t *asdf_find_iter_create(
+    asdf_value_t *root,
+    asdf_value_pred_t pred,
+    bool depth_first,
+    asdf_value_pred_t descend_pred,
+    ssize_t max_depth) {
+    asdf_find_iter_impl_t *impl = calloc(1, sizeof(asdf_find_iter_impl_t));
+
+    if (!impl)
         return NULL;
 
-    item->depth_first = depth_first;
-    item->descend_pred = descend_pred;
-    item->max_depth = max_depth;
-    item->value = NULL;
-    // Initial small frame stack, though we can also use max_depth as a
-    // heuristic
-    item->frame_cap = (max_depth < 0) ? ASDF_VALUE_FIND_ITER_MIN_CAPACITY
+    impl->pred = pred;
+    impl->depth_first = depth_first;
+    impl->descend_pred = descend_pred;
+    impl->max_depth = max_depth;
+    // Initial small frame stack; use max_depth as a heuristic when available
+    impl->frame_cap = (max_depth < 0) ? ASDF_VALUE_FIND_ITER_MIN_CAPACITY
                                       : (((max_depth > ASDF_VALUE_FIND_ITER_MAX_DEPTH)
                                               ? ASDF_VALUE_FIND_ITER_MAX_DEPTH
                                               : max_depth + 1));
-    item->frames = calloc(item->frame_cap, sizeof(asdf_find_frame_t));
-    return item;
+    impl->frames = calloc(impl->frame_cap, sizeof(asdf_find_frame_t));
+
+    if (!impl->frames) {
+        free(impl);
+        return NULL;
+    }
+
+    asdf_find_iter_push_frame(impl, root, 0);
+    return impl;
 }
 
 
-/** Just doubles the frame capacity */
+/** Doubles the frame capacity when needed */
 static inline asdf_find_frame_t *asdf_find_iter_push_frame(
-    asdf_find_item_t *iter, asdf_value_t *container, ssize_t depth) {
+    asdf_find_iter_impl_t *iter, asdf_value_t *container, ssize_t depth) {
     // Refuse to push a new frame if we are already at max-depth or the new
-    // container doesn't match the descend predicate
+    // container doesn't match the descend predicate.
     // Always allow push though if frame_count == 0; that is, the root node is
-    // always searched through regardless of descend_prod
+    // always searched through regardless of descend_pred.
     if ((iter->max_depth >= 0 && depth > iter->max_depth) ||
         (iter->frame_count > 0 && iter->descend_pred && !iter->descend_pred(container)))
         return NULL;
@@ -2761,7 +2753,7 @@ static inline asdf_find_frame_t *asdf_find_iter_push_frame(
     asdf_find_frame_t *frame = &iter->frames[iter->frame_count++];
     ZERO_MEMORY(frame, sizeof(asdf_find_frame_t));
     frame->container = container;
-    frame->iter = asdf_container_iter_init();
+    frame->iter = asdf_container_iter_init(container);
     frame->is_mapping = container->raw_type == ASDF_VALUE_MAPPING;
     frame->depth = depth;
     return frame;
@@ -2772,15 +2764,13 @@ static inline asdf_find_frame_t *asdf_find_iter_push_frame(
  * Pop the idx-th frame from the stack
  *
  * Breadth-first traversal can be slightly more expensive here since we have
- * to shift all the frames down
+ * to shift all the frames down.
  */
-static inline void asdf_find_iter_pop_frame(asdf_find_item_t *iter, size_t idx) {
+static inline void asdf_find_iter_pop_frame(asdf_find_iter_impl_t *iter, size_t idx) {
     asdf_find_frame_t *frame = &iter->frames[idx];
 
-    asdf_container_item_destroy(frame->iter);
+    asdf_container_iter_destroy(frame->iter);
 
-    // Hack needed for BFS
-    // TODO: Should be fixed
     if (frame->owns_container)
         asdf_value_destroy(frame->container);
 
@@ -2799,8 +2789,8 @@ static inline void asdf_find_iter_pop_frame(asdf_find_item_t *iter, size_t idx) 
 }
 
 
-/** DFS strategy for `asdf_find_iter_next` */
-static asdf_value_t *asdf_find_iter_next_dfs(asdf_find_item_t *iter) {
+/** DFS strategy for the find iterator */
+static asdf_value_t *asdf_find_iter_next_dfs(asdf_find_iter_impl_t *iter) {
     assert(iter->frame_count > 0);
     asdf_find_frame_t *frame = &iter->frames[iter->frame_count - 1];
 
@@ -2809,22 +2799,22 @@ static asdf_value_t *asdf_find_iter_next_dfs(asdf_find_item_t *iter) {
         return frame->container;
     }
 
-    asdf_container_item_t *item = NULL;
-    while ((item = asdf_container_iter(frame->container, &frame->iter))) {
-        if (asdf_value_is_container(item->value)) {
-            asdf_find_iter_push_frame(iter, item->value, frame->depth + 1);
+    while (asdf_container_iter_next(&frame->iter)) {
+        asdf_value_t *child = frame->iter->value;
+        if (asdf_value_is_container(child)) {
+            asdf_find_iter_push_frame(iter, child, frame->depth + 1);
             return NULL;
         }
 
-        return item->value;
+        return child;
     }
     asdf_find_iter_pop_frame(iter, iter->frame_count - 1);
     return NULL;
 }
 
 
-/** BFS strategy for `asdf_find_iter_next` */
-static asdf_value_t *asdf_find_iter_next_bfs(asdf_find_item_t *iter) {
+/** BFS strategy for the find iterator */
+static asdf_value_t *asdf_find_iter_next_bfs(asdf_find_iter_impl_t *iter) {
     assert(iter->frame_count > 0);
     asdf_find_frame_t *frame = &iter->frames[0];
 
@@ -2833,17 +2823,13 @@ static asdf_value_t *asdf_find_iter_next_bfs(asdf_find_item_t *iter) {
         return frame->container;
     }
 
-    asdf_container_item_t *item = NULL;
-    while ((item = asdf_container_iter(frame->container, &frame->iter))) {
-        if (asdf_value_is_container(item->value)) {
-            // In the BFS case it is important to *clone* the value before
-            // pushing it onto the stack, because the next call of
-            // asdf_container_iter will destroy the original; a design
-            // choice that makes sense most of the time but is a foot-gun
-            // here.  Would be better if we boxed values with reference
-            // counting
+    while (asdf_container_iter_next(&frame->iter)) {
+        asdf_value_t *child = frame->iter->value;
+        if (asdf_value_is_container(child)) {
+            // In BFS, clone the child before pushing: the next container_iter_next
+            // call will destroy the original value wrapper.
             asdf_find_frame_t *new_frame = asdf_find_iter_push_frame(
-                iter, asdf_value_clone(item->value), frame->depth + 1);
+                iter, asdf_value_clone(child), frame->depth + 1);
 
             if (!new_frame)
                 return NULL;
@@ -2852,30 +2838,21 @@ static asdf_value_t *asdf_find_iter_next_bfs(asdf_find_item_t *iter) {
             new_frame->owns_container = true;
         }
 
-        return item->value;
+        return child;
     }
     asdf_find_iter_pop_frame(iter, 0);
     return NULL;
 }
 
+
 /**
- * The core of asdf_value_find_iter_ex
+ * The core of the find iterator
  *
  * We maintain our own little stack of values being descended into (similar
  * to the implementation of `asdf_info`) so that we can traverse the tree
  * to arbitrary (modulo system resource) depths without blowing the C stack.
- *
- * This is probably unnecessary for most files though may be useful in some
- * cases.  In any case I usually prefer such an approach over brute recursion.
- *
- * In fact, `asdf_info` could, and later should, be rewritten on top of this
- * if possible. `asdf_info` was written very early in the project when I was
- * just trying to get a handle on libfyaml.
  */
-static asdf_value_t *asdf_find_iter_next(asdf_find_item_t *iter) {
-    if (iter->value && !asdf_value_is_container(iter->value))
-        return iter->value;
-
+static asdf_value_t *asdf_find_iter_step(asdf_find_iter_impl_t *iter) {
     if (!iter->frame_count)
         return NULL;
 
@@ -2889,100 +2866,90 @@ static asdf_value_t *asdf_find_iter_next(asdf_find_item_t *iter) {
 }
 
 
-asdf_find_iter_t asdf_find_iter_init_ex(
-    bool depth_first, asdf_value_pred_t descend_pred, ssize_t max_depth) {
-    asdf_find_item_t *iter = asdf_value_find_iter_create(depth_first, descend_pred, max_depth);
-    return iter;
-}
-
-
-asdf_find_iter_t asdf_find_iter_init(void) {
-    return asdf_find_iter_init_ex(false, NULL, -1);
-}
-
-
-void asdf_find_item_destroy(asdf_find_item_t *item) {
-    if (!item)
-        return;
-
-    asdf_value_destroy(item->value);
-
-    // Pop all remaining frames off the stack if any
-    // This is important to do before freeing item->frames since sometimes
-    // individual frames need cleanup too
-    while (item->frame_count > 0)
-        asdf_find_iter_pop_frame(item, item->frame_count - 1);
-
-    free(item->frames);
-    free(item);
-}
-
-
-asdf_find_item_t *asdf_value_find_iter(
-    asdf_value_t *root, asdf_value_pred_t pred, asdf_find_iter_t *iter) {
-
-    asdf_find_item_t *item = *iter;
-
-    if (!item) {
-        ASDF_ERROR_OOM(root->file);
-        return NULL;
-    }
-
-    if (item->frame_count == 0) {
-        // Subsequent calls with the same iterator but a different root result
-        // in undefined behavior.  Push the root node onto the stack to begin
-        if (asdf_value_is_container(root))
-            asdf_find_iter_push_frame(item, root, 0);
-        else
-            // Special case when we are given a scalar "root" value
-            item->value = root;
-    } else {
-        item->value = NULL;
-    }
-
-    asdf_value_t *current = NULL;
-
-    while (item->frame_count > 0 || item->value) {
-        current = asdf_find_iter_next(item);
-        if (current && (!pred || pred(current))) {
-            // wrap in find_item_t and return
-            item->value = current;
-            // TODO: Build path
-            return item;
-        }
-        item->value = NULL;
-    }
-    asdf_find_item_destroy(item);
-    return NULL;
-}
-
-
-asdf_find_item_t *asdf_value_find_ex(
+asdf_find_iter_t *asdf_find_iter_init_ex(
     asdf_value_t *root,
     asdf_value_pred_t pred,
     bool depth_first,
     asdf_value_pred_t descend_pred,
     ssize_t max_depth) {
-    asdf_find_iter_t iter = asdf_find_iter_init_ex(depth_first, descend_pred, max_depth);
-    return asdf_value_find_iter(root, pred, &iter);
-}
-
-
-asdf_find_item_t *asdf_value_find(asdf_value_t *root, asdf_value_pred_t pred) {
-    return asdf_value_find_ex(root, pred, false, NULL, -1);
-}
-
-
-const char *asdf_find_item_path(asdf_find_item_t *item) {
-    if (!item->value)
+    if (!asdf_value_is_container(root))
         return NULL;
 
-    return asdf_value_path(item->value);
+    return (asdf_find_iter_t *)asdf_find_iter_create(
+        root, pred, depth_first, descend_pred, max_depth);
 }
 
 
-asdf_value_t *asdf_find_item_value(asdf_find_item_t *item) {
-    return item->value;
+asdf_find_iter_t *asdf_find_iter_init(asdf_value_t *root, asdf_value_pred_t pred) {
+    return asdf_find_iter_init_ex(root, pred, false, NULL, -1);
+}
+
+
+void asdf_find_iter_destroy(asdf_find_iter_t *iter) {
+    if (!iter)
+        return;
+
+    asdf_find_iter_impl_t *impl = (asdf_find_iter_impl_t *)iter;
+
+    while (impl->frame_count > 0)
+        asdf_find_iter_pop_frame(impl, impl->frame_count - 1);
+
+    free(impl->frames);
+    free(impl);
+}
+
+
+bool asdf_value_find_iter_next(asdf_find_iter_t **iter_ptr) {
+    if (!iter_ptr || !*iter_ptr)
+        return false;
+
+    asdf_find_iter_impl_t *impl = (asdf_find_iter_impl_t *)*iter_ptr;
+    impl->pub.value = NULL;
+
+    asdf_value_t *current = NULL;
+
+    while (impl->frame_count > 0) {
+        current = asdf_find_iter_step(impl);
+        if (current && (!impl->pred || impl->pred(current))) {
+            impl->pub.value = current;
+            return true;
+        }
+    }
+
+    asdf_find_iter_destroy((asdf_find_iter_t *)impl);
+    *iter_ptr = NULL;
+    return false;
+}
+
+
+asdf_value_t *asdf_value_find_ex(
+    asdf_value_t *root,
+    asdf_value_pred_t pred,
+    bool depth_first,
+    asdf_value_pred_t descend_pred,
+    ssize_t max_depth) {
+    if (!asdf_value_is_container(root)) {
+        if (!pred || pred(root))
+            return asdf_value_clone(root);
+        return NULL;
+    }
+
+    asdf_find_iter_t *iter = asdf_find_iter_init_ex(
+        root, pred, depth_first, descend_pred, max_depth);
+    if (!iter)
+        return NULL;
+
+    if (!asdf_value_find_iter_next(&iter))
+        return NULL;
+
+    asdf_value_t *result = asdf_value_clone(iter->value);
+    asdf_find_iter_destroy(iter);
+    return result;
+}
+
+
+asdf_value_t *asdf_value_find(asdf_value_t *root, asdf_value_pred_t pred) {
+    return asdf_value_find_ex(root, pred, false, NULL, -1);
 }
 
 

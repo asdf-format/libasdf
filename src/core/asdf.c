@@ -231,10 +231,9 @@ static asdf_extension_metadata_t **asdf_meta_extensions_deserialize(asdf_value_t
     }
 
     asdf_extension_metadata_t **extension_p = extensions;
-    asdf_sequence_iter_t iter = asdf_sequence_iter_init();
-    asdf_value_t *val = NULL;
-    while ((val = asdf_sequence_iter(extensions_seq, &iter))) {
-        if (ASDF_VALUE_OK == asdf_value_as_extension_metadata(val, extension_p))
+    asdf_sequence_iter_t *iter = asdf_sequence_iter_init(extensions_seq);
+    while (asdf_sequence_iter_next(&iter)) {
+        if (ASDF_VALUE_OK == asdf_value_as_extension_metadata(iter->value, extension_p))
             extension_p++;
         else
             ASDF_LOG(value->file, ASDF_LOG_WARN, "ignoring invalid extension_metadata");
@@ -268,10 +267,9 @@ static asdf_history_entry_t **asdf_meta_history_entries_deserialize(asdf_value_t
     }
 
     asdf_history_entry_t **entry_p = entries;
-    asdf_sequence_iter_t iter = asdf_sequence_iter_init();
-    asdf_value_t *val = NULL;
-    while ((val = asdf_sequence_iter(history_seq, &iter))) {
-        if (ASDF_VALUE_OK == asdf_value_as_history_entry(val, entry_p))
+    asdf_sequence_iter_t *iter = asdf_sequence_iter_init(history_seq);
+    while (asdf_sequence_iter_next(&iter)) {
+        if (ASDF_VALUE_OK == asdf_value_as_history_entry(iter->value, entry_p))
             entry_p++;
         else
             ASDF_LOG(value->file, ASDF_LOG_WARN, "ignoring invalid history_entry");

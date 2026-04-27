@@ -48,81 +48,63 @@ typedef struct asdf_mapping {
 } asdf_mapping_t;
 
 
-typedef struct _asdf_mapping_iter_impl {
-    const char *key;
-    asdf_value_t *value;
-    void *iter;
-} _asdf_mapping_iter_impl_t;
+typedef struct asdf_mapping_iter_impl {
+    /** Must first member -- cast to/from asdf_mapping_iter_t * is valid */
+    asdf_mapping_iter_t pub;
+    asdf_mapping_t *mapping;
+    void *fy_iter;
+} asdf_mapping_iter_impl_t;
 
-
-typedef _asdf_mapping_iter_impl_t *asdf_mapping_iter_t;
-
-
-typedef struct _asdf_mapping_iter_impl asdf_mapping_item_t;
 
 typedef struct asdf_sequence {
     asdf_value_t value;
 } asdf_sequence_t;
 
+
 typedef struct asdf_sequence_iter_impl {
-    asdf_value_t *value;
-    int index;
-    void *iter;
+    /** Must first member -- cast to/from asdf_sequence_iter_t * is valid */
+    asdf_sequence_iter_t pub;
+    asdf_sequence_t *sequence;
+    void *fy_iter;
 } asdf_sequence_iter_impl_t;
 
 
-typedef void *asdf_sequence_iter_t;
-
-
-/**
- * Contains both the iterator state and the current item of the iterator
- */
-typedef struct asdf_container_item {
-    union {
-        const char *key;
-        int index;
-    } path;
-    asdf_value_t *value;
+typedef struct asdf_container_iter_impl {
+    /** Must first member -- cast to/from asdf_container_iter_t * is valid */
+    asdf_container_iter_t pub;
+    asdf_value_t *container;
     bool is_mapping;
     union {
-        asdf_mapping_iter_t mapping;
-        asdf_sequence_iter_t sequence;
+        asdf_mapping_iter_t *mapping;
+        asdf_sequence_iter_t *sequence;
     } iter;
-} asdf_container_item_t;
-
-
-typedef void *asdf_container_iter_t;
+} asdf_container_iter_impl_t;
 
 
 ASDF_LOCAL asdf_value_t *asdf_value_create(asdf_file_t *file, struct fy_node *node);
 
 
-typedef struct {
+typedef struct asdf_find_frame {
     asdf_value_t *container;
-    // Really an ugly hack that should be fixed
-    // We need versions of the mapping/sequence/container_iter routines that
-    // don't destroy values between iterations, and/or better memory management
-    // for values maybe with reference counting
     bool owns_container;
     bool visited;
     bool is_mapping;
     ssize_t depth;
-    asdf_container_iter_t iter;
+    asdf_container_iter_t *iter;
 } asdf_find_frame_t;
 
 
-typedef struct asdf_find_item {
-    asdf_value_t *value;
+typedef struct asdf_find_iter_impl {
+    /** Must first member -- cast to/from asdf_find_iter_t * is valid */
+    asdf_find_iter_t pub;
+    asdf_value_pred_t pred;
     bool depth_first;
     asdf_value_pred_t descend_pred;
     ssize_t max_depth;
     asdf_find_frame_t *frames;
     size_t frame_count;
     size_t frame_cap;
-} asdf_find_item_t;
-
-
-typedef void *asdf_find_iter_t;
+} asdf_find_iter_impl_t;
 
 
 /**

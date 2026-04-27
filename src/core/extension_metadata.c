@@ -56,19 +56,20 @@ static asdf_value_t *asdf_extension_metadata_serialize(
         goto cleanup;
 
     if (extension->metadata) {
-        asdf_mapping_iter_t iter = asdf_mapping_iter_init();
-        asdf_mapping_item_t *item = NULL;
-        while ((item = asdf_mapping_iter(extension->metadata, &iter))) {
-            if (strcmp(item->key, "extension_class") == 0)
+        asdf_mapping_iter_t *iter = asdf_mapping_iter_init(extension->metadata);
+        while (asdf_mapping_iter_next(&iter)) {
+            if (strcmp(iter->key, "extension_class") == 0)
                 continue;
 
-            if (strcmp(item->key, "package") == 0)
+            if (strcmp(iter->key, "package") == 0)
                 continue;
 
-            err = asdf_mapping_set(extension_map, item->key, asdf_value_clone(item->value));
+            err = asdf_mapping_set(extension_map, iter->key, asdf_value_clone(iter->value));
 
-            if (err != ASDF_VALUE_OK)
+            if (err != ASDF_VALUE_OK) {
+                asdf_mapping_iter_destroy(iter);
                 goto cleanup;
+            }
         }
     }
 

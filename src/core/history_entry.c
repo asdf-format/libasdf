@@ -135,10 +135,9 @@ static asdf_software_t **asdf_history_entry_deserialize_software(asdf_value_t *v
     }
 
     asdf_software_t **software_p = software;
-    asdf_sequence_iter_t iter = asdf_sequence_iter_init();
-    asdf_value_t *val = NULL;
-    while (NULL != (val = asdf_sequence_iter(software_seq, &iter))) {
-        if (ASDF_VALUE_OK == asdf_value_as_software(val, software_p))
+    asdf_sequence_iter_t *iter = asdf_sequence_iter_init(software_seq);
+    while (asdf_sequence_iter_next(&iter)) {
+        if (ASDF_VALUE_OK == asdf_value_as_software(iter->value, software_p))
             software_p++;
         else
             ASDF_LOG(

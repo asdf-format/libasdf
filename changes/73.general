@@ -1,0 +1,1 @@
+Reworked the iterator interfaces (asdf_mapping_iter_t, asdf_sequence_iter_t, asdf_container_iter_t, and asdf_find_iter_t) to be simpler, more consistent, and better documented.

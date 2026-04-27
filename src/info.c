@@ -104,18 +104,18 @@ static int print_node(FILE *out, asdf_value_t *node, node_index_t *index, node_s
 
     fputc('\n', out);
     bool is_mapping = asdf_value_is_mapping(node);
-    asdf_container_iter_t iter = asdf_container_iter_init();
-    asdf_container_item_t *item = NULL;
+    asdf_container_iter_t *iter = asdf_container_iter_init(node);
     int size = asdf_container_size(node);
-    int idx = 0;
 
     if (state->depth > state->max_depth - 1) {
         // Grow the maximum depth linerally
         size_t new_max_depth = state->max_depth + INITIAL_MAX_DEPTH;
         bool *new_active_levels = realloc(state->active_levels, new_max_depth * sizeof(bool));
 
-        if (!new_active_levels)
+        if (!new_active_levels) {
+            asdf_container_iter_destroy(iter);
             return -1;
+        }
 
         state->active_levels = new_active_levels;
         state->max_depth = new_max_depth;
@@ -130,8 +130,8 @@ static int print_node(FILE *out, asdf_value_t *node, node_index_t *index, node_s
         .is_mapping = is_mapping,
         .is_leaf = false};
 
-    while ((item = asdf_container_iter(node, &iter))) {
-        if (idx == size - 1) {
+    while (asdf_container_iter_next(&iter)) {
+        if (iter->index == size - 1) {
             child_state.is_leaf = true;
             state->active_levels[state->depth] = false;
         }
@@ -139,16 +139,14 @@ static int print_node(FILE *out, asdf_value_t *node, node_index_t *index, node_s
         node_index_t child_index = {0};
 
         if (is_mapping)
-            child_index.key = asdf_container_item_key(item);
+            child_index.key = iter->key;
         else
-            child_index.index = asdf_container_item_index(item);
+            child_index.index = iter->index;
 
-        if (print_node(out, asdf_container_item_value(item), &child_index, &child_state) != 0) {
-            asdf_container_item_destroy(item);
+        if (print_node(out, iter->value, &child_index, &child_state) != 0) {
+            asdf_container_iter_destroy(iter);
             return -1;
         }
-
-        idx++;
     }
 
     return 0;

@@ -1,9 +1,5 @@
 /**
  * Structures and methods pertaining to ASDF tree values
- *
- * .. todo::
- *
- *   Document API for generic values.
  */
 
 //
@@ -187,6 +183,19 @@ typedef struct asdf_file asdf_file_t;
  * :param value: The `asdf_value_t *` handle
  */
 ASDF_EXPORT void asdf_value_destroy(asdf_value_t *value);
+
+
+/**
+ * Clone an `asdf_value_t`
+ *
+ * This performs a deep-copy of a value and may be used in certain cases
+ * (such as container iteration) when the user needs an owned copy of the
+ * value.
+ *
+ * The new cloned value is not initially attached to the YAML tree, so
+ * modification to its underlying value is not reflected in the YAML; it
+ * may be inserted elsewhere in the tree later.
+ */
 ASDF_EXPORT asdf_value_t *asdf_value_clone(asdf_value_t *value);
 
 /**
@@ -258,35 +267,73 @@ ASDF_EXPORT void asdf_mapping_destroy(asdf_mapping_t *mapping);
  */
 ASDF_EXPORT asdf_value_t *asdf_mapping_get(asdf_mapping_t *mapping, const char *key);
 
-typedef struct _asdf_mapping_iter_impl _asdf_mapping_iter_impl_t;
-
-
-/** Opaque struct holding mapping iterator state */
-typedef _asdf_mapping_iter_impl_t *asdf_mapping_iter_t;
+/**
+ * Iterator handle for traversing a mapping value
+ *
+ * Initialize with `asdf_mapping_iter_init`.  After each successful call to
+ * `asdf_mapping_iter_next`, the ``key`` and ``value`` fields hold the current
+ * mapping entry and are valid until the next call to `asdf_mapping_iter_next`
+ * or `asdf_mapping_iter_destroy`.  If the value must outlive the current
+ * iteration step, clone it with `asdf_value_clone`.
+ *
+ * .. warning::
+ *
+ *   Modifying the mapping while iterating over it results in undefined
+ *   behavior.
+ */
+typedef struct {
+    /** Current key */
+    const char *key;
+    /** Current value */
+    asdf_value_t *value;
+} asdf_mapping_iter_t;
 
 /**
- * Opaque struct representing a single (key, value) pair returned when
- * iterating over a mapping with `asdf_mapping_iter`
+ * Create a new iterator over ``mapping``
  *
- * .. todo::
- *
- *   Finish documenting me.
+ * :param mapping: The `asdf_mapping_t *` to iterate over
+ * :return: A new `asdf_mapping_iter_t *` handle, or ``NULL`` on allocation failure
  */
-typedef struct _asdf_mapping_iter_impl asdf_mapping_item_t;
-
-ASDF_EXPORT asdf_mapping_iter_t asdf_mapping_iter_init(void);
-ASDF_EXPORT const char *asdf_mapping_item_key(asdf_mapping_item_t *item);
-ASDF_EXPORT asdf_value_t *asdf_mapping_item_value(asdf_mapping_item_t *item);
+ASDF_EXPORT asdf_mapping_iter_t *asdf_mapping_iter_init(asdf_mapping_t *mapping);
 
 /**
- * Iterate over a mapping value
+ * Advance the iterator to the next mapping entry
  *
- * .. todo::
+ * On success, `asdf_mapping_iter_t.key` and `asdf_mapping_iter_t.value` are
+ * updated to the current entry.  When iteration is exhausted the iterator is
+ * freed automatically and ``*iter`` is set to ``NULL``.
  *
- *   Finish documenting me.
+ * Typical usage::
+ *
+ *   asdf_mapping_iter_t *iter = asdf_mapping_iter_init(mapping);
+ *   while (asdf_mapping_iter_next(&iter)) {
+ *       // iter->key and iter->value are valid here
+ *   }
+ *
+ * For early exit call `asdf_mapping_iter_destroy` before breaking::
+ *
+ *   asdf_mapping_iter_t *iter = asdf_mapping_iter_init(mapping);
+ *   while (asdf_mapping_iter_next(&iter)) {
+ *       if (done) {
+ *           asdf_mapping_iter_destroy(iter);
+ *           break;
+ *       }
+ *   }
+ *
+ * :param iter: Pointer to the iterator handle; set to ``NULL`` on exhaustion
+ * :return: ``true`` if an entry was found; ``false`` when iteration is done
  */
-ASDF_EXPORT asdf_mapping_item_t *asdf_mapping_iter(
-    asdf_mapping_t *mapping, asdf_mapping_iter_t *iter);
+ASDF_EXPORT bool asdf_mapping_iter_next(asdf_mapping_iter_t **iter);
+
+/**
+ * Release resources held by an in-progress mapping iterator
+ *
+ * Call this only when breaking out of iteration early.  Safe to call with
+ * ``NULL``.
+ *
+ * :param iter: The `asdf_mapping_iter_t *` to destroy
+ */
+ASDF_EXPORT void asdf_mapping_iter_destroy(asdf_mapping_iter_t *iter);
 
 
 /**
@@ -376,21 +423,6 @@ typedef struct asdf_sequence asdf_sequence_t;
 
 ASDF_EXPORT asdf_value_err_t
 asdf_mapping_set_sequence(asdf_mapping_t *mapping, const char *key, asdf_sequence_t *value);
-
-
-/**
- * Release memory resources used by `asdf_mapping_item_t`
- *
- * If the iterator was run to exhaustion (i.e. `asdf_mapping_iter` called
- * until returning `NULL`) this happens automatically, but in cases where the
- * iteration is stopped early it is necessary to free these resources manually
- * once the contained value is no longer needed.
- *
- * This also destroys the contained `asdf_value_t`.
- *
- * :param item: The `asdf_mapping_item_t *` to destroy
- */
-ASDF_EXPORT void asdf_mapping_item_destroy(asdf_mapping_item_t *item);
 
 
 /** Sequences */
@@ -484,37 +516,58 @@ ASDF_EXPORT void asdf_sequence_set_style(asdf_sequence_t *sequence, asdf_yaml_no
 ASDF_EXPORT void asdf_sequence_destroy(asdf_sequence_t *sequence);
 
 
-/** Opaque struct holding sequence iterator state */
-typedef void *asdf_sequence_iter_t;
-
 /**
- * Initialize an `asdf_sequence_iter_t` to its starting state
+ * Iterator handle for traversing a sequence value
  *
- * Call this once before the first call to `asdf_sequence_iter`.
+ * Initialize with `asdf_sequence_iter_init`.  After each successful call to
+ * `asdf_sequence_iter_next`, the ``index`` and ``value`` fields hold the
+ * current element and are valid until the next call to
+ * `asdf_sequence_iter_next` or `asdf_sequence_iter_destroy`.
  *
- * :return: An initialized `asdf_sequence_iter_t`
+ * .. warning::
+ *
+ *   Modifying the sequence while iterating over it results in undefined
+ *   behavior.
  */
-ASDF_EXPORT asdf_sequence_iter_t asdf_sequence_iter_init(void);
-
+typedef struct {
+    /** Current value */
+    asdf_value_t *value;
+    /** Index of the current value */
+    int index;
+} asdf_sequence_iter_t;
 
 /**
- * Advance a sequence iterator and return the next value
+ * Create a new iterator over ``sequence``
+ *
+ * :param sequence: The `asdf_sequence_t *` to iterate over
+ * :return: A new `asdf_sequence_iter_t *` handle, or ``NULL`` on allocation failure
+ */
+ASDF_EXPORT asdf_sequence_iter_t *asdf_sequence_iter_init(asdf_sequence_t *sequence);
+
+/**
+ * Advance the iterator to the next sequence element
  *
  * Typical usage::
  *
- *   asdf_sequence_iter_t iter = asdf_sequence_iter_init();
- *   asdf_value_t *val;
- *   while ((val = asdf_sequence_iter(seq, &iter)) != NULL) {
- *       // use val ...
+ *   asdf_sequence_iter_t *iter = asdf_sequence_iter_init(sequence);
+ *   while (asdf_sequence_iter_next(&iter)) {
+ *       // iter->index and iter->value are valid here
  *   }
  *
- * Returns ``NULL`` when iteration is exhausted.
- *
- * :param sequence: The `asdf_sequence_t *` to iterate over
- * :param iter: Pointer to the iterator state; updated on each call
- * :return: The next `asdf_value_t *` in the sequence, or ``NULL`` when done
+ * :param iter: Pointer to the iterator handle; set to ``NULL`` on exhaustion
+ * :return: ``true`` if an element was found; ``false`` when iteration is done
  */
-ASDF_EXPORT asdf_value_t *asdf_sequence_iter(asdf_sequence_t *sequence, asdf_sequence_iter_t *iter);
+ASDF_EXPORT bool asdf_sequence_iter_next(asdf_sequence_iter_t **iter);
+
+/**
+ * Release resources held by an in-progress sequence iterator
+ *
+ * Call this only when breaking out of iteration early.  Safe to call with
+ * ``NULL``.
+ *
+ * :param iter: The `asdf_sequence_iter_t *` to destroy
+ */
+ASDF_EXPORT void asdf_sequence_iter_destroy(asdf_sequence_iter_t *iter);
 
 
 /**
@@ -629,101 +682,59 @@ ASDF_EXPORT asdf_value_t *asdf_sequence_pop(asdf_sequence_t *sequence, int index
 
 
 /**
- * Any container-related functions
+ * Iterator handle for traversing either a mapping or a sequence
  *
- * Here "container" means either sequence or mapping though maybe could extend
- * this interface in the future for custom container types
+ * When iterating over a mapping: ``key`` holds the current key though index
+ * also tracks the position in the mapping (taken as a sequence of
+ * key/value pairs).  When iterating over a sequence: ``index`` holds the
+ * position and ``key`` is ``NULL``.  ``value`` is always valid after a
+ * successful `asdf_container_iter_next`.
  *
- * These routines provide a convience for iterating over a container regardless
- * if it is a sequence or mapping using a common interface.
+ * .. warning::
  *
- * .. todo::
- *
- *   Document these better.
+ *   Modifying the container while iterating over it results in undefined
+ *   behavior.
  */
-
-//
-
-/** Opaque struct containing container iterator state */
-typedef void *asdf_container_iter_t;
+typedef struct {
+    /** Current key (mappings only; NULL for sequences) */
+    const char *key;
+    /** Current index */
+    int index;
+    /** Current value */
+    asdf_value_t *value;
+} asdf_container_iter_t;
 
 /**
- * Opaque struct for values returned from `asdf_container_iter`
+ * Create a new iterator over ``container`` (mapping or sequence)
  *
- * This combines the value returned from the container iteration as its key
- * (if iterating over a mapping) or index (if iterating over a sequence) as
- * well as internal iterator state.
+ * Returns ``NULL`` if ``container`` is neither a mapping nor a sequence.
  *
- * Use the functions `asdf_container_item_key`, `asdf_container_item_index`
- * and `asdf_container_item_value` to extract properties from the container
- * item.
+ * :param container: `asdf_value_t *` of mapping or sequence type
+ * :return: A new `asdf_container_iter_t *` handle, or ``NULL`` on failure
  */
-typedef struct asdf_container_item asdf_container_item_t;
-
-
-ASDF_EXPORT asdf_container_iter_t asdf_container_iter_init(void);
-
+ASDF_EXPORT asdf_container_iter_t *asdf_container_iter_init(asdf_value_t *container);
 
 /**
- * If iterating over a mapping with `asdf_container_iter`, returns the key of
- * a single item from the container
+ * Advance the generic container iterator to the next element
  *
- * :param item: The `asdf_container_item_t *` returned by `asdf_container_iter`
- * :return: The key in the mapping of the value, or NULL if the container was
- *   not a mapping
+ * In most cases `asdf_mapping_iter_next` or `asdf_sequence_iter_next` are
+ * preferred, but this is useful when the container type is not known at the
+ * call site.
+ *
+ * :param iter: Pointer to the iterator handle; set to ``NULL`` on exhaustion
+ * :return: ``true`` if an element was found; ``false`` when iteration is done
  */
-ASDF_EXPORT const char *asdf_container_item_key(asdf_container_item_t *item);
-
+ASDF_EXPORT bool asdf_container_iter_next(asdf_container_iter_t **iter);
 
 /**
- * If iterating over a sequence with `asdf_container_iter`, returns the index of
- * a single item from the container
+ * Release resources held by an in-progress container iterator
  *
- * :param item: The `asdf_container_item_t *` returned by `asdf_container_iter`
- * :return: The index of the value in a sequence, or -1 if the container was
- *   not a sequence
+ * Call this only when breaking out of iteration early.  Safe to call with
+ * ``NULL``.
+ *
+ * :param iter: The `asdf_container_iter_t *` to destroy
  */
-ASDF_EXPORT int asdf_container_item_index(asdf_container_item_t *item);
-
-
-/**
- * If iterating over a sequence with `asdf_container_iter`, returns the value
- * of that container item (where "item" is the pair of the value and its key/
- * index)
- *
- * :param item: The `asdf_container_item_t *` returned by `asdf_container_iter`
- * :return: The underling `asdf_value_t *` generic value pointer
- */
-ASDF_EXPORT asdf_value_t *asdf_container_item_value(asdf_container_item_t *item);
-
-
-/**
- * Generic container iterator
- *
- * Similar to `asdf_mapping_iter` but can be used with either a sequence or a
- * mapping
- *
- * In most cases you will want to use `asdf_mapping_iter` or
- * `asdf_sequence_iter` more specifically, but sometimes it is useful to have a
- * generic iteration method that can handle both.
- *
- * :param item: The `asdf_container_item_t *` returned by `asdf_container_iter`
- * :return: The underling `asdf_value_t *` generic value pointer
- */
-ASDF_EXPORT asdf_container_item_t *asdf_container_iter(
-    asdf_value_t *container, asdf_container_iter_t *iter);
-
-/**
- * Release memory resources used by `asdf_container_item_t`
- *
- * If the iterator was run to exhaustion (i.e. `asdf_container_iter` called
- * until returning `NULL`) this happens automatically, but in cases where the
- * iteration is stopped early it is necessary to free these resources manually
- * once the contained value is no longer needed.
- *
- * :param item: The `asdf_container_item_t *` to destroy
- */
-ASDF_EXPORT void asdf_container_item_destroy(asdf_container_item_t *item);
+ASDF_EXPORT void asdf_container_iter_destroy(asdf_container_iter_t *iter);
 
 ASDF_EXPORT bool asdf_value_is_container(asdf_value_t *value);
 
@@ -887,81 +898,31 @@ ASDF_EXPORT asdf_value_t *asdf_value_of_double(asdf_file_t *file, double value);
 typedef bool (*asdf_value_pred_t)(asdf_value_t *value);
 
 /**
- * Opaque struct representing a value found with `asdf_value_find` and friends
+ * Iterator handle for depth/breadth-first tree search
  *
- * Use `asdf_find_item_path` to return the path of the found value, and
- * `asdf_find_item_value` to return the corresponding value.
+ * After each successful call to `asdf_value_find_iter_next`, the ``value``
+ * field holds the matching value and is valid until the next call to
+ * `asdf_value_find_iter_next` or `asdf_find_iter_destroy`.  If the value must
+ * persist further, clone it with `asdf_value_clone`.
  */
-typedef struct asdf_find_item asdf_find_item_t;
+typedef struct {
+    /** Current matching value */
+    asdf_value_t *value;
+} asdf_find_iter_t;
 
 /**
- * Traverse the tree breadth-first starting from ``root`` until a value
- * matching the given predicate is found
+ * Traverse the tree breadth-first starting from ``root`` and return the first
+ * value matching ``pred``
  *
- * :param value: `asdf_value_t *` handle for the root node in which to start
- *   the search--if the value is neither a mapping or sequence this function
- *   will still return non-NULL if this value matches the predicate
+ * The caller owns the returned `asdf_value_t *` and must eventually destroy it
+ * with `asdf_value_destroy`.  Returns ``NULL`` if no matching value was found.
+ *
+ * :param root: `asdf_value_t *` handle for the root node to search from
  * :param pred: A predicate function to match the value to return; see
  *   `asdf_value_pred_t`
- * :return: An `asdf_find_item_t *` for the first matching value or NULL if the
- *   tree is exhausted without finding a matching value
+ * :return: The first matching `asdf_value_t *`, or ``NULL`` if not found
  */
-ASDF_EXPORT asdf_find_item_t *asdf_value_find(asdf_value_t *root, asdf_value_pred_t pred);
-
-/**
- * Return the path of a value found with `asdf_value_find` and friends
- *
- * :param item: `asdf_find_item_t *` result from `asdf_value_find`, `asdf_value_find_iter`
- *   `asdf_value_find_ex`
- * :return: Full path of the found value
- */
-ASDF_EXPORT const char *asdf_find_item_path(asdf_find_item_t *item);
-
-/**
- * Return the value found with `asdf_value_find` and friends
- *
- * :param item: `asdf_find_item_t *` result from `asdf_value_find`, `asdf_value_find_iter`
- *   `asdf_value_find_ex`
- * :return: The `asdf_value_t *` handle to the found value
- */
-ASDF_EXPORT asdf_value_t *asdf_find_item_value(asdf_find_item_t *item);
-
-
-/**
- * Opaque struct used to manage state across `asdf_value_find_iter` calls
- */
-typedef void *asdf_find_iter_t;
-
-
-/**
- * Traverse the tree breadth-first starting from ``root`` until a value
- * matching the given predicate is found; subsequent calls with the same
- * `asdf_find_iter_t *` handle will return all matching values until the
- * tree has been exhaustively traversed
- *
- * A typical usage pattern is similar to `asdf_mapping_iter`, like:
- *
- * .. code::
- *
- *   asdf_find_iter_t iter = asdf_find_iter_init();
- *   asdf_find_item_t *item = NULL;
- *
- *   while ((item = asdf_value_find_iter(root, pred, &iter))) {
- *     // Do something with found item
- *   }
- *
- * :param value: `asdf_value_t *` handle for the root node in which to start
- *   the search--if the value is neither a mapping or sequence this function
- *   will still return non-NULL if this value matches the predicate
- * :param pred: A predicate function to match the value to return; see
- *   `asdf_value_pred_t`
- * :param iter: A pointer to an `asdf_find_iter_t` used internally to track
- *   the iteration state
- * :return: An `asdf_find_item_t *` for the first matching value or NULL if the
- *   tree is exhausted without finding a matching value
- */
-ASDF_EXPORT asdf_find_item_t *asdf_value_find_iter(
-    asdf_value_t *root, asdf_value_pred_t pred, asdf_find_iter_t *iter);
+ASDF_EXPORT asdf_value_t *asdf_value_find(asdf_value_t *root, asdf_value_pred_t pred);
 
 /**
  * Alias for `true` for use with `asdf_value_find_ex` and
@@ -978,28 +939,22 @@ ASDF_EXPORT asdf_find_item_t *asdf_value_find_iter(
 
 
 /**
- * Extended version of `asdf_value_find` with additional options
+ * Extended version of `asdf_value_find` with additional traversal options
  *
- * :param value: `asdf_value_t *` handle for the root node in which to start
- *   the search--if the value is neither a mapping or sequence this function
- *   will still return non-NULL if this value matches the predicate
+ * Like `asdf_value_find` but allows controlling traversal order, which
+ * container types to descend into, and the maximum search depth.
+ *
+ * :param root: `asdf_value_t *` handle for the root node to search from
  * :param pred: A predicate function to match the value to return; see
  *   `asdf_value_pred_t`
- * :param depth_first: If `true` descend the tree in depth-first order;
+ * :param depth_first: If ``true`` descend the tree in depth-first order;
  *   otherwise the tree is traversed breadth-first
- * :param descend_pred: Optional predicate (NULL indicates descend into all
- *   nodes) indicating whether a given mapping or sequence should be descended
- *   during traversal
- * :param max_depth: Maximum depth into the tree to descend; -1 indicates no
- *   limit
- *
- *   There are also some built-in defaults `asdf_find_descend_mapping_only` and
- *   `asdf_find_descend_sequence_only`, as well as `asdf_find_descend_all`
- *   (which is equivalent to passing `NULL`).
- * :return: An `asdf_find_item_t *` for the first matching value or NULL if the
- *   tree is exhausted without finding a matching value
+ * :param descend_pred: Optional predicate (``NULL`` means descend into all
+ *   containers) controlling which containers are descended into
+ * :param max_depth: Maximum depth to descend; ``-1`` means no limit
+ * :return: The first matching `asdf_value_t *`, or ``NULL`` if not found
  */
-ASDF_EXPORT asdf_find_item_t *asdf_value_find_ex(
+ASDF_EXPORT asdf_value_t *asdf_value_find_ex(
     asdf_value_t *root,
     asdf_value_pred_t pred,
     bool depth_first,
@@ -1034,54 +989,74 @@ static inline bool asdf_find_descend_sequence_only(asdf_value_t *value) {
  * For use as the ``descend_pred`` argument to `asdf_value_find_ex` and
  * `asdf_find_iter_init_ex`
  *
- * Equivalent to passing this argument ``NULL``, meaning always descend
- * into nested mappings and sequences.
+ * Equivalent to passing ``NULL``, meaning always descend into nested mappings
+ * and sequences.
  */
 #define asdf_find_descend_all ((asdf_value_pred_t)NULL)
 
 
 /**
- * Instantiate an `asdf_find_iter_t` as a local variable to use with
- * `asdf_value_find_iter`
+ * Create an iterator that traverses the tree from ``root`` breadth-first,
+ * yielding values matching ``pred``
  *
- * :return: An `asdf_find_iter_t`, the address of which should be passed to
- *   to `asdf_value_find_iter`
+ * The ``root`` must be a mapping or sequence; for scalar values use
+ * `asdf_value_find` directly.
+ *
+ * :param root: Container `asdf_value_t *` to search from
+ * :param pred: Predicate selecting which values to yield; see `asdf_value_pred_t`
+ * :return: A new `asdf_find_iter_t *`, or ``NULL`` on failure
  */
-ASDF_EXPORT asdf_find_iter_t asdf_find_iter_init(void);
+ASDF_EXPORT asdf_find_iter_t *asdf_find_iter_init(asdf_value_t *root, asdf_value_pred_t pred);
 
 
 /**
- * Like `asdf_find_iter_init` but allows providing additional options for
- * the tree traversal similar to those accepted by `asdf_value_find_ex`
+ * Like `asdf_find_iter_init` with additional traversal options
  *
- * These options only need to be passed to instantiate the iterator, and not
- * in subsequent calls to `asdf_value_find`.
- *
- * :param depth_first: If `true` descend the tree in depth-first order;
- *   otherwise the tree is traversed breadth-first
- * :param descend_pred: Optional predicate (NULL indicates descend into all
- *   nodes) indicating whether a given mapping or sequence should be descended
- *   during traversal
- * :param max_depth: Maximum depth into the tree to descend; -1 indicates no
- *   limit
- * :return: An `asdf_find_iter_t`, the address of which should be passed to
- *   to `asdf_value_find_iter`
+ * :param root: Container `asdf_value_t *` to search from
+ * :param pred: Predicate selecting which values to yield
+ * :param depth_first: If ``true`` traverse depth-first; otherwise breadth-first
+ * :param descend_pred: Optional predicate controlling which containers to descend
+ * :param max_depth: Maximum search depth; ``-1`` means no limit
+ * :return: A new `asdf_find_iter_t *`, or ``NULL`` on failure
  */
-ASDF_EXPORT asdf_find_iter_t
-asdf_find_iter_init_ex(bool depth_first, asdf_value_pred_t descend_pred, ssize_t max_depth);
+ASDF_EXPORT asdf_find_iter_t *asdf_find_iter_init_ex(
+    asdf_value_t *root,
+    asdf_value_pred_t pred,
+    bool depth_first,
+    asdf_value_pred_t descend_pred,
+    ssize_t max_depth);
 
 
 /**
- * Release memory resources used by `asdf_find_item_t`
+ * Advance the find iterator to the next matching value
  *
- * If the iterator was run to exhaustion (i.e. `asdf_value_find_iter` called
- * until returning `NULL`) this happens automatically, but in cases where the
- * iteration is stopped early, or when using `asdf_value_find`, it is necessary
- * to free these resources manually once the value is no longer needed.
+ * On success, `asdf_find_iter_t.value` is updated.  When iteration is
+ * exhausted the iterator is freed and ``*iter`` is set to ``NULL``.
  *
- * :param item: The `asdf_find_item_t *` to destroy
+ * Typical usage:
+ *
+ * .. code:: c
+ *
+ *   asdf_find_iter_t *iter = asdf_find_iter_init(root, pred);
+ *   while (asdf_value_find_iter_next(&iter)) {
+ *       // iter->value is valid here; use asdf_value_clone if it must persist
+ *   }
+ *
+ * :param iter: Pointer to the iterator handle; set to ``NULL`` on exhaustion
+ * :return: ``true`` if a matching value was found; ``false`` when done
  */
-ASDF_EXPORT void asdf_find_item_destroy(asdf_find_item_t *item);
+ASDF_EXPORT bool asdf_value_find_iter_next(asdf_find_iter_t **iter);
+
+
+/**
+ * Release resources held by an in-progress find iterator
+ *
+ * Call this only when breaking out of iteration early.  Safe to call with
+ * ``NULL``.
+ *
+ * :param iter: The `asdf_find_iter_t *` to destroy
+ */
+ASDF_EXPORT void asdf_find_iter_destroy(asdf_find_iter_t *iter);
 
 ASDF_END_DECLS
 

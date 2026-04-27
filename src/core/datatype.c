@@ -249,12 +249,12 @@ asdf_value_err_t asdf_datatype_shape_parse(asdf_sequence_t *value, asdf_datatype
         goto failure;
     }
 
-    asdf_sequence_iter_t iter = asdf_sequence_iter_init();
-    asdf_value_t *dim_val = NULL;
+    asdf_sequence_iter_t *iter = asdf_sequence_iter_init(value);
     size_t dim = 0;
-    while ((dim_val = asdf_sequence_iter(value, &iter))) {
-        if (ASDF_VALUE_OK != asdf_value_as_uint64(dim_val, &shape[dim++])) {
+    while (asdf_sequence_iter_next(&iter)) {
+        if (ASDF_VALUE_OK != asdf_value_as_uint64(iter->value, &shape[dim++])) {
             warn_invalid_shape(&value->value);
+            asdf_sequence_iter_destroy(iter);
             goto failure;
         }
     }
@@ -351,12 +351,12 @@ static asdf_value_err_t asdf_structured_datatype_parse(
     datatype->nfields = (uint32_t)nfields;
     datatype->fields = fields;
 
-    asdf_sequence_iter_t iter = asdf_sequence_iter_init();
-    asdf_value_t *item = NULL;
+    asdf_sequence_iter_t *iter = asdf_sequence_iter_init(value);
     int field_idx = 0;
     asdf_value_err_t err = ASDF_VALUE_OK;
 
-    while ((item = asdf_sequence_iter(value, &iter)) != NULL) {
+    while (asdf_sequence_iter_next(&iter)) {
+        asdf_value_t *item = iter->value;
         asdf_datatype_t *field = &fields[field_idx];
         asdf_mapping_t *field_map = NULL;
 
@@ -366,7 +366,7 @@ static asdf_value_err_t asdf_structured_datatype_parse(
             err = asdf_datatype_parse(item, byteorder, field);
 
         if (UNLIKELY(err != ASDF_VALUE_OK)) {
-            // Stop processing and return an error
+            asdf_sequence_iter_destroy(iter);
             return err;
         }
 

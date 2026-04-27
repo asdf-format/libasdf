@@ -89,28 +89,24 @@ static void assert_extension_metadata_equal(const asdf_extension_metadata_t *ext
     size_t size_diff = size0 > size1 ? size0 - size1 : size1 - size0;
     assert_int(size_diff, <=, 2);
 
-    asdf_mapping_iter_t iter = asdf_mapping_iter_init();
-    asdf_mapping_item_t *item = NULL;
-    while ((item = asdf_mapping_iter(extension0->metadata, &iter))) {
+    asdf_mapping_iter_t *iter = asdf_mapping_iter_init(extension0->metadata);
+    while (asdf_mapping_iter_next(&iter)) {
         // TODO: Definitely could use a generic value comparison function
         // without this we can't generally compare two mappings or sequences
         // For the purposes of this test just compare strings
-        const char *key = asdf_mapping_item_key(item);
-
-        if (strcmp(key, "extension_class") == 0)
+        if (strcmp(iter->key, "extension_class") == 0)
             continue;
 
-        if (strcmp(key, "package") == 0)
+        if (strcmp(iter->key, "package") == 0)
             continue;
 
-        asdf_value_t *value = asdf_mapping_item_value(item);
-        asdf_value_t *other = asdf_mapping_get(extension1->metadata, key);
+        asdf_value_t *other = asdf_mapping_get(extension1->metadata, iter->key);
         assert_not_null(other);
-        assert_int(asdf_value_get_type(value), ==, asdf_value_get_type(other));
-        if (asdf_value_is_string(value)) {
+        assert_int(asdf_value_get_type(iter->value), ==, asdf_value_get_type(other));
+        if (asdf_value_is_string(iter->value)) {
             const char *str = NULL;
             const char *other_str = NULL;
-            assert_int(asdf_value_as_string0(value, &str), ==, ASDF_VALUE_OK);
+            assert_int(asdf_value_as_string0(iter->value, &str), ==, ASDF_VALUE_OK);
             assert_int(asdf_value_as_string0(other, &other_str), ==, ASDF_VALUE_OK);
             assert_string_equal(str, other_str);
         }

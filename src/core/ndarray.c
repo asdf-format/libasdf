@@ -94,17 +94,18 @@ static asdf_value_err_t asdf_ndarray_strides_parse(
         goto failure;
     }
 
-    asdf_sequence_iter_t stride_iter = asdf_sequence_iter_init();
-    asdf_value_t *stride_val = NULL;
+    asdf_sequence_iter_t *stride_iter = asdf_sequence_iter_init(value);
     size_t dim = 0;
-    while ((stride_val = asdf_sequence_iter(value, &stride_iter))) {
-        if (ASDF_VALUE_OK != asdf_value_as_int64(stride_val, &strides[dim])) {
+    while (asdf_sequence_iter_next(&stride_iter)) {
+        if (ASDF_VALUE_OK != asdf_value_as_int64(stride_iter->value, &strides[dim])) {
             warn_invalid_strides(&value->value);
+            asdf_sequence_iter_destroy(stride_iter);
             goto failure;
         }
 
         if (0 == strides[dim]) {
             warn_invalid_strides(&value->value);
+            asdf_sequence_iter_destroy(stride_iter);
             goto failure;
         }
         dim++;
@@ -333,9 +334,9 @@ static asdf_value_err_t infer_inline_array_datatype(
     bool first_is_seq = (asdf_value_get_type(first) == ASDF_VALUE_SEQUENCE);
     asdf_value_destroy(first);
 
-    asdf_sequence_iter_t iter = asdf_sequence_iter_init();
-    asdf_value_t *elem = NULL;
-    while ((elem = asdf_sequence_iter(seq, &iter)) != NULL) {
+    asdf_sequence_iter_t *iter = asdf_sequence_iter_init(seq);
+    while (asdf_sequence_iter_next(&iter)) {
+        asdf_value_t *elem = iter->value;
         bool elem_is_seq = (asdf_value_get_type(elem) == ASDF_VALUE_SEQUENCE);
 
         if (elem_is_seq != first_is_seq) {
@@ -344,9 +345,7 @@ static asdf_value_err_t infer_inline_array_datatype(
                 ASDF_LOG_ERROR,
                 "inline ndarray has mixed sequence/scalar elements at depth %u",
                 depth);
-            /* Stop iteration by consuming the rest */
-            while (asdf_sequence_iter(seq, &iter) != NULL)
-                ;
+            asdf_sequence_iter_destroy(iter);
             return ASDF_VALUE_ERR_PARSE_FAILURE;
         }
 
@@ -354,14 +353,12 @@ static asdf_value_err_t infer_inline_array_datatype(
             err = infer_inline_array_datatype(
                 (asdf_sequence_t *)elem, depth + 1, shape, ndim, inf, file);
             if (ASDF_IS_ERR(err)) {
-                while (asdf_sequence_iter(seq, &iter) != NULL)
-                    ;
+                asdf_sequence_iter_destroy(iter);
                 return err;
             }
         } else {
             update_type_inference(elem, inf);
         }
-        /* elem is managed by the iterator; do not destroy it explicitly */
     }
 
     return ASDF_VALUE_OK;
@@ -459,15 +456,14 @@ static asdf_value_err_t parse_inline_array_level(
     size_t elem_size = asdf_scalar_datatype_size(dtype);
     asdf_file_t *file = ndarray->internal->file;
 
-    asdf_sequence_iter_t iter = asdf_sequence_iter_init();
-    asdf_value_t *elem = NULL;
-    while ((elem = asdf_sequence_iter(seq, &iter)) != NULL) {
+    asdf_sequence_iter_t *iter = asdf_sequence_iter_init(seq);
+    while (asdf_sequence_iter_next(&iter)) {
+        asdf_value_t *elem = iter->value;
         if (depth == ndarray->ndim - 1) {
             /* Leaf level: convert scalar to C value */
             err = convert_scalar_to_native(elem, dtype, buf + ((*offset) * elem_size), file);
             if (ASDF_IS_ERR(err)) {
-                while (asdf_sequence_iter(seq, &iter) != NULL)
-                    ;
+                asdf_sequence_iter_destroy(iter);
                 return err;
             }
             (*offset)++;
@@ -476,8 +472,7 @@ static asdf_value_err_t parse_inline_array_level(
             err = parse_inline_array_level(
                 (asdf_sequence_t *)elem, ndarray, buf, offset, depth + 1);
             if (ASDF_IS_ERR(err)) {
-                while (asdf_sequence_iter(seq, &iter) != NULL)
-                    ;
+                asdf_sequence_iter_destroy(iter);
                 return err;
             }
         }

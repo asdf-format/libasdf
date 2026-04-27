@@ -991,8 +991,11 @@ MU_TEST(test_asdf_mapping_create) {
 }
 
 
-MU_TEST(test_asdf_mapping_item_destroy) {
-    asdf_mapping_item_destroy(NULL); // OK
+MU_TEST(test_asdf_iter_destroy_null) {
+    asdf_mapping_iter_destroy(NULL);
+    asdf_sequence_iter_destroy(NULL);
+    asdf_container_iter_destroy(NULL);
+    asdf_find_iter_destroy(NULL);
     return MUNIT_OK;
 }
 
@@ -1005,30 +1008,26 @@ MU_TEST(test_asdf_mapping_iter) {
     asdf_value_err_t err = asdf_get_mapping(file, "mapping", &mapping);
     assert_int(err, ==, ASDF_VALUE_OK);
     assert_int(asdf_mapping_size(mapping), ==, 2);
-    asdf_mapping_iter_t iter = asdf_mapping_iter_init();
+    asdf_mapping_iter_t *iter = asdf_mapping_iter_init(mapping);
 
-    asdf_mapping_item_t *item = asdf_mapping_iter(mapping, &iter);
-    assert_not_null(item);
-    assert_not_null(asdf_mapping_item_key(item));
-    assert_string_equal(asdf_mapping_item_key(item), "foo");
-    asdf_value_t *value = asdf_mapping_item_value(item);
-    assert_not_null(value);
+    assert_true(asdf_mapping_iter_next(&iter));
+    assert_not_null(iter->key);
+    assert_string_equal(iter->key, "foo");
+    assert_not_null(iter->value);
     const char *s = NULL;
-    assert_int(asdf_value_as_string0(value, &s), ==, ASDF_VALUE_OK);
+    assert_int(asdf_value_as_string0(iter->value, &s), ==, ASDF_VALUE_OK);
     assert_string_equal(s, "foo");
 
-    item = asdf_mapping_iter(mapping, &iter);
-    assert_not_null(item);
-    assert_not_null(asdf_mapping_item_key(item));
-    assert_string_equal(asdf_mapping_item_key(item), "bar");
-    value = asdf_mapping_item_value(item);
-    assert_not_null(value);
+    assert_true(asdf_mapping_iter_next(&iter));
+    assert_not_null(iter->key);
+    assert_string_equal(iter->key, "bar");
+    assert_not_null(iter->value);
     s = NULL;
-    assert_int(asdf_value_as_string0(value, &s), ==, ASDF_VALUE_OK);
+    assert_int(asdf_value_as_string0(iter->value, &s), ==, ASDF_VALUE_OK);
     assert_string_equal(s, "bar");
 
-    assert_null(asdf_mapping_iter(mapping, &iter));
-    assert_null((void *)iter);
+    assert_false(asdf_mapping_iter_next(&iter));
+    assert_null(iter);
     asdf_mapping_destroy(mapping);
     asdf_close(file);
     return MUNIT_OK;
@@ -1329,21 +1328,21 @@ MU_TEST(test_asdf_sequence_iter) {
     asdf_value_err_t err = asdf_get_sequence(file, "sequence", &sequence);
     assert_int(err, ==, ASDF_VALUE_OK);
     assert_int(asdf_sequence_size(sequence), ==, 2);
-    asdf_sequence_iter_t iter = asdf_sequence_iter_init();
+    asdf_sequence_iter_t *iter = asdf_sequence_iter_init(sequence);
 
-    asdf_value_t *item = asdf_sequence_iter(sequence, &iter);
-    assert_not_null(item);
     int8_t i8 = -1;
-    assert_int(asdf_value_as_int8(item, &i8), ==, ASDF_VALUE_OK);
+    assert_true(asdf_sequence_iter_next(&iter));
+    assert_not_null(iter->value);
+    assert_int(asdf_value_as_int8(iter->value, &i8), ==, ASDF_VALUE_OK);
     assert_int(i8, ==, 0);
 
-    item = asdf_sequence_iter(sequence, &iter);
-    assert_not_null(item);
-    assert_int(asdf_value_as_int8(item, &i8), ==, ASDF_VALUE_OK);
+    assert_true(asdf_sequence_iter_next(&iter));
+    assert_not_null(iter->value);
+    assert_int(asdf_value_as_int8(iter->value, &i8), ==, ASDF_VALUE_OK);
     assert_int(i8, ==, 1);
 
-    assert_null(asdf_sequence_iter(sequence, &iter));
-    assert_null((void *)iter);
+    assert_false(asdf_sequence_iter_next(&iter));
+    assert_null(iter);
     asdf_sequence_destroy(sequence);
     asdf_close(file);
     return MUNIT_OK;
@@ -1461,19 +1460,16 @@ MU_TEST(test_asdf_container_iter) {
     asdf_value_t *container = asdf_get_value(file, "sequence");
     assert_not_null(container);
 
-    asdf_container_iter_t iter = asdf_container_iter_init();
-    asdf_container_item_t *item = NULL;
+    asdf_container_iter_t *iter = asdf_container_iter_init(container);
     int8_t i8 = -1;
-
-    for (int idx = 0; idx < 2; idx++) {
-        item = asdf_container_iter(container, &iter);
-        assert_not_null(item);
-        assert_int(asdf_container_item_index(item), ==, idx);
-        assert_int(asdf_value_as_int8(asdf_container_item_value(item), &i8), ==, ASDF_VALUE_OK);
+    int idx = 0;
+    while (asdf_container_iter_next(&iter)) {
+        assert_int(iter->index, ==, idx);
+        assert_int(asdf_value_as_int8(iter->value, &i8), ==, ASDF_VALUE_OK);
         assert_int(i8, ==, idx);
+        idx++;
     }
-
-    assert_null(asdf_container_iter(container, &iter));
+    assert_null(iter);
     asdf_value_destroy(container);
 
     // Test on a mapping now
@@ -1481,14 +1477,16 @@ MU_TEST(test_asdf_container_iter) {
     assert_not_null(container);
     const char *s = NULL;
     const char *expected[] = {"foo", "bar"};
-    for (int idx = 0; idx < 2; idx++) {
-        item = asdf_container_iter(container, &iter);
-        assert_not_null(item);
-        assert_string_equal(asdf_container_item_key(item), expected[idx]);
-        assert_int(asdf_value_as_string0(asdf_container_item_value(item), &s), ==, ASDF_VALUE_OK);
+    iter = asdf_container_iter_init(container);
+    idx = 0;
+    while (asdf_container_iter_next(&iter)) {
+        assert_string_equal(iter->key, expected[idx]);
+        assert_int(iter->index, ==, idx);
+        assert_int(asdf_value_as_string0(iter->value, &s), ==, ASDF_VALUE_OK);
         assert_string_equal(s, expected[idx]);
+        idx++;
     }
-    assert_null(asdf_container_iter(container, &iter));
+    assert_null(iter);
 
     asdf_value_destroy(container);
     asdf_close(file);
@@ -1594,31 +1592,27 @@ MU_TEST(test_asdf_value_find_iter_ex_descend_mapping_only) {
     assert_not_null(root);
     assert_true(asdf_value_is_mapping(root));
 
-    asdf_find_iter_t iter = asdf_find_iter_init_ex(true, asdf_find_descend_mapping_only, 1);
-    asdf_find_item_t *item = NULL;
-
-    item = asdf_value_find_iter(root, value_find_pred_a, &iter);
-    assert_not_null(item);
+    asdf_find_iter_t *iter = asdf_find_iter_init_ex(
+        root, value_find_pred_a, true, asdf_find_descend_mapping_only, 1);
     const char *str = NULL;
-    const char *path = asdf_find_item_path(item);
-    assert_string_equal(path, "/a");
-    asdf_value_t *val = asdf_find_item_value(item);
-    asdf_value_err_t err = asdf_value_as_string0(val, &str);
+    asdf_value_err_t err;
+
+    assert_true(asdf_value_find_iter_next(&iter));
+    assert_not_null(iter);
+    assert_string_equal(asdf_value_path(iter->value), "/a");
+    err = asdf_value_as_string0(iter->value, &str);
     assert_int(err, ==, ASDF_VALUE_OK);
     assert_string_equal(str, "a");
 
-    item = asdf_value_find_iter(root, value_find_pred_a, &iter);
-    assert_not_null(item);
-    path = asdf_find_item_path(item);
-    assert_string_equal(path, "/c/a");
-    val = asdf_find_item_value(item);
-    err = asdf_value_as_string0(val, &str);
+    assert_true(asdf_value_find_iter_next(&iter));
+    assert_not_null(iter);
+    assert_string_equal(asdf_value_path(iter->value), "/c/a");
+    err = asdf_value_as_string0(iter->value, &str);
     assert_int(err, ==, ASDF_VALUE_OK);
     assert_string_equal(str, "a");
 
-    item = asdf_value_find_iter(root, value_find_pred_a, &iter);
-    // Found all values matching the predicate
-    assert_null(item);
+    assert_false(asdf_value_find_iter_next(&iter));
+    assert_null(iter);
 
     asdf_value_destroy(root);
     asdf_close(file);
@@ -1634,31 +1628,27 @@ MU_TEST(test_asdf_value_find_iter_ex_descend_sequence_only) {
     assert_not_null(root);
     assert_true(asdf_value_is_mapping(root));
 
-    asdf_find_iter_t iter = asdf_find_iter_init_ex(true, asdf_find_descend_sequence_only, 1);
-    asdf_find_item_t *item = NULL;
-    
-    item = asdf_value_find_iter(root, value_find_pred_a, &iter);
-    assert_not_null(item);
+    asdf_find_iter_t *iter = asdf_find_iter_init_ex(
+        root, value_find_pred_a, true, asdf_find_descend_sequence_only, 1);
     const char *str = NULL;
-    const char *path = asdf_find_item_path(item);
-    assert_string_equal(path, "/a");
-    asdf_value_t *val = asdf_find_item_value(item);
-    asdf_value_err_t err = asdf_value_as_string0(val, &str);
+    asdf_value_err_t err;
+
+    assert_true(asdf_value_find_iter_next(&iter));
+    assert_not_null(iter);
+    assert_string_equal(asdf_value_path(iter->value), "/a");
+    err = asdf_value_as_string0(iter->value, &str);
     assert_int(err, ==, ASDF_VALUE_OK);
     assert_string_equal(str, "a");
 
-    item = asdf_value_find_iter(root, value_find_pred_a, &iter);
-    assert_not_null(item);
-    path = asdf_find_item_path(item);
-    assert_string_equal(path, "/d/0");
-    val = asdf_find_item_value(item);
-    err = asdf_value_as_string0(val, &str);
+    assert_true(asdf_value_find_iter_next(&iter));
+    assert_not_null(iter);
+    assert_string_equal(asdf_value_path(iter->value), "/d/0");
+    err = asdf_value_as_string0(iter->value, &str);
     assert_int(err, ==, ASDF_VALUE_OK);
     assert_string_equal(str, "a");
 
-    item = asdf_value_find_iter(root, value_find_pred_a, &iter);
-    // Found all values matching the predicate
-    assert_null(item);
+    assert_false(asdf_value_find_iter_next(&iter));
+    assert_null(iter);
 
     asdf_value_destroy(root);
     asdf_close(file);
@@ -1677,22 +1667,20 @@ MU_TEST(test_asdf_value_find_iter_max_depth) {
     // When iteration is set with max_depth = 0 it should never descend into
     // any sub-collections, but should still find values at the top-level of
     // the input root collection
-    asdf_find_iter_t iter = asdf_find_iter_init_ex(true, asdf_find_descend_all, 0);
-    asdf_find_item_t *item = NULL;
-
-    item = asdf_value_find_iter(root, value_find_pred_a, &iter);
-    assert_not_null(item);
+    asdf_find_iter_t *iter = asdf_find_iter_init_ex(
+        root, value_find_pred_a, true, asdf_find_descend_all, 0);
     const char *str = NULL;
-    const char *path = asdf_find_item_path(item);
-    assert_string_equal(path, "/a");
-    asdf_value_t *val = asdf_find_item_value(item);
-    asdf_value_err_t err = asdf_value_as_string0(val, &str);
+    asdf_value_err_t err;
+
+    assert_true(asdf_value_find_iter_next(&iter));
+    assert_not_null(iter);
+    assert_string_equal(asdf_value_path(iter->value), "/a");
+    err = asdf_value_as_string0(iter->value, &str);
     assert_int(err, ==, ASDF_VALUE_OK);
     assert_string_equal(str, "a");
 
-    item = asdf_value_find_iter(root, value_find_pred_a, &iter);
-    // Found all values matching the predicate
-    assert_null(item);
+    assert_false(asdf_value_find_iter_next(&iter));
+    assert_null(iter);
 
     asdf_value_destroy(root);
     asdf_close(file);
@@ -1708,19 +1696,17 @@ MU_TEST(test_asdf_value_find_ex) {
     assert_not_null(root);
     assert_true(asdf_value_is_mapping(root));
 
-    asdf_find_item_t *item = asdf_value_find_ex(
+    asdf_value_t *val = asdf_value_find_ex(
         root, value_find_pred_a, true, asdf_find_descend_all, 1);
-    assert_not_null(item);
+    assert_not_null(val);
     const char *str = NULL;
 
-    const char *path = asdf_find_item_path(item);
-    assert_string_equal(path, "/a");
-    asdf_value_t *val = asdf_find_item_value(item);
+    assert_string_equal(asdf_value_path(val), "/a");
     asdf_value_err_t err = asdf_value_as_string0(val, &str);
     assert_int(err, ==, ASDF_VALUE_OK);
     assert_string_equal(str, "a");
 
-    asdf_find_item_destroy(item);
+    asdf_value_destroy(val);
     asdf_value_destroy(root);
     asdf_close(file);
     return MUNIT_OK;
@@ -1735,39 +1721,34 @@ MU_TEST(test_asdf_value_find_iter) {
     assert_not_null(root);
     assert_true(asdf_value_is_mapping(root));
 
-    asdf_find_iter_t iter = asdf_find_iter_init();
-    asdf_find_item_t *item = NULL;
-
-    item = asdf_value_find_iter(root, value_find_pred_b, &iter);
-    assert_not_null(item);
+    asdf_find_iter_t *iter = asdf_find_iter_init(root, value_find_pred_b);
     const char *str = NULL;
-    const char *path = asdf_find_item_path(item);
+    asdf_value_err_t err;
+
+    assert_true(asdf_value_find_iter_next(&iter));
+    assert_not_null(iter);
     // BFS should find the value "b" at the top-level first
-    assert_string_equal(path, "/b");
-    asdf_value_t *val = asdf_find_item_value(item);
-    asdf_value_err_t err = asdf_value_as_string0(val, &str);
+    assert_string_equal(asdf_value_path(iter->value), "/b");
+    err = asdf_value_as_string0(iter->value, &str);
     assert_int(err, ==, ASDF_VALUE_OK);
     assert_string_equal(str, "b");
 
-    item = asdf_value_find_iter(root, value_find_pred_b, &iter);
-    path = asdf_find_item_path(item);
-    assert_string_equal(path, "/c/b");
-    val = asdf_find_item_value(item);
-    err = asdf_value_as_string0(val, &str);
+    assert_true(asdf_value_find_iter_next(&iter));
+    assert_not_null(iter);
+    assert_string_equal(asdf_value_path(iter->value), "/c/b");
+    err = asdf_value_as_string0(iter->value, &str);
     assert_int(err, ==, ASDF_VALUE_OK);
     assert_string_equal(str, "b");
 
-    item = asdf_value_find_iter(root, value_find_pred_b, &iter);
-    path = asdf_find_item_path(item);
-    assert_string_equal(path, "/d/1");
-    val = asdf_find_item_value(item);
-    err = asdf_value_as_string0(val, &str);
+    assert_true(asdf_value_find_iter_next(&iter));
+    assert_not_null(iter);
+    assert_string_equal(asdf_value_path(iter->value), "/d/1");
+    err = asdf_value_as_string0(iter->value, &str);
     assert_int(err, ==, ASDF_VALUE_OK);
     assert_string_equal(str, "b");
 
-    // Should be no more values found
-    item = asdf_value_find_iter(root, value_find_pred_b, &iter);
-    assert_null(item);
+    assert_false(asdf_value_find_iter_next(&iter));
+    assert_null(iter);
 
     asdf_value_destroy(root);
     asdf_close(file);
@@ -1783,17 +1764,15 @@ MU_TEST(test_asdf_value_find) {
     assert_not_null(root);
     assert_true(asdf_value_is_mapping(root));
 
-    asdf_find_item_t *item = asdf_value_find(root, value_find_pred_b);
-    assert_not_null(item);
+    asdf_value_t *val = asdf_value_find(root, value_find_pred_b);
+    assert_not_null(val);
     const char *str = NULL;
-    const char *path = asdf_find_item_path(item);
     // BFS should find the value "b" at the top-level first
-    assert_string_equal(path, "/b");
-    asdf_value_t *val = asdf_find_item_value(item);
+    assert_string_equal(asdf_value_path(val), "/b");
     asdf_value_err_t err = asdf_value_as_string0(val, &str);
     assert_int(err, ==, ASDF_VALUE_OK);
     assert_string_equal(str, "b");
-    asdf_find_item_destroy(item);
+    asdf_value_destroy(val);
 
     asdf_value_destroy(root);
     asdf_close(file);
@@ -1801,6 +1780,13 @@ MU_TEST(test_asdf_value_find) {
 }
 
 
+/**
+ * Note: calling value find on a scalar *is* allowed, but it will simply
+ * return the scalar value itself if it matches the predicate.
+ *
+ * In this case it is also a new copy of the original value so both need
+ * to be freed.
+ */
 MU_TEST(test_asdf_value_find_on_scalar) {
     const char *filename = get_fixture_file_path("nested.asdf");
     asdf_file_t *file = asdf_open(filename, "r");
@@ -1809,22 +1795,21 @@ MU_TEST(test_asdf_value_find_on_scalar) {
     assert_not_null(root);
     assert_true(asdf_value_is_scalar(root));
 
-    asdf_find_item_t *item = asdf_value_find(root, value_find_pred_a);
-    assert_not_null(item);
+    asdf_value_t *val = asdf_value_find(root, value_find_pred_a);
+    assert_not_null(val);
     const char *str = NULL;
-    const char *path = asdf_find_item_path(item);
-    assert_string_equal(path, "/a");
-    asdf_value_t *val = asdf_find_item_value(item);
+    assert_string_equal(asdf_value_path(val), "/a");
     asdf_value_err_t err = asdf_value_as_string0(val, &str);
     assert_int(err, ==, ASDF_VALUE_OK);
     assert_string_equal(str, "a");
-    asdf_find_item_destroy(item);
+    asdf_value_destroy(val);
+    asdf_value_destroy(root);
 
     root = asdf_get_value(file, "/b");
     assert_not_null(root);
     assert_true(asdf_value_is_scalar(root));
-    item = asdf_value_find(root, value_find_pred_a);
-    assert_null(item);
+    val = asdf_value_find(root, value_find_pred_a);
+    assert_null(val);
 
     asdf_value_destroy(root);
     asdf_close(file);
@@ -1916,13 +1901,11 @@ MU_TEST(test_raw_value_type_preserved_after_type_resolution) {
     // It can still be iterated over too, etc
     asdf_mapping_t *root_map = NULL;
     assert_int(asdf_value_as_mapping(root, &root_map), ==, ASDF_VALUE_OK);
-    asdf_mapping_iter_t iter = asdf_mapping_iter_init();
-    asdf_mapping_item_t *item = asdf_mapping_iter(root_map, &iter);
-    assert_not_null(item);
-    asdf_value_t *a = asdf_mapping_item_value(item);
+    asdf_mapping_iter_t *iter = asdf_mapping_iter_init(root_map);
+    assert_true(asdf_mapping_iter_next(&iter));
+    asdf_value_t *a = iter->value;
     assert_string_equal(asdf_value_path(a), "/a");
-    asdf_value_destroy(a);
-    free(item);
+    asdf_mapping_iter_destroy(iter);
     asdf_meta_destroy(meta);
     asdf_value_destroy(root);
     asdf_close(file);
@@ -2010,7 +1993,7 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_value_of_type),
     MU_RUN_TEST(test_value_tagged_strings),
     MU_RUN_TEST(test_asdf_mapping_create),
-    MU_RUN_TEST(test_asdf_mapping_item_destroy),
+    MU_RUN_TEST(test_asdf_iter_destroy_null),
     MU_RUN_TEST(test_asdf_mapping_iter),
     MU_RUN_TEST(test_asdf_mapping_get),
     MU_RUN_TEST(test_asdf_mapping_pop),

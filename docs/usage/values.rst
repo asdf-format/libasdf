@@ -229,7 +229,7 @@ about in libasdf.
 from a mapping or a sequence.  This is an opaque struct that holds the value
 until we try to coerce it to one of the supported C-native data types.  If we
 try to get a value out of a mapping using functions like `asdf_mapping_get` or
-`asdf_mapping_iter` (or likewise for sequences) it is returned as an
+`asdf_mapping_iter_t` (or likewise for sequences) it is returned as an
 `asdf_value_t`.
 
 We can then test its type using any of the ``asdf_value_is_<type>`` methods,
