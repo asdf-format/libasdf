@@ -66,7 +66,7 @@ unit_test_cflags += -DMUNIT_NO_FORK
 unit_test_ldflags += -rdynamic
 endif
 
-unit_test_ldflags = $(LDFLAGS) $(CODE_COVERAGE_LDFLAGS)
+unit_test_ldflags += $(LDFLAGS) $(CODE_COVERAGE_LDFLAGS)
 unit_test_ldadd = $(munit_ldflags) $(top_builddir)/libasdf.la $(ASDF_LIBS)
 
 # Unit tests
@@ -149,37 +149,19 @@ test_parse_util_unit_LDADD = libmunit.a $(FYAML_LIBS) $(STATGRAB_LIBS) $(MD5_LIB
 
 if HAVE_LINKER_WRAP
 # test-malloc-fail.unit
-# NOTE: This test is a bit of a pain to compile since for --wrap to work
-# we can't rely on dynamic linking to libasdf, and have to compile all the
-# necessary translation units directly into the test, similar to
-# test-parse-util.c; for now it's not too many though.
-#
-# An alternative approach could also be to use a static libasdf if we
-# configured to build one, and only build this test in that case; or always
-# build a static lib if running `make check`...
+# Links against libasdf_static.la, a static convenience archive of the full
+# library built at the top level under HAVE_LINKER_WRAP.  Linking against a
+# static archive (rather than the shared libasdf) lets the --wrap flags
+# intercept malloc/calloc/strdup/strndup calls anywhere in the library, not
+# just in a hand-maintained subset of translation units.
 check_PROGRAMS += test-malloc-fail.unit
-test_malloc_fail_unit_SOURCES = \
-    test-malloc-fail.c \
-    $(top_srcdir)/src/block.c \
-    $(top_srcdir)/src/compression/compressor_registry.c \
-    $(top_srcdir)/src/context.c \
-    $(top_srcdir)/src/tag.c \
-    $(top_srcdir)/src/error.c \
-    $(top_srcdir)/src/event.c \
-    $(top_srcdir)/src/log.c \
-    $(top_srcdir)/src/parse_util.c \
-    $(top_srcdir)/src/parser.c \
-    $(top_srcdir)/src/stream.c \
-    $(top_srcdir)/src/util.c \
-    $(top_srcdir)/src/version.c \
-    $(top_srcdir)/src/yaml.c \
-    $(top_srcdir)/third_party/STC/src/cstr_core.c
+test_malloc_fail_unit_SOURCES = test-malloc-fail.c
 test_malloc_fail_unit_CPPFLAGS = $(unit_test_cppflags)
 test_malloc_fail_unit_CFLAGS = $(unit_test_cflags)
 test_malloc_fail_unit_LDFLAGS = \
     $(unit_test_ldflags) \
     -Wl,--wrap=malloc,--wrap=calloc,--wrap=strdup,--wrap=strndup
-test_malloc_fail_unit_LDADD = libmunit.a $(FYAML_LIBS) $(STATGRAB_LIBS) $(MD5_LIBS) $(ASDF_LIBS)
+test_malloc_fail_unit_LDADD = libmunit.a $(top_builddir)/libasdf_static.la
 endif
 
 # test-stream.unit
@@ -351,6 +333,7 @@ EXTRA_DIST += \
     fixtures/events/complex.events.txt \
     fixtures/events/compressed.events.txt \
     fixtures/events/int.events.txt \
+    fixtures/extension-metadata-with-package.asdf \
     fixtures/info/anchor.info.txt \
     fixtures/info/ascii.info.txt \
     fixtures/info/basic.info.txt \

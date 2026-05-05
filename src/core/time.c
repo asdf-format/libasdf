@@ -2,18 +2,98 @@
 #include "config.h"
 #endif
 
+#include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
+#include "stc/cregex.h"
+
+#include "./time.h"
 #include "asdf.h"
-#include "time.h"
 
 #include "../extension_registry.h"
 #include "../log.h"
 #include "../util.h"
 #include "../value.h"
-#include "stc/cregex.h"
+
+/**
+ * Auto-detect patterns -- compiled once upon first use
+ *
+ * Each pattern uses capture groups for all date/time fields so that
+ * out-of-range values can be flagged.  Patterns deliberately avoid
+ * digit-range sub-expressions (e.g. ``[0-5][0-9]`` for minutes) because STC
+ * cregex has a hard limit of ``CREG_MAX_CLASSES`` (16) character-class slots
+ * per compiled pattern.  Range validation is done manually after the match.
+ *
+ * Capture group layout per pattern index:
+ *   TIME_AUTO_IDX_ISO_TIME:
+ *     [1]=year [2]=month [3]=day
+ *     [4]=optional "T/space + time" [5]=hour [6]=minute [7]=second [8]=frac
+ *   TIME_AUTO_IDX_BYEAR:
+ *     [1]=integer-part [2]=optional fractional
+ *   TIME_AUTO_IDX_JYEAR:
+ *     [1]=integer-part [2]=optional fractional
+ *   TIME_AUTO_IDX_YDAY:
+ *     [1]=year [2]=day-of-year [3]=hour [4]=minute [5]=second [6]=optional frac
+ */
+enum {
+    TIME_AUTO_IDX_ISO_TIME = 0,
+    TIME_AUTO_IDX_BYEAR,
+    TIME_AUTO_IDX_JYEAR,
+    TIME_AUTO_IDX_YDAY,
+    TIME_AUTO_COUNT,
+};
+
+static const struct {
+    asdf_time_base_format_t type;
+    const char *pattern;
+} time_auto_patterns[TIME_AUTO_COUNT] = {
+    [TIME_AUTO_IDX_ISO_TIME] =
+        {
+            ASDF_TIME_FORMAT_ISO_TIME,
+            "^(\\d\\d\\d\\d)-(\\d\\d)-(\\d\\d)([T ](\\d\\d):(\\d\\d):(\\d\\d)(.\\d+)?)?",
+        },
+    [TIME_AUTO_IDX_BYEAR] =
+        {
+            ASDF_TIME_FORMAT_BYEAR,
+            "^B(\\d+)(.\\d+)?",
+        },
+    [TIME_AUTO_IDX_JYEAR] =
+        {
+            ASDF_TIME_FORMAT_JYEAR,
+            "^J(\\d+)(.\\d+)?",
+        },
+    [TIME_AUTO_IDX_YDAY] =
+        {
+            ASDF_TIME_FORMAT_YDAY,
+            "^(\\d\\d\\d\\d):(\\d\\d\\d):(\\d\\d):(\\d\\d):(\\d\\d)(.\\d+)?",
+        },
+};
+
+
+static cregex time_auto_regexes[TIME_AUTO_COUNT];
+static atomic_bool time_auto_regexes_compiled = false;
+
+
+static void compile_time_auto_regexes(void) {
+    if (atomic_load_explicit(&time_auto_regexes_compiled, memory_order_acquire))
+        return;
+    for (size_t jdx = 0; jdx < TIME_AUTO_COUNT; jdx++)
+        time_auto_regexes[jdx] = cregex_make(time_auto_patterns[jdx].pattern, CREG_DEFAULT);
+    atomic_store_explicit(&time_auto_regexes_compiled, true, memory_order_release);
+}
+
+
+ASDF_DESTRUCTOR static void drop_time_auto_regexes(void) {
+    if (atomic_load_explicit(&time_auto_regexes_compiled, memory_order_acquire)) {
+        for (size_t jdx = 0; jdx < TIME_AUTO_COUNT; jdx++) {
+            if (time_auto_regexes[jdx].prog)
+                cregex_drop(&time_auto_regexes[jdx]);
+        }
+        atomic_store_explicit(&time_auto_regexes_compiled, false, memory_order_release);
+    }
+}
 
 #ifdef HAVE_STRPTIME
 static const char *ASDF_TIME_SFMT_ISO_TIME[] = {"%Y-%m-%d %H:%M:%S", "%Y-%m-%d"};
@@ -225,6 +305,8 @@ static int asdf_time_parse_mjd(const char *s, struct asdf_time_info_t *out) {
 
 
 int asdf_time_parse_byear(const char *s, struct asdf_time_info_t *out) {
+    if (s && (*s == 'B' || *s == 'b'))
+        s++; /* strip optional B prefix from bare-scalar Besselian epoch notation */
     const double byear = strtod(s, NULL);
     const double jd = besselian_to_julian(byear);
     struct tm tm;
@@ -333,6 +415,127 @@ static const char *const asdf_time_scale_names[] = {
 };
 
 
+/* Helpers for format detection and range validation */
+
+static bool format_name_to_type(const char *name, asdf_time_base_format_t *out) {
+    for (size_t idx = 0; idx < sizeof(asdf_time_format_names) / sizeof(asdf_time_format_names[0]);
+         idx++) {
+        if (asdf_time_format_names[idx] && !strcmp(name, asdf_time_format_names[idx])) {
+            *out = (asdf_time_base_format_t)idx;
+            return true;
+        }
+    }
+    return false;
+}
+
+
+/* Return the auto-detect pattern index whose type matches, or -1 if none. */
+static int find_auto_pattern_idx(asdf_time_base_format_t type) {
+    for (size_t idx = 0; idx < TIME_AUTO_COUNT; idx++) {
+        if (time_auto_patterns[idx].type == type)
+            return (int)idx;
+    }
+    return -1;
+}
+
+
+/* Actually should be 10 but use 16 to be word-aligned */
+#define MAX_INT_DIGITS 16
+
+
+/* Extract an integer from a non-null-terminated csview. */
+static inline int csview_to_int(csview csv) {
+    char buf[MAX_INT_DIGITS];
+    size_t n = csv.size < (int)sizeof(buf) - 1 ? csv.size : (int)sizeof(buf) - 1;
+    memcpy(buf, csv.buf, n);
+    buf[n] = '\0';
+    // Should be able to get away with atoi here since already checked by
+    // the regexps
+    return atoi(buf);
+}
+
+
+static void validate_iso_time_ranges(asdf_file_t *file, const char *cvs, csview *mat) {
+    /* m[2]=month, m[3]=day, m[5]=hour, m[6]=minute, m[7]=second */
+    if (mat[2].buf) {
+        int mon = csview_to_int(mat[2]);
+        if (mon < 1 || mon > 12)
+            ASDF_LOG(
+                file,
+                ASDF_LOG_WARN,
+                "iso_time value '%s': month %d out of range [01,12]",
+                cvs,
+                mon);
+    }
+
+    if (mat[3].buf) {
+        // TODO: More calendar logic?
+        int day = csview_to_int(mat[3]);
+        if (day < 1 || day > 31)
+            ASDF_LOG(
+                file, ASDF_LOG_WARN, "iso_time value '%s': day %d out of range [01,31]", cvs, day);
+    }
+
+    if (mat[5].buf && csview_to_int(mat[5]) > 23)
+        ASDF_LOG(file, ASDF_LOG_WARN, "iso_time value '%s': hour out of range [00,23]", cvs);
+
+    if (mat[6].buf && csview_to_int(mat[6]) > 59)
+        ASDF_LOG(file, ASDF_LOG_WARN, "iso_time value '%s': minute out of range [00,59]", cvs);
+
+    if (mat[7].buf && csview_to_int(mat[7]) > 60)
+        ASDF_LOG(file, ASDF_LOG_WARN, "iso_time value '%s': second out of range [00,60]", cvs);
+}
+
+
+static inline bool is_leap_year(int year) {
+    return year % 4 == 0 && ((year % 100 != 0) || (year % 400 == 0));
+}
+
+
+static void validate_yday_ranges(asdf_file_t *file, const char *cvs, csview *mat) {
+    /* m[1]=year, m[2]=day-of-year, m[3]=hour, m[4]=minute, m[5]=second */
+    int year = 0;
+
+    if (mat[1].buf)
+        year = csview_to_int(mat[1]);
+
+    if (mat[2].buf) {
+        int yday = csview_to_int(mat[2]);
+        if (yday < 1 || (is_leap_year(year) ? yday > 366 : yday > 365))
+            ASDF_LOG(
+                file,
+                ASDF_LOG_WARN,
+                "yday value '%s': day-of-year %d out of range [001,366]",
+                cvs,
+                yday);
+    }
+
+    if (mat[3].buf && csview_to_int(mat[3]) > 23)
+        ASDF_LOG(file, ASDF_LOG_WARN, "yday value '%s': hour out of range [00,23]", cvs);
+
+    if (mat[4].buf && csview_to_int(mat[4]) > 59)
+        ASDF_LOG(file, ASDF_LOG_WARN, "yday value '%s': minute out of range [00,59]", cvs);
+
+    if (mat[5].buf && csview_to_int(mat[5]) > 60)
+        ASDF_LOG(file, ASDF_LOG_WARN, "yday value '%s': second out of range [00,60]", cvs);
+}
+
+
+/* Run capture-group range checks for patterns that support them. */
+static void validate_datetime_ranges(asdf_file_t *file, int pat_idx, const char *vs, csview *m) {
+    switch (pat_idx) {
+    case TIME_AUTO_IDX_ISO_TIME:
+        validate_iso_time_ranges(file, vs, m);
+        break;
+    case TIME_AUTO_IDX_YDAY:
+        validate_yday_ranges(file, vs, m);
+        break;
+    default:
+        break;
+    }
+}
+
+
 static asdf_value_t *asdf_time_serialize(
     asdf_file_t *file, const void *obj, UNUSED(const void *userdata)) {
 
@@ -416,8 +619,63 @@ cleanup:
 }
 
 
+static asdf_time_base_format_t validate_or_guess_time_base_format(
+    asdf_value_t *value, const char *time_s, const char *format_s) {
+
+    asdf_time_base_format_t format = -1;
+    compile_time_auto_regexes();
+
+    if (!format_s) {
+        /* No explicit format: auto-detect from the value string. */
+        for (size_t idx = 0; idx < TIME_AUTO_COUNT; idx++) {
+            if (UNLIKELY(time_auto_regexes[idx].error != CREG_OK))
+                continue;
+            csview match[CREG_MAX_CAPTURES] = {0};
+            if (cregex_match(&time_auto_regexes[idx], time_s, match) != CREG_OK)
+                continue;
+            validate_datetime_ranges(value->file, (int)idx, time_s, match);
+            format = time_auto_patterns[idx].type;
+            break;
+        }
+
+        if (format < 0)
+            ASDF_LOG(
+                value->file,
+                ASDF_LOG_WARN,
+                "could not guess format of time without explicit format '%s'",
+                time_s);
+
+        return format;
+    }
+
+    /* Explicit format: look up the type by name directly. */
+    if (!format_name_to_type(format_s, &format))
+        ASDF_LOG(value->file, ASDF_LOG_WARN, "unrecognized time format '%s'", format_s);
+
+    /* Validate the value string against the format's auto-detect pattern,
+     * if one exists.  This is informational only -- a mismatch is a
+     * warning, not an error. */
+    int pat_idx = find_auto_pattern_idx(format);
+    if (pat_idx >= 0 && time_auto_regexes[pat_idx].error == CREG_OK) {
+        csview match[CREG_MAX_CAPTURES] = {0};
+        if (cregex_match(&time_auto_regexes[pat_idx], time_s, match) != CREG_OK)
+            ASDF_LOG(
+                value->file,
+                ASDF_LOG_WARN,
+                "time value '%s' does not match expected format '%s'",
+                time_s,
+                format_s);
+        else
+            validate_datetime_ranges(value->file, pat_idx, time_s, match);
+    }
+
+    return format;
+}
+
+
 static asdf_value_err_t asdf_time_deserialize(
     asdf_value_t *value, UNUSED(const void *userdata), void **out) {
+
     const char *value_s = NULL;
     const char *format_s = NULL;
 
@@ -426,25 +684,31 @@ static asdf_value_err_t asdf_time_deserialize(
     asdf_value_err_t err = ASDF_VALUE_ERR_PARSE_FAILURE;
 
     asdf_time_t *time = calloc(1, sizeof(asdf_time_t));
-    if (!time) {
+
+    if (!time)
         return ASDF_VALUE_ERR_OOM;
-    }
 
     if (asdf_value_is_mapping(value)) {
         if (asdf_value_as_mapping(value, &mapping) != ASDF_VALUE_OK)
             goto failure;
         prop = asdf_mapping_get(mapping, "value");
+        if (!prop)
+            goto failure;
     } else {
         prop = value;
     }
 
     time->value = calloc(ASDF_TIME_TIMESTR_MAXLEN, sizeof(*time->value));
+
     if (!time->value) {
+        if (prop && prop != value)
+            asdf_value_destroy(prop);
         free(time);
         return ASDF_VALUE_ERR_OOM;
     }
 
     const asdf_value_type_t type = asdf_value_get_type(prop);
+
     switch (type) {
     case ASDF_VALUE_INT64: {
         time_t value_tmp = 0;
@@ -476,63 +740,27 @@ static asdf_value_err_t asdf_time_deserialize(
     }
 
     if (mapping) {
+        /* format key is optional in a time mapping */
         prop = asdf_mapping_get(mapping, "format");
-        if (ASDF_VALUE_OK != asdf_value_as_string0(prop, &format_s)) {
-            goto failure;
+        if (prop) {
+            if (ASDF_VALUE_OK != asdf_value_as_string0(prop, &format_s))
+                goto failure;
+            asdf_value_destroy(prop);
+            prop = NULL;
         }
-        asdf_value_destroy(prop);
-        prop = NULL;
     }
 
-    const char *time_auto_keys[] = {
-        "iso_time",
-        "byear",
-        "jyear",
-        "yday",
-    };
+    asdf_time_base_format_t format = validate_or_guess_time_base_format(
+        value, time->value, format_s);
 
-    const char *time_auto_patterns[] = {
-        /* iso_time */
-        "[0-9]{4}-(0[1-9])|(1[0-2])-(0[1-9])|([1-2][0-9])|(3[0-1])"
-        "[T ]([0-1][0-9])|(2[0-4]):[0-5][0-9]:[0-5][0-9](.[0-9]+)?",
-        /* byear */
-        "B[0-9]+(.[0-9]+)?",
-        /* jyear */
-        "J[0-9]+(.[0-9]+)?",
-        /* yday */
-        "[0-9]{4}:(00[1-9])|(0[1-9][0-9])|([1-2][0-9][0-9])|(3[0-5][0-9])|(36[0-5]):([0-1][0-9])|"
-        "([0-1][0-9])|(2[0-4]):[0-5][0-9]:[0-5][0-9](.[0-9]+)?"};
-
-    time->format.is_base_format = true;
-    for (size_t idx = 0; idx < sizeof(time_auto_patterns) / sizeof(time_auto_patterns[0]); idx++) {
-        cregex re = cregex_make(time_auto_patterns[idx], CREG_DEFAULT);
-        if (cregex_is_match(&re, time->value) == true) {
-            const char *fmt_have = format_s ? format_s : time_auto_keys[idx];
-            if (!strcmp(fmt_have, "iso_time")) {
-                time->format.type = ASDF_TIME_FORMAT_ISO_TIME;
-            } else if (!strcmp(fmt_have, "byear") || !strncmp(time->value, "B", 1)) {
-                time->format.type = ASDF_TIME_FORMAT_BYEAR;
-            } else if (!strcmp(fmt_have, "jd")) {
-                time->format.type = ASDF_TIME_FORMAT_JD;
-            } else if (!strcmp(fmt_have, "mjd")) {
-                time->format.type = ASDF_TIME_FORMAT_MJD;
-            } else if (!strcmp(fmt_have, "jyear") || !strncmp(time->value, "J", 1)) {
-                time->format.type = ASDF_TIME_FORMAT_JYEAR;
-            } else if (!strcmp(fmt_have, "yday")) {
-                time->format.type = ASDF_TIME_FORMAT_YDAY;
-            } else if (!strcmp(fmt_have, "unix")) {
-                time->format.type = ASDF_TIME_FORMAT_UNIX;
-            }
-            time->scale = ASDF_TIME_SCALE_UTC;
-            cregex_drop(&re);
-            break;
-        }
-        cregex_drop(&re);
+    if (format < 0) {
+        err = ASDF_VALUE_ERR_PARSE_FAILURE;
+        goto failure;
     }
 
-    if (time->format.type > ASDF_TIME_FORMAT_RESERVED1) {
-        time->format.is_base_format = false;
-    }
+    time->format.type = format;
+    time->format.is_base_format = (time->format.type <= ASDF_TIME_FORMAT_RESERVED1);
+    time->scale = ASDF_TIME_SCALE_UTC;
 
     asdf_time_parse_time(time->value, &time->format, &time->info);
 
@@ -551,23 +779,23 @@ static void *asdf_time_copy(const void *obj) {
     if (!obj)
         return NULL;
 
-    const asdf_time_t *t = obj;
+    const asdf_time_t *tm = obj;
     asdf_time_t *copy = calloc(1, sizeof(asdf_time_t));
 
     if (!copy)
         return NULL;
 
-    *copy = *t;
-    copy->value = t->value ? strdup(t->value) : NULL;
+    *copy = *tm;
+    copy->value = tm->value ? strdup(tm->value) : NULL;
 
     return copy;
 }
 
 
 static void asdf_time_dealloc(void *value) {
-    asdf_time_t *t = (asdf_time_t *)value;
-    free(t->value);
-    free(t);
+    asdf_time_t *tm = (asdf_time_t *)value;
+    free(tm->value);
+    free(tm);
 }
 
 

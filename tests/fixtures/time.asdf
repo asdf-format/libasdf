@@ -19,4 +19,9 @@ t_jd: !time/time-1.4.0 {format: jd, value: '2460963.060197'}
 t_mjd: !time/time-1.4.0 {format: mjd, value: '60962.560196'}
 t_unix: !time/time-1.4.0 {format: unix, value: '1760462801.00'}
 t_yday: !time/time-1.4.0 {format: yday, value: '2025:287:13:26:41.0000'}
+t_byear_bare: !time/time-1.4.0 'B2025.78707178'
+t_iso_time_bare: !time/time-1.4.0 '2025-10-14T13:26:41.0000'
+t_jyear_bare: !time/time-1.4.0 'J2025.78707178'
+t_yday_bare: !time/time-1.4.0 '2025:287:13:26:41.0000'
+t_yday_map_no_format: !time/time-1.4.0 {value: '2025:287:13:26:41.0000'}
 ...

@@ -2,8 +2,10 @@
 #ifndef ASDF_CORE_TIME_H
 #define ASDF_CORE_TIME_H
 
-#include <asdf/extension.h>
 #include <sys/time.h>
+#include <time.h>
+
+#include <asdf/extension.h>
 
 
 ASDF_BEGIN_DECLS

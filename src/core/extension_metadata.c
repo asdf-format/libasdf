@@ -127,8 +127,10 @@ static asdf_value_err_t asdf_extension_metadata_deserialize(
 
     asdf_extension_metadata_t *metadata = calloc(1, sizeof(asdf_extension_metadata_t));
 
-    if (!metadata)
+    if (!metadata) {
+        asdf_software_destroy(package);
         return ASDF_VALUE_ERR_OOM;
+    }
 
     metadata->extension_class = strdup(extension_class);
     metadata->package = package;
