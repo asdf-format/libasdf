@@ -220,6 +220,7 @@ static int asdf_compresser_lz4_read_block(asdf_compressor_lz4_userdata_t *lz4) {
     }
 
     lz4->pos += lz4->header.block_size;
+    lz4->header.pos = 0;
     return 0;
 }
 
