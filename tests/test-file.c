@@ -299,7 +299,7 @@ static int test_multi_block_asdf_content(asdf_file_t *file) {
         assert_int(asdf_get_ndarray(file, key, &ndarray), ==, ASDF_VALUE_OK);
         assert_not_null(ndarray);
         size_t size = 0;
-        const uint8_t *data = asdf_ndarray_data_raw(ndarray, &size);
+        const uint8_t *data = asdf_ndarray_data(ndarray, &size);
         assert_not_null(data);
         assert_int(size, ==, 128);
         for (int jdx = 0; jdx < 128; jdx++) {

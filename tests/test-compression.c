@@ -95,7 +95,7 @@ MU_TEST(read_compressed_reference_file) {
         expected[idx] = idx;
 
     size_t size = 0;
-    const int64_t *dst = asdf_ndarray_data_raw(ndarray, &size);
+    const int64_t *dst = asdf_ndarray_data(ndarray, &size);
     assert_int(size, ==, sizeof(int64_t) * 128);
     assert_memory_equal(size, dst, expected);
     asdf_ndarray_destroy(ndarray);
@@ -148,7 +148,7 @@ static int test_compressed_file(
     }
 
     size_t size = 0;
-    const uint8_t *dst = asdf_ndarray_data_raw(ndarray, &size);
+    const uint8_t *dst = asdf_ndarray_data(ndarray, &size);
     // Check for errors and log it if there was one (useful for debugging failures in this test)
     const char *error = asdf_error(file);
     if (error)
@@ -297,7 +297,7 @@ MU_TEST(open_close_compressed_block) {
     asdf_value_err_t err = asdf_get_ndarray(file, comp, &ndarray);
     assert_int(err, ==, ASDF_VALUE_OK);
     assert_not_null(ndarray);
-    asdf_ndarray_data_raw(ndarray, NULL);
+    asdf_ndarray_data(ndarray, NULL);
     // Check for errors and log it if there was one (useful for debugging failures in this test)
     const char *error = asdf_error(file);
     if (error)
@@ -339,7 +339,7 @@ MU_TEST(compressed_block_no_hang_on_segfault) {
     asdf_value_err_t err = asdf_get_ndarray(file, comp, &ndarray);
     assert_int(err, ==, ASDF_VALUE_OK);
     assert_not_null(ndarray);
-    const uint8_t *data = asdf_ndarray_data_raw(ndarray, NULL);
+    const uint8_t *data = asdf_ndarray_data(ndarray, NULL);
     // Check for errors and log it if there was one (useful for debugging failures in this test)
     const char *error = asdf_error(file);
     if (error)
@@ -492,7 +492,7 @@ MU_TEST(write_compressed_ndarray) {
     assert_int(asdf_get_ndarray(file, "data", &ndarray), ==, ASDF_VALUE_OK);
     assert_not_null(ndarray);
     size_t read_size = 0;
-    const uint8_t *read_data = asdf_ndarray_data_raw(ndarray, &read_size);
+    const uint8_t *read_data = asdf_ndarray_data(ndarray, &read_size);
     assert_not_null(read_data);
     assert_size(read_size, ==, n);
     assert_memory_equal(n, read_data, ref);
@@ -609,7 +609,7 @@ MU_TEST(reemit_compressed_verbatim) {
     assert_int(asdf_get_ndarray(file, "data", &ndarray), ==, ASDF_VALUE_OK);
     assert_not_null(ndarray);
     size_t read_size = 0;
-    const uint8_t *read_data = asdf_ndarray_data_raw(ndarray, &read_size);
+    const uint8_t *read_data = asdf_ndarray_data(ndarray, &read_size);
     assert_not_null(read_data);
     assert_size(read_size, ==, n);
     assert_memory_equal(n, read_data, data);
@@ -687,7 +687,7 @@ MU_TEST(recompress_block) {
     assert_int(asdf_get_ndarray(file, "data", &ndarray), ==, ASDF_VALUE_OK);
     assert_not_null(ndarray);
     size_t read_size = 0;
-    const uint8_t *read_data = asdf_ndarray_data_raw(ndarray, &read_size);
+    const uint8_t *read_data = asdf_ndarray_data(ndarray, &read_size);
     assert_not_null(read_data);
     assert_size(read_size, ==, n);
     assert_memory_equal(n, read_data, data);
@@ -774,7 +774,7 @@ MU_TEST(access_then_write) {
     assert_int(asdf_get_ndarray(file, "data", &ndarray), ==, ASDF_VALUE_OK);
     assert_not_null(ndarray);
     size_t read_size = 0;
-    const uint8_t *read_data = asdf_ndarray_data_raw(ndarray, &read_size);
+    const uint8_t *read_data = asdf_ndarray_data(ndarray, &read_size);
     assert_not_null(read_data);
     assert_size(read_size, ==, n);
     assert_memory_equal(n, read_data, data);
@@ -887,7 +887,7 @@ MU_TEST(write_compressed_to_mem) {
     assert_int(asdf_get_ndarray(rfile, "data", &rndarray), ==, ASDF_VALUE_OK);
     assert_not_null(rndarray);
     size_t rsize = 0;
-    const uint8_t *rdata = asdf_ndarray_data_raw(rndarray, &rsize);
+    const uint8_t *rdata = asdf_ndarray_data(rndarray, &rsize);
     assert_not_null(rdata);
     assert_size(rsize, ==, n);
     assert_memory_equal(n, rdata, ref);
@@ -975,7 +975,7 @@ MU_TEST(write_to_mem_large_tree_realloc) {
     assert_int(asdf_get_ndarray(rfile, "rawdata", &rndarray), ==, ASDF_VALUE_OK);
     assert_not_null(rndarray);
     size_t rsize = 0;
-    const uint8_t *rdata = asdf_ndarray_data_raw(rndarray, &rsize);
+    const uint8_t *rdata = asdf_ndarray_data(rndarray, &rsize);
     assert_not_null(rdata);
     assert_size(rsize, ==, n);
     assert_memory_equal(n, rdata, ref);
