@@ -572,7 +572,7 @@ MU_TEST(ndarray_read_inline_data) {
     asdf_datatype_t *datatype = &ndarray->datatype;
     assert_int(datatype->type, ==, ASDF_DATATYPE_UINT8);
     size_t size = 0;
-    const void *data = asdf_ndarray_data_raw(ndarray, &size);
+    const void *data = asdf_ndarray_data(ndarray, &size);
     assert_not_null(data);
     assert_int(size, ==, 3 * 3 * (int)sizeof(uint8_t));
 
@@ -597,7 +597,7 @@ MU_TEST(ndarray_read_inline_data) {
     datatype = &ndarray->datatype;
     assert_int(datatype->type, ==, ASDF_DATATYPE_FLOAT64);
     size = 0;
-    data = asdf_ndarray_data_raw(ndarray, &size);
+    data = asdf_ndarray_data(ndarray, &size);
     assert_not_null(data);
     assert_int(size, ==, 3 * 3 * (int)sizeof(double));
 
@@ -707,7 +707,7 @@ MU_TEST(ndarray_write_inline_data) {
     assert_int(asdf_ndarray_storage(ndarray), ==, ASDF_ARRAY_STORAGE_INLINE);
 
     size_t size = 0;
-    const void *data = asdf_ndarray_data_raw(ndarray, &size);
+    const void *data = asdf_ndarray_data(ndarray, &size);
     assert_not_null(data);
     assert_int((int)size, ==, 9 * (int)sizeof(uint8_t));
     for (int idx = 0; idx < 9; idx++)
@@ -724,7 +724,7 @@ MU_TEST(ndarray_write_inline_data) {
     assert_int(asdf_ndarray_storage(ndarray), ==, ASDF_ARRAY_STORAGE_INLINE);
 
     size = 0;
-    data = asdf_ndarray_data_raw(ndarray, &size);
+    data = asdf_ndarray_data(ndarray, &size);
     assert_not_null(data);
     assert_int((int)size, ==, 9 * (int)sizeof(double));
     for (int idx = 0; idx < 9; idx++)
@@ -887,7 +887,7 @@ MU_TEST(ndarray_array_storage_override) {
     assert_int(asdf_ndarray_storage(ndarray_in), ==, storage);
 
     size_t size = 0;
-    const void *raw = asdf_ndarray_data_raw(ndarray_in, &size);
+    const void *raw = asdf_ndarray_data(ndarray_in, &size);
     assert_not_null(raw);
     assert_size(size, ==, 4);
     for (int idx = 0; idx < 4; idx++)
@@ -942,7 +942,7 @@ MU_TEST(ndarray_data_alloc_temp_storage_set_ordering) {
     assert_int(asdf_ndarray_storage(nd_in), ==, ASDF_ARRAY_STORAGE_INLINE);
 
     size_t size = 0;
-    const void *raw = asdf_ndarray_data_raw(nd_in, &size);
+    const void *raw = asdf_ndarray_data(nd_in, &size);
     assert_not_null(raw);
     assert_size(size, ==, 4);
     for (int idx = 0; idx < 4; idx++)

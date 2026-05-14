@@ -46,7 +46,7 @@ static asdf_ndarray_internal_t *asdf_ndarray_internal(asdf_ndarray_t *ndarray, b
 }
 
 
-const asdf_block_t *asdf_ndarray_block(asdf_ndarray_t *ndarray) {
+asdf_block_t *asdf_ndarray_block(asdf_ndarray_t *ndarray) {
     if (!ndarray || !ndarray->internal)
         return NULL;
 
@@ -1263,7 +1263,7 @@ ASDF_REGISTER_EXTENSION(
 
 
 /* ndarray methods */
-const void *asdf_ndarray_data_raw(asdf_ndarray_t *ndarray, size_t *size) {
+const void *asdf_ndarray_data_impl(asdf_ndarray_t *ndarray, size_t *size, bool raw) {
     if (!ndarray || !ndarray->internal)
         return NULL;
 
@@ -1301,7 +1301,20 @@ const void *asdf_ndarray_data_raw(asdf_ndarray_t *ndarray, size_t *size) {
         ndarray->internal->block = block;
     }
 
+    if (raw)
+        return asdf_block_data_raw(ndarray->internal->block, size);
+
     return asdf_block_data(ndarray->internal->block, size);
+}
+
+
+const void *asdf_ndarray_data_raw(asdf_ndarray_t *ndarray, size_t *size) {
+    return asdf_ndarray_data_impl(ndarray, size, true);
+}
+
+
+const void *asdf_ndarray_data(asdf_ndarray_t *ndarray, size_t *size) {
+    return asdf_ndarray_data_impl(ndarray, size, false);
 }
 
 
