@@ -1606,7 +1606,7 @@ asdf_ndarray_err_t asdf_ndarray_read_tile_ndim(
     size_t src_tile_size = src_elsize * tile_nelems;
     size_t tile_size = dst_elsize * tile_nelems;
     size_t data_size = 0;
-    const void *data = asdf_ndarray_data_raw(ndarray, &data_size);
+    const void *data = asdf_ndarray_data(ndarray, &data_size);
 
     if (data_size < src_tile_size)
         return ASDF_NDARRAY_ERR_OUT_OF_BOUNDS;
