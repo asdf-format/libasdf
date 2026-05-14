@@ -1,3 +1,3 @@
-``asdf_ndarray_data_raw()`` is renamed to just ``asdf_ndarray_data()``;
+`asdf_ndarray_data_raw()` is renamed to just `asdf_ndarray_data()`;
 the former still exists as well but returns raw compressed data in the case of
 compressed arrays.

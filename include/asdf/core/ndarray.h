@@ -162,7 +162,27 @@ ASDF_DECLARE_EXTENSION(ndarray, asdf_ndarray_t);
 
 
 /** ndarray methods */
+
+/**
+ * Return a pointer to the ndarray data
+ *
+ * ..todo::
+ *
+ *   Finish documenting me.
+ */
 ASDF_EXPORT const void *asdf_ndarray_data(asdf_ndarray_t *ndarray, size_t *size);
+
+
+/**
+ * Return a pointer to the raw (compressed, in the case of compressed arrays) ndarray
+ * data
+ *
+ * On non-compressed arrays this is equivalent to `asdf_ndarray_data`.
+ *
+ * ..todo::
+ *
+ *   Finish documenting me.
+ */
 ASDF_EXPORT const void *asdf_ndarray_data_raw(asdf_ndarray_t *ndarray, size_t *size);
 
 /**

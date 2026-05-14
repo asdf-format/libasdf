@@ -1,1 +1,1 @@
-Support for inline ndarray data: inline data is parsed when reading the ndarray data (e.g. with `asdf_ndarray_data_raw`) and can also be set to be written inline with `asdf_ndarray_storage_set(ndarray, ASDF_ARRAY_STORAGE_INLINE)`.
+Support for inline ndarray data: inline data is parsed when reading the ndarray data (e.g. with `asdf_ndarray_data`) and can also be set to be written inline with `asdf_ndarray_storage_set(ndarray, ASDF_ARRAY_STORAGE_INLINE)`.
