@@ -72,6 +72,7 @@ static char doc[] = "asdf -- Commandline utilities for managing ASDF files."
 static char dd_doc[] = "Dump data from an ASDF binary block";
 static char dd_args_doc[] = "INPUT [OUTPUT|-]";
 
+#define DD_OPT_NO_LAZY_DECOMPRESSION 0x100
 
 static struct argp_option dd_options[] = {
     {"block", 'b', "N", 0, "Block index from which to extract", 0},
@@ -83,6 +84,12 @@ static struct argp_option dd_options[] = {
      "Dump raw compressed data if compressed (no effect on non-compressed data)",
      0},
     {"chunk-size", 'c', "N", 0, "Read/write chunk size", 0},
+    {"no-lazy-decompression",
+     DD_OPT_NO_LAZY_DECOMPRESSION,
+     0,
+     0,
+     "Disable lazy decompression feature (for debugging)",
+     0},
     {"help", 'h', 0, 0, "Give this help list", 0},
     {"usage", OPT_USAGE_KEY, 0, 0, "Give a short usage message", 0},
     {0}};
@@ -96,6 +103,7 @@ struct dd_args {
     bool has_block_index;
     size_t chunk_size;
     bool raw;
+    bool no_lazy;
 };
 
 
@@ -139,6 +147,9 @@ static error_t parse_dd_opt(int key, char *arg, struct argp_state *state) {
     case 'h':
         argp_state_help(state, stdout, ARGP_HELP_STD_HELP);
         break;
+    case DD_OPT_NO_LAZY_DECOMPRESSION:
+        args->no_lazy = true;
+        break;
     case OPT_USAGE_KEY:
         argp_state_help(state, stdout, ARGP_HELP_SHORT_USAGE | ARGP_HELP_EXIT_OK);
         break;
@@ -172,7 +183,6 @@ static struct argp dd_argp = {dd_options, parse_dd_opt, dd_args_doc, dd_doc, 0, 
 
 
 static int dd_run(struct dd_args args) {
-    asdf_file_t *file = asdf_open(args.input, "r");
     asdf_block_t *block = NULL;
     asdf_ndarray_t *ndarray = NULL;
     size_t size = 0;
@@ -181,6 +191,13 @@ static int dd_run(struct dd_args args) {
     bool close = false;
     size_t written = 0;
     int status = EXIT_FAILURE;
+    asdf_config_t config = {0};
+    asdf_file_t *file = NULL;
+
+    if (args.no_lazy)
+        config.decomp.mode = ASDF_BLOCK_DECOMP_MODE_EAGER;
+
+    file = asdf_open_ex(args.input, "r", &config);
 
     if (!file) {
         fprintf(stderr, "error: %s\n", asdf_error(NULL));
