@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <stc/cstr.h>
 
@@ -791,6 +792,28 @@ MU_TEST(write_custom_tag_handle) {
 }
 
 
+/** Regression test: writing to a path that does not yet exist should succeed */
+MU_TEST(write_to_nonexistent_file) {
+    const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    /* get_temp_file_path pre-creates the file; remove it so the write must create it */
+    assert_int(unlink(filename), ==, 0);
+
+    asdf_file_t *file = asdf_open(NULL);
+    assert_not_null(file);
+    assert_int(asdf_set_string0(file, "key", "value"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_write_to(file, filename), ==, 0);
+    asdf_close(file);
+
+    file = asdf_open(filename, "r");
+    assert_not_null(file);
+    const char *val = NULL;
+    assert_int(asdf_get_string0(file, "key", &val), ==, ASDF_VALUE_OK);
+    assert_string_equal(val, "value");
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
 /** Regression test for a double-free that could occur in this case */
 MU_TEST(test_asdf_set_value_double_free) {
     const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
@@ -837,6 +860,7 @@ MU_TEST_SUITE(
     MU_RUN_TEST(write_minimal),
     MU_RUN_TEST(write_minimal_empty_tree),
     MU_RUN_TEST(write_custom_tag_handle),
+    MU_RUN_TEST(write_to_nonexistent_file),
     MU_RUN_TEST(test_asdf_set_value_double_free)
 );
 
