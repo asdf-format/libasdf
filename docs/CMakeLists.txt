@@ -1,7 +1,7 @@
 set(SPHINX_FLAGS PARENT_SCOPE)
 
 set(docsrc "${CMAKE_SOURCE_DIR}/docs")
-set(outdir "${CMAKE_CURRENT_BINARY_DIR}/html")
+set(outdir "${CMAKE_CURRENT_BINARY_DIR}/_build/html")
 
 add_custom_target(docs_clean
     COMMAND cmake -E remove_directory "${outdir}"
