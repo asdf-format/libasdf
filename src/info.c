@@ -28,13 +28,26 @@
 /** Determines how much indentation to reserve initially, but can be increased */
 #define INITIAL_MAX_DEPTH 16
 
+/** Maximum number of display columns of a scalar value shown in the tree preview */
+#define SCALAR_PREVIEW_MAX 64
+
+
+// Growable indentation bookkeeping shared by every recursion frame.  This is
+// held once (owned by asdf_info) and referenced via a pointer by all frames so
+// that when a deeply-nested node grows active_levels every ancestor frame sees
+// the new buffer; copying it per-frame would leave ancestors with dangling
+// pointers once the buffer is reallocated (see issue #191).
+typedef struct {
+    bool *active_levels;
+    size_t max_depth;
+} node_indent_t;
+
 
 typedef struct {
     size_t depth;
-    size_t max_depth;
-    bool *active_levels;
     bool is_mapping;
     bool is_leaf;
+    node_indent_t *indent;
 } node_state_t;
 
 
@@ -54,7 +67,7 @@ static void print_indent(FILE *out, node_state_t *state) {
         if (idx == state->depth - 1) {
             fputs(state->is_leaf ? "└─" : "├─", out);
         } else {
-            if (state->active_levels[idx])
+            if (state->indent->active_levels[idx])
                 fputs("│ ", out);
             else
                 fputs("  ", out);
@@ -62,6 +75,63 @@ static void print_indent(FILE *out, node_state_t *state) {
     }
 
     fputs(ANSI_RESET, out);
+}
+
+
+// Print a single-line, column-limited preview of a scalar value, prefixed by
+// ": ".  Scalar values in ASDF may be arbitrarily long and may contain embedded
+// newlines (e.g. multi-line log strings); printed verbatim these wrap the
+// terminal and break up the tree drawing (see issue #191).  Here any run of
+// control/whitespace characters (newlines, tabs, etc.) is collapsed into a
+// single space and the preview is truncated at SCALAR_PREVIEW_MAX display
+// columns (counting a UTF-8 character as one column, matching visible_strlen),
+// with an ellipsis appended when content is dropped.
+static void print_scalar_value(FILE *out, const char *value) {
+    fputs(": ", out);
+
+    if (!value)
+        return;
+
+    size_t cols = 0;
+    bool pending_space = false;
+    bool any = false;
+
+    for (const char *cur = value; *cur;) {
+        unsigned char chr = (unsigned char)*cur;
+
+        if (chr < 0x20 || chr == 0x7f) {
+            // Collapse control/whitespace; a run before any output is dropped.
+            if (any)
+                pending_space = true;
+            cur++;
+            continue;
+        }
+
+        if (cols >= SCALAR_PREVIEW_MAX) {
+            fputs("...", out);
+            return;
+        }
+
+        if (pending_space) {
+            fputc(' ', out);
+            pending_space = false;
+            any = true;
+            if (++cols >= SCALAR_PREVIEW_MAX) {
+                // A real character still follows, so the value is truncated.
+                fputs("...", out);
+                return;
+            }
+        }
+
+        // Emit one full UTF-8 character (leading byte plus continuation bytes).
+        fputc((char)chr, out);
+        cur++;
+        while ((*cur & UTF8_LEADING_PREFIX) == UTF8_CONTINUATION_PREFIX)
+            fputc(*cur++, out);
+
+        cols++;
+        any = true;
+    }
 }
 
 
@@ -97,7 +167,7 @@ static int print_node(FILE *out, asdf_value_t *node, node_index_t *index, node_s
     if (!asdf_value_is_container(node)) {
         const char *value = NULL;
         asdf_value_as_scalar0(node, &value);
-        fprintf(out, ": %s", value);
+        print_scalar_value(out, value);
         fputc('\n', out);
         return 0;
     }
@@ -107,33 +177,33 @@ static int print_node(FILE *out, asdf_value_t *node, node_index_t *index, node_s
     asdf_container_iter_t *iter = asdf_container_iter_init(node);
     int size = asdf_container_size(node);
 
-    if (state->depth > state->max_depth - 1) {
+    if (state->depth > state->indent->max_depth - 1) {
         // Grow the maximum depth linerally
-        size_t new_max_depth = state->max_depth + INITIAL_MAX_DEPTH;
-        bool *new_active_levels = realloc(state->active_levels, new_max_depth * sizeof(bool));
+        size_t new_max_depth = state->indent->max_depth + INITIAL_MAX_DEPTH;
+        bool *new_active_levels = realloc(
+            state->indent->active_levels, new_max_depth * sizeof(bool));
 
         if (!new_active_levels) {
             asdf_container_iter_destroy(iter);
             return -1;
         }
 
-        state->active_levels = new_active_levels;
-        state->max_depth = new_max_depth;
+        state->indent->active_levels = new_active_levels;
+        state->indent->max_depth = new_max_depth;
     }
 
-    state->active_levels[state->depth] = true;
+    state->indent->active_levels[state->depth] = true;
 
     node_state_t child_state = {
         .depth = state->depth + 1,
-        .max_depth = state->max_depth,
-        .active_levels = state->active_levels,
         .is_mapping = is_mapping,
-        .is_leaf = false};
+        .is_leaf = false,
+        .indent = state->indent};
 
     while (asdf_container_iter_next(&iter)) {
         if (iter->index == size - 1) {
             child_state.is_leaf = true;
-            state->active_levels[state->depth] = false;
+            state->indent->active_levels[state->depth] = false;
         }
 
         node_index_t child_index = {0};
@@ -339,16 +409,15 @@ int asdf_info(asdf_file_t *file, FILE *out, const asdf_info_cfg_t *cfg) {
         if (UNLIKELY(!active_levels))
             return -1;
 
-        node_state_t state = {
-            .depth = 0,
-            .max_depth = INITIAL_MAX_DEPTH,
-            .active_levels = active_levels,
-            .is_mapping = true,
-            .is_leaf = true};
+        // active_levels may be reallocated (grown) during the recursive walk;
+        // it is shared by reference through indent so that the final pointer is
+        // the one we free here.
+        node_indent_t indent = {.active_levels = active_levels, .max_depth = INITIAL_MAX_DEPTH};
+        node_state_t state = {.depth = 0, .is_mapping = true, .is_leaf = true, .indent = &indent};
         node_index_t index = {.key = "root"};
         ret = print_node(out, root, &index, &state);
         asdf_value_destroy(root);
-        free(active_levels);
+        free(indent.active_levels);
     }
 
     if (ret == 0 && cfg->print_blocks) {

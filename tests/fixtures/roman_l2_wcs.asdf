@@ -1,0 +1,980 @@
+#ASDF 1.0.0
+#ASDF_STANDARD 1.6.0
+%YAML 1.1
+%TAG ! tag:stsci.edu:asdf/
+--- !core/asdf-1.1.0
+asdf_library: !core/software-1.0.0 {author: The ASDF Developers, homepage: 'http://github.com/asdf-format/asdf',
+  name: asdf, version: 5.1.0}
+history:
+  extensions:
+  - !core/extension_metadata-1.0.0
+    extension_class: asdf.extension._manifest.ManifestExtension
+    extension_uri: asdf://stsci.edu/datamodels/roman/extensions/static-1.1.0
+    manifest_software: !core/software-1.0.0 {name: rad, version: 0.30.0}
+    software: !core/software-1.0.0 {name: roman_datamodels, version: 0.30.0}
+  - !core/extension_metadata-1.0.0
+    extension_class: asdf.extension._manifest.ManifestExtension
+    extension_uri: asdf://asdf-format.org/astronomy/gwcs/extensions/gwcs-1.4.0
+    manifest_software: !core/software-1.0.0 {name: asdf_wcs_schemas, version: 0.5.0}
+    software: !core/software-1.0.0 {name: gwcs, version: 1.0.3}
+  - !core/extension_metadata-1.0.0
+    extension_class: asdf.extension._manifest.ManifestExtension
+    extension_uri: asdf://asdf-format.org/transform/extensions/transform-1.6.0
+    manifest_software: !core/software-1.0.0 {name: asdf_transform_schemas, version: 0.6.0}
+    software: !core/software-1.0.0 {name: asdf-astropy, version: 0.10.0}
+  - !core/extension_metadata-1.0.0
+    extension_class: asdf.extension._manifest.ManifestExtension
+    extension_uri: asdf://asdf-format.org/core/extensions/core-1.6.0
+    manifest_software: !core/software-1.0.0 {name: asdf_standard, version: 1.5.0}
+    software: !core/software-1.0.0 {name: asdf, version: 5.1.0}
+  - !core/extension_metadata-1.0.0
+    extension_class: asdf.extension._manifest.ManifestExtension
+    extension_uri: asdf://astropy.org/astropy/extensions/units-1.3.0
+    software: !core/software-1.0.0 {name: asdf-astropy, version: 0.10.0}
+  - !core/extension_metadata-1.0.0
+    extension_class: asdf.extension._manifest.ManifestExtension
+    extension_uri: asdf://asdf-format.org/astronomy/extensions/astronomy-1.2.0
+    manifest_software: !core/software-1.0.0 {name: asdf_standard, version: 1.5.0}
+    software: !core/software-1.0.0 {name: asdf-astropy, version: 0.10.0}
+  - !core/extension_metadata-1.0.0
+    extension_class: asdf.extension._manifest.ManifestExtension
+    extension_uri: asdf://asdf-format.org/astronomy/coordinates/extensions/coordinates-1.0.0
+    manifest_software: !core/software-1.0.0 {name: asdf_coordinates_schemas, version: 0.5.1}
+    software: !core/software-1.0.0 {name: asdf-astropy, version: 0.10.0}
+roman:
+  meta:
+    cal_logs: ['2026-02-17T21:46:21.496Z :: stpipe.step :: INFO :: Step ExposurePipeline
+        running with args (''data/r0000101001001001001_0001_wfi01_f158_uncal.asdf'',).',
+      "2026-02-17T21:46:21.505Z :: stpipe.step :: INFO :: Step ExposurePipeline parameters
+        are:\n  pre_hooks: []\n  post_hooks: []\n  output_file: None\n  output_dir:
+        None\n  output_ext: .asdf\n  output_use_model: False\n  output_use_index:
+        True\n  save_results: True\n  skip: False\n  suffix: cal\n  search_output_file:
+        True\n  input_dir: data\n  update_version: False\n  steps:\n    dq_init:\n
+        \     pre_hooks: []\n      post_hooks: []\n      output_file: None\n      output_dir:
+        None\n      output_ext: .asdf\n      output_use_model: False\n      output_use_index:
+        True\n      save_results: False\n      skip: False\n      suffix: None\n      search_output_file:
+        True\n      input_dir: data\n      update_version: False\n    saturation:\n
+        \     pre_hooks: []\n      post_hooks: []\n      output_file: None\n      output_dir:
+        None\n      output_ext: .asdf\n      output_use_model: False\n      output_use_index:
+        True\n      save_results: False\n      skip: False\n      suffix: None\n      search_output_file:
+        True\n      input_dir: data\n      update_version: False\n    refpix:\n      pre_hooks:
+        []\n      post_hooks: []\n      output_file: None\n      output_dir: None\n
+        \     output_ext: .asdf\n      output_use_model: False\n      output_use_index:
+        True\n      save_results: False\n      skip: False\n      suffix: None\n      search_output_file:
+        True\n      input_dir: data\n      update_version: False\n      remove_offset:
+        True\n      remove_trends: True\n      cosine_interpolate: True\n      fft_interpolate:
+        True\n    dark_decay:\n      pre_hooks: []\n      post_hooks: []\n      output_file:
+        None\n      output_dir: None\n      output_ext: .asdf\n      output_use_model:
+        False\n      output_use_index: True\n      save_results: False\n      skip:
+        False\n      suffix: None\n      search_output_file: True\n      input_dir:
+        data\n      update_version: False\n    wfi18_transient:\n      pre_hooks:
+        []\n      post_hooks: []\n      output_file: None\n      output_dir: None\n
+        \     output_ext: .asdf\n      output_use_model: False\n      output_use_index:
+        True\n      save_results: False\n      skip: False\n      suffix: None\n      search_output_file:
+        True\n      input_dir: data\n      update_version: False\n      mask_rows:
+        False\n    linearity:\n      pre_hooks: []\n      post_hooks: []\n      output_file:
+        None\n      output_dir: None\n      output_ext: .asdf\n      output_use_model:
+        False\n      output_use_index: True\n      save_results: False\n      skip:
+        False\n      suffix: None\n      search_output_file: True\n      input_dir:
+        data\n      update_version: False\n    dark_current:\n      pre_hooks: []\n
+        \     post_hooks: []\n      output_file: None\n      output_dir: None\n      output_ext:
+        .asdf\n      output_use_model: False\n      output_use_index: True\n      save_results:
+        False\n      skip: False\n      suffix: None\n      search_output_file: True\n
+        \     input_dir: data\n      update_version: False\n      dark_output: None\n
+        \   rampfit:\n      pre_hooks: []\n      post_hooks: []\n      output_file:
+        None\n      output_dir: None\n      output_ext: .asdf\n      output_use_model:
+        False\n      output_use_index: True\n      save_results: False\n      skip:
+        False\n      suffix: rampfit\n      search_output_file: True\n      input_dir:
+        data\n      update_version: False\n      algorithm: likely\n      use_ramp_jump_detection:
+        True\n      threshold_intercept: None\n      threshold_constant: None\n      include_var_rnoise:
+        False\n      maximum_cores: '1'\n      expand_large_events: False\n      min_sat_area:
+        1.0\n      min_jump_area: 6.0\n      expand_factor: 1.9\n      sat_required_snowball:
+        True\n      min_sat_radius_extend: 0.5\n      sat_expand: 2\n      edge_size:
+        0\n    assign_wcs:\n      pre_hooks: []\n      post_hooks: []\n      output_file:
+        None\n      output_dir: None\n      output_ext: .asdf\n      output_use_model:
+        False\n      output_use_index: True\n      save_results: False\n      skip:
+        False\n      suffix: None\n      search_output_file: True\n      input_dir:
+        data\n      update_version: False\n    flatfield:\n      pre_hooks: []\n      post_hooks:
+        []\n      output_file: None\n      output_dir: None\n      output_ext: .asdf\n
+        \     output_use_model: False\n      output_use_index: True\n      save_results:
+        False\n      skip: False\n      suffix: None\n      search_output_file: True\n
+        \     input_dir: data\n      update_version: False\n      include_var_flat:
+        False\n    photom:\n      pre_hooks: []\n      post_hooks: []\n      output_file:
+        None\n      output_dir: None\n      output_ext: .asdf\n      output_use_model:
+        False\n      output_use_index: True\n      save_results: False\n      skip:
+        False\n      suffix: None\n      search_output_file: True\n      input_dir:
+        data\n      update_version: False\n    source_catalog:\n      pre_hooks: []\n
+        \     post_hooks: []\n      output_file: None\n      output_dir: None\n      output_ext:
+        .asdf\n      output_use_model: False\n      output_use_index: True\n      save_results:
+        False\n      skip: False\n      suffix: cat\n      search_output_file: True\n
+        \     input_dir: data\n      update_version: False\n      bkg_boxsize: 1000\n
+        \     kernel_fwhm: 2.0\n      snr_threshold: 3.0\n      npixels: 25\n      deblend:
+        False\n      fit_psf: True\n      forced_segmentation: ''\n    tweakreg:\n
+        \     pre_hooks: []\n      post_hooks: []\n      output_file: None\n      output_dir:
+        None\n      output_ext: .asdf\n      output_use_model: True\n      output_use_index:
+        True\n      save_results: False\n      skip: False\n      suffix: None\n      search_output_file:
+        True\n      input_dir: data\n      update_version: False\n      use_custom_catalogs:
+        False\n      catalog_format: ascii.ecsv\n      catfile: ''\n      catalog_path:
+        ''\n      enforce_user_order: False\n      expand_refcat: False\n      minobj:
+        15\n      searchrad: 2.0\n      use2dhist: True\n      separation: 1.0\n      tolerance:
+        0.7\n      fitgeometry: rshift\n      nclip: 3\n      sigma: 3.0\n      abs_refcat:
+        GAIADR3_S3\n      save_abs_catalog: False\n      abs_minobj: 15\n      abs_searchrad:
+        6.0\n      abs_use2dhist: True\n      abs_separation: 1.0\n      abs_tolerance:
+        0.7\n      abs_fitgeometry: rshift\n      abs_nclip: 3\n      abs_sigma: 3.0\n
+        \     update_source_catalog_coordinates: False\n      vo_timeout: 1200.0",
+      '2026-02-17T21:46:22.548Z :: stpipe.pipeline :: INFO :: Prefetching reference
+        files for dataset: ''r0000101001001001001_0001_wfi01_f158_uncal.asdf'' reftypes
+        = [''apcorr'', ''dark'', ''darkdecaysignal'', ''distortion'', ''flat'', ''gain'',
+        ''integralnonlinearity'', ''inverselinearity'', ''linearity'', ''mask'', ''photom'',
+        ''readnoise'', ''refpix'', ''saturation'']', '2026-02-17T21:46:22.550Z ::
+        stpipe.pipeline :: INFO :: Prefetch for APCORR reference file is ''/Users/bgraham/roman_crds_cache/references/roman/wfi/roman_wfi_apcorr_0002.asdf''.',
+      '2026-02-17T21:46:22.551Z :: stpipe.pipeline :: INFO :: Prefetch for DARK reference
+        file is ''/Users/bgraham/roman_crds_cache/references/roman/wfi/roman_wfi_dark_0364.asdf''.',
+      '2026-02-17T21:46:22.551Z :: stpipe.pipeline :: INFO :: Prefetch for DARKDECAYSIGNAL
+        reference file is ''/Users/bgraham/roman_crds_cache/references/roman/wfi/roman_wfi_darkdecaysignal_0001.asdf''.',
+      '2026-02-17T21:46:22.551Z :: stpipe.pipeline :: INFO :: Prefetch for DISTORTION
+        reference file is ''/Users/bgraham/roman_crds_cache/references/roman/wfi/roman_wfi_distortion_0014.asdf''.',
+      '2026-02-17T21:46:22.551Z :: stpipe.pipeline :: INFO :: Prefetch for FLAT reference
+        file is ''/Users/bgraham/roman_crds_cache/references/roman/wfi/roman_wfi_flat_0166.asdf''.',
+      '2026-02-17T21:46:22.551Z :: stpipe.pipeline :: INFO :: Prefetch for GAIN reference
+        file is ''/Users/bgraham/roman_crds_cache/references/roman/wfi/roman_wfi_gain_0022.asdf''.',
+      '2026-02-17T21:46:22.551Z :: stpipe.pipeline :: INFO :: Prefetch for INTEGRALNONLINEARITY
+        reference file is ''/Users/bgraham/roman_crds_cache/references/roman/wfi/roman_wfi_integralnonlinearity_0003.asdf''.',
+      '2026-02-17T21:46:22.551Z :: stpipe.pipeline :: INFO :: Prefetch for INVERSELINEARITY
+        reference file is ''/Users/bgraham/roman_crds_cache/references/roman/wfi/roman_wfi_inverselinearity_0042.asdf''.',
+      '2026-02-17T21:46:22.551Z :: stpipe.pipeline :: INFO :: Prefetch for LINEARITY
+        reference file is ''/Users/bgraham/roman_crds_cache/references/roman/wfi/roman_wfi_linearity_0039.asdf''.',
+      '2026-02-17T21:46:22.551Z :: stpipe.pipeline :: INFO :: Prefetch for MASK reference
+        file is ''/Users/bgraham/roman_crds_cache/references/roman/wfi/roman_wfi_mask_0030.asdf''.',
+      '2026-02-17T21:46:22.551Z :: stpipe.pipeline :: INFO :: Prefetch for PHOTOM
+        reference file is ''/Users/bgraham/roman_crds_cache/references/roman/wfi/roman_wfi_photom_0040.asdf''.',
+      '2026-02-17T21:46:22.551Z :: stpipe.pipeline :: INFO :: Prefetch for READNOISE
+        reference file is ''/Users/bgraham/roman_crds_cache/references/roman/wfi/roman_wfi_readnoise_0024.asdf''.',
+      '2026-02-17T21:46:22.551Z :: stpipe.pipeline :: INFO :: Prefetch for REFPIX
+        reference file is ''/Users/bgraham/roman_crds_cache/references/roman/wfi/roman_wfi_refpix_0013.asdf''.',
+      '2026-02-17T21:46:22.551Z :: stpipe.pipeline :: INFO :: Prefetch for SATURATION
+        reference file is ''/Users/bgraham/roman_crds_cache/references/roman/wfi/roman_wfi_saturation_0031.asdf''.',
+      '2026-02-17T21:46:22.551Z :: romancal.pipeline.exposure_pipeline :: INFO ::
+        Starting Roman exposure calibration pipeline ...', '2026-02-17T21:46:22.622Z
+        :: stpipe.step :: INFO :: Step dq_init running with args (<roman_datamodels.datamodels._datamodels.ScienceRawModel
+        object at 0x10d7d9760>,).', '2026-02-17T21:46:22.914Z :: romancal.dq_init.dq_init_step
+        :: INFO :: Flagging rows from: -999999 to -999983 as affected by guide window
+        read', '2026-02-17T21:46:22.997Z :: stpipe.step :: INFO :: Step dq_init done',
+      '2026-02-17T21:46:23.033Z :: stpipe.step :: INFO :: Step saturation running
+        with args (<roman_datamodels.datamodels._datamodels.RampModel object at 0x10c85b100>,).',
+      '2026-02-17T21:46:23.034Z :: romancal.saturation.saturation_step :: INFO ::
+        Using SATURATION reference file: /Users/bgraham/roman_crds_cache/references/roman/wfi/roman_wfi_saturation_0031.asdf',
+      '2026-02-17T21:46:24.781Z :: stcal.saturation.saturation :: INFO :: Detected
+        77610 saturated pixels', '2026-02-17T21:46:24.833Z :: stcal.saturation.saturation
+        :: INFO :: Detected 65730 A/D floor pixels', '2026-02-17T21:46:24.850Z ::
+        stpipe.step :: INFO :: Step saturation done', '2026-02-17T21:46:24.925Z ::
+        stpipe.step :: INFO :: Step refpix running with args (<roman_datamodels.datamodels._datamodels.RampModel
+        object at 0x10c85b100>,).', '2026-02-17T21:46:24.925Z :: romancal.refpix.refpix_step
+        :: DEBUG :: Opening the science data: <roman_datamodels.datamodels._datamodels.RampModel
+        object at 0x10c85b100>', '2026-02-17T21:46:24.926Z :: romancal.refpix.refpix_step
+        :: DEBUG :: Opening the reference file: /Users/bgraham/roman_crds_cache/references/roman/wfi/roman_wfi_refpix_0013.asdf',
+      '2026-02-17T21:46:24.942Z :: romancal.refpix.refpix_step :: DEBUG :: Running
+        the reference pixel correction', '2026-02-17T21:46:24.942Z :: romancal.refpix.refpix
+        :: DEBUG :: Reading data from datamodel into single array', '2026-02-17T21:46:25.133Z
+        :: romancal.refpix.refpix :: DEBUG :: Removed the general offset from data,
+        to be re-applied later.', '2026-02-17T21:46:25.712Z :: romancal.refpix.refpix
+        :: DEBUG :: Removed boundary trends (in time) from data.', "2026-02-17T21:46:25.726Z
+        :: py.warnings :: WARNING :: /Users/bgraham/.pyenv/versions/3.12.4/envs/b21_moc_files/lib/python3.12/site-packages/romancal/refpix/data.py:398:
+        RuntimeWarning: invalid value encountered in divide\n  kern = (cov / mask_conv).reshape(rows,
+        columns)\n", '2026-02-17T21:46:25.874Z :: romancal.refpix.refpix :: DEBUG
+        :: Cosine interpolated the reference pixels.', '2026-02-17T21:46:26.196Z ::
+        romancal.refpix.refpix :: DEBUG :: FFT interpolated the reference pixel pads.',
+      '2026-02-17T21:46:29.314Z :: romancal.refpix.refpix :: DEBUG :: Applied reference
+        pixel correction', '2026-02-17T21:46:29.395Z :: romancal.refpix.refpix ::
+        DEBUG :: Re-applied the general offset (if removed) to the data.', '2026-02-17T21:46:29.417Z
+        :: romancal.refpix.refpix :: DEBUG :: Updated the datamodel with the corrected
+        data.', '2026-02-17T21:46:29.441Z :: stpipe.step :: INFO :: Step refpix done',
+      '2026-02-17T21:46:29.476Z :: stpipe.step :: INFO :: Step dark_decay running
+        with args (<roman_datamodels.datamodels._datamodels.RampModel object at 0x10c85b100>,).',
+      '2026-02-17T21:46:29.477Z :: romancal.dark_decay.dark_decay_step :: INFO ::
+        Using DARKDECAYSIGNAL reference file: /Users/bgraham/roman_crds_cache/references/roman/wfi/roman_wfi_darkdecaysignal_0001.asdf',
+      '2026-02-17T21:46:34.587Z :: stpipe.step :: INFO :: Step dark_decay done', '2026-02-17T21:46:34.621Z
+        :: stpipe.step :: INFO :: Step wfi18_transient running with args (<roman_datamodels.datamodels._datamodels.RampModel
+        object at 0x10c85b100>,).', '2026-02-17T21:46:34.621Z :: stpipe.step :: INFO
+        :: Step wfi18_transient done', '2026-02-17T21:46:34.651Z :: stpipe.step ::
+        INFO :: Step linearity running with args (<roman_datamodels.datamodels._datamodels.RampModel
+        object at 0x10c85b100>,).', '2026-02-17T21:46:34.655Z :: romancal.linearity.linearity_step
+        :: INFO :: Using LINEARITY reference file: /Users/bgraham/roman_crds_cache/references/roman/wfi/roman_wfi_linearity_0039.asdf',
+      '2026-02-17T21:46:34.655Z :: romancal.linearity.linearity_step :: INFO :: Using
+        INVERSELINEARITY reference file: /Users/bgraham/roman_crds_cache/references/roman/wfi/roman_wfi_inverselinearity_0042.asdf',
+      '2026-02-17T21:46:34.655Z :: romancal.linearity.linearity_step :: INFO :: Using
+        INTEGRALNONLINEARITY reference file: /Users/bgraham/roman_crds_cache/references/roman/wfi/roman_wfi_integralnonlinearity_0003.asdf',
+      "2026-02-17T21:46:41.801Z :: py.warnings :: WARNING :: /Users/bgraham/.pyenv/versions/3.12.4/envs/b21_moc_files/lib/python3.12/site-packages/stcal/linearity/linearity.py:528:
+        RuntimeWarning: overflow encountered in cast\n  data[i] = np.where(resultant_saturated,
+        data[i], corrected_resultant)\n", '2026-02-17T21:47:46.010Z :: romancal.linearity.linearity_step
+        :: WARNING :: Flagged 630 spurious values outside remotely plausible range.',
+      '2026-02-17T21:47:46.031Z :: stpipe.step :: INFO :: Step linearity done', '2026-02-17T21:47:46.068Z
+        :: stpipe.step :: INFO :: Step rampfit running with args (<roman_datamodels.datamodels._datamodels.RampModel
+        object at 0x10c85b100>,).', '2026-02-17T21:47:46.071Z :: romancal.ramp_fitting.ramp_fit_step
+        :: INFO :: Using READNOISE reference file: /Users/bgraham/roman_crds_cache/references/roman/wfi/roman_wfi_readnoise_0024.asdf',
+      '2026-02-17T21:47:46.084Z :: romancal.ramp_fitting.ramp_fit_step :: INFO ::
+        Using GAIN reference file: /Users/bgraham/roman_crds_cache/references/roman/wfi/roman_wfi_gain_0022.asdf',
+      '2026-02-17T21:47:46.094Z :: romancal.ramp_fitting.ramp_fit_step :: INFO ::
+        Number of resultants: 10 ', '2026-02-17T21:49:19.590Z :: romancal.ramp_fitting.ramp_fit_step
+        :: INFO :: Number of resultants: 10 ', "2026-02-17T21:49:19.875Z :: py.warnings
+        :: WARNING :: /Users/bgraham/.pyenv/versions/3.12.4/envs/b21_moc_files/lib/python3.12/site-packages/romancal/ramp_fitting/ramp_fit_step.py:366:
+        RuntimeWarning: overflow encountered in cast\n  im.dumo = (slopes_alt[4:-4,
+        4:-4] - im.data).astype(\"float16\")\n", '2026-02-17T21:49:19.887Z :: stpipe.step
+        :: INFO :: Step rampfit done', '2026-02-17T21:49:19.934Z :: stpipe.step ::
+        INFO :: Step dark_current running with args (<roman_datamodels.datamodels._datamodels.ImageModel
+        object at 0x10d8071a0>,).', '2026-02-17T21:49:19.936Z :: romancal.dark_current.dark_current_step
+        :: INFO :: Using DARK reference file: /Users/bgraham/roman_crds_cache/references/roman/wfi/roman_wfi_dark_0364.asdf',
+      '2026-02-17T21:49:20.066Z :: stpipe.step :: INFO :: Step dark_current done',
+      '2026-02-17T21:49:20.095Z :: stpipe.step :: INFO :: Step assign_wcs running
+        with args (<roman_datamodels.datamodels._datamodels.ImageModel object at 0x10d8071a0>,).',
+      '2026-02-17T21:49:20.095Z :: romancal.assign_wcs.assign_wcs_step :: INFO ::
+        reftype, distortion', '2026-02-17T21:49:20.096Z :: romancal.assign_wcs.assign_wcs_step
+        :: INFO :: Using reference files: {''distortion'': ''/Users/bgraham/roman_crds_cache/references/roman/wfi/roman_wfi_distortion_0014.asdf''}
+        for assign_wcs', '2026-02-17T21:49:20.136Z :: stcal.alignment.util :: INFO
+        :: Update S_REGION to POLYGON ICRS  269.986945913 65.974265020 269.986740071
+        66.097228517 269.676782731 66.097195577 269.680114248 65.974342004', '2026-02-17T21:49:20.136Z
+        :: romancal.assign_wcs.utils :: INFO :: S_REGION VALUES: POLYGON ICRS  269.986945913
+        65.974265020 269.986740071 66.097228517 269.676782731 66.097195577 269.680114248
+        65.974342004', '2026-02-17T21:49:20.136Z :: romancal.assign_wcs.utils :: INFO
+        :: Update S_REGION to POLYGON ICRS  269.986945913 65.974265020 269.986740071
+        66.097228517 269.676782731 66.097195577 269.680114248 65.974342004', '2026-02-17T21:49:20.137Z
+        :: stpipe.step :: INFO :: Step assign_wcs done', '2026-02-17T21:49:20.169Z
+        :: stpipe.step :: INFO :: Step flatfield running with args (<roman_datamodels.datamodels._datamodels.ImageModel
+        object at 0x10d8071a0>,).', '2026-02-17T21:49:20.370Z :: stpipe.step :: INFO
+        :: Step flatfield done', '2026-02-17T21:49:20.402Z :: stpipe.step :: INFO
+        :: Step photom running with args (<roman_datamodels.datamodels._datamodels.ImageModel
+        object at 0x10d8071a0>,).', '2026-02-17T21:49:20.415Z :: romancal.photom.photom
+        :: DEBUG :: pixel_area = 2.8083389953727505e-13', '2026-02-17T21:49:20.416Z
+        :: romancal.photom.photom :: INFO :: photmjsr value: 0.736781', '2026-02-17T21:49:20.416Z
+        :: romancal.photom.photom :: INFO :: uncertainty value: 0.0286641', '2026-02-17T21:49:20.416Z
+        :: stpipe.step :: INFO :: Step photom done', '2026-02-17T21:49:20.449Z ::
+        stpipe.step :: INFO :: Step source_catalog running with args (<roman_datamodels.datamodels._datamodels.ImageModel
+        object at 0x10d8071a0>,).', '2026-02-17T21:49:20.450Z :: romancal.source_catalog.source_catalog_step
+        :: INFO :: Using ePSF reference file: /Users/bgraham/roman_crds_cache/references/roman/wfi/roman_wfi_epsf_0182.asdf',
+      '2026-02-17T21:49:22.282Z :: romancal.source_catalog.psf :: INFO :: Performed
+        jitter convolution.  Image kernel: (8, 8, 0) Reference kernel: (0, 0, 0)',
+      '2026-02-17T21:49:22.406Z :: romancal.source_catalog.source_catalog_step ::
+        INFO :: Calculating and subtracting background', '2026-02-17T21:49:24.878Z
+        :: romancal.source_catalog.source_catalog_step :: INFO :: Creating detection
+        image', '2026-02-17T21:49:25.828Z :: romancal.source_catalog.source_catalog_step
+        :: INFO :: Detecting sources', '2026-02-17T21:49:27.379Z :: romancal.source_catalog.detection
+        :: INFO :: Detected 111 sources', '2026-02-17T21:49:27.380Z :: romancal.source_catalog.source_catalog_step
+        :: INFO :: Creating ee_fractions model', '2026-02-17T21:49:27.398Z :: romancal.source_catalog.source_catalog_step
+        :: INFO :: Creating source catalog', '2026-02-17T21:49:27.426Z :: romancal.source_catalog.source_catalog
+        :: INFO :: Calculating segment properties', '2026-02-17T21:49:27.673Z :: romancal.source_catalog.source_catalog
+        :: INFO :: Calculating aperture photometry', '2026-02-17T21:49:27.730Z ::
+        romancal.source_catalog.source_catalog :: INFO :: Calculating DAOFind properties',
+      '2026-02-17T21:49:27.882Z :: romancal.source_catalog.source_catalog :: INFO
+        :: Calculating nearest neighbor properties', '2026-02-17T21:49:27.883Z ::
+        romancal.source_catalog.source_catalog :: INFO :: Calculating PSF photometry',
+      '2026-02-17T21:49:28.986Z :: stpipe.step :: INFO :: Saved model in r0000101001001001001_0001_wfi01_f158_segm.asdf',
+      '2026-02-17T21:49:29.734Z :: stpipe.step :: INFO :: Saved model in r0000101001001001001_0001_wfi01_f158_cat.parquet',
+      '2026-02-17T21:49:29.791Z :: stpipe.step :: INFO :: Step source_catalog done',
+      '2026-02-17T21:49:29.835Z :: stpipe.step :: INFO :: Step tweakreg running with
+        args (<romancal.datamodels.library.ModelLibrary object at 0x10d921250>,).',
+      '2026-02-17T21:49:29.835Z :: romancal.tweakreg.tweakreg_step :: INFO :: Number
+        of image groups to be aligned: 1.', '2026-02-17T21:49:29.835Z :: romancal.tweakreg.tweakreg_step
+        :: INFO :: Image groups:', '2026-02-17T21:49:29.835Z :: romancal.tweakreg.tweakreg_step
+        :: INFO ::   00001010010010010010001', '2026-02-17T21:49:29.835Z :: romancal.tweakreg.tweakreg_step
+        :: INFO :: All source catalogs will be saved to: /Users/bgraham/projects/260217_b21_moc_files',
+      '2026-02-17T21:49:29.908Z :: romancal.tweakreg.tweakreg_step :: INFO :: Using
+        107 sources from r0000101001001001001_0001_wfi01_f158_uncal.asdf.', '2026-02-17T21:50:27.113Z
+        :: tweakwcs.imalign :: INFO ::  ', '2026-02-17T21:50:27.113Z :: tweakwcs.imalign
+        :: INFO :: ***** tweakwcs.imalign.align_wcs() started on 2026-02-17 16:50:27.113716',
+      '2026-02-17T21:50:27.113Z :: tweakwcs.imalign :: INFO ::       Version 0.8.12',
+      '2026-02-17T21:50:27.113Z :: tweakwcs.imalign :: INFO ::  ', '2026-02-17T21:50:27.178Z
+        :: tweakwcs.imalign :: INFO :: Aligning image catalog ''GROUP ID: 987654''
+        to the reference catalog.', '2026-02-17T21:50:27.204Z :: tweakwcs.matchutils
+        :: INFO :: Matching sources from ''r0000101001001001001_0001_wfi01_f158_uncal''
+        catalog with sources from the reference ''GAIADR3_S3'' catalog.', '2026-02-17T21:50:27.204Z
+        :: tweakwcs.matchutils :: INFO :: Computing initial guess for X and Y shifts...',
+      '2026-02-17T21:50:27.205Z :: tweakwcs.matchutils :: INFO :: Found initial X
+        and Y shifts of 0.01183, 0.01183 (arcsec) with significance of 107 and 107
+        matches.', '2026-02-17T21:50:27.205Z :: tweakwcs.wcsimage :: INFO :: Found
+        107 matches for ''GROUP ID: 987654''...', '2026-02-17T21:50:27.205Z :: tweakwcs.linearfit
+        :: INFO :: Performing ''rshift'' fit', '2026-02-17T21:50:27.206Z :: tweakwcs.wcsimage
+        :: INFO :: Computed ''rshift'' fit for GROUP ID: 987654:', '2026-02-17T21:50:27.206Z
+        :: tweakwcs.wcsimage :: INFO :: XSH: 0.000272071  YSH: 6.34713e-05    ROT:
+        2.84434e-05    SCALE: 1', '2026-02-17T21:50:27.206Z :: tweakwcs.wcsimage ::
+        INFO :: ', '2026-02-17T21:50:27.206Z :: tweakwcs.wcsimage :: INFO :: FIT RMSE:
+        0.00208571   FIT MAE: 0.00171111', '2026-02-17T21:50:27.206Z :: tweakwcs.wcsimage
+        :: INFO :: Final solution based on 103 objects.', '2026-02-17T21:50:27.224Z
+        :: tweakwcs.imalign :: INFO ::  ', '2026-02-17T21:50:27.224Z :: tweakwcs.imalign
+        :: INFO :: ***** tweakwcs.imalign.align_wcs() ended on 2026-02-17 16:50:27.224039',
+      '2026-02-17T21:50:27.224Z :: tweakwcs.imalign :: INFO :: ***** tweakwcs.imalign.align_wcs()
+        TOTAL RUN TIME: 0:00:00.110323', '2026-02-17T21:50:27.224Z :: tweakwcs.imalign
+        :: INFO ::  ', '2026-02-17T21:50:27.226Z :: stcal.alignment.util :: INFO ::
+        Update S_REGION to POLYGON ICRS  269.986946024 65.974265006 269.986740333
+        66.097228503 269.676782993 66.097195626 269.680114359 65.974342053', '2026-02-17T21:50:27.226Z
+        :: romancal.assign_wcs.utils :: INFO :: S_REGION VALUES: POLYGON ICRS  269.986946024
+        65.974265006 269.986740333 66.097228503 269.676782993 66.097195626 269.680114359
+        65.974342053', '2026-02-17T21:50:27.226Z :: romancal.assign_wcs.utils :: INFO
+        :: Update S_REGION to POLYGON ICRS  269.986946024 65.974265006 269.986740333
+        66.097228503 269.676782993 66.097195626 269.680114359 65.974342053', '2026-02-17T21:50:27.240Z
+        :: stpipe.step :: INFO :: Step tweakreg done', '2026-02-17T21:50:27.240Z ::
+        romancal.pipeline.exposure_pipeline :: INFO :: Roman exposure calibration
+        pipeline ending...', '2026-02-17T21:50:27.332Z :: stpipe.step :: INFO :: Saved
+        model in r0000101001001001001_0001_wfi01_f158_wcs.asdf']
+    cal_step: {assign_wcs: COMPLETE, dark: COMPLETE, dark_decay: COMPLETE, dq_init: COMPLETE,
+      flat_field: COMPLETE, flux: INCOMPLETE, linearity: COMPLETE, outlier_detection: INCOMPLETE,
+      photom: COMPLETE, ramp_fit: COMPLETE, refpix: COMPLETE, saturation: COMPLETE,
+      skymatch: INCOMPLETE, source_catalog: COMPLETE, tweakreg: COMPLETE, wfi18_transient: N/A}
+    calibration_software_name: RomanCAL
+    calibration_software_version: 0.22.0
+    coordinates: {reference_frame: ICRS}
+    ephemeris: {ephemeris_reference_frame: '?', spatial_x: -52044463.08234682, spatial_y: -131312741.31107728,
+      spatial_z: -56910542.46910208, time: 61557.0, type: DEFINITIVE, velocity_x: 27.507907094602988,
+      velocity_y: -9.484643417914059, velocity_z: -4.112149494244798}
+    exposure:
+      data_problem: '?'
+      effective_exposure_time: 133.76
+      end_time: !time/time-1.4.0 2027-06-01T00:02:13.760
+      engineering_quality: OK
+      exposure_time: 133.76
+      frame_time: 3.04
+      ma_table_id: SCI0109
+      ma_table_name: '?'
+      ma_table_number: 109
+      mid_time: !time/time-1.4.0 2027-06-01T00:01:06.880
+      nresultants: 10
+      read_pattern:
+      - [1]
+      - [2, 3]
+      - [5, 6, 7]
+      - [10, 11, 12, 13]
+      - [15, 16, 17, 18, 19, 20]
+      - [21, 22, 23, 24, 25, 26]
+      - [27, 28, 29, 30, 31, 32]
+      - [33, 34, 35, 36, 37, 38]
+      - [39, 40, 41, 42, 43]
+      - [44]
+      start_time: !time/time-1.4.0 2027-06-01T00:00:00.000
+      truncated: false
+      type: WFI_IMAGE
+    file_date: !time/time-1.4.0 {base_format: datetime, value: '2026-02-17T21:50:27.333'}
+    filename: r0000101001001001001_0001_wfi01_f158_cal.asdf
+    guide_star: {epoch: '?', guide_mode: WIM-ACQ, guide_star_id: '?', guide_window_id: '?',
+      window_xstart: -999999, window_xstop: -999983, window_ystart: -999999, window_ystop: -999983}
+    instrument: {detector: WFI01, name: WFI, optical_element: F158}
+    model_type: ImageModel
+    observation: {execution_plan: 1, exposure: 1, observation: 1, observation_id: '00001010010010010010001',
+      pass: 1, program: 1, segment: 1, visit: 1, visit_file_activity: '01', visit_file_group: 0,
+      visit_file_sequence: 1, visit_id: '0000101001001001001', wfi_parallel: false}
+    origin: STSCI/SOC
+    photometry: {conversion_megajanskys: 0.7367810113020512, conversion_megajanskys_uncertainty: 0.02866405239530676,
+      pixel_area: 2.8083389953727505e-13}
+    pointing: {dec_v1: 66.49600017133261, pa_aperture: 0, pa_v3: 59.999051896586074,
+      pointing_engineering_source: CALCULATED, ra_v1: 269.99997982111586, target_aperture: WFI_CEN,
+      target_dec: 66.0, target_ra: 270.0}
+    prd_version: '?'
+    product_type: l2
+    program: {category: '?', investigator_name: '?', science_category: '?', subcategory: CAL,
+      title: '?'}
+    rcs: {active: false, bank: '1', counts: -999999, electronics: A, led: '1'}
+    ref_file:
+      apcorr: crds://roman_wfi_apcorr_0002.asdf
+      area: '?'
+      crds: {context: roman_0046.pmap, version: 13.1.3}
+      dark: crds://roman_wfi_dark_0364.asdf
+      darkdecaysignal: crds://roman_wfi_darkdecaysignal_0001.asdf
+      distortion: crds://roman_wfi_distortion_0014.asdf
+      epsf: crds://roman_wfi_epsf_0182.asdf
+      flat: crds://roman_wfi_flat_0166.asdf
+      gain: crds://roman_wfi_gain_0022.asdf
+      integralnonlinearity: crds://roman_wfi_integralnonlinearity_0003.asdf
+      inverse_linearity: '?'
+      inverselinearity: crds://roman_wfi_inverselinearity_0042.asdf
+      linearity: crds://roman_wfi_linearity_0039.asdf
+      mask: crds://roman_wfi_mask_0030.asdf
+      photom: crds://roman_wfi_photom_0040.asdf
+      readnoise: crds://roman_wfi_readnoise_0024.asdf
+      refpix: crds://roman_wfi_refpix_0013.asdf
+      saturation: crds://roman_wfi_saturation_0031.asdf
+    sdf_software_version: '?'
+    source_catalog: {tweakreg_catalog_name: r0000101001001001001_0001_wfi01_f158_cat.parquet}
+    telescope: ROMAN
+    velocity_aberration: {dec_reference: 66.0355095513252, ra_reference: 269.8325254855773,
+      scale_factor: 1.0000003455620605}
+    visit:
+      dither:
+        executed_pattern: []
+        primary_name: '?'
+        subpixel_name: '?'
+      internal_target: false
+      nexposures: -999999
+      start_time: !time/time-1.4.0 2020-01-01T00:00:00.000
+      status: SUCCESSFUL
+      type: GENERAL_ENGINEERING
+    wcs: !<tag:stsci.edu:gwcs/wcs-1.4.0>
+      name: FIT-LVL2-GAIADR3_S3
+      pixel_shape: null
+      steps:
+      - !<tag:stsci.edu:gwcs/step-1.3.0>
+        frame: !<tag:stsci.edu:gwcs/frame2d-1.2.0>
+          axes_names: [x, y]
+          axes_order: [0, 1]
+          axis_physical_types: ['custom:x', 'custom:y']
+          name: detector
+          unit: [!unit/unit-1.0.0 pixel, !unit/unit-1.0.0 pixel]
+        transform: !transform/compose-1.3.0
+          bounding_box: !transform/property/bounding_box-1.1.0
+            ignore: []
+            intervals:
+              x0: [-0.5, 4087.5]
+              x1: [-0.5, 4087.5]
+            order: F
+          forward:
+          - !transform/compose-1.3.0
+            forward:
+            - !transform/compose-1.3.0
+              forward:
+              - !transform/concatenate-1.3.0
+                forward:
+                - &id001 !transform/shift-1.3.0
+                  inputs: [x]
+                  offset: 1.0
+                  outputs: [y]
+                - *id001
+                inputs: [x0, x1]
+                outputs: [y0, y1]
+              - !transform/concatenate-1.3.0
+                forward:
+                - !transform/shift-1.3.0
+                  inputs: [x]
+                  offset: -2044.5
+                  outputs: [y]
+                - !transform/shift-1.3.0
+                  inputs: [x]
+                  offset: -2044.5
+                  outputs: [y]
+                inputs: [x0, x1]
+                outputs: [y0, y1]
+              inputs: [x0, x1]
+              outputs: [y0, y1]
+            - !transform/compose-1.3.0
+              forward:
+              - !transform/compose-1.3.0
+                forward:
+                - !transform/remap_axes-1.4.0
+                  inputs: [x0, x1]
+                  mapping: [0, 1, 0, 1]
+                  outputs: [x0, x1, x2, x3]
+                - !transform/concatenate-1.3.0
+                  forward:
+                  - !transform/polynomial-1.2.0
+                    coefficients: !core/ndarray-1.1.0
+                      source: 0
+                      datatype: float64
+                      byteorder: little
+                      shape: [6, 6]
+                    domain:
+                    - [-1, 1]
+                    - [-1, 1]
+                    inputs: [x, y]
+                    outputs: [z]
+                    window:
+                    - [-1, 1]
+                    - [-1, 1]
+                  - !transform/polynomial-1.2.0
+                    coefficients: !core/ndarray-1.1.0
+                      source: 1
+                      datatype: float64
+                      byteorder: little
+                      shape: [6, 6]
+                    domain:
+                    - [-1, 1]
+                    - [-1, 1]
+                    inputs: [x, y]
+                    outputs: [z]
+                    window:
+                    - [-1, 1]
+                    - [-1, 1]
+                  inputs: [x0, y0, x1, y1]
+                  outputs: [z0, z1]
+                inputs: [x0, x1]
+                inverse: !transform/compose-1.3.0
+                  forward:
+                  - !transform/remap_axes-1.4.0
+                    inputs: [x0, x1]
+                    mapping: [0, 1, 0, 1]
+                    outputs: [x0, x1, x2, x3]
+                  - !transform/concatenate-1.3.0
+                    forward:
+                    - !transform/polynomial-1.2.0
+                      coefficients: !core/ndarray-1.1.0
+                        source: 2
+                        datatype: float64
+                        byteorder: little
+                        shape: [6, 6]
+                      domain:
+                      - [-1, 1]
+                      - [-1, 1]
+                      inputs: [x, y]
+                      outputs: [z]
+                      window:
+                      - [-1, 1]
+                      - [-1, 1]
+                    - !transform/polynomial-1.2.0
+                      coefficients: !core/ndarray-1.1.0
+                        source: 3
+                        datatype: float64
+                        byteorder: little
+                        shape: [6, 6]
+                      domain:
+                      - [-1, 1]
+                      - [-1, 1]
+                      inputs: [x, y]
+                      outputs: [z]
+                      window:
+                      - [-1, 1]
+                      - [-1, 1]
+                    inputs: [x0, y0, x1, y1]
+                    outputs: [z0, z1]
+                  inputs: [x0, x1]
+                  outputs: [z0, z1]
+                outputs: [z0, z1]
+              - !transform/compose-1.3.0
+                forward:
+                - !transform/remap_axes-1.4.0
+                  inputs: [x0, x1]
+                  mapping: [0, 1, 0, 1]
+                  outputs: [x0, x1, x2, x3]
+                - !transform/concatenate-1.3.0
+                  forward:
+                  - !transform/polynomial-1.2.0
+                    coefficients: !core/ndarray-1.1.0
+                      source: 4
+                      datatype: float64
+                      byteorder: little
+                      shape: [2, 2]
+                    domain:
+                    - [-1, 1]
+                    - [-1, 1]
+                    inputs: [x, y]
+                    outputs: [z]
+                    window:
+                    - [-1, 1]
+                    - [-1, 1]
+                  - !transform/polynomial-1.2.0
+                    coefficients: !core/ndarray-1.1.0
+                      source: 5
+                      datatype: float64
+                      byteorder: little
+                      shape: [2, 2]
+                    domain:
+                    - [-1, 1]
+                    - [-1, 1]
+                    inputs: [x, y]
+                    outputs: [z]
+                    window:
+                    - [-1, 1]
+                    - [-1, 1]
+                  inputs: [x0, y0, x1, y1]
+                  outputs: [z0, z1]
+                inputs: [x0, x1]
+                inverse: !transform/compose-1.3.0
+                  forward:
+                  - !transform/remap_axes-1.4.0
+                    inputs: [x0, x1]
+                    mapping: [0, 1, 0, 1]
+                    outputs: [x0, x1, x2, x3]
+                  - !transform/concatenate-1.3.0
+                    forward:
+                    - !transform/polynomial-1.2.0
+                      coefficients: !core/ndarray-1.1.0
+                        source: 6
+                        datatype: float64
+                        byteorder: little
+                        shape: [2, 2]
+                      domain:
+                      - [-1, 1]
+                      - [-1, 1]
+                      inputs: [x, y]
+                      outputs: [z]
+                      window:
+                      - [-1, 1]
+                      - [-1, 1]
+                    - !transform/polynomial-1.2.0
+                      coefficients: !core/ndarray-1.1.0
+                        source: 7
+                        datatype: float64
+                        byteorder: little
+                        shape: [2, 2]
+                      domain:
+                      - [-1, 1]
+                      - [-1, 1]
+                      inputs: [x, y]
+                      outputs: [z]
+                      window:
+                      - [-1, 1]
+                      - [-1, 1]
+                    inputs: [x0, y0, x1, y1]
+                    outputs: [z0, z1]
+                  inputs: [x0, x1]
+                  outputs: [z0, z1]
+                outputs: [z0, z1]
+              inputs: [x0, x1]
+              outputs: [z0, z1]
+            inputs: [x0, x1]
+            outputs: [z0, z1]
+          - !transform/concatenate-1.3.0
+            forward:
+            - !transform/shift-1.3.0
+              inputs: [x]
+              offset: 1312.9491452484797
+              outputs: [y]
+            - !transform/shift-1.3.0
+              inputs: [x]
+              offset: -1040.7853726755036
+              outputs: [y]
+            inputs: [x0, x1]
+            outputs: [y0, y1]
+          inputs: [x0, x1]
+          outputs: [y0, y1]
+      - !<tag:stsci.edu:gwcs/step-1.3.0>
+        frame: !<tag:stsci.edu:gwcs/frame2d-1.2.0>
+          axes_names: [v2, v3]
+          axes_order: [0, 1]
+          axis_physical_types: ['custom:v2', 'custom:v3']
+          name: v2v3
+          unit: [!unit/unit-1.0.0 arcsec, !unit/unit-1.0.0 arcsec]
+        transform: !transform/compose-1.3.0
+          forward:
+          - !transform/concatenate-1.3.0
+            forward:
+            - !transform/scale-1.3.0
+              factor: 1.0000003455620605
+              inputs: [x]
+              name: dva_scale_v2
+              outputs: [y]
+            - !transform/scale-1.3.0
+              factor: 1.0000003455620605
+              inputs: [x]
+              name: dva_scale_v3
+              outputs: [y]
+            inputs: [x0, x1]
+            outputs: [y0, y1]
+          - !transform/concatenate-1.3.0
+            forward:
+            - !transform/shift-1.3.0
+              inputs: [x]
+              name: dva_v2_shift
+              offset: -0.0004537054119925875
+              outputs: [y]
+            - !transform/shift-1.3.0
+              inputs: [x]
+              name: dva_v3_shift
+              offset: 0.0003596559379428446
+              outputs: [y]
+            inputs: [x0, x1]
+            outputs: [y0, y1]
+          inputs: [x0, x1]
+          name: DVA_Correction
+          outputs: [y0, y1]
+      - !<tag:stsci.edu:gwcs/step-1.3.0>
+        frame: !<tag:stsci.edu:gwcs/frame2d-1.2.0>
+          axes_names: [v2, v3]
+          axes_order: [0, 1]
+          axis_physical_types: ['custom:v2', 'custom:v3']
+          name: v2v3vacorr
+          unit: [!unit/unit-1.0.0 arcsec, !unit/unit-1.0.0 arcsec]
+        transform: !transform/compose-1.3.0
+          forward:
+          - !transform/compose-1.3.0
+            forward:
+            - !transform/compose-1.3.0
+              forward:
+              - !transform/compose-1.3.0
+                forward:
+                - !transform/compose-1.3.0
+                  forward:
+                  - !transform/compose-1.3.0
+                    forward:
+                    - !transform/compose-1.3.0
+                      forward:
+                      - !transform/compose-1.3.0
+                        forward:
+                        - &id004 !transform/concatenate-1.3.0
+                          forward:
+                          - &id002 !transform/scale-1.3.0
+                            factor: 0.0002777777777777778
+                            inputs: [x]
+                            name: arcsec_to_deg_1D
+                            outputs: [y]
+                          - *id002
+                          inputs: [x0, x1]
+                          name: arcsec_to_deg_2D
+                          outputs: [y0, y1]
+                        - &id005 !<tag:stsci.edu:gwcs/spherical_cartesian-1.3.0>
+                          inputs: [lon, lat]
+                          name: s2c
+                          outputs: [x, y, z]
+                          transform_type: spherical_to_cartesian
+                          wrap_lon_at: 180
+                        inputs: [x0, x1]
+                        outputs: [x, y, z]
+                      - &id006 !transform/rotate_sequence_3d-1.1.0
+                        angles: [0.3647080959023555, 0.28910704796541764, 59.846679364670365]
+                        axes_order: zyx
+                        inputs: [x, y, z]
+                        name: det_to_optic_axis
+                        outputs: [x, y, z]
+                        rotation_type: cartesian
+                      inputs: [x0, x1]
+                      outputs: [x, y, z]
+                    - &id007 !transform/compose-1.3.0
+                      forward:
+                      - !transform/divide-1.3.0
+                        forward:
+                        - !transform/remap_axes-1.4.0
+                          inputs: [x0, x1, x2]
+                          mapping: [0, 1, 2]
+                          name: xyz
+                          outputs: [x0, x1, x2]
+                        - !transform/remap_axes-1.4.0
+                          inputs: [x0, x1, x2]
+                          mapping: [0, 0, 0]
+                          n_inputs: 3
+                          name: xxx
+                          outputs: [x0, x1, x2]
+                        inputs: [x0, x1, x2]
+                        outputs: [x0, x1, x2]
+                      - !transform/remap_axes-1.4.0
+                        inputs: [x0, x1, x2]
+                        mapping: [1, 2]
+                        name: xtyt
+                        outputs: [x0, x1]
+                      inputs: [x0, x1, x2]
+                      name: Cartesian 3D to TAN
+                      outputs: [x0, x1]
+                    inputs: [x0, x1]
+                    outputs: [x0, x1]
+                  - !transform/affine-1.4.0
+                    inputs: [x, y]
+                    matrix: !core/ndarray-1.1.0
+                      source: 8
+                      datatype: float64
+                      byteorder: little
+                      shape: [2, 2]
+                    name: tp_affine
+                    outputs: [x, y]
+                    translation: !core/ndarray-1.1.0
+                      source: 9
+                      datatype: float64
+                      byteorder: little
+                      shape: [2]
+                  inputs: [x0, x1]
+                  outputs: [x, y]
+                - &id008 !transform/compose-1.3.0
+                  forward:
+                  - !transform/remap_axes-1.4.0
+                    inputs: [x0, x1]
+                    mapping: [0, 0, 1]
+                    name: xtyt2xyz
+                    outputs: [x0, x1, x2]
+                  - !transform/concatenate-1.3.0
+                    forward:
+                    - !transform/constant-1.5.0
+                      dimensions: 1
+                      inputs: [x]
+                      name: one
+                      outputs: [y]
+                      value: 1.0
+                    - !transform/identity-1.3.0
+                      inputs: [x0, x1]
+                      n_dims: 2
+                      name: I(2D)
+                      outputs: [x0, x1]
+                    inputs: [x, x0, x1]
+                    outputs: [y, x0, x1]
+                  inputs: [x0, x1]
+                  name: TAN to cartesian 3D
+                  outputs: [y, x0, x1]
+                inputs: [x0, x1]
+                outputs: [y, x0, x1]
+              - &id009 !transform/rotate_sequence_3d-1.1.0
+                angles: [-59.846679364670365, -0.28910704796541764, -0.3647080959023555]
+                axes_order: xyz
+                inputs: [x, y, z]
+                name: optic_axis_to_det
+                outputs: [x, y, z]
+                rotation_type: cartesian
+              inputs: [x0, x1]
+              outputs: [x, y, z]
+            - &id010 !<tag:stsci.edu:gwcs/spherical_cartesian-1.3.0>
+              inputs: [x, y, z]
+              name: c2s
+              outputs: [lon, lat]
+              transform_type: cartesian_to_spherical
+              wrap_lon_at: 180
+            inputs: [x0, x1]
+            outputs: [lon, lat]
+          - &id011 !transform/concatenate-1.3.0
+            forward:
+            - &id003 !transform/scale-1.3.0
+              factor: 3600.0
+              inputs: [x]
+              name: deg_to_arcsec_1D
+              outputs: [y]
+            - *id003
+            inputs: [x0, x1]
+            name: deg_to_arcsec_2D
+            outputs: [y0, y1]
+          inputs: [x0, x1]
+          inverse: !transform/compose-1.3.0
+            forward:
+            - !transform/compose-1.3.0
+              forward:
+              - !transform/compose-1.3.0
+                forward:
+                - !transform/compose-1.3.0
+                  forward:
+                  - !transform/compose-1.3.0
+                    forward:
+                    - !transform/compose-1.3.0
+                      forward:
+                      - !transform/compose-1.3.0
+                        forward:
+                        - !transform/compose-1.3.0
+                          forward:
+                          - *id004
+                          - *id005
+                          inputs: [x0, x1]
+                          outputs: [x, y, z]
+                        - *id006
+                        inputs: [x0, x1]
+                        outputs: [x, y, z]
+                      - *id007
+                      inputs: [x0, x1]
+                      outputs: [x0, x1]
+                    - !transform/affine-1.4.0
+                      inputs: [x, y]
+                      matrix: !core/ndarray-1.1.0
+                        source: 10
+                        datatype: float64
+                        byteorder: little
+                        shape: [2, 2]
+                      name: tp_affine_inv
+                      outputs: [x, y]
+                      translation: !core/ndarray-1.1.0
+                        source: 11
+                        datatype: float64
+                        byteorder: little
+                        shape: [2]
+                    inputs: [x0, x1]
+                    outputs: [x, y]
+                  - *id008
+                  inputs: [x0, x1]
+                  outputs: [y, x0, x1]
+                - *id009
+                inputs: [x0, x1]
+                outputs: [x, y, z]
+              - *id010
+              inputs: [x0, x1]
+              outputs: [lon, lat]
+            - *id011
+            inputs: [x0, x1]
+            name: Inverse JWST tangent-plane linear correction. v1
+            outputs: [y0, y1]
+          name: JWST tangent-plane linear correction. v1
+          outputs: [y0, y1]
+      - !<tag:stsci.edu:gwcs/step-1.3.0>
+        frame: !<tag:stsci.edu:gwcs/frame2d-1.2.0>
+          axes_names: [v2, v3]
+          axes_order: [0, 1]
+          axis_physical_types: ['custom:v2', 'custom:v3']
+          name: v2v3corr
+          unit: [!unit/unit-1.0.0 arcsec, !unit/unit-1.0.0 arcsec]
+        transform: !transform/compose-1.3.0
+          forward:
+          - !transform/compose-1.3.0
+            forward:
+            - !transform/compose-1.3.0
+              forward:
+              - !transform/concatenate-1.3.0
+                forward:
+                - !transform/scale-1.3.0
+                  factor: 0.0002777777777777778
+                  inputs: [x]
+                  outputs: [y]
+                - !transform/scale-1.3.0
+                  factor: 0.0002777777777777778
+                  inputs: [x]
+                  outputs: [y]
+                inputs: [x0, x1]
+                outputs: [y0, y1]
+              - !<tag:stsci.edu:gwcs/spherical_cartesian-1.3.0>
+                inputs: [lon, lat]
+                outputs: [x, y, z]
+                transform_type: spherical_to_cartesian
+                wrap_lon_at: 180
+              inputs: [x0, x1]
+              outputs: [x, y, z]
+            - !transform/rotate_sequence_3d-1.1.0
+              angles: [0.3647080959023555, 0.28910704796541764, 59.846679364670365,
+                66.0355095513252, -269.8325254855773]
+              axes_order: zyxyz
+              inputs: [x, y, z]
+              outputs: [x, y, z]
+              rotation_type: cartesian
+            inputs: [x0, x1]
+            outputs: [x, y, z]
+          - !<tag:stsci.edu:gwcs/spherical_cartesian-1.3.0>
+            inputs: [x, y, z]
+            outputs: [lon, lat]
+            transform_type: cartesian_to_spherical
+            wrap_lon_at: 360
+          inputs: [x0, x1]
+          name: v23tosky
+          outputs: [lon, lat]
+      - !<tag:stsci.edu:gwcs/step-1.3.0>
+        frame: !<tag:stsci.edu:gwcs/celestial_frame-1.2.0>
+          axes_names: [lon, lat]
+          axes_order: [0, 1]
+          axis_physical_types: [pos.eq.ra, pos.eq.dec]
+          name: world
+          reference_frame: !<tag:astropy.org:astropy/coordinates/frames/icrs-1.1.0>
+            frame_attributes: {}
+          unit: [!unit/unit-1.0.0 deg, !unit/unit-1.0.0 deg]
+        transform: null
+    wcs_fit_results:
+      <rot>: 2.844338799936102e-05
+      <scale>: 1.0
+      center: [-4.380064906371088, -21.04270513531622]
+      fitgeom: rshift
+      mae: 0.0017111099766289842
+      matrix:
+      - [0.9999999999998768, 4.964307710110721e-07]
+      - [-4.964307710110721e-07, 0.9999999999998768]
+      nmatches: 107
+      proper: true
+      proper_rot: 2.844338799936102e-05
+      rmse: 0.0020857122860393922
+      rot: [2.844338799936102e-05, 2.844338799936102e-05]
+      scale: [1.0, 1.0]
+      shift: [0.0002720710784867062, 6.3471277370164e-05]
+      skew: 0.0
+      status: SUCCESS
+    wcsinfo: {aperture_name: WFI01_FULL, dec_ref: 66.0355095513252, ra_ref: 269.8325254855773,
+      roll_ref: 59.846679364670365, s_region: POLYGON ICRS  269.986946024 65.974265006
+        269.986740333 66.097228503 269.676782993 66.097195626 269.680114359 65.974342053,
+      v2_ref: 1312.9491452484797, v3_ref: -1040.7853726755036, v3yangle: -60.0, vparity: -1}
+...
+”BLK 0                             ˚©õ„õì-;Œ6√KL        œt—gd6?ÌI€°Ñ=æêÂ<ÆÄtΩÿHﬁÚjÙ∆ºéíœ¬®#<XT?º?[mÛÉ> ,5˛ÇBíΩ¿é%=O!∏< `ÓJà<        ﬁ≈0∫bæÄ´â;r™|=P&…œ„∞ºà	(}eº                 @ ò«,ÑΩ ú:Ñ< Ë=—«h$º                        ‡Ô‘–‚§ó<(‘ÜîÙº                                 hÀéËgº                                        ”BLK 0                             n‡‚^˜ß8z¥I·        x“o´k∏ª?¿yh$'å> ¥œ1‘´°Ω Ø8Öô< ê§π¯Ù*<¥´∂ö4?å†˛«Tæ¿añ“»s`ΩpÏ‡∞§ºÊI˜¡3b<        0(Zv&s> (å˛† ìΩ‡¡5¥∑º ¿ L
+<                 È€”ëªg=LêìQ≈ƒº8aØÔº                         tﬂÙ6¶< P⁄	äº                                †Kr˛0µÁª                                        ”BLK 0                             ò-urpˇ∑˛ÓŒ¬˚Keü        ~ÍE˙˛GùøyÙ£ñ.∑Ÿ>’A,c@>©¥`€"»=øp›Äk–VΩ‹ﬂ∂å0 "@*@ËNó=ø"ﬂ‹m{Qa>]R™∞∫ΩtyÇ_IΩ        ˆBÚØ˚∞˙>#⁄50vKæœh–rÙŒ∞=˜∂’¸˝N=                !öŒ€ÔÉQ>…ﬁ|YòµòΩ∞§~•SjV=                        ˆ˙π†ËìΩ±6-J
+4=                                 VSÄF=                                        ”BLK 0                             ñ©ÿsŒHx¨k≈· ÍÈ        ı—ùgx"@≥XZ-¨%ø 6]TLJq>Äâbfn*ûΩ :¥πC _Ω∏@⁄∂ÒöøÙ‰‘Õ¶[Ò> ;‡∆¡™>hùÁ˚à¶=@£5ü_çDΩ        ÔÜxæ8ø Óˆ±Ωb>†∫#ñ´≤= 0ëüP>Ω                0[êfr%6æ∑Mëà‰Xƒ=&K>€ãA=                        @Œ_“å∂ßΩ “{/ìP=                                 Úh∫=                                        ”BLK 0                                Ø<Î ≈IIØÙ[PYR        ™LXËz∂Îø     ‡ø        ”BLK 0                                Ô[Ωñ_dy‘K4ﬁπ£é             ‡?™LXËz∂Îø        ”BLK 0                                Ø<Î ≈IIØÙ[PYR        ™LXËz∂Îø     ‡ø        ”BLK 0                                Ô[Ωñ_dy‘K4ﬁπ£é             ‡?™LXËz∂Îø        ”BLK 0                                ëA›	∫-kΩ˘?ätí‘Â•˚ˇˇˇˇÔ?^mæœN®†>ﬁ`œN®†æØ˚ˇˇˇˇÔ?”BLK 0                             ¡fëèYÃmÑØsi	VxÀÑ»Áå0©>£w!l%ı=”BLK 0                                @êsPªäF∏sWwÙ˝∞˚ˇˇˇˇÔ?_mæœN®†æﬂ`œN®†>¶˚ˇˇˇˇÔ?”BLK 0                             Ó‡p¢π3ÿ•˘‚S i‡`0©æ‹!io%ıΩ#ASDF BLOCK INDEX
+%YAML 1.1
+---
+- 53662
+- 54004
+- 54346
+- 54688
+- 55030
+- 55116
+- 55202
+- 55288
+- 55374
+- 55460
+- 55530
+- 55616
+...

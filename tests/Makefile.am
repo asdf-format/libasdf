@@ -354,6 +354,7 @@ EXTRA_DIST += \
     fixtures/info/exploded.info.txt \
     fixtures/info/float.info.txt \
     fixtures/info/int.info.txt \
+    fixtures/info/roman_l2_wcs.info.txt \
     fixtures/info/scalars.info.txt \
     fixtures/info/shared.info.txt \
     fixtures/info/stream.info.txt \
@@ -369,6 +370,7 @@ EXTRA_DIST += \
     fixtures/parse-minimal.asdf \
     fixtures/parse-minimal-empty-tree.asdf \
     fixtures/parse-minimal-extra-comment.asdf \
+    fixtures/roman_l2_wcs.asdf \
     fixtures/roman_wcs.asdf \
     fixtures/scalars.asdf \
     fixtures/scalars-out.asdf \

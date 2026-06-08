@@ -1,0 +1,1879 @@
+[1mroot[0m (tag:stsci.edu:asdf/core/asdf-1.1.0)
+[2m├─[0m[1masdf_library[0m (tag:stsci.edu:asdf/core/software-1.0.0)
+[2m│ ├─[0m[1mauthor[0m (scalar): The ASDF Developers
+[2m│ ├─[0m[1mhomepage[0m (scalar): http://github.com/asdf-format/asdf
+[2m│ ├─[0m[1mname[0m (scalar): asdf
+[2m│ └─[0m[1mversion[0m (scalar): 5.1.0
+[2m├─[0m[1mhistory[0m (mapping)
+[2m│ └─[0m[1mextensions[0m (sequence)
+[2m│   ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/core/extension_metadata-1.0.0)
+[2m│   │ ├─[0m[1mextension_class[0m (scalar): asdf.extension._manifest.ManifestExtension
+[2m│   │ ├─[0m[1mextension_uri[0m (scalar): asdf://stsci.edu/datamodels/roman/extensions/static-1.1.0
+[2m│   │ ├─[0m[1mmanifest_software[0m (tag:stsci.edu:asdf/core/software-1.0.0)
+[2m│   │ │ ├─[0m[1mname[0m (scalar): rad
+[2m│   │ │ └─[0m[1mversion[0m (scalar): 0.30.0
+[2m│   │ └─[0m[1msoftware[0m (tag:stsci.edu:asdf/core/software-1.0.0)
+[2m│   │   ├─[0m[1mname[0m (scalar): roman_datamodels
+[2m│   │   └─[0m[1mversion[0m (scalar): 0.30.0
+[2m│   ├─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/core/extension_metadata-1.0.0)
+[2m│   │ ├─[0m[1mextension_class[0m (scalar): asdf.extension._manifest.ManifestExtension
+[2m│   │ ├─[0m[1mextension_uri[0m (scalar): asdf://asdf-format.org/astronomy/gwcs/extensions/gwcs-1.4.0
+[2m│   │ ├─[0m[1mmanifest_software[0m (tag:stsci.edu:asdf/core/software-1.0.0)
+[2m│   │ │ ├─[0m[1mname[0m (scalar): asdf_wcs_schemas
+[2m│   │ │ └─[0m[1mversion[0m (scalar): 0.5.0
+[2m│   │ └─[0m[1msoftware[0m (tag:stsci.edu:asdf/core/software-1.0.0)
+[2m│   │   ├─[0m[1mname[0m (scalar): gwcs
+[2m│   │   └─[0m[1mversion[0m (scalar): 1.0.3
+[2m│   ├─[0m[2m[[0m[1m2[0m[2m][0m (tag:stsci.edu:asdf/core/extension_metadata-1.0.0)
+[2m│   │ ├─[0m[1mextension_class[0m (scalar): asdf.extension._manifest.ManifestExtension
+[2m│   │ ├─[0m[1mextension_uri[0m (scalar): asdf://asdf-format.org/transform/extensions/transform-1.6.0
+[2m│   │ ├─[0m[1mmanifest_software[0m (tag:stsci.edu:asdf/core/software-1.0.0)
+[2m│   │ │ ├─[0m[1mname[0m (scalar): asdf_transform_schemas
+[2m│   │ │ └─[0m[1mversion[0m (scalar): 0.6.0
+[2m│   │ └─[0m[1msoftware[0m (tag:stsci.edu:asdf/core/software-1.0.0)
+[2m│   │   ├─[0m[1mname[0m (scalar): asdf-astropy
+[2m│   │   └─[0m[1mversion[0m (scalar): 0.10.0
+[2m│   ├─[0m[2m[[0m[1m3[0m[2m][0m (tag:stsci.edu:asdf/core/extension_metadata-1.0.0)
+[2m│   │ ├─[0m[1mextension_class[0m (scalar): asdf.extension._manifest.ManifestExtension
+[2m│   │ ├─[0m[1mextension_uri[0m (scalar): asdf://asdf-format.org/core/extensions/core-1.6.0
+[2m│   │ ├─[0m[1mmanifest_software[0m (tag:stsci.edu:asdf/core/software-1.0.0)
+[2m│   │ │ ├─[0m[1mname[0m (scalar): asdf_standard
+[2m│   │ │ └─[0m[1mversion[0m (scalar): 1.5.0
+[2m│   │ └─[0m[1msoftware[0m (tag:stsci.edu:asdf/core/software-1.0.0)
+[2m│   │   ├─[0m[1mname[0m (scalar): asdf
+[2m│   │   └─[0m[1mversion[0m (scalar): 5.1.0
+[2m│   ├─[0m[2m[[0m[1m4[0m[2m][0m (tag:stsci.edu:asdf/core/extension_metadata-1.0.0)
+[2m│   │ ├─[0m[1mextension_class[0m (scalar): asdf.extension._manifest.ManifestExtension
+[2m│   │ ├─[0m[1mextension_uri[0m (scalar): asdf://astropy.org/astropy/extensions/units-1.3.0
+[2m│   │ └─[0m[1msoftware[0m (tag:stsci.edu:asdf/core/software-1.0.0)
+[2m│   │   ├─[0m[1mname[0m (scalar): asdf-astropy
+[2m│   │   └─[0m[1mversion[0m (scalar): 0.10.0
+[2m│   ├─[0m[2m[[0m[1m5[0m[2m][0m (tag:stsci.edu:asdf/core/extension_metadata-1.0.0)
+[2m│   │ ├─[0m[1mextension_class[0m (scalar): asdf.extension._manifest.ManifestExtension
+[2m│   │ ├─[0m[1mextension_uri[0m (scalar): asdf://asdf-format.org/astronomy/extensions/astronomy-1.2.0
+[2m│   │ ├─[0m[1mmanifest_software[0m (tag:stsci.edu:asdf/core/software-1.0.0)
+[2m│   │ │ ├─[0m[1mname[0m (scalar): asdf_standard
+[2m│   │ │ └─[0m[1mversion[0m (scalar): 1.5.0
+[2m│   │ └─[0m[1msoftware[0m (tag:stsci.edu:asdf/core/software-1.0.0)
+[2m│   │   ├─[0m[1mname[0m (scalar): asdf-astropy
+[2m│   │   └─[0m[1mversion[0m (scalar): 0.10.0
+[2m│   └─[0m[2m[[0m[1m6[0m[2m][0m (tag:stsci.edu:asdf/core/extension_metadata-1.0.0)
+[2m│     ├─[0m[1mextension_class[0m (scalar): asdf.extension._manifest.ManifestExtension
+[2m│     ├─[0m[1mextension_uri[0m (scalar): asdf://asdf-format.org/astronomy/coordinates/extensions/coordina...
+[2m│     ├─[0m[1mmanifest_software[0m (tag:stsci.edu:asdf/core/software-1.0.0)
+[2m│     │ ├─[0m[1mname[0m (scalar): asdf_coordinates_schemas
+[2m│     │ └─[0m[1mversion[0m (scalar): 0.5.1
+[2m│     └─[0m[1msoftware[0m (tag:stsci.edu:asdf/core/software-1.0.0)
+[2m│       ├─[0m[1mname[0m (scalar): asdf-astropy
+[2m│       └─[0m[1mversion[0m (scalar): 0.10.0
+[2m└─[0m[1mroman[0m (mapping)
+[2m  └─[0m[1mmeta[0m (mapping)
+[2m    ├─[0m[1mcal_logs[0m (sequence)
+[2m    │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 2026-02-17T21:46:21.496Z :: stpipe.step :: INFO :: Step Exposure...
+[2m    │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 2026-02-17T21:46:21.505Z :: stpipe.step :: INFO :: Step Exposure...
+[2m    │ ├─[0m[2m[[0m[1m2[0m[2m][0m (scalar): 2026-02-17T21:46:22.548Z :: stpipe.pipeline :: INFO :: Prefetchi...
+[2m    │ ├─[0m[2m[[0m[1m3[0m[2m][0m (scalar): 2026-02-17T21:46:22.550Z :: stpipe.pipeline :: INFO :: Prefetch ...
+[2m    │ ├─[0m[2m[[0m[1m4[0m[2m][0m (scalar): 2026-02-17T21:46:22.551Z :: stpipe.pipeline :: INFO :: Prefetch ...
+[2m    │ ├─[0m[2m[[0m[1m5[0m[2m][0m (scalar): 2026-02-17T21:46:22.551Z :: stpipe.pipeline :: INFO :: Prefetch ...
+[2m    │ ├─[0m[2m[[0m[1m6[0m[2m][0m (scalar): 2026-02-17T21:46:22.551Z :: stpipe.pipeline :: INFO :: Prefetch ...
+[2m    │ ├─[0m[2m[[0m[1m7[0m[2m][0m (scalar): 2026-02-17T21:46:22.551Z :: stpipe.pipeline :: INFO :: Prefetch ...
+[2m    │ ├─[0m[2m[[0m[1m8[0m[2m][0m (scalar): 2026-02-17T21:46:22.551Z :: stpipe.pipeline :: INFO :: Prefetch ...
+[2m    │ ├─[0m[2m[[0m[1m9[0m[2m][0m (scalar): 2026-02-17T21:46:22.551Z :: stpipe.pipeline :: INFO :: Prefetch ...
+[2m    │ ├─[0m[2m[[0m[1m10[0m[2m][0m (scalar): 2026-02-17T21:46:22.551Z :: stpipe.pipeline :: INFO :: Prefetch ...
+[2m    │ ├─[0m[2m[[0m[1m11[0m[2m][0m (scalar): 2026-02-17T21:46:22.551Z :: stpipe.pipeline :: INFO :: Prefetch ...
+[2m    │ ├─[0m[2m[[0m[1m12[0m[2m][0m (scalar): 2026-02-17T21:46:22.551Z :: stpipe.pipeline :: INFO :: Prefetch ...
+[2m    │ ├─[0m[2m[[0m[1m13[0m[2m][0m (scalar): 2026-02-17T21:46:22.551Z :: stpipe.pipeline :: INFO :: Prefetch ...
+[2m    │ ├─[0m[2m[[0m[1m14[0m[2m][0m (scalar): 2026-02-17T21:46:22.551Z :: stpipe.pipeline :: INFO :: Prefetch ...
+[2m    │ ├─[0m[2m[[0m[1m15[0m[2m][0m (scalar): 2026-02-17T21:46:22.551Z :: stpipe.pipeline :: INFO :: Prefetch ...
+[2m    │ ├─[0m[2m[[0m[1m16[0m[2m][0m (scalar): 2026-02-17T21:46:22.551Z :: stpipe.pipeline :: INFO :: Prefetch ...
+[2m    │ ├─[0m[2m[[0m[1m17[0m[2m][0m (scalar): 2026-02-17T21:46:22.551Z :: romancal.pipeline.exposure_pipeline ...
+[2m    │ ├─[0m[2m[[0m[1m18[0m[2m][0m (scalar): 2026-02-17T21:46:22.622Z :: stpipe.step :: INFO :: Step dq_init ...
+[2m    │ ├─[0m[2m[[0m[1m19[0m[2m][0m (scalar): 2026-02-17T21:46:22.914Z :: romancal.dq_init.dq_init_step :: INF...
+[2m    │ ├─[0m[2m[[0m[1m20[0m[2m][0m (scalar): 2026-02-17T21:46:22.997Z :: stpipe.step :: INFO :: Step dq_init ...
+[2m    │ ├─[0m[2m[[0m[1m21[0m[2m][0m (scalar): 2026-02-17T21:46:23.033Z :: stpipe.step :: INFO :: Step saturati...
+[2m    │ ├─[0m[2m[[0m[1m22[0m[2m][0m (scalar): 2026-02-17T21:46:23.034Z :: romancal.saturation.saturation_step ...
+[2m    │ ├─[0m[2m[[0m[1m23[0m[2m][0m (scalar): 2026-02-17T21:46:24.781Z :: stcal.saturation.saturation :: INFO ...
+[2m    │ ├─[0m[2m[[0m[1m24[0m[2m][0m (scalar): 2026-02-17T21:46:24.833Z :: stcal.saturation.saturation :: INFO ...
+[2m    │ ├─[0m[2m[[0m[1m25[0m[2m][0m (scalar): 2026-02-17T21:46:24.850Z :: stpipe.step :: INFO :: Step saturati...
+[2m    │ ├─[0m[2m[[0m[1m26[0m[2m][0m (scalar): 2026-02-17T21:46:24.925Z :: stpipe.step :: INFO :: Step refpix r...
+[2m    │ ├─[0m[2m[[0m[1m27[0m[2m][0m (scalar): 2026-02-17T21:46:24.925Z :: romancal.refpix.refpix_step :: DEBUG...
+[2m    │ ├─[0m[2m[[0m[1m28[0m[2m][0m (scalar): 2026-02-17T21:46:24.926Z :: romancal.refpix.refpix_step :: DEBUG...
+[2m    │ ├─[0m[2m[[0m[1m29[0m[2m][0m (scalar): 2026-02-17T21:46:24.942Z :: romancal.refpix.refpix_step :: DEBUG...
+[2m    │ ├─[0m[2m[[0m[1m30[0m[2m][0m (scalar): 2026-02-17T21:46:24.942Z :: romancal.refpix.refpix :: DEBUG :: R...
+[2m    │ ├─[0m[2m[[0m[1m31[0m[2m][0m (scalar): 2026-02-17T21:46:25.133Z :: romancal.refpix.refpix :: DEBUG :: R...
+[2m    │ ├─[0m[2m[[0m[1m32[0m[2m][0m (scalar): 2026-02-17T21:46:25.712Z :: romancal.refpix.refpix :: DEBUG :: R...
+[2m    │ ├─[0m[2m[[0m[1m33[0m[2m][0m (scalar): 2026-02-17T21:46:25.726Z :: py.warnings :: WARNING :: /Users/bgr...
+[2m    │ ├─[0m[2m[[0m[1m34[0m[2m][0m (scalar): 2026-02-17T21:46:25.874Z :: romancal.refpix.refpix :: DEBUG :: C...
+[2m    │ ├─[0m[2m[[0m[1m35[0m[2m][0m (scalar): 2026-02-17T21:46:26.196Z :: romancal.refpix.refpix :: DEBUG :: F...
+[2m    │ ├─[0m[2m[[0m[1m36[0m[2m][0m (scalar): 2026-02-17T21:46:29.314Z :: romancal.refpix.refpix :: DEBUG :: A...
+[2m    │ ├─[0m[2m[[0m[1m37[0m[2m][0m (scalar): 2026-02-17T21:46:29.395Z :: romancal.refpix.refpix :: DEBUG :: R...
+[2m    │ ├─[0m[2m[[0m[1m38[0m[2m][0m (scalar): 2026-02-17T21:46:29.417Z :: romancal.refpix.refpix :: DEBUG :: U...
+[2m    │ ├─[0m[2m[[0m[1m39[0m[2m][0m (scalar): 2026-02-17T21:46:29.441Z :: stpipe.step :: INFO :: Step refpix d...
+[2m    │ ├─[0m[2m[[0m[1m40[0m[2m][0m (scalar): 2026-02-17T21:46:29.476Z :: stpipe.step :: INFO :: Step dark_dec...
+[2m    │ ├─[0m[2m[[0m[1m41[0m[2m][0m (scalar): 2026-02-17T21:46:29.477Z :: romancal.dark_decay.dark_decay_step ...
+[2m    │ ├─[0m[2m[[0m[1m42[0m[2m][0m (scalar): 2026-02-17T21:46:34.587Z :: stpipe.step :: INFO :: Step dark_dec...
+[2m    │ ├─[0m[2m[[0m[1m43[0m[2m][0m (scalar): 2026-02-17T21:46:34.621Z :: stpipe.step :: INFO :: Step wfi18_tr...
+[2m    │ ├─[0m[2m[[0m[1m44[0m[2m][0m (scalar): 2026-02-17T21:46:34.621Z :: stpipe.step :: INFO :: Step wfi18_tr...
+[2m    │ ├─[0m[2m[[0m[1m45[0m[2m][0m (scalar): 2026-02-17T21:46:34.651Z :: stpipe.step :: INFO :: Step linearit...
+[2m    │ ├─[0m[2m[[0m[1m46[0m[2m][0m (scalar): 2026-02-17T21:46:34.655Z :: romancal.linearity.linearity_step ::...
+[2m    │ ├─[0m[2m[[0m[1m47[0m[2m][0m (scalar): 2026-02-17T21:46:34.655Z :: romancal.linearity.linearity_step ::...
+[2m    │ ├─[0m[2m[[0m[1m48[0m[2m][0m (scalar): 2026-02-17T21:46:34.655Z :: romancal.linearity.linearity_step ::...
+[2m    │ ├─[0m[2m[[0m[1m49[0m[2m][0m (scalar): 2026-02-17T21:46:41.801Z :: py.warnings :: WARNING :: /Users/bgr...
+[2m    │ ├─[0m[2m[[0m[1m50[0m[2m][0m (scalar): 2026-02-17T21:47:46.010Z :: romancal.linearity.linearity_step ::...
+[2m    │ ├─[0m[2m[[0m[1m51[0m[2m][0m (scalar): 2026-02-17T21:47:46.031Z :: stpipe.step :: INFO :: Step linearit...
+[2m    │ ├─[0m[2m[[0m[1m52[0m[2m][0m (scalar): 2026-02-17T21:47:46.068Z :: stpipe.step :: INFO :: Step rampfit ...
+[2m    │ ├─[0m[2m[[0m[1m53[0m[2m][0m (scalar): 2026-02-17T21:47:46.071Z :: romancal.ramp_fitting.ramp_fit_step ...
+[2m    │ ├─[0m[2m[[0m[1m54[0m[2m][0m (scalar): 2026-02-17T21:47:46.084Z :: romancal.ramp_fitting.ramp_fit_step ...
+[2m    │ ├─[0m[2m[[0m[1m55[0m[2m][0m (scalar): 2026-02-17T21:47:46.094Z :: romancal.ramp_fitting.ramp_fit_step ...
+[2m    │ ├─[0m[2m[[0m[1m56[0m[2m][0m (scalar): 2026-02-17T21:49:19.590Z :: romancal.ramp_fitting.ramp_fit_step ...
+[2m    │ ├─[0m[2m[[0m[1m57[0m[2m][0m (scalar): 2026-02-17T21:49:19.875Z :: py.warnings :: WARNING :: /Users/bgr...
+[2m    │ ├─[0m[2m[[0m[1m58[0m[2m][0m (scalar): 2026-02-17T21:49:19.887Z :: stpipe.step :: INFO :: Step rampfit ...
+[2m    │ ├─[0m[2m[[0m[1m59[0m[2m][0m (scalar): 2026-02-17T21:49:19.934Z :: stpipe.step :: INFO :: Step dark_cur...
+[2m    │ ├─[0m[2m[[0m[1m60[0m[2m][0m (scalar): 2026-02-17T21:49:19.936Z :: romancal.dark_current.dark_current_s...
+[2m    │ ├─[0m[2m[[0m[1m61[0m[2m][0m (scalar): 2026-02-17T21:49:20.066Z :: stpipe.step :: INFO :: Step dark_cur...
+[2m    │ ├─[0m[2m[[0m[1m62[0m[2m][0m (scalar): 2026-02-17T21:49:20.095Z :: stpipe.step :: INFO :: Step assign_w...
+[2m    │ ├─[0m[2m[[0m[1m63[0m[2m][0m (scalar): 2026-02-17T21:49:20.095Z :: romancal.assign_wcs.assign_wcs_step ...
+[2m    │ ├─[0m[2m[[0m[1m64[0m[2m][0m (scalar): 2026-02-17T21:49:20.096Z :: romancal.assign_wcs.assign_wcs_step ...
+[2m    │ ├─[0m[2m[[0m[1m65[0m[2m][0m (scalar): 2026-02-17T21:49:20.136Z :: stcal.alignment.util :: INFO :: Upda...
+[2m    │ ├─[0m[2m[[0m[1m66[0m[2m][0m (scalar): 2026-02-17T21:49:20.136Z :: romancal.assign_wcs.utils :: INFO ::...
+[2m    │ ├─[0m[2m[[0m[1m67[0m[2m][0m (scalar): 2026-02-17T21:49:20.136Z :: romancal.assign_wcs.utils :: INFO ::...
+[2m    │ ├─[0m[2m[[0m[1m68[0m[2m][0m (scalar): 2026-02-17T21:49:20.137Z :: stpipe.step :: INFO :: Step assign_w...
+[2m    │ ├─[0m[2m[[0m[1m69[0m[2m][0m (scalar): 2026-02-17T21:49:20.169Z :: stpipe.step :: INFO :: Step flatfiel...
+[2m    │ ├─[0m[2m[[0m[1m70[0m[2m][0m (scalar): 2026-02-17T21:49:20.370Z :: stpipe.step :: INFO :: Step flatfiel...
+[2m    │ ├─[0m[2m[[0m[1m71[0m[2m][0m (scalar): 2026-02-17T21:49:20.402Z :: stpipe.step :: INFO :: Step photom r...
+[2m    │ ├─[0m[2m[[0m[1m72[0m[2m][0m (scalar): 2026-02-17T21:49:20.415Z :: romancal.photom.photom :: DEBUG :: p...
+[2m    │ ├─[0m[2m[[0m[1m73[0m[2m][0m (scalar): 2026-02-17T21:49:20.416Z :: romancal.photom.photom :: INFO :: ph...
+[2m    │ ├─[0m[2m[[0m[1m74[0m[2m][0m (scalar): 2026-02-17T21:49:20.416Z :: romancal.photom.photom :: INFO :: un...
+[2m    │ ├─[0m[2m[[0m[1m75[0m[2m][0m (scalar): 2026-02-17T21:49:20.416Z :: stpipe.step :: INFO :: Step photom d...
+[2m    │ ├─[0m[2m[[0m[1m76[0m[2m][0m (scalar): 2026-02-17T21:49:20.449Z :: stpipe.step :: INFO :: Step source_c...
+[2m    │ ├─[0m[2m[[0m[1m77[0m[2m][0m (scalar): 2026-02-17T21:49:20.450Z :: romancal.source_catalog.source_catal...
+[2m    │ ├─[0m[2m[[0m[1m78[0m[2m][0m (scalar): 2026-02-17T21:49:22.282Z :: romancal.source_catalog.psf :: INFO ...
+[2m    │ ├─[0m[2m[[0m[1m79[0m[2m][0m (scalar): 2026-02-17T21:49:22.406Z :: romancal.source_catalog.source_catal...
+[2m    │ ├─[0m[2m[[0m[1m80[0m[2m][0m (scalar): 2026-02-17T21:49:24.878Z :: romancal.source_catalog.source_catal...
+[2m    │ ├─[0m[2m[[0m[1m81[0m[2m][0m (scalar): 2026-02-17T21:49:25.828Z :: romancal.source_catalog.source_catal...
+[2m    │ ├─[0m[2m[[0m[1m82[0m[2m][0m (scalar): 2026-02-17T21:49:27.379Z :: romancal.source_catalog.detection ::...
+[2m    │ ├─[0m[2m[[0m[1m83[0m[2m][0m (scalar): 2026-02-17T21:49:27.380Z :: romancal.source_catalog.source_catal...
+[2m    │ ├─[0m[2m[[0m[1m84[0m[2m][0m (scalar): 2026-02-17T21:49:27.398Z :: romancal.source_catalog.source_catal...
+[2m    │ ├─[0m[2m[[0m[1m85[0m[2m][0m (scalar): 2026-02-17T21:49:27.426Z :: romancal.source_catalog.source_catal...
+[2m    │ ├─[0m[2m[[0m[1m86[0m[2m][0m (scalar): 2026-02-17T21:49:27.673Z :: romancal.source_catalog.source_catal...
+[2m    │ ├─[0m[2m[[0m[1m87[0m[2m][0m (scalar): 2026-02-17T21:49:27.730Z :: romancal.source_catalog.source_catal...
+[2m    │ ├─[0m[2m[[0m[1m88[0m[2m][0m (scalar): 2026-02-17T21:49:27.882Z :: romancal.source_catalog.source_catal...
+[2m    │ ├─[0m[2m[[0m[1m89[0m[2m][0m (scalar): 2026-02-17T21:49:27.883Z :: romancal.source_catalog.source_catal...
+[2m    │ ├─[0m[2m[[0m[1m90[0m[2m][0m (scalar): 2026-02-17T21:49:28.986Z :: stpipe.step :: INFO :: Saved model i...
+[2m    │ ├─[0m[2m[[0m[1m91[0m[2m][0m (scalar): 2026-02-17T21:49:29.734Z :: stpipe.step :: INFO :: Saved model i...
+[2m    │ ├─[0m[2m[[0m[1m92[0m[2m][0m (scalar): 2026-02-17T21:49:29.791Z :: stpipe.step :: INFO :: Step source_c...
+[2m    │ ├─[0m[2m[[0m[1m93[0m[2m][0m (scalar): 2026-02-17T21:49:29.835Z :: stpipe.step :: INFO :: Step tweakreg...
+[2m    │ ├─[0m[2m[[0m[1m94[0m[2m][0m (scalar): 2026-02-17T21:49:29.835Z :: romancal.tweakreg.tweakreg_step :: I...
+[2m    │ ├─[0m[2m[[0m[1m95[0m[2m][0m (scalar): 2026-02-17T21:49:29.835Z :: romancal.tweakreg.tweakreg_step :: I...
+[2m    │ ├─[0m[2m[[0m[1m96[0m[2m][0m (scalar): 2026-02-17T21:49:29.835Z :: romancal.tweakreg.tweakreg_step :: I...
+[2m    │ ├─[0m[2m[[0m[1m97[0m[2m][0m (scalar): 2026-02-17T21:49:29.835Z :: romancal.tweakreg.tweakreg_step :: I...
+[2m    │ ├─[0m[2m[[0m[1m98[0m[2m][0m (scalar): 2026-02-17T21:49:29.908Z :: romancal.tweakreg.tweakreg_step :: I...
+[2m    │ ├─[0m[2m[[0m[1m99[0m[2m][0m (scalar): 2026-02-17T21:50:27.113Z :: tweakwcs.imalign :: INFO ::  
+[2m    │ ├─[0m[2m[[0m[1m100[0m[2m][0m (scalar): 2026-02-17T21:50:27.113Z :: tweakwcs.imalign :: INFO :: ***** tw...
+[2m    │ ├─[0m[2m[[0m[1m101[0m[2m][0m (scalar): 2026-02-17T21:50:27.113Z :: tweakwcs.imalign :: INFO ::       Ve...
+[2m    │ ├─[0m[2m[[0m[1m102[0m[2m][0m (scalar): 2026-02-17T21:50:27.113Z :: tweakwcs.imalign :: INFO ::  
+[2m    │ ├─[0m[2m[[0m[1m103[0m[2m][0m (scalar): 2026-02-17T21:50:27.178Z :: tweakwcs.imalign :: INFO :: Aligning...
+[2m    │ ├─[0m[2m[[0m[1m104[0m[2m][0m (scalar): 2026-02-17T21:50:27.204Z :: tweakwcs.matchutils :: INFO :: Match...
+[2m    │ ├─[0m[2m[[0m[1m105[0m[2m][0m (scalar): 2026-02-17T21:50:27.204Z :: tweakwcs.matchutils :: INFO :: Compu...
+[2m    │ ├─[0m[2m[[0m[1m106[0m[2m][0m (scalar): 2026-02-17T21:50:27.205Z :: tweakwcs.matchutils :: INFO :: Found...
+[2m    │ ├─[0m[2m[[0m[1m107[0m[2m][0m (scalar): 2026-02-17T21:50:27.205Z :: tweakwcs.wcsimage :: INFO :: Found 1...
+[2m    │ ├─[0m[2m[[0m[1m108[0m[2m][0m (scalar): 2026-02-17T21:50:27.205Z :: tweakwcs.linearfit :: INFO :: Perfor...
+[2m    │ ├─[0m[2m[[0m[1m109[0m[2m][0m (scalar): 2026-02-17T21:50:27.206Z :: tweakwcs.wcsimage :: INFO :: Compute...
+[2m    │ ├─[0m[2m[[0m[1m110[0m[2m][0m (scalar): 2026-02-17T21:50:27.206Z :: tweakwcs.wcsimage :: INFO :: XSH: 0....
+[2m    │ ├─[0m[2m[[0m[1m111[0m[2m][0m (scalar): 2026-02-17T21:50:27.206Z :: tweakwcs.wcsimage :: INFO :: 
+[2m    │ ├─[0m[2m[[0m[1m112[0m[2m][0m (scalar): 2026-02-17T21:50:27.206Z :: tweakwcs.wcsimage :: INFO :: FIT RMS...
+[2m    │ ├─[0m[2m[[0m[1m113[0m[2m][0m (scalar): 2026-02-17T21:50:27.206Z :: tweakwcs.wcsimage :: INFO :: Final s...
+[2m    │ ├─[0m[2m[[0m[1m114[0m[2m][0m (scalar): 2026-02-17T21:50:27.224Z :: tweakwcs.imalign :: INFO ::  
+[2m    │ ├─[0m[2m[[0m[1m115[0m[2m][0m (scalar): 2026-02-17T21:50:27.224Z :: tweakwcs.imalign :: INFO :: ***** tw...
+[2m    │ ├─[0m[2m[[0m[1m116[0m[2m][0m (scalar): 2026-02-17T21:50:27.224Z :: tweakwcs.imalign :: INFO :: ***** tw...
+[2m    │ ├─[0m[2m[[0m[1m117[0m[2m][0m (scalar): 2026-02-17T21:50:27.224Z :: tweakwcs.imalign :: INFO ::  
+[2m    │ ├─[0m[2m[[0m[1m118[0m[2m][0m (scalar): 2026-02-17T21:50:27.226Z :: stcal.alignment.util :: INFO :: Upda...
+[2m    │ ├─[0m[2m[[0m[1m119[0m[2m][0m (scalar): 2026-02-17T21:50:27.226Z :: romancal.assign_wcs.utils :: INFO ::...
+[2m    │ ├─[0m[2m[[0m[1m120[0m[2m][0m (scalar): 2026-02-17T21:50:27.226Z :: romancal.assign_wcs.utils :: INFO ::...
+[2m    │ ├─[0m[2m[[0m[1m121[0m[2m][0m (scalar): 2026-02-17T21:50:27.240Z :: stpipe.step :: INFO :: Step tweakreg...
+[2m    │ ├─[0m[2m[[0m[1m122[0m[2m][0m (scalar): 2026-02-17T21:50:27.240Z :: romancal.pipeline.exposure_pipeline ...
+[2m    │ └─[0m[2m[[0m[1m123[0m[2m][0m (scalar): 2026-02-17T21:50:27.332Z :: stpipe.step :: INFO :: Saved model i...
+[2m    ├─[0m[1mcal_step[0m (mapping)
+[2m    │ ├─[0m[1massign_wcs[0m (scalar): COMPLETE
+[2m    │ ├─[0m[1mdark[0m (scalar): COMPLETE
+[2m    │ ├─[0m[1mdark_decay[0m (scalar): COMPLETE
+[2m    │ ├─[0m[1mdq_init[0m (scalar): COMPLETE
+[2m    │ ├─[0m[1mflat_field[0m (scalar): COMPLETE
+[2m    │ ├─[0m[1mflux[0m (scalar): INCOMPLETE
+[2m    │ ├─[0m[1mlinearity[0m (scalar): COMPLETE
+[2m    │ ├─[0m[1moutlier_detection[0m (scalar): INCOMPLETE
+[2m    │ ├─[0m[1mphotom[0m (scalar): COMPLETE
+[2m    │ ├─[0m[1mramp_fit[0m (scalar): COMPLETE
+[2m    │ ├─[0m[1mrefpix[0m (scalar): COMPLETE
+[2m    │ ├─[0m[1msaturation[0m (scalar): COMPLETE
+[2m    │ ├─[0m[1mskymatch[0m (scalar): INCOMPLETE
+[2m    │ ├─[0m[1msource_catalog[0m (scalar): COMPLETE
+[2m    │ ├─[0m[1mtweakreg[0m (scalar): COMPLETE
+[2m    │ └─[0m[1mwfi18_transient[0m (scalar): N/A
+[2m    ├─[0m[1mcalibration_software_name[0m (scalar): RomanCAL
+[2m    ├─[0m[1mcalibration_software_version[0m (scalar): 0.22.0
+[2m    ├─[0m[1mcoordinates[0m (mapping)
+[2m    │ └─[0m[1mreference_frame[0m (scalar): ICRS
+[2m    ├─[0m[1mephemeris[0m (mapping)
+[2m    │ ├─[0m[1mephemeris_reference_frame[0m (scalar): ?
+[2m    │ ├─[0m[1mspatial_x[0m (scalar): -52044463.08234682
+[2m    │ ├─[0m[1mspatial_y[0m (scalar): -131312741.31107728
+[2m    │ ├─[0m[1mspatial_z[0m (scalar): -56910542.46910208
+[2m    │ ├─[0m[1mtime[0m (scalar): 61557.0
+[2m    │ ├─[0m[1mtype[0m (scalar): DEFINITIVE
+[2m    │ ├─[0m[1mvelocity_x[0m (scalar): 27.507907094602988
+[2m    │ ├─[0m[1mvelocity_y[0m (scalar): -9.484643417914059
+[2m    │ └─[0m[1mvelocity_z[0m (scalar): -4.112149494244798
+[2m    ├─[0m[1mexposure[0m (mapping)
+[2m    │ ├─[0m[1mdata_problem[0m (scalar): ?
+[2m    │ ├─[0m[1meffective_exposure_time[0m (scalar): 133.76
+[2m    │ ├─[0m[1mend_time[0m (tag:stsci.edu:asdf/time/time-1.4.0): 2027-06-01T00:02:13.760
+[2m    │ ├─[0m[1mengineering_quality[0m (scalar): OK
+[2m    │ ├─[0m[1mexposure_time[0m (scalar): 133.76
+[2m    │ ├─[0m[1mframe_time[0m (scalar): 3.04
+[2m    │ ├─[0m[1mma_table_id[0m (scalar): SCI0109
+[2m    │ ├─[0m[1mma_table_name[0m (scalar): ?
+[2m    │ ├─[0m[1mma_table_number[0m (scalar): 109
+[2m    │ ├─[0m[1mmid_time[0m (tag:stsci.edu:asdf/time/time-1.4.0): 2027-06-01T00:01:06.880
+[2m    │ ├─[0m[1mnresultants[0m (scalar): 10
+[2m    │ ├─[0m[1mread_pattern[0m (sequence)
+[2m    │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (sequence)
+[2m    │ │ │ └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 1
+[2m    │ │ ├─[0m[2m[[0m[1m1[0m[2m][0m (sequence)
+[2m    │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 2
+[2m    │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 3
+[2m    │ │ ├─[0m[2m[[0m[1m2[0m[2m][0m (sequence)
+[2m    │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 5
+[2m    │ │ │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 6
+[2m    │ │ │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): 7
+[2m    │ │ ├─[0m[2m[[0m[1m3[0m[2m][0m (sequence)
+[2m    │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 10
+[2m    │ │ │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 11
+[2m    │ │ │ ├─[0m[2m[[0m[1m2[0m[2m][0m (scalar): 12
+[2m    │ │ │ └─[0m[2m[[0m[1m3[0m[2m][0m (scalar): 13
+[2m    │ │ ├─[0m[2m[[0m[1m4[0m[2m][0m (sequence)
+[2m    │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 15
+[2m    │ │ │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 16
+[2m    │ │ │ ├─[0m[2m[[0m[1m2[0m[2m][0m (scalar): 17
+[2m    │ │ │ ├─[0m[2m[[0m[1m3[0m[2m][0m (scalar): 18
+[2m    │ │ │ ├─[0m[2m[[0m[1m4[0m[2m][0m (scalar): 19
+[2m    │ │ │ └─[0m[2m[[0m[1m5[0m[2m][0m (scalar): 20
+[2m    │ │ ├─[0m[2m[[0m[1m5[0m[2m][0m (sequence)
+[2m    │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 21
+[2m    │ │ │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 22
+[2m    │ │ │ ├─[0m[2m[[0m[1m2[0m[2m][0m (scalar): 23
+[2m    │ │ │ ├─[0m[2m[[0m[1m3[0m[2m][0m (scalar): 24
+[2m    │ │ │ ├─[0m[2m[[0m[1m4[0m[2m][0m (scalar): 25
+[2m    │ │ │ └─[0m[2m[[0m[1m5[0m[2m][0m (scalar): 26
+[2m    │ │ ├─[0m[2m[[0m[1m6[0m[2m][0m (sequence)
+[2m    │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 27
+[2m    │ │ │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 28
+[2m    │ │ │ ├─[0m[2m[[0m[1m2[0m[2m][0m (scalar): 29
+[2m    │ │ │ ├─[0m[2m[[0m[1m3[0m[2m][0m (scalar): 30
+[2m    │ │ │ ├─[0m[2m[[0m[1m4[0m[2m][0m (scalar): 31
+[2m    │ │ │ └─[0m[2m[[0m[1m5[0m[2m][0m (scalar): 32
+[2m    │ │ ├─[0m[2m[[0m[1m7[0m[2m][0m (sequence)
+[2m    │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 33
+[2m    │ │ │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 34
+[2m    │ │ │ ├─[0m[2m[[0m[1m2[0m[2m][0m (scalar): 35
+[2m    │ │ │ ├─[0m[2m[[0m[1m3[0m[2m][0m (scalar): 36
+[2m    │ │ │ ├─[0m[2m[[0m[1m4[0m[2m][0m (scalar): 37
+[2m    │ │ │ └─[0m[2m[[0m[1m5[0m[2m][0m (scalar): 38
+[2m    │ │ ├─[0m[2m[[0m[1m8[0m[2m][0m (sequence)
+[2m    │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 39
+[2m    │ │ │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 40
+[2m    │ │ │ ├─[0m[2m[[0m[1m2[0m[2m][0m (scalar): 41
+[2m    │ │ │ ├─[0m[2m[[0m[1m3[0m[2m][0m (scalar): 42
+[2m    │ │ │ └─[0m[2m[[0m[1m4[0m[2m][0m (scalar): 43
+[2m    │ │ └─[0m[2m[[0m[1m9[0m[2m][0m (sequence)
+[2m    │ │   └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 44
+[2m    │ ├─[0m[1mstart_time[0m (tag:stsci.edu:asdf/time/time-1.4.0): 2027-06-01T00:00:00.000
+[2m    │ ├─[0m[1mtruncated[0m (scalar): false
+[2m    │ └─[0m[1mtype[0m (scalar): WFI_IMAGE
+[2m    ├─[0m[1mfile_date[0m (tag:stsci.edu:asdf/time/time-1.4.0)
+[2m    │ ├─[0m[1mbase_format[0m (scalar): datetime
+[2m    │ └─[0m[1mvalue[0m (scalar): 2026-02-17T21:50:27.333
+[2m    ├─[0m[1mfilename[0m (scalar): r0000101001001001001_0001_wfi01_f158_cal.asdf
+[2m    ├─[0m[1mguide_star[0m (mapping)
+[2m    │ ├─[0m[1mepoch[0m (scalar): ?
+[2m    │ ├─[0m[1mguide_mode[0m (scalar): WIM-ACQ
+[2m    │ ├─[0m[1mguide_star_id[0m (scalar): ?
+[2m    │ ├─[0m[1mguide_window_id[0m (scalar): ?
+[2m    │ ├─[0m[1mwindow_xstart[0m (scalar): -999999
+[2m    │ ├─[0m[1mwindow_xstop[0m (scalar): -999983
+[2m    │ ├─[0m[1mwindow_ystart[0m (scalar): -999999
+[2m    │ └─[0m[1mwindow_ystop[0m (scalar): -999983
+[2m    ├─[0m[1minstrument[0m (mapping)
+[2m    │ ├─[0m[1mdetector[0m (scalar): WFI01
+[2m    │ ├─[0m[1mname[0m (scalar): WFI
+[2m    │ └─[0m[1moptical_element[0m (scalar): F158
+[2m    ├─[0m[1mmodel_type[0m (scalar): ImageModel
+[2m    ├─[0m[1mobservation[0m (mapping)
+[2m    │ ├─[0m[1mexecution_plan[0m (scalar): 1
+[2m    │ ├─[0m[1mexposure[0m (scalar): 1
+[2m    │ ├─[0m[1mobservation[0m (scalar): 1
+[2m    │ ├─[0m[1mobservation_id[0m (scalar): 00001010010010010010001
+[2m    │ ├─[0m[1mpass[0m (scalar): 1
+[2m    │ ├─[0m[1mprogram[0m (scalar): 1
+[2m    │ ├─[0m[1msegment[0m (scalar): 1
+[2m    │ ├─[0m[1mvisit[0m (scalar): 1
+[2m    │ ├─[0m[1mvisit_file_activity[0m (scalar): 01
+[2m    │ ├─[0m[1mvisit_file_group[0m (scalar): 0
+[2m    │ ├─[0m[1mvisit_file_sequence[0m (scalar): 1
+[2m    │ ├─[0m[1mvisit_id[0m (scalar): 0000101001001001001
+[2m    │ └─[0m[1mwfi_parallel[0m (scalar): false
+[2m    ├─[0m[1morigin[0m (scalar): STSCI/SOC
+[2m    ├─[0m[1mphotometry[0m (mapping)
+[2m    │ ├─[0m[1mconversion_megajanskys[0m (scalar): 0.7367810113020512
+[2m    │ ├─[0m[1mconversion_megajanskys_uncertainty[0m (scalar): 0.02866405239530676
+[2m    │ └─[0m[1mpixel_area[0m (scalar): 2.8083389953727505e-13
+[2m    ├─[0m[1mpointing[0m (mapping)
+[2m    │ ├─[0m[1mdec_v1[0m (scalar): 66.49600017133261
+[2m    │ ├─[0m[1mpa_aperture[0m (scalar): 0
+[2m    │ ├─[0m[1mpa_v3[0m (scalar): 59.999051896586074
+[2m    │ ├─[0m[1mpointing_engineering_source[0m (scalar): CALCULATED
+[2m    │ ├─[0m[1mra_v1[0m (scalar): 269.99997982111586
+[2m    │ ├─[0m[1mtarget_aperture[0m (scalar): WFI_CEN
+[2m    │ ├─[0m[1mtarget_dec[0m (scalar): 66.0
+[2m    │ └─[0m[1mtarget_ra[0m (scalar): 270.0
+[2m    ├─[0m[1mprd_version[0m (scalar): ?
+[2m    ├─[0m[1mproduct_type[0m (scalar): l2
+[2m    ├─[0m[1mprogram[0m (mapping)
+[2m    │ ├─[0m[1mcategory[0m (scalar): ?
+[2m    │ ├─[0m[1minvestigator_name[0m (scalar): ?
+[2m    │ ├─[0m[1mscience_category[0m (scalar): ?
+[2m    │ ├─[0m[1msubcategory[0m (scalar): CAL
+[2m    │ └─[0m[1mtitle[0m (scalar): ?
+[2m    ├─[0m[1mrcs[0m (mapping)
+[2m    │ ├─[0m[1mactive[0m (scalar): false
+[2m    │ ├─[0m[1mbank[0m (scalar): 1
+[2m    │ ├─[0m[1mcounts[0m (scalar): -999999
+[2m    │ ├─[0m[1melectronics[0m (scalar): A
+[2m    │ └─[0m[1mled[0m (scalar): 1
+[2m    ├─[0m[1mref_file[0m (mapping)
+[2m    │ ├─[0m[1mapcorr[0m (scalar): crds://roman_wfi_apcorr_0002.asdf
+[2m    │ ├─[0m[1marea[0m (scalar): ?
+[2m    │ ├─[0m[1mcrds[0m (mapping)
+[2m    │ │ ├─[0m[1mcontext[0m (scalar): roman_0046.pmap
+[2m    │ │ └─[0m[1mversion[0m (scalar): 13.1.3
+[2m    │ ├─[0m[1mdark[0m (scalar): crds://roman_wfi_dark_0364.asdf
+[2m    │ ├─[0m[1mdarkdecaysignal[0m (scalar): crds://roman_wfi_darkdecaysignal_0001.asdf
+[2m    │ ├─[0m[1mdistortion[0m (scalar): crds://roman_wfi_distortion_0014.asdf
+[2m    │ ├─[0m[1mepsf[0m (scalar): crds://roman_wfi_epsf_0182.asdf
+[2m    │ ├─[0m[1mflat[0m (scalar): crds://roman_wfi_flat_0166.asdf
+[2m    │ ├─[0m[1mgain[0m (scalar): crds://roman_wfi_gain_0022.asdf
+[2m    │ ├─[0m[1mintegralnonlinearity[0m (scalar): crds://roman_wfi_integralnonlinearity_0003.asdf
+[2m    │ ├─[0m[1minverse_linearity[0m (scalar): ?
+[2m    │ ├─[0m[1minverselinearity[0m (scalar): crds://roman_wfi_inverselinearity_0042.asdf
+[2m    │ ├─[0m[1mlinearity[0m (scalar): crds://roman_wfi_linearity_0039.asdf
+[2m    │ ├─[0m[1mmask[0m (scalar): crds://roman_wfi_mask_0030.asdf
+[2m    │ ├─[0m[1mphotom[0m (scalar): crds://roman_wfi_photom_0040.asdf
+[2m    │ ├─[0m[1mreadnoise[0m (scalar): crds://roman_wfi_readnoise_0024.asdf
+[2m    │ ├─[0m[1mrefpix[0m (scalar): crds://roman_wfi_refpix_0013.asdf
+[2m    │ └─[0m[1msaturation[0m (scalar): crds://roman_wfi_saturation_0031.asdf
+[2m    ├─[0m[1msdf_software_version[0m (scalar): ?
+[2m    ├─[0m[1msource_catalog[0m (mapping)
+[2m    │ └─[0m[1mtweakreg_catalog_name[0m (scalar): r0000101001001001001_0001_wfi01_f158_cat.parquet
+[2m    ├─[0m[1mtelescope[0m (scalar): ROMAN
+[2m    ├─[0m[1mvelocity_aberration[0m (mapping)
+[2m    │ ├─[0m[1mdec_reference[0m (scalar): 66.0355095513252
+[2m    │ ├─[0m[1mra_reference[0m (scalar): 269.8325254855773
+[2m    │ └─[0m[1mscale_factor[0m (scalar): 1.0000003455620605
+[2m    ├─[0m[1mvisit[0m (mapping)
+[2m    │ ├─[0m[1mdither[0m (mapping)
+[2m    │ │ ├─[0m[1mexecuted_pattern[0m (sequence)
+[2m    │ │ ├─[0m[1mprimary_name[0m (scalar): ?
+[2m    │ │ └─[0m[1msubpixel_name[0m (scalar): ?
+[2m    │ ├─[0m[1minternal_target[0m (scalar): false
+[2m    │ ├─[0m[1mnexposures[0m (scalar): -999999
+[2m    │ ├─[0m[1mstart_time[0m (tag:stsci.edu:asdf/time/time-1.4.0): 2020-01-01T00:00:00.000
+[2m    │ ├─[0m[1mstatus[0m (scalar): SUCCESSFUL
+[2m    │ └─[0m[1mtype[0m (scalar): GENERAL_ENGINEERING
+[2m    ├─[0m[1mwcs[0m (tag:stsci.edu:gwcs/wcs-1.4.0)
+[2m    │ ├─[0m[1mname[0m (scalar): FIT-LVL2-GAIADR3_S3
+[2m    │ ├─[0m[1mpixel_shape[0m (scalar): null
+[2m    │ └─[0m[1msteps[0m (sequence)
+[2m    │   ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:gwcs/step-1.3.0)
+[2m    │   │ ├─[0m[1mframe[0m (tag:stsci.edu:gwcs/frame2d-1.2.0)
+[2m    │   │ │ ├─[0m[1maxes_names[0m (sequence)
+[2m    │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │ │ ├─[0m[1maxes_order[0m (sequence)
+[2m    │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 0
+[2m    │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │ │ ├─[0m[1maxis_physical_types[0m (sequence)
+[2m    │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): custom:x
+[2m    │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): custom:y
+[2m    │   │ │ ├─[0m[1mname[0m (scalar): detector
+[2m    │   │ │ └─[0m[1munit[0m (sequence)
+[2m    │   │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/unit/unit-1.0.0): pixel
+[2m    │   │ │   └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/unit/unit-1.0.0): pixel
+[2m    │   │ └─[0m[1mtransform[0m (tag:stsci.edu:asdf/transform/compose-1.3.0)
+[2m    │   │   ├─[0m[1mbounding_box[0m (tag:stsci.edu:asdf/transform/property/bounding_box-1.1.0)
+[2m    │   │   │ ├─[0m[1mignore[0m (sequence)
+[2m    │   │   │ ├─[0m[1mintervals[0m (mapping)
+[2m    │   │   │ │ ├─[0m[1mx0[0m (sequence)
+[2m    │   │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -0.5
+[2m    │   │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 4087.5
+[2m    │   │   │ │ └─[0m[1mx1[0m (sequence)
+[2m    │   │   │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -0.5
+[2m    │   │   │ │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 4087.5
+[2m    │   │   │ └─[0m[1morder[0m (scalar): F
+[2m    │   │   ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/compose-1.3.0)
+[2m    │   │   │ │ ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/compose-1.3.0)
+[2m    │   │   │ │ │ │ ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/concatenate-1.3.0)
+[2m    │   │   │ │ │ │ │ │ ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/shift-1.3.0)
+[2m    │   │   │ │ │ │ │ │ │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │ │ │ │ ├─[0m[1moffset[0m (scalar): 1.0
+[2m    │   │   │ │ │ │ │ │ │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │   └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/shift-1.3.0)
+[2m    │   │   │ │ │ │ │ │ │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │   │ └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │ │ │   ├─[0m[1moffset[0m (scalar): 1.0
+[2m    │   │   │ │ │ │ │ │ │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │     └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y0
+[2m    │   │   │ │ │ │ │ │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y1
+[2m    │   │   │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/concatenate-1.3.0)
+[2m    │   │   │ │ │ │ │   ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/shift-1.3.0)
+[2m    │   │   │ │ │ │ │   │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │   │ │ │ └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │   │ │ ├─[0m[1moffset[0m (scalar): -2044.5
+[2m    │   │   │ │ │ │ │   │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │   │ │   └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/shift-1.3.0)
+[2m    │   │   │ │ │ │ │   │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │   │   │ └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │   │   ├─[0m[1moffset[0m (scalar): -2044.5
+[2m    │   │   │ │ │ │ │   │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │   │     └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │     ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y0
+[2m    │   │   │ │ │ │ │     └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y1
+[2m    │   │   │ │ │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y0
+[2m    │   │   │ │ │ │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y1
+[2m    │   │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/compose-1.3.0)
+[2m    │   │   │ │ │   ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/compose-1.3.0)
+[2m    │   │   │ │ │   │ │ ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/remap_axes-1.4.0)
+[2m    │   │   │ │ │   │ │ │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │   │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │   │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │   │ │ │ │ ├─[0m[1mmapping[0m (sequence)
+[2m    │   │   │ │ │   │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 0
+[2m    │   │   │ │ │   │ │ │ │ │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │ │ │ │ │ ├─[0m[2m[[0m[1m2[0m[2m][0m (scalar): 0
+[2m    │   │   │ │ │   │ │ │ │ │ └─[0m[2m[[0m[1m3[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │ │ │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │   │ │ │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │   │ │ │ │   ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │   │ │ │ │   ├─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x2
+[2m    │   │   │ │ │   │ │ │ │   └─[0m[2m[[0m[1m3[0m[2m][0m (scalar): x3
+[2m    │   │   │ │ │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/concatenate-1.3.0)
+[2m    │   │   │ │ │   │ │ │   ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │   │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/polynomial-1.2.0)
+[2m    │   │   │ │ │   │ │ │   │ │ ├─[0m[1mcoefficients[0m (tag:stsci.edu:asdf/core/ndarray-1.1.0)
+[2m    │   │   │ │ │   │ │ │   │ │ │ ├─[0m[1msource[0m (scalar): 0
+[2m    │   │   │ │ │   │ │ │   │ │ │ ├─[0m[1mdatatype[0m (scalar): float64
+[2m    │   │   │ │ │   │ │ │   │ │ │ ├─[0m[1mbyteorder[0m (scalar): little
+[2m    │   │   │ │ │   │ │ │   │ │ │ └─[0m[1mshape[0m (sequence)
+[2m    │   │   │ │ │   │ │ │   │ │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 6
+[2m    │   │   │ │ │   │ │ │   │ │ │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 6
+[2m    │   │   │ │ │   │ │ │   │ │ ├─[0m[1mdomain[0m (sequence)
+[2m    │   │   │ │ │   │ │ │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (sequence)
+[2m    │   │   │ │ │   │ │ │   │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -1
+[2m    │   │   │ │ │   │ │ │   │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │ │ │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (sequence)
+[2m    │   │   │ │ │   │ │ │   │ │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -1
+[2m    │   │   │ │ │   │ │ │   │ │ │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │ │ │   │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │   │ │ │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │   │ │ │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │   │ │ │   │ │ ├─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │   │ │ │   │ │ │ └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): z
+[2m    │   │   │ │ │   │ │ │   │ │ └─[0m[1mwindow[0m (sequence)
+[2m    │   │   │ │ │   │ │ │   │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (sequence)
+[2m    │   │   │ │ │   │ │ │   │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -1
+[2m    │   │   │ │ │   │ │ │   │ │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │ │ │   │ │   └─[0m[2m[[0m[1m1[0m[2m][0m (sequence)
+[2m    │   │   │ │ │   │ │ │   │ │     ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -1
+[2m    │   │   │ │ │   │ │ │   │ │     └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │ │ │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/polynomial-1.2.0)
+[2m    │   │   │ │ │   │ │ │   │   ├─[0m[1mcoefficients[0m (tag:stsci.edu:asdf/core/ndarray-1.1.0)
+[2m    │   │   │ │ │   │ │ │   │   │ ├─[0m[1msource[0m (scalar): 1
+[2m    │   │   │ │ │   │ │ │   │   │ ├─[0m[1mdatatype[0m (scalar): float64
+[2m    │   │   │ │ │   │ │ │   │   │ ├─[0m[1mbyteorder[0m (scalar): little
+[2m    │   │   │ │ │   │ │ │   │   │ └─[0m[1mshape[0m (sequence)
+[2m    │   │   │ │ │   │ │ │   │   │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 6
+[2m    │   │   │ │ │   │ │ │   │   │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 6
+[2m    │   │   │ │ │   │ │ │   │   ├─[0m[1mdomain[0m (sequence)
+[2m    │   │   │ │ │   │ │ │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (sequence)
+[2m    │   │   │ │ │   │ │ │   │   │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -1
+[2m    │   │   │ │ │   │ │ │   │   │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │ │ │   │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (sequence)
+[2m    │   │   │ │ │   │ │ │   │   │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -1
+[2m    │   │   │ │ │   │ │ │   │   │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │ │ │   │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │   │ │ │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │   │ │ │   │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │   │ │ │   │   ├─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │   │ │ │   │   │ └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): z
+[2m    │   │   │ │ │   │ │ │   │   └─[0m[1mwindow[0m (sequence)
+[2m    │   │   │ │ │   │ │ │   │     ├─[0m[2m[[0m[1m0[0m[2m][0m (sequence)
+[2m    │   │   │ │ │   │ │ │   │     │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -1
+[2m    │   │   │ │ │   │ │ │   │     │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │ │ │   │     └─[0m[2m[[0m[1m1[0m[2m][0m (sequence)
+[2m    │   │   │ │ │   │ │ │   │       ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -1
+[2m    │   │   │ │ │   │ │ │   │       └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │ │ │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │   │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │   │ │ │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y0
+[2m    │   │   │ │ │   │ │ │   │ ├─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │   │ │ │   │ └─[0m[2m[[0m[1m3[0m[2m][0m (scalar): y1
+[2m    │   │   │ │ │   │ │ │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │   │ │ │     ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): z0
+[2m    │   │   │ │ │   │ │ │     └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): z1
+[2m    │   │   │ │ │   │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │   │ │ ├─[0m[1minverse[0m (tag:stsci.edu:asdf/transform/compose-1.3.0)
+[2m    │   │   │ │ │   │ │ │ ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │   │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/remap_axes-1.4.0)
+[2m    │   │   │ │ │   │ │ │ │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │   │ │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │   │ │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │   │ │ │ │ │ ├─[0m[1mmapping[0m (sequence)
+[2m    │   │   │ │ │   │ │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 0
+[2m    │   │   │ │ │   │ │ │ │ │ │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │ │ │ │ │ │ ├─[0m[2m[[0m[1m2[0m[2m][0m (scalar): 0
+[2m    │   │   │ │ │   │ │ │ │ │ │ └─[0m[2m[[0m[1m3[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │ │ │ │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │   │ │ │ │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │   │ │ │ │ │   ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │   │ │ │ │ │   ├─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x2
+[2m    │   │   │ │ │   │ │ │ │ │   └─[0m[2m[[0m[1m3[0m[2m][0m (scalar): x3
+[2m    │   │   │ │ │   │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/concatenate-1.3.0)
+[2m    │   │   │ │ │   │ │ │ │   ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │   │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/polynomial-1.2.0)
+[2m    │   │   │ │ │   │ │ │ │   │ │ ├─[0m[1mcoefficients[0m (tag:stsci.edu:asdf/core/ndarray-1.1.0)
+[2m    │   │   │ │ │   │ │ │ │   │ │ │ ├─[0m[1msource[0m (scalar): 2
+[2m    │   │   │ │ │   │ │ │ │   │ │ │ ├─[0m[1mdatatype[0m (scalar): float64
+[2m    │   │   │ │ │   │ │ │ │   │ │ │ ├─[0m[1mbyteorder[0m (scalar): little
+[2m    │   │   │ │ │   │ │ │ │   │ │ │ └─[0m[1mshape[0m (sequence)
+[2m    │   │   │ │ │   │ │ │ │   │ │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 6
+[2m    │   │   │ │ │   │ │ │ │   │ │ │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 6
+[2m    │   │   │ │ │   │ │ │ │   │ │ ├─[0m[1mdomain[0m (sequence)
+[2m    │   │   │ │ │   │ │ │ │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (sequence)
+[2m    │   │   │ │ │   │ │ │ │   │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -1
+[2m    │   │   │ │ │   │ │ │ │   │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │ │ │ │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (sequence)
+[2m    │   │   │ │ │   │ │ │ │   │ │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -1
+[2m    │   │   │ │ │   │ │ │ │   │ │ │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │ │ │ │   │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │   │ │ │ │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │   │ │ │ │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │   │ │ │ │   │ │ ├─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │   │ │ │ │   │ │ │ └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): z
+[2m    │   │   │ │ │   │ │ │ │   │ │ └─[0m[1mwindow[0m (sequence)
+[2m    │   │   │ │ │   │ │ │ │   │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (sequence)
+[2m    │   │   │ │ │   │ │ │ │   │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -1
+[2m    │   │   │ │ │   │ │ │ │   │ │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │ │ │ │   │ │   └─[0m[2m[[0m[1m1[0m[2m][0m (sequence)
+[2m    │   │   │ │ │   │ │ │ │   │ │     ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -1
+[2m    │   │   │ │ │   │ │ │ │   │ │     └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │ │ │ │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/polynomial-1.2.0)
+[2m    │   │   │ │ │   │ │ │ │   │   ├─[0m[1mcoefficients[0m (tag:stsci.edu:asdf/core/ndarray-1.1.0)
+[2m    │   │   │ │ │   │ │ │ │   │   │ ├─[0m[1msource[0m (scalar): 3
+[2m    │   │   │ │ │   │ │ │ │   │   │ ├─[0m[1mdatatype[0m (scalar): float64
+[2m    │   │   │ │ │   │ │ │ │   │   │ ├─[0m[1mbyteorder[0m (scalar): little
+[2m    │   │   │ │ │   │ │ │ │   │   │ └─[0m[1mshape[0m (sequence)
+[2m    │   │   │ │ │   │ │ │ │   │   │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 6
+[2m    │   │   │ │ │   │ │ │ │   │   │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 6
+[2m    │   │   │ │ │   │ │ │ │   │   ├─[0m[1mdomain[0m (sequence)
+[2m    │   │   │ │ │   │ │ │ │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (sequence)
+[2m    │   │   │ │ │   │ │ │ │   │   │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -1
+[2m    │   │   │ │ │   │ │ │ │   │   │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │ │ │ │   │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (sequence)
+[2m    │   │   │ │ │   │ │ │ │   │   │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -1
+[2m    │   │   │ │ │   │ │ │ │   │   │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │ │ │ │   │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │   │ │ │ │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │   │ │ │ │   │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │   │ │ │ │   │   ├─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │   │ │ │ │   │   │ └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): z
+[2m    │   │   │ │ │   │ │ │ │   │   └─[0m[1mwindow[0m (sequence)
+[2m    │   │   │ │ │   │ │ │ │   │     ├─[0m[2m[[0m[1m0[0m[2m][0m (sequence)
+[2m    │   │   │ │ │   │ │ │ │   │     │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -1
+[2m    │   │   │ │ │   │ │ │ │   │     │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │ │ │ │   │     └─[0m[2m[[0m[1m1[0m[2m][0m (sequence)
+[2m    │   │   │ │ │   │ │ │ │   │       ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -1
+[2m    │   │   │ │ │   │ │ │ │   │       └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │ │ │ │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │   │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │   │ │ │ │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y0
+[2m    │   │   │ │ │   │ │ │ │   │ ├─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │   │ │ │ │   │ └─[0m[2m[[0m[1m3[0m[2m][0m (scalar): y1
+[2m    │   │   │ │ │   │ │ │ │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │   │ │ │ │     ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): z0
+[2m    │   │   │ │ │   │ │ │ │     └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): z1
+[2m    │   │   │ │ │   │ │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │   │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │   │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │   │ │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │   │ │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): z0
+[2m    │   │   │ │ │   │ │ │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): z1
+[2m    │   │   │ │ │   │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │   │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): z0
+[2m    │   │   │ │ │   │ │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): z1
+[2m    │   │   │ │ │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/compose-1.3.0)
+[2m    │   │   │ │ │   │   ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/remap_axes-1.4.0)
+[2m    │   │   │ │ │   │   │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │   │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │   │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │   │   │ │ ├─[0m[1mmapping[0m (sequence)
+[2m    │   │   │ │ │   │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 0
+[2m    │   │   │ │ │   │   │ │ │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │   │ │ │ ├─[0m[2m[[0m[1m2[0m[2m][0m (scalar): 0
+[2m    │   │   │ │ │   │   │ │ │ └─[0m[2m[[0m[1m3[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │   │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │   │   │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │   │   │ │   ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │   │   │ │   ├─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x2
+[2m    │   │   │ │ │   │   │ │   └─[0m[2m[[0m[1m3[0m[2m][0m (scalar): x3
+[2m    │   │   │ │ │   │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/concatenate-1.3.0)
+[2m    │   │   │ │ │   │   │   ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │   │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/polynomial-1.2.0)
+[2m    │   │   │ │ │   │   │   │ │ ├─[0m[1mcoefficients[0m (tag:stsci.edu:asdf/core/ndarray-1.1.0)
+[2m    │   │   │ │ │   │   │   │ │ │ ├─[0m[1msource[0m (scalar): 4
+[2m    │   │   │ │ │   │   │   │ │ │ ├─[0m[1mdatatype[0m (scalar): float64
+[2m    │   │   │ │ │   │   │   │ │ │ ├─[0m[1mbyteorder[0m (scalar): little
+[2m    │   │   │ │ │   │   │   │ │ │ └─[0m[1mshape[0m (sequence)
+[2m    │   │   │ │ │   │   │   │ │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 2
+[2m    │   │   │ │ │   │   │   │ │ │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 2
+[2m    │   │   │ │ │   │   │   │ │ ├─[0m[1mdomain[0m (sequence)
+[2m    │   │   │ │ │   │   │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (sequence)
+[2m    │   │   │ │ │   │   │   │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -1
+[2m    │   │   │ │ │   │   │   │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │   │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (sequence)
+[2m    │   │   │ │ │   │   │   │ │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -1
+[2m    │   │   │ │ │   │   │   │ │ │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │   │   │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │   │   │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │   │   │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │   │   │   │ │ ├─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │   │   │   │ │ │ └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): z
+[2m    │   │   │ │ │   │   │   │ │ └─[0m[1mwindow[0m (sequence)
+[2m    │   │   │ │ │   │   │   │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (sequence)
+[2m    │   │   │ │ │   │   │   │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -1
+[2m    │   │   │ │ │   │   │   │ │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │   │   │ │   └─[0m[2m[[0m[1m1[0m[2m][0m (sequence)
+[2m    │   │   │ │ │   │   │   │ │     ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -1
+[2m    │   │   │ │ │   │   │   │ │     └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │   │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/polynomial-1.2.0)
+[2m    │   │   │ │ │   │   │   │   ├─[0m[1mcoefficients[0m (tag:stsci.edu:asdf/core/ndarray-1.1.0)
+[2m    │   │   │ │ │   │   │   │   │ ├─[0m[1msource[0m (scalar): 5
+[2m    │   │   │ │ │   │   │   │   │ ├─[0m[1mdatatype[0m (scalar): float64
+[2m    │   │   │ │ │   │   │   │   │ ├─[0m[1mbyteorder[0m (scalar): little
+[2m    │   │   │ │ │   │   │   │   │ └─[0m[1mshape[0m (sequence)
+[2m    │   │   │ │ │   │   │   │   │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 2
+[2m    │   │   │ │ │   │   │   │   │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 2
+[2m    │   │   │ │ │   │   │   │   ├─[0m[1mdomain[0m (sequence)
+[2m    │   │   │ │ │   │   │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (sequence)
+[2m    │   │   │ │ │   │   │   │   │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -1
+[2m    │   │   │ │ │   │   │   │   │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │   │   │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (sequence)
+[2m    │   │   │ │ │   │   │   │   │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -1
+[2m    │   │   │ │ │   │   │   │   │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │   │   │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │   │   │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │   │   │   │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │   │   │   │   ├─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │   │   │   │   │ └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): z
+[2m    │   │   │ │ │   │   │   │   └─[0m[1mwindow[0m (sequence)
+[2m    │   │   │ │ │   │   │   │     ├─[0m[2m[[0m[1m0[0m[2m][0m (sequence)
+[2m    │   │   │ │ │   │   │   │     │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -1
+[2m    │   │   │ │ │   │   │   │     │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │   │   │     └─[0m[2m[[0m[1m1[0m[2m][0m (sequence)
+[2m    │   │   │ │ │   │   │   │       ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -1
+[2m    │   │   │ │ │   │   │   │       └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │   │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │   │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │   │   │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y0
+[2m    │   │   │ │ │   │   │   │ ├─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │   │   │   │ └─[0m[2m[[0m[1m3[0m[2m][0m (scalar): y1
+[2m    │   │   │ │ │   │   │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │   │   │     ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): z0
+[2m    │   │   │ │ │   │   │     └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): z1
+[2m    │   │   │ │ │   │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │   │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │   │   ├─[0m[1minverse[0m (tag:stsci.edu:asdf/transform/compose-1.3.0)
+[2m    │   │   │ │ │   │   │ ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │   │   │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/remap_axes-1.4.0)
+[2m    │   │   │ │ │   │   │ │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │   │   │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │   │   │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │   │   │ │ │ ├─[0m[1mmapping[0m (sequence)
+[2m    │   │   │ │ │   │   │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 0
+[2m    │   │   │ │ │   │   │ │ │ │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │   │ │ │ │ ├─[0m[2m[[0m[1m2[0m[2m][0m (scalar): 0
+[2m    │   │   │ │ │   │   │ │ │ │ └─[0m[2m[[0m[1m3[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │   │ │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │   │   │ │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │   │   │ │ │   ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │   │   │ │ │   ├─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x2
+[2m    │   │   │ │ │   │   │ │ │   └─[0m[2m[[0m[1m3[0m[2m][0m (scalar): x3
+[2m    │   │   │ │ │   │   │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/concatenate-1.3.0)
+[2m    │   │   │ │ │   │   │ │   ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │   │   │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/polynomial-1.2.0)
+[2m    │   │   │ │ │   │   │ │   │ │ ├─[0m[1mcoefficients[0m (tag:stsci.edu:asdf/core/ndarray-1.1.0)
+[2m    │   │   │ │ │   │   │ │   │ │ │ ├─[0m[1msource[0m (scalar): 6
+[2m    │   │   │ │ │   │   │ │   │ │ │ ├─[0m[1mdatatype[0m (scalar): float64
+[2m    │   │   │ │ │   │   │ │   │ │ │ ├─[0m[1mbyteorder[0m (scalar): little
+[2m    │   │   │ │ │   │   │ │   │ │ │ └─[0m[1mshape[0m (sequence)
+[2m    │   │   │ │ │   │   │ │   │ │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 2
+[2m    │   │   │ │ │   │   │ │   │ │ │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 2
+[2m    │   │   │ │ │   │   │ │   │ │ ├─[0m[1mdomain[0m (sequence)
+[2m    │   │   │ │ │   │   │ │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (sequence)
+[2m    │   │   │ │ │   │   │ │   │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -1
+[2m    │   │   │ │ │   │   │ │   │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │   │ │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (sequence)
+[2m    │   │   │ │ │   │   │ │   │ │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -1
+[2m    │   │   │ │ │   │   │ │   │ │ │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │   │ │   │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │   │   │ │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │   │   │ │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │   │   │ │   │ │ ├─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │   │   │ │   │ │ │ └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): z
+[2m    │   │   │ │ │   │   │ │   │ │ └─[0m[1mwindow[0m (sequence)
+[2m    │   │   │ │ │   │   │ │   │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (sequence)
+[2m    │   │   │ │ │   │   │ │   │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -1
+[2m    │   │   │ │ │   │   │ │   │ │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │   │ │   │ │   └─[0m[2m[[0m[1m1[0m[2m][0m (sequence)
+[2m    │   │   │ │ │   │   │ │   │ │     ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -1
+[2m    │   │   │ │ │   │   │ │   │ │     └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │   │ │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/polynomial-1.2.0)
+[2m    │   │   │ │ │   │   │ │   │   ├─[0m[1mcoefficients[0m (tag:stsci.edu:asdf/core/ndarray-1.1.0)
+[2m    │   │   │ │ │   │   │ │   │   │ ├─[0m[1msource[0m (scalar): 7
+[2m    │   │   │ │ │   │   │ │   │   │ ├─[0m[1mdatatype[0m (scalar): float64
+[2m    │   │   │ │ │   │   │ │   │   │ ├─[0m[1mbyteorder[0m (scalar): little
+[2m    │   │   │ │ │   │   │ │   │   │ └─[0m[1mshape[0m (sequence)
+[2m    │   │   │ │ │   │   │ │   │   │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 2
+[2m    │   │   │ │ │   │   │ │   │   │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 2
+[2m    │   │   │ │ │   │   │ │   │   ├─[0m[1mdomain[0m (sequence)
+[2m    │   │   │ │ │   │   │ │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (sequence)
+[2m    │   │   │ │ │   │   │ │   │   │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -1
+[2m    │   │   │ │ │   │   │ │   │   │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │   │ │   │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (sequence)
+[2m    │   │   │ │ │   │   │ │   │   │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -1
+[2m    │   │   │ │ │   │   │ │   │   │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │   │ │   │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │   │   │ │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │   │   │ │   │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │   │   │ │   │   ├─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │   │   │ │   │   │ └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): z
+[2m    │   │   │ │ │   │   │ │   │   └─[0m[1mwindow[0m (sequence)
+[2m    │   │   │ │ │   │   │ │   │     ├─[0m[2m[[0m[1m0[0m[2m][0m (sequence)
+[2m    │   │   │ │ │   │   │ │   │     │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -1
+[2m    │   │   │ │ │   │   │ │   │     │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │   │ │   │     └─[0m[2m[[0m[1m1[0m[2m][0m (sequence)
+[2m    │   │   │ │ │   │   │ │   │       ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -1
+[2m    │   │   │ │ │   │   │ │   │       └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │   │   │ │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │   │   │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │   │   │ │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y0
+[2m    │   │   │ │ │   │   │ │   │ ├─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │   │   │ │   │ └─[0m[2m[[0m[1m3[0m[2m][0m (scalar): y1
+[2m    │   │   │ │ │   │   │ │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │   │   │ │     ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): z0
+[2m    │   │   │ │ │   │   │ │     └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): z1
+[2m    │   │   │ │ │   │   │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │   │   │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │   │   │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │   │   │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │   │   │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): z0
+[2m    │   │   │ │ │   │   │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): z1
+[2m    │   │   │ │ │   │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │   │     ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): z0
+[2m    │   │   │ │ │   │     └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): z1
+[2m    │   │   │ │ │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │     ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): z0
+[2m    │   │   │ │ │     └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): z1
+[2m    │   │   │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): z0
+[2m    │   │   │ │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): z1
+[2m    │   │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/concatenate-1.3.0)
+[2m    │   │   │   ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/shift-1.3.0)
+[2m    │   │   │   │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │   │ │ │ └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │   │ │ ├─[0m[1moffset[0m (scalar): 1312.9491452484797
+[2m    │   │   │   │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │   │ │   └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y
+[2m    │   │   │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/shift-1.3.0)
+[2m    │   │   │   │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │   │   │ └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │   │   ├─[0m[1moffset[0m (scalar): -1040.7853726755036
+[2m    │   │   │   │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │   │     └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y
+[2m    │   │   │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │     ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y0
+[2m    │   │   │     └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y1
+[2m    │   │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │     ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y0
+[2m    │   │     └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y1
+[2m    │   ├─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:gwcs/step-1.3.0)
+[2m    │   │ ├─[0m[1mframe[0m (tag:stsci.edu:gwcs/frame2d-1.2.0)
+[2m    │   │ │ ├─[0m[1maxes_names[0m (sequence)
+[2m    │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): v2
+[2m    │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): v3
+[2m    │   │ │ ├─[0m[1maxes_order[0m (sequence)
+[2m    │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 0
+[2m    │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │ │ ├─[0m[1maxis_physical_types[0m (sequence)
+[2m    │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): custom:v2
+[2m    │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): custom:v3
+[2m    │   │ │ ├─[0m[1mname[0m (scalar): v2v3
+[2m    │   │ │ └─[0m[1munit[0m (sequence)
+[2m    │   │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/unit/unit-1.0.0): arcsec
+[2m    │   │ │   └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/unit/unit-1.0.0): arcsec
+[2m    │   │ └─[0m[1mtransform[0m (tag:stsci.edu:asdf/transform/compose-1.3.0)
+[2m    │   │   ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/concatenate-1.3.0)
+[2m    │   │   │ │ ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/scale-1.3.0)
+[2m    │   │   │ │ │ │ ├─[0m[1mfactor[0m (scalar): 1.0000003455620605
+[2m    │   │   │ │ │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ ├─[0m[1mname[0m (scalar): dva_scale_v2
+[2m    │   │   │ │ │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │   └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/scale-1.3.0)
+[2m    │   │   │ │ │   ├─[0m[1mfactor[0m (scalar): 1.0000003455620605
+[2m    │   │   │ │ │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │   │ └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │   ├─[0m[1mname[0m (scalar): dva_scale_v3
+[2m    │   │   │ │ │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │     └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y
+[2m    │   │   │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y0
+[2m    │   │   │ │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y1
+[2m    │   │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/concatenate-1.3.0)
+[2m    │   │   │   ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/shift-1.3.0)
+[2m    │   │   │   │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │   │ │ │ └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │   │ │ ├─[0m[1mname[0m (scalar): dva_v2_shift
+[2m    │   │   │   │ │ ├─[0m[1moffset[0m (scalar): -0.0004537054119925875
+[2m    │   │   │   │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │   │ │   └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y
+[2m    │   │   │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/shift-1.3.0)
+[2m    │   │   │   │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │   │   │ └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │   │   ├─[0m[1mname[0m (scalar): dva_v3_shift
+[2m    │   │   │   │   ├─[0m[1moffset[0m (scalar): 0.0003596559379428446
+[2m    │   │   │   │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │   │     └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y
+[2m    │   │   │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │     ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y0
+[2m    │   │   │     └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y1
+[2m    │   │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   ├─[0m[1mname[0m (scalar): DVA_Correction
+[2m    │   │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │     ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y0
+[2m    │   │     └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y1
+[2m    │   ├─[0m[2m[[0m[1m2[0m[2m][0m (tag:stsci.edu:gwcs/step-1.3.0)
+[2m    │   │ ├─[0m[1mframe[0m (tag:stsci.edu:gwcs/frame2d-1.2.0)
+[2m    │   │ │ ├─[0m[1maxes_names[0m (sequence)
+[2m    │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): v2
+[2m    │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): v3
+[2m    │   │ │ ├─[0m[1maxes_order[0m (sequence)
+[2m    │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 0
+[2m    │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │ │ ├─[0m[1maxis_physical_types[0m (sequence)
+[2m    │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): custom:v2
+[2m    │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): custom:v3
+[2m    │   │ │ ├─[0m[1mname[0m (scalar): v2v3vacorr
+[2m    │   │ │ └─[0m[1munit[0m (sequence)
+[2m    │   │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/unit/unit-1.0.0): arcsec
+[2m    │   │ │   └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/unit/unit-1.0.0): arcsec
+[2m    │   │ └─[0m[1mtransform[0m (tag:stsci.edu:asdf/transform/compose-1.3.0)
+[2m    │   │   ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/compose-1.3.0)
+[2m    │   │   │ │ ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/compose-1.3.0)
+[2m    │   │   │ │ │ │ ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/compose-1.3.0)
+[2m    │   │   │ │ │ │ │ │ ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/compose-1.3.0)
+[2m    │   │   │ │ │ │ │ │ │ │ ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/compose-1.3.0)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/compose-1.3.0)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/compose-1.3.0)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/concatenate-1.3.0)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/scale-1.3.0)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[1mfactor[0m (scalar): 0.0002777777777777778
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[1mname[0m (scalar): arcsec_to_deg_1D
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/scale-1.3.0)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[1mfactor[0m (scalar): 0.0002777777777777778
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   │ └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[1mname[0m (scalar): arcsec_to_deg_1D
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │     └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[1mname[0m (scalar): arcsec_to_deg_2D
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:gwcs/spherical_cartesian-1.3.0)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): lon
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): lat
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[1mname[0m (scalar): s2c
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): z
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[1mtransform_type[0m (scalar): spherical_to_cartesian
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   └─[0m[1mwrap_lon_at[0m (scalar): 180
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │   └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): z
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/rotate_sequence_3d-1.1.0)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[1mangles[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 0.3647080959023555
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 0.28910704796541764
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │   │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): 59.846679364670365
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[1maxes_order[0m (scalar): zyx
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │   │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): z
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[1mname[0m (scalar): det_to_optic_axis
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │   │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): z
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │   └─[0m[1mrotation_type[0m (scalar): cartesian
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): z
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/compose-1.3.0)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/divide-1.3.0)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/remap_axes-1.4.0)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ │ │ │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ │ │ │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x2
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ │ │ ├─[0m[1mmapping[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ │ │ │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ │ │ │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): 2
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ │ │ ├─[0m[1mname[0m (scalar): xyz
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ │ │   ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ │ │   └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x2
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/remap_axes-1.4.0)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ │   │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x2
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ │   ├─[0m[1mmapping[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ │   │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): 0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ │   ├─[0m[1mn_inputs[0m (scalar): 3
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ │   ├─[0m[1mname[0m (scalar): xxx
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ │     ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ │     ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ │     └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x2
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x2
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │   ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ │   └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x2
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/remap_axes-1.4.0)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │   │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x2
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │   ├─[0m[1mmapping[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 2
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │   ├─[0m[1mname[0m (scalar): xtyt
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │     ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │     └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x2
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   ├─[0m[1mname[0m (scalar): Cartesian 3D to TAN
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │     ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │     └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/affine-1.4.0)
+[2m    │   │   │ │ │ │ │ │ │ │ │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │ │ │ │ │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │ │ │ │   ├─[0m[1mmatrix[0m (tag:stsci.edu:asdf/core/ndarray-1.1.0)
+[2m    │   │   │ │ │ │ │ │ │ │ │   │ ├─[0m[1msource[0m (scalar): 8
+[2m    │   │   │ │ │ │ │ │ │ │ │   │ ├─[0m[1mdatatype[0m (scalar): float64
+[2m    │   │   │ │ │ │ │ │ │ │ │   │ ├─[0m[1mbyteorder[0m (scalar): little
+[2m    │   │   │ │ │ │ │ │ │ │ │   │ └─[0m[1mshape[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │   │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 2
+[2m    │   │   │ │ │ │ │ │ │ │ │   │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 2
+[2m    │   │   │ │ │ │ │ │ │ │ │   ├─[0m[1mname[0m (scalar): tp_affine
+[2m    │   │   │ │ │ │ │ │ │ │ │   ├─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │ │ │ │ │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │ │ │ │   └─[0m[1mtranslation[0m (tag:stsci.edu:asdf/core/ndarray-1.1.0)
+[2m    │   │   │ │ │ │ │ │ │ │ │     ├─[0m[1msource[0m (scalar): 9
+[2m    │   │   │ │ │ │ │ │ │ │ │     ├─[0m[1mdatatype[0m (scalar): float64
+[2m    │   │   │ │ │ │ │ │ │ │ │     ├─[0m[1mbyteorder[0m (scalar): little
+[2m    │   │   │ │ │ │ │ │ │ │ │     └─[0m[1mshape[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │       └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 2
+[2m    │   │   │ │ │ │ │ │ │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │ │ │ │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/compose-1.3.0)
+[2m    │   │   │ │ │ │ │ │ │   ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/remap_axes-1.4.0)
+[2m    │   │   │ │ │ │ │ │ │   │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │   │ │ ├─[0m[1mmapping[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 0
+[2m    │   │   │ │ │ │ │ │ │   │ │ │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 0
+[2m    │   │   │ │ │ │ │ │ │   │ │ │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │ │ │ │ │   │ │ ├─[0m[1mname[0m (scalar): xtyt2xyz
+[2m    │   │   │ │ │ │ │ │ │   │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │   │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │   │ │   ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │   │ │   └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x2
+[2m    │   │   │ │ │ │ │ │ │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/concatenate-1.3.0)
+[2m    │   │   │ │ │ │ │ │ │   │   ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/constant-1.5.0)
+[2m    │   │   │ │ │ │ │ │ │   │   │ │ ├─[0m[1mdimensions[0m (scalar): 1
+[2m    │   │   │ │ │ │ │ │ │   │   │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │   │   │ │ │ └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │ │ │   │   │ │ ├─[0m[1mname[0m (scalar): one
+[2m    │   │   │ │ │ │ │ │ │   │   │ │ ├─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │   │   │ │ │ └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │ │   │   │ │ └─[0m[1mvalue[0m (scalar): 1.0
+[2m    │   │   │ │ │ │ │ │ │   │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/identity-1.3.0)
+[2m    │   │   │ │ │ │ │ │ │   │   │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │   │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │   │   │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │   │   │   ├─[0m[1mn_dims[0m (scalar): 2
+[2m    │   │   │ │ │ │ │ │ │   │   │   ├─[0m[1mname[0m (scalar): I(2D)
+[2m    │   │   │ │ │ │ │ │ │   │   │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │   │   │     ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │   │   │     └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │   │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │ │ │   │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │   │   │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │   │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │   │     ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │ │   │     ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │   │     └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │   ├─[0m[1mname[0m (scalar): TAN to cartesian 3D
+[2m    │   │   │ │ │ │ │ │ │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │     ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │ │     ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │     └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │   ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │   └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/rotate_sequence_3d-1.1.0)
+[2m    │   │   │ │ │ │ │   ├─[0m[1mangles[0m (sequence)
+[2m    │   │   │ │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -59.846679364670365
+[2m    │   │   │ │ │ │ │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): -0.28910704796541764
+[2m    │   │   │ │ │ │ │   │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): -0.3647080959023555
+[2m    │   │   │ │ │ │ │   ├─[0m[1maxes_order[0m (scalar): xyz
+[2m    │   │   │ │ │ │ │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │   │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): z
+[2m    │   │   │ │ │ │ │   ├─[0m[1mname[0m (scalar): optic_axis_to_det
+[2m    │   │   │ │ │ │ │   ├─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │   │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): z
+[2m    │   │   │ │ │ │ │   └─[0m[1mrotation_type[0m (scalar): cartesian
+[2m    │   │   │ │ │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │   ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │   └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): z
+[2m    │   │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:gwcs/spherical_cartesian-1.3.0)
+[2m    │   │   │ │ │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │   │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): z
+[2m    │   │   │ │ │   ├─[0m[1mname[0m (scalar): c2s
+[2m    │   │   │ │ │   ├─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): lon
+[2m    │   │   │ │ │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): lat
+[2m    │   │   │ │ │   ├─[0m[1mtransform_type[0m (scalar): cartesian_to_spherical
+[2m    │   │   │ │ │   └─[0m[1mwrap_lon_at[0m (scalar): 180
+[2m    │   │   │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): lon
+[2m    │   │   │ │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): lat
+[2m    │   │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/concatenate-1.3.0)
+[2m    │   │   │   ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/scale-1.3.0)
+[2m    │   │   │   │ │ ├─[0m[1mfactor[0m (scalar): 3600.0
+[2m    │   │   │   │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │   │ │ │ └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │   │ │ ├─[0m[1mname[0m (scalar): deg_to_arcsec_1D
+[2m    │   │   │   │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │   │ │   └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y
+[2m    │   │   │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/scale-1.3.0)
+[2m    │   │   │   │   ├─[0m[1mfactor[0m (scalar): 3600.0
+[2m    │   │   │   │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │   │   │ └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │   │   ├─[0m[1mname[0m (scalar): deg_to_arcsec_1D
+[2m    │   │   │   │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │   │     └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y
+[2m    │   │   │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │   ├─[0m[1mname[0m (scalar): deg_to_arcsec_2D
+[2m    │   │   │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │     ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y0
+[2m    │   │   │     └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y1
+[2m    │   │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   ├─[0m[1minverse[0m (tag:stsci.edu:asdf/transform/compose-1.3.0)
+[2m    │   │   │ ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/compose-1.3.0)
+[2m    │   │   │ │ │ ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/compose-1.3.0)
+[2m    │   │   │ │ │ │ │ ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/compose-1.3.0)
+[2m    │   │   │ │ │ │ │ │ │ ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/compose-1.3.0)
+[2m    │   │   │ │ │ │ │ │ │ │ │ ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/compose-1.3.0)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/compose-1.3.0)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/compose-1.3.0)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/concatenate-1.3.0)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/scale-1.3.0)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[1mfactor[0m (scalar): 0.0002777777777777778
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[1mname[0m (scalar): arcsec_to_deg_1D
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/scale-1.3.0)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[1mfactor[0m (scalar): 0.0002777777777777778
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   │ └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[1mname[0m (scalar): arcsec_to_deg_1D
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │     └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[1mname[0m (scalar): arcsec_to_deg_2D
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:gwcs/spherical_cartesian-1.3.0)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): lon
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): lat
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[1mname[0m (scalar): s2c
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): z
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[1mtransform_type[0m (scalar): spherical_to_cartesian
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   └─[0m[1mwrap_lon_at[0m (scalar): 180
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ │   └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): z
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/rotate_sequence_3d-1.1.0)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[1mangles[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 0.3647080959023555
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 0.28910704796541764
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │   │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): 59.846679364670365
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[1maxes_order[0m (scalar): zyx
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │   │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): z
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[1mname[0m (scalar): det_to_optic_axis
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │   │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): z
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │   └─[0m[1mrotation_type[0m (scalar): cartesian
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ │   └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): z
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/compose-1.3.0)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/divide-1.3.0)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/remap_axes-1.4.0)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ │ │ │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ │ │ │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x2
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ │ │ ├─[0m[1mmapping[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ │ │ │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ │ │ │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): 2
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ │ │ ├─[0m[1mname[0m (scalar): xyz
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ │ │   ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ │ │   └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x2
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/remap_axes-1.4.0)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ │   │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x2
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ │   ├─[0m[1mmapping[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ │   │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): 0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ │   ├─[0m[1mn_inputs[0m (scalar): 3
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ │   ├─[0m[1mname[0m (scalar): xxx
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ │     ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ │     ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ │     └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x2
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x2
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │   ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ │   └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x2
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/remap_axes-1.4.0)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │   │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x2
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │   ├─[0m[1mmapping[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 2
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │   ├─[0m[1mname[0m (scalar): xtyt
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │     ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │     └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x2
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   ├─[0m[1mname[0m (scalar): Cartesian 3D to TAN
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │     ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │     └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/affine-1.4.0)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │ │ │ │ │ │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │ │ │ │ │   ├─[0m[1mmatrix[0m (tag:stsci.edu:asdf/core/ndarray-1.1.0)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │   │ ├─[0m[1msource[0m (scalar): 10
+[2m    │   │   │ │ │ │ │ │ │ │ │ │   │ ├─[0m[1mdatatype[0m (scalar): float64
+[2m    │   │   │ │ │ │ │ │ │ │ │ │   │ ├─[0m[1mbyteorder[0m (scalar): little
+[2m    │   │   │ │ │ │ │ │ │ │ │ │   │ └─[0m[1mshape[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │   │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 2
+[2m    │   │   │ │ │ │ │ │ │ │ │ │   │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 2
+[2m    │   │   │ │ │ │ │ │ │ │ │ │   ├─[0m[1mname[0m (scalar): tp_affine_inv
+[2m    │   │   │ │ │ │ │ │ │ │ │ │   ├─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │ │ │ │ │ │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │ │ │ │ │   └─[0m[1mtranslation[0m (tag:stsci.edu:asdf/core/ndarray-1.1.0)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │     ├─[0m[1msource[0m (scalar): 11
+[2m    │   │   │ │ │ │ │ │ │ │ │ │     ├─[0m[1mdatatype[0m (scalar): float64
+[2m    │   │   │ │ │ │ │ │ │ │ │ │     ├─[0m[1mbyteorder[0m (scalar): little
+[2m    │   │   │ │ │ │ │ │ │ │ │ │     └─[0m[1mshape[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │       └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 2
+[2m    │   │   │ │ │ │ │ │ │ │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │ │ │ │ │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/compose-1.3.0)
+[2m    │   │   │ │ │ │ │ │ │ │   ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/remap_axes-1.4.0)
+[2m    │   │   │ │ │ │ │ │ │ │   │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │   │ │ ├─[0m[1mmapping[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 0
+[2m    │   │   │ │ │ │ │ │ │ │   │ │ │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 0
+[2m    │   │   │ │ │ │ │ │ │ │   │ │ │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): 1
+[2m    │   │   │ │ │ │ │ │ │ │   │ │ ├─[0m[1mname[0m (scalar): xtyt2xyz
+[2m    │   │   │ │ │ │ │ │ │ │   │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │   │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │   │ │   ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │   │ │   └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x2
+[2m    │   │   │ │ │ │ │ │ │ │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/concatenate-1.3.0)
+[2m    │   │   │ │ │ │ │ │ │ │   │   ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/constant-1.5.0)
+[2m    │   │   │ │ │ │ │ │ │ │   │   │ │ ├─[0m[1mdimensions[0m (scalar): 1
+[2m    │   │   │ │ │ │ │ │ │ │   │   │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │   │   │ │ │ └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │ │ │ │   │   │ │ ├─[0m[1mname[0m (scalar): one
+[2m    │   │   │ │ │ │ │ │ │ │   │   │ │ ├─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │   │   │ │ │ └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │ │ │   │   │ │ └─[0m[1mvalue[0m (scalar): 1.0
+[2m    │   │   │ │ │ │ │ │ │ │   │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/identity-1.3.0)
+[2m    │   │   │ │ │ │ │ │ │ │   │   │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │   │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │   │   │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │   │   │   ├─[0m[1mn_dims[0m (scalar): 2
+[2m    │   │   │ │ │ │ │ │ │ │   │   │   ├─[0m[1mname[0m (scalar): I(2D)
+[2m    │   │   │ │ │ │ │ │ │ │   │   │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │   │   │     ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │   │   │     └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │   │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │ │ │ │   │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │   │   │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │   │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │   │     ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │ │ │   │     ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │   │     └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ │   ├─[0m[1mname[0m (scalar): TAN to cartesian 3D
+[2m    │   │   │ │ │ │ │ │ │ │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │     ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │ │ │     ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │     └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │ │   ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │   └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/rotate_sequence_3d-1.1.0)
+[2m    │   │   │ │ │ │ │ │   ├─[0m[1mangles[0m (sequence)
+[2m    │   │   │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -59.846679364670365
+[2m    │   │   │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): -0.28910704796541764
+[2m    │   │   │ │ │ │ │ │   │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): -0.3647080959023555
+[2m    │   │   │ │ │ │ │ │   ├─[0m[1maxes_order[0m (scalar): xyz
+[2m    │   │   │ │ │ │ │ │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │   │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): z
+[2m    │   │   │ │ │ │ │ │   ├─[0m[1mname[0m (scalar): optic_axis_to_det
+[2m    │   │   │ │ │ │ │ │   ├─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │ │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │   │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): z
+[2m    │   │   │ │ │ │ │ │   └─[0m[1mrotation_type[0m (scalar): cartesian
+[2m    │   │   │ │ │ │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │   ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │   └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): z
+[2m    │   │   │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:gwcs/spherical_cartesian-1.3.0)
+[2m    │   │   │ │ │ │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │   │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): z
+[2m    │   │   │ │ │ │   ├─[0m[1mname[0m (scalar): c2s
+[2m    │   │   │ │ │ │   ├─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): lon
+[2m    │   │   │ │ │ │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): lat
+[2m    │   │   │ │ │ │   ├─[0m[1mtransform_type[0m (scalar): cartesian_to_spherical
+[2m    │   │   │ │ │ │   └─[0m[1mwrap_lon_at[0m (scalar): 180
+[2m    │   │   │ │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): lon
+[2m    │   │   │ │ │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): lat
+[2m    │   │   │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/concatenate-1.3.0)
+[2m    │   │   │ │   ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/scale-1.3.0)
+[2m    │   │   │ │   │ │ ├─[0m[1mfactor[0m (scalar): 3600.0
+[2m    │   │   │ │   │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │   │ │ │ └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │   │ │ ├─[0m[1mname[0m (scalar): deg_to_arcsec_1D
+[2m    │   │   │ │   │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │   │ │   └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y
+[2m    │   │   │ │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/scale-1.3.0)
+[2m    │   │   │ │   │   ├─[0m[1mfactor[0m (scalar): 3600.0
+[2m    │   │   │ │   │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │   │   │ └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │   │   ├─[0m[1mname[0m (scalar): deg_to_arcsec_1D
+[2m    │   │   │ │   │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │   │     └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y
+[2m    │   │   │ │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │   ├─[0m[1mname[0m (scalar): deg_to_arcsec_2D
+[2m    │   │   │ │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │     ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y0
+[2m    │   │   │ │     └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y1
+[2m    │   │   │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ ├─[0m[1mname[0m (scalar): Inverse JWST tangent-plane linear correction. v1
+[2m    │   │   │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y0
+[2m    │   │   │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y1
+[2m    │   │   ├─[0m[1mname[0m (scalar): JWST tangent-plane linear correction. v1
+[2m    │   │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │     ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y0
+[2m    │   │     └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y1
+[2m    │   ├─[0m[2m[[0m[1m3[0m[2m][0m (tag:stsci.edu:gwcs/step-1.3.0)
+[2m    │   │ ├─[0m[1mframe[0m (tag:stsci.edu:gwcs/frame2d-1.2.0)
+[2m    │   │ │ ├─[0m[1maxes_names[0m (sequence)
+[2m    │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): v2
+[2m    │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): v3
+[2m    │   │ │ ├─[0m[1maxes_order[0m (sequence)
+[2m    │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 0
+[2m    │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │   │ │ ├─[0m[1maxis_physical_types[0m (sequence)
+[2m    │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): custom:v2
+[2m    │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): custom:v3
+[2m    │   │ │ ├─[0m[1mname[0m (scalar): v2v3corr
+[2m    │   │ │ └─[0m[1munit[0m (sequence)
+[2m    │   │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/unit/unit-1.0.0): arcsec
+[2m    │   │ │   └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/unit/unit-1.0.0): arcsec
+[2m    │   │ └─[0m[1mtransform[0m (tag:stsci.edu:asdf/transform/compose-1.3.0)
+[2m    │   │   ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/compose-1.3.0)
+[2m    │   │   │ │ ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/compose-1.3.0)
+[2m    │   │   │ │ │ │ ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/concatenate-1.3.0)
+[2m    │   │   │ │ │ │ │ │ ├─[0m[1mforward[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/transform/scale-1.3.0)
+[2m    │   │   │ │ │ │ │ │ │ │ ├─[0m[1mfactor[0m (scalar): 0.0002777777777777778
+[2m    │   │   │ │ │ │ │ │ │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │ │ └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │ │ │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ │   └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/scale-1.3.0)
+[2m    │   │   │ │ │ │ │ │ │   ├─[0m[1mfactor[0m (scalar): 0.0002777777777777778
+[2m    │   │   │ │ │ │ │ │ │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │   │ └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │ │ │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │     └─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): y0
+[2m    │   │   │ │ │ │ │ │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y1
+[2m    │   │   │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:gwcs/spherical_cartesian-1.3.0)
+[2m    │   │   │ │ │ │ │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): lon
+[2m    │   │   │ │ │ │ │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): lat
+[2m    │   │   │ │ │ │ │   ├─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │ │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │ │   │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): z
+[2m    │   │   │ │ │ │ │   ├─[0m[1mtransform_type[0m (scalar): spherical_to_cartesian
+[2m    │   │   │ │ │ │ │   └─[0m[1mwrap_lon_at[0m (scalar): 180
+[2m    │   │   │ │ │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │ │   ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │ │   └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): z
+[2m    │   │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/transform/rotate_sequence_3d-1.1.0)
+[2m    │   │   │ │ │   ├─[0m[1mangles[0m (sequence)
+[2m    │   │   │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 0.3647080959023555
+[2m    │   │   │ │ │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 0.28910704796541764
+[2m    │   │   │ │ │   │ ├─[0m[2m[[0m[1m2[0m[2m][0m (scalar): 59.846679364670365
+[2m    │   │   │ │ │   │ ├─[0m[2m[[0m[1m3[0m[2m][0m (scalar): 66.0355095513252
+[2m    │   │   │ │ │   │ └─[0m[2m[[0m[1m4[0m[2m][0m (scalar): -269.8325254855773
+[2m    │   │   │ │ │   ├─[0m[1maxes_order[0m (scalar): zyxyz
+[2m    │   │   │ │ │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │   │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): z
+[2m    │   │   │ │ │   ├─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │ │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │ │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │ │   │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): z
+[2m    │   │   │ │ │   └─[0m[1mrotation_type[0m (scalar): cartesian
+[2m    │   │   │ │ ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   │ │ └─[0m[1moutputs[0m (sequence)
+[2m    │   │   │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │ │   ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │ │   └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): z
+[2m    │   │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:gwcs/spherical_cartesian-1.3.0)
+[2m    │   │   │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x
+[2m    │   │   │   │ ├─[0m[2m[[0m[1m1[0m[2m][0m (scalar): y
+[2m    │   │   │   │ └─[0m[2m[[0m[1m2[0m[2m][0m (scalar): z
+[2m    │   │   │   ├─[0m[1moutputs[0m (sequence)
+[2m    │   │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): lon
+[2m    │   │   │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): lat
+[2m    │   │   │   ├─[0m[1mtransform_type[0m (scalar): cartesian_to_spherical
+[2m    │   │   │   └─[0m[1mwrap_lon_at[0m (scalar): 360
+[2m    │   │   ├─[0m[1minputs[0m (sequence)
+[2m    │   │   │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): x0
+[2m    │   │   │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): x1
+[2m    │   │   ├─[0m[1mname[0m (scalar): v23tosky
+[2m    │   │   └─[0m[1moutputs[0m (sequence)
+[2m    │   │     ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): lon
+[2m    │   │     └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): lat
+[2m    │   └─[0m[2m[[0m[1m4[0m[2m][0m (tag:stsci.edu:gwcs/step-1.3.0)
+[2m    │     ├─[0m[1mframe[0m (tag:stsci.edu:gwcs/celestial_frame-1.2.0)
+[2m    │     │ ├─[0m[1maxes_names[0m (sequence)
+[2m    │     │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): lon
+[2m    │     │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): lat
+[2m    │     │ ├─[0m[1maxes_order[0m (sequence)
+[2m    │     │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 0
+[2m    │     │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1
+[2m    │     │ ├─[0m[1maxis_physical_types[0m (sequence)
+[2m    │     │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): pos.eq.ra
+[2m    │     │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): pos.eq.dec
+[2m    │     │ ├─[0m[1mname[0m (scalar): world
+[2m    │     │ ├─[0m[1mreference_frame[0m (tag:astropy.org:astropy/coordinates/frames/icrs-1.1.0)
+[2m    │     │ │ └─[0m[1mframe_attributes[0m (mapping)
+[2m    │     │ └─[0m[1munit[0m (sequence)
+[2m    │     │   ├─[0m[2m[[0m[1m0[0m[2m][0m (tag:stsci.edu:asdf/unit/unit-1.0.0): deg
+[2m    │     │   └─[0m[2m[[0m[1m1[0m[2m][0m (tag:stsci.edu:asdf/unit/unit-1.0.0): deg
+[2m    │     └─[0m[1mtransform[0m (scalar): null
+[2m    ├─[0m[1mwcs_fit_results[0m (mapping)
+[2m    │ ├─[0m[1m<rot>[0m (scalar): 2.844338799936102e-05
+[2m    │ ├─[0m[1m<scale>[0m (scalar): 1.0
+[2m    │ ├─[0m[1mcenter[0m (sequence)
+[2m    │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -4.380064906371088
+[2m    │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): -21.04270513531622
+[2m    │ ├─[0m[1mfitgeom[0m (scalar): rshift
+[2m    │ ├─[0m[1mmae[0m (scalar): 0.0017111099766289842
+[2m    │ ├─[0m[1mmatrix[0m (sequence)
+[2m    │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (sequence)
+[2m    │ │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 0.9999999999998768
+[2m    │ │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 4.964307710110721e-07
+[2m    │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (sequence)
+[2m    │ │   ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): -4.964307710110721e-07
+[2m    │ │   └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 0.9999999999998768
+[2m    │ ├─[0m[1mnmatches[0m (scalar): 107
+[2m    │ ├─[0m[1mproper[0m (scalar): true
+[2m    │ ├─[0m[1mproper_rot[0m (scalar): 2.844338799936102e-05
+[2m    │ ├─[0m[1mrmse[0m (scalar): 0.0020857122860393922
+[2m    │ ├─[0m[1mrot[0m (sequence)
+[2m    │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 2.844338799936102e-05
+[2m    │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 2.844338799936102e-05
+[2m    │ ├─[0m[1mscale[0m (sequence)
+[2m    │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 1.0
+[2m    │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 1.0
+[2m    │ ├─[0m[1mshift[0m (sequence)
+[2m    │ │ ├─[0m[2m[[0m[1m0[0m[2m][0m (scalar): 0.0002720710784867062
+[2m    │ │ └─[0m[2m[[0m[1m1[0m[2m][0m (scalar): 6.3471277370164e-05
+[2m    │ ├─[0m[1mskew[0m (scalar): 0.0
+[2m    │ └─[0m[1mstatus[0m (scalar): SUCCESS
+[2m    └─[0m[1mwcsinfo[0m (mapping)
+[2m      ├─[0m[1maperture_name[0m (scalar): WFI01_FULL
+[2m      ├─[0m[1mdec_ref[0m (scalar): 66.0355095513252
+[2m      ├─[0m[1mra_ref[0m (scalar): 269.8325254855773
+[2m      ├─[0m[1mroll_ref[0m (scalar): 59.846679364670365
+[2m      ├─[0m[1ms_region[0m (scalar): POLYGON ICRS  269.986946024 65.974265006 269.986740333 66.097228...
+[2m      ├─[0m[1mv2_ref[0m (scalar): 1312.9491452484797
+[2m      ├─[0m[1mv3_ref[0m (scalar): -1040.7853726755036
+[2m      ├─[0m[1mv3yangle[0m (scalar): -60.0
+[2m      └─[0m[1mvparity[0m (scalar): -1
+[2m┌────────────────────────────────────────────────┐
+[0m[2m│[0m                    Block #0                    [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m flags: 0x00000000                              [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m compression: ""                                [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m allocated_size: 288                            [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m used_size: 288                                 [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m data_size: 288                                 [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m checksum: fba99be39b932d3bce1f0136c34b1f4c     [2m│[0m
+[2m└────────────────────────────────────────────────┘
+[0m[2m┌────────────────────────────────────────────────┐
+[0m[2m│[0m                    Block #1                    [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m flags: 0x00000000                              [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m compression: ""                                [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m allocated_size: 288                            [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m used_size: 288                                 [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m data_size: 288                                 [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m checksum: 6e1b06e0e25ef71ea7387a0db4491ee1     [2m│[0m
+[2m└────────────────────────────────────────────────┘
+[0m[2m┌────────────────────────────────────────────────┐
+[0m[2m│[0m                    Block #2                    [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m flags: 0x00000000                              [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m compression: ""                                [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m allocated_size: 288                            [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m used_size: 288                                 [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m data_size: 288                                 [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m checksum: 982d757270ffb7feee14cec2fb4b659f     [2m│[0m
+[2m└────────────────────────────────────────────────┘
+[0m[2m┌────────────────────────────────────────────────┐
+[0m[2m│[0m                    Block #3                    [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m flags: 0x00000000                              [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m compression: ""                                [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m allocated_size: 288                            [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m used_size: 288                                 [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m data_size: 288                                 [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m checksum: 0e9610a9d873ce4878ac6bc5e1caeae9     [2m│[0m
+[2m└────────────────────────────────────────────────┘
+[0m[2m┌────────────────────────────────────────────────┐
+[0m[2m│[0m                    Block #4                    [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m flags: 0x00000000                              [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m compression: ""                                [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m allocated_size: 32                             [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m used_size: 32                                  [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m data_size: 32                                  [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m checksum: af3ceb00c54949aff4f05b5018125952     [2m│[0m
+[2m└────────────────────────────────────────────────┘
+[0m[2m┌────────────────────────────────────────────────┐
+[0m[2m│[0m                    Block #5                    [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m flags: 0x00000000                              [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m compression: ""                                [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m allocated_size: 32                             [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m used_size: 32                                  [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m data_size: 32                                  [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m checksum: ef5bbd965f6479d44b1934de0eb9a38e     [2m│[0m
+[2m└────────────────────────────────────────────────┘
+[0m[2m┌────────────────────────────────────────────────┐
+[0m[2m│[0m                    Block #6                    [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m flags: 0x00000000                              [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m compression: ""                                [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m allocated_size: 32                             [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m used_size: 32                                  [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m data_size: 32                                  [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m checksum: af3ceb00c54949aff4f05b5018125952     [2m│[0m
+[2m└────────────────────────────────────────────────┘
+[0m[2m┌────────────────────────────────────────────────┐
+[0m[2m│[0m                    Block #7                    [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m flags: 0x00000000                              [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m compression: ""                                [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m allocated_size: 32                             [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m used_size: 32                                  [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m data_size: 32                                  [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m checksum: ef5bbd965f6479d44b1934de0eb9a38e     [2m│[0m
+[2m└────────────────────────────────────────────────┘
+[0m[2m┌────────────────────────────────────────────────┐
+[0m[2m│[0m                    Block #8                    [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m flags: 0x00000000                              [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m compression: ""                                [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m allocated_size: 32                             [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m used_size: 32                                  [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m data_size: 32                                  [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m checksum: 9141dd1409ba2d6bbdf93f8a7492d4e5     [2m│[0m
+[2m└────────────────────────────────────────────────┘
+[0m[2m┌────────────────────────────────────────────────┐
+[0m[2m│[0m                    Block #9                    [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m flags: 0x00000000                              [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m compression: ""                                [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m allocated_size: 16                             [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m used_size: 16                                  [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m data_size: 16                                  [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m checksum: c16606918f59cc6d84af7369095678cb     [2m│[0m
+[2m└────────────────────────────────────────────────┘
+[0m[2m┌────────────────────────────────────────────────┐
+[0m[2m│[0m                   Block #10                    [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m flags: 0x00000000                              [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m compression: ""                                [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m allocated_size: 32                             [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m used_size: 32                                  [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m data_size: 32                                  [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m checksum: 40907350bb128a46b81e1c735777f4fd     [2m│[0m
+[2m└────────────────────────────────────────────────┘
+[0m[2m┌────────────────────────────────────────────────┐
+[0m[2m│[0m                   Block #11                    [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m flags: 0x00000000                              [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m compression: ""                                [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m allocated_size: 16                             [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m used_size: 16                                  [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m data_size: 16                                  [2m│[0m
+[2m├────────────────────────────────────────────────┤
+[0m[2m│[0m checksum: 1ceee070a214b933d81aa5f9e2532069     [2m│[0m
+[2m└────────────────────────────────────────────────┘
+[0m
