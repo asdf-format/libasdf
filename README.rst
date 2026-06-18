@@ -107,8 +107,9 @@ the ASDF tree, as well as extract block data.  Inline comments provide further e
        // This reads the top-level core/asdf-1.0.0 schema
        err = asdf_get_meta(file, "/", &meta);
        if (err == ASDF_VALUE_OK) {
-           if (meta->history.entries[0]) {
-               // This is a NULL-terminated array of asdf_history_entry_t*
+           // `entries` is NULL when the file has no history, and otherwise a
+           // NULL-terminated array of asdf_history_entry_t*, so check both.
+           if (meta->history.entries && meta->history.entries[0]) {
                printf("first history entry: %s\n", meta->history.entries[0]->description);
            }
        }
