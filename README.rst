@@ -146,6 +146,10 @@ the ASDF tree, as well as extract block data.  Inline comments provide further e
        printf("Using ndarray at: %s\n", asdf_value_path(value));
        printf("Number of data dimensions: %d\n", ndarray->ndim);
    
+       // The generic value wrappers are no longer needed and should be freed.
+       asdf_value_destroy(value);
+       asdf_value_destroy(root);
+   
        // Get just a raw pointer to the ndarray data block (if uncompressed).
        // Optionally returns the size in bytes as well
        size_t size = 0;
