@@ -299,8 +299,7 @@ TESTS += $(DOC_EXAMPLES_DIR)/test-doc-examples.sh
 
 $(DOC_EXAMPLES_DIR)/test-doc-examples.sh: $(DOC_EXAMPLE_DEPS)
 	$(AM_V_at)$(PYTHON3) $(srcdir)/scripts/extract_doc_examples.py \
-	  $(top_srcdir)/README.rst \
-	  $(top_srcdir)/docs/usage/writing.rst \
+	  $(DOC_EXAMPLE_FILES) \
 	  --out-dir $(DOC_EXAMPLES_DIR) \
 	  --fixtures-dir $(srcdir)/fixtures $(QUIET_OUT)
 	$(AM_V_at)for f in $(DOC_EXAMPLES_DIR)/*.c; do \
