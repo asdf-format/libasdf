@@ -170,7 +170,8 @@ the *cubes* of the original values (i.e. ``v^3 mod 256``), and writes the
 result to an in-memory buffer.
 
 .. code:: c
-   :name: test-write-cube
+   :test: test-write-cube
+   :fixture: cube.asdf
 
    #include <stdio.h>
    #include <stdlib.h>

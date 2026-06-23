@@ -171,22 +171,42 @@ if(ENABLE_TESTING_DOCS)
     set(DOC_EXAMPLES_DIR ${CMAKE_CURRENT_BINARY_DIR}/doc_examples)
     # For now explicitly list files containing extractable doc examples; the
     # only one currently is README.rst
-    set(DOC_FILES ${CMAKE_SOURCE_DIR}/README.rst)
+    set(DOC_FILES 
+        ${CMAKE_SOURCE_DIR}/README.rst
+        ${CMAKE_SOURCE_DIR}/docs/usage/examples.rst
+        ${CMAKE_SOURCE_DIR}/docs/usage/writing.rst
+    )
     file(MAKE_DIRECTORY ${DOC_EXAMPLES_DIR})
     set(EXTRACT_DOC_EXAMPLES ${CMAKE_CURRENT_SOURCE_DIR}/scripts/extract_doc_examples.py)
     set(TEST_DOC_EXAMPLES ${DOC_EXAMPLES_DIR}/test-doc-examples.sh)
 
-    # Just list the names of the doctests that should be built
+    # List the doctests that should be built, one per line.  Each line is
+    # either "name" (run with no argument) or "name|arg" where arg is the
+    # resolved fixture file passed to the program (see extract_doc_examples.py).
     execute_process(
         COMMAND ${Python3_EXECUTABLE} ${EXTRACT_DOC_EXAMPLES}
-                --list-tests ${DOC_FILES}
+                --list-tests
+                --fixtures-dir ${CMAKE_CURRENT_SOURCE_DIR}/fixtures
+                --out-dir ${DOC_EXAMPLES_DIR}
+                ${DOC_FILES}
         OUTPUT_VARIABLE DOC_TEST_LIST
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
-    string(REGEX REPLACE "\n" ";" DOC_TESTS "${DOC_TEST_LIST}")
+    string(REGEX REPLACE "\n" ";" DOC_TEST_LINES "${DOC_TEST_LIST}")
 
+    set(DOC_TESTS "")
     set(DOC_TEST_SOURCES "")
-    foreach (doctest IN LISTS DOC_TESTS)
+    foreach (line IN LISTS DOC_TEST_LINES)
+        # Split "name,arg" into name and fixture argument (arg may be absent)
+        string(REPLACE "," ";" parts "${line}")
+        list(GET parts 0 doctest)
+        list(LENGTH parts nparts)
+        if (nparts GREATER 1)
+            list(GET parts 1 DOC_TEST_ARG_${doctest})
+        else()
+            set(DOC_TEST_ARG_${doctest} "")
+        endif()
+        list(APPEND DOC_TESTS ${doctest})
         list(APPEND DOC_TEST_SOURCES ${DOC_EXAMPLES_DIR}/${doctest}.c)
     endforeach()
 
@@ -217,12 +237,16 @@ if(ENABLE_TESTING_DOCS)
         target_include_directories(${doctest} PRIVATE ${CMAKE_SOURCE_DIR}/include)
         target_link_libraries(${doctest} PRIVATE libasdf)
         add_dependencies(${doctest} extract-doc-examples)
-        # All the tests are currently hard-coded to work with this specific
-        # test file; may change that later if we add any more of these
-        # doctests
-        add_test(
-            NAME ${doctest}
-            COMMAND ${doctest} ${CMAKE_CURRENT_BINARY_DIR}/fixtures/cube.asdf
-        )
+        # Each doctest declares its own input file via the :fixture: option in
+        # the documentation; tests with no fixture run with no argument.
+        if (DOC_TEST_ARG_${doctest})
+            add_test(NAME ${doctest}
+                     COMMAND ${doctest} ${DOC_TEST_ARG_${doctest}})
+        else()
+            add_test(NAME ${doctest} COMMAND ${doctest})
+        endif()
+        # Prepend the build dir libasdf to the library search path
+        set_property(TEST ${doctest}
+            PROPERTY ENVIRONMENT_MODIFICATION "${runtime}")
     endforeach()
 endif()

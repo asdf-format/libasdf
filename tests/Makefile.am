@@ -287,6 +287,7 @@ DOC_EXAMPLES_DIR = $(builddir)/doc_examples
 # Documentation files containing example programs
 DOC_EXAMPLE_FILES = \
     $(top_srcdir)/README.rst \
+    $(top_srcdir)/docs/usage/examples.rst \
     $(top_srcdir)/docs/usage/writing.rst
 
 DOC_EXAMPLE_DEPS = \
@@ -379,6 +380,7 @@ EXTRA_DIST += \
     fixtures/time.asdf \
     fixtures/trivial-extension.asdf \
     fixtures/value-types.asdf \
+    fixtures/write-example.asdf \
     fixtures/verify-checksums/255-2-blocks.verify-checksums.txt \
     fixtures/verify-checksums/255-invalid-checksum.verify-checksums.txt \
     fixtures/verify-checksums/compressed.verify-checksums.txt \

@@ -2,14 +2,29 @@
 """
 Extract all C code blocks from ReST files and write them to test files.
 
-Code blocks to test are always introduced by the ``.. code:: c`` block
-directive.  Blocks to be extracted must include the ``:name:`` option with
-a name beginning with ``test-``.
-"""
+Code blocks to test are introduced by the ``.. code:: c`` block directive and
+marked for extraction with the ``:test:`` option, whose value is the name of
+the test (conventionally beginning with ``test-``)::
 
-# TODO: Clean this up a bit; when I first wrote it it was simple enough to be
-# a flat Python script but might be clearer if it were better organized into
-# subroutines
+    .. code:: c
+       :test: test-open-close-file
+       :fixture: cube.asdf
+
+       #include <asdf.h>
+       ...
+
+The optional ``:fixture:`` option names the file passed to the compiled
+program as its first argument.  It may take one of two forms:
+
+* ``:fixture: <name>`` -- an existing fixture file (resolved relative to
+  ``--fixtures-dir``) passed to the program as an *input* file.
+* ``:fixture: temp`` or ``:fixture: temp:<name>`` -- a throwaway *output*
+  path in the build directory (resolved relative to ``--out-dir``).  Use this
+  for examples that write a file rather than read one.  When no ``<name>`` is
+  given the file is named ``<test>.asdf``.
+
+A block with no ``:fixture:`` is run with no arguments.
+"""
 
 import argparse
 import os.path as pth
@@ -17,101 +32,160 @@ import re
 import stat
 from pathlib import Path
 
-parser = argparse.ArgumentParser(description='Extract C code blocks from ReST')
-parser.add_argument(
-    'rst_files', nargs='+', type=Path,
-    help='ReST files from which to extract code examples'
-)
-parser.add_argument(
-    '--list-tests', action='store_true',
-    help='Just list the test names without extracting them yet'
-)
-parser.add_argument(
-    '--out-dir', type=Path, default=Path('doc_examples'),
-    help='Directory to write extracted .c files'
-)
 
-# NOTE: Curently all the tests are designed to just work on a specific file,
-# fixtures/cube.asdf; could change this later if need be.
-parser.add_argument(
-    '--fixtures-dir', type=Path, default=Path('fixtures'),
-    help='Directory containing test files on which the programs are run')
-args = parser.parse_args()
-
-if not args.list_tests:
-    args.out_dir.mkdir(parents=True, exist_ok=True)
-
-# Match a .. code:: c block, optionally with :name:
+# Match a .. code:: c block with its options and indented body
 code_block_re = re.compile(
     r'^\s*\.\. code:: c\s*\n'
-    r'((?:\s*:\w+:.*\n)*)'  # optional directives like :name:
-    r'((?:\s{3,}.*\n)+)',   # indented code block
+    r'((?:\s*:[\w-]+:.*\n)*)'  # options like :test: / :fixture:
+    r'((?:\s{3,}.*\n)+)',      # indented code block
     re.MULTILINE
 )
 
-test_names = []
+test_option_re = re.compile(r':test:\s*(\S+)')
+fixture_option_re = re.compile(r':fixture:\s*(\S+)')
 
-for rst_file in args.rst_files:
-    if not rst_file.is_file():
-        parser.exit(1, f'file not found: {rst_file}\n')
 
-    content = rst_file.read_text()
+def resolve_fixture(fixture, test_name, fixtures_dir, out_dir):
+    """
+    Resolve a ``:fixture:`` option value to the path passed to the program.
 
-    for match in code_block_re.finditer(content):
-        directives, code_lines = match.groups()
+    Returns ``None`` when the test takes no argument.
+    """
+    if fixture is None:
+        return None
 
-        # Look for :name: directive starting with test_
-        name_match = re.search(r':name:\s*(test-\S+)', directives)
-        if not name_match:
-            continue
+    if fixture == 'temp' or fixture.startswith('temp:'):
+        name = fixture[len('temp:'):] if ':' in fixture else f'{test_name}.asdf'
+        return out_dir / name
 
-        test_name = name_match.group(1)
+    return fixtures_dir / fixture
 
-        if args.list_tests:
-            print(test_name)
-            continue
 
-        filename = f'{test_name}.c'
+def iter_doc_tests(rst_files):
+    """
+    Yield ``(rst_file, lineno, test_name, fixture, code)`` for each marked
+    block found in ``rst_files``.
+    """
+    for rst_file in rst_files:
+        if not rst_file.is_file():
+            raise FileNotFoundError(rst_file)
 
-        # Remove leading indentation (3 or more spaces)
-        code = '\n'.join(
-            line[3:] if line.startswith('   ') else line
-            for line in code_lines.splitlines()
-        )
+        content = rst_file.read_text()
 
-        lineno = content.count('\n', 0, match.start()) + 2
-        out_file = args.out_dir / filename
-        rst_file_rel = pth.relpath(rst_file.resolve(),
-                                   start=args.out_dir.resolve())
+        for match in code_block_re.finditer(content):
+            options, code_lines = match.groups()
 
-        with out_file.open('w') as fobj:
-            fobj.write(f'// Auto-generated test extracted from '
-                       f'{rst_file_rel}:{lineno}\n')
-            fobj.write(code)
+            name_match = test_option_re.search(options)
+            if not name_match:
+                continue
 
-        print(f'Wrote {out_file}')
-        test_names.append(test_name)
+            test_name = name_match.group(1)
 
-if not args.list_tests:
-    # Generate a script to run the tests
-    shell_file = args.out_dir / 'test-doc-examples.sh'
-    fixture_file = args.fixtures_dir / 'cube.asdf'  # hard-coded for now
+            fixture_match = fixture_option_re.search(options)
+            fixture = fixture_match.group(1) if fixture_match else None
+
+            # Remove leading indentation (3 or more spaces)
+            code = '\n'.join(
+                line[3:] if line.startswith('   ') else line
+                for line in code_lines.splitlines()
+            )
+
+            lineno = content.count('\n', 0, match.start()) + 2
+            yield rst_file, lineno, test_name, fixture, code
+
+
+def write_test_source(out_dir, rst_file, lineno, test_name, code):
+    """Write the extracted code to ``<out_dir>/<test_name>.c``."""
+    out_file = out_dir / f'{test_name}.c'
+    rst_file_rel = pth.relpath(rst_file.resolve(), start=out_dir.resolve())
+
+    with out_file.open('w') as fobj:
+        fobj.write(f'// Auto-generated test extracted from '
+                   f'{rst_file_rel}:{lineno}\n')
+        fobj.write(code)
+
+    return out_file
+
+
+def write_runner_script(out_dir, tests, prog):
+    """
+    Write the ``test-doc-examples.sh`` driver that runs every extracted test.
+
+    ``tests`` is a list of ``(test_name, argv)`` pairs where ``argv`` is the
+    resolved fixture path (or ``None``).
+    """
+    shell_file = out_dir / 'test-doc-examples.sh'
 
     with open(shell_file, 'w') as fobj:
         fobj.write('#!/bin/sh\n')
-        fobj.write(f'# Auto-generated by {parser.prog}; '
-                   f'do not edit or commit\n\n')
+        fobj.write(f'# Auto-generated by {prog}; do not edit or commit\n\n')
 
         # Run every example, capturing both stdout and stderr (e.g. sanitizer
         # reports) to its log, and fail the test if any example exits non-zero.
         fobj.write('status=0\n\n')
 
-        for test_name in test_names:
-            fobj.write(f'echo "Running {test_name}"\n')
-            fobj.write(f'{args.out_dir / test_name} {fixture_file} '
-                       f'> {args.out_dir / test_name}.log 2>&1 || status=1\n')
+        for test_name, argv in tests:
+            exe = out_dir / test_name
+            arg = f' {argv}' if argv is not None else ''
+            fobj.write(f'echo -n "Running {test_name}... "\n')
+            fobj.write(f'{exe}{arg} > {exe}.log 2>&1 || status=1\n')
+            fobj.write('test $status -eq 0 && echo "passed" || echo "failed"\n')
 
         fobj.write('\nexit $status\n')
 
-    print(f'Wrote {shell_file}')
     shell_file.chmod(shell_file.stat().st_mode | stat.S_IXUSR)
+    return shell_file
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='Extract C code blocks from ReST')
+    parser.add_argument(
+        'rst_files', nargs='+', type=Path,
+        help='ReST files from which to extract code examples')
+    parser.add_argument(
+        '--list-tests', action='store_true',
+        help='Just list the test names (and resolved fixture arg) without '
+             'extracting them')
+    parser.add_argument(
+        '--out-dir', type=Path, default=Path('doc_examples'),
+        help='Directory to write extracted .c files')
+    parser.add_argument(
+        '--fixtures-dir', type=Path, default=Path('fixtures'),
+        help='Directory containing fixture files passed to the programs')
+    args = parser.parse_args()
+
+    try:
+        doc_tests = list(iter_doc_tests(args.rst_files))
+    except FileNotFoundError as exc:
+        parser.exit(1, f'file not found: {exc}\n')
+
+    if args.list_tests:
+        # One line per test: ``name`` or ``name,arg`` e.g. so the CMake build
+        # can add each test with its own fixture argument.
+        for _, _, test_name, fixture, _ in doc_tests:
+            argv = resolve_fixture(
+                fixture, test_name, args.fixtures_dir, args.out_dir)
+            if argv is None:
+                print(test_name)
+            else:
+                print(f'{test_name},{argv}')
+        return
+
+    args.out_dir.mkdir(parents=True, exist_ok=True)
+
+    tests = []
+    for rst_file, lineno, test_name, fixture, code in doc_tests:
+        out_file = write_test_source(
+            args.out_dir, rst_file, lineno, test_name, code)
+        print(f'Wrote {out_file}')
+        argv = resolve_fixture(
+            fixture, test_name, args.fixtures_dir, args.out_dir)
+        tests.append((test_name, argv))
+
+    shell_file = write_runner_script(args.out_dir, tests, parser.prog)
+    print(f'Wrote {shell_file}')
+
+
+if __name__ == '__main__':
+    main()
