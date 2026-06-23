@@ -143,6 +143,7 @@ The next example shows how to read back in the same file:
 
        if (!file) {
            fprintf(stderr, "Failed to open the file: %s\n", asdf_error(file));
+           return 1;
        }
 
        const char *observer = NULL;
