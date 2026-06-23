@@ -81,7 +81,7 @@ MU_TEST(test_asdf_time_serialize) {
     char time_value[] = "2025-10-14T13:26:41.0000";
     asdf_time_t time_obj = {
         .value = time_value,
-        .format = {.is_base_format = true, .type = ASDF_TIME_FORMAT_ISO_TIME},
+        .format = ASDF_TIME_FORMAT_ISO_TIME,
         .scale = ASDF_TIME_SCALE_UTC,
     };
 
@@ -103,7 +103,7 @@ MU_TEST(test_asdf_time_serialize) {
     assert_not_null(t_out);
     assert_not_null(t_out->value);
     assert_string_equal(t_out->value, time_value);
-    assert_int(t_out->format.type, ==, ASDF_TIME_FORMAT_ISO_TIME);
+    assert_int(t_out->format, ==, ASDF_TIME_FORMAT_ISO_TIME);
 
     asdf_time_destroy(t_out);
     asdf_close(file);
@@ -128,7 +128,7 @@ MU_TEST(test_asdf_time_format_detection) {
 
     static const struct {
         const char *key;
-        asdf_time_base_format_t expected_format;
+        asdf_time_format_t expected_format;
         const char *expected_value;
         bool check_ts;
     } cases[] = {
@@ -165,7 +165,7 @@ MU_TEST(test_asdf_time_format_detection) {
         assert_not_null(tm);
         assert_not_null(tm->value);
         assert_string_equal(tm->value, cases[idx].expected_value);
-        assert_int(tm->format.type, ==, cases[idx].expected_format);
+        assert_int(tm->format, ==, cases[idx].expected_format);
 
         if (cases[idx].check_ts)
             assert_true(tm->info.ts.tv_sec > 0);
@@ -181,10 +181,10 @@ MU_TEST(test_asdf_time_format_detection) {
 
 /**
  * Check that time values with an explicit ``format`` key produce the correct
- * ``format.type`` enum value after deserialization.
+ * ``format` enum value after deserialization.
  *
  * This test is expected to fail before the explicit-format lookup fix is
- * applied (the old code only set ``format.type`` when a regex pattern matched
+ * applied (the old code only set ``format`` when a regex pattern matched
  * the value string, so formats like ``byear`` whose values lack a ``B`` prefix
  * were silently mis-classified).
  */
@@ -197,7 +197,7 @@ MU_TEST(test_asdf_time_explicit_format_types) {
 
     static const struct {
         const char *key;
-        asdf_time_base_format_t expected_format;
+        asdf_time_format_t expected_format;
     } cases[] = {
         {"t_iso_time", ASDF_TIME_FORMAT_ISO_TIME},
         {"t_datetime", ASDF_TIME_FORMAT_DATETIME},
@@ -229,7 +229,7 @@ MU_TEST(test_asdf_time_explicit_format_types) {
         }
 
         assert_not_null(tm);
-        assert_int(tm->format.type, ==, cases[idx].expected_format);
+        assert_int(tm->format, ==, cases[idx].expected_format);
 
         asdf_time_destroy(tm);
         asdf_value_destroy(value);

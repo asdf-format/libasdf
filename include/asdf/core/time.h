@@ -37,8 +37,8 @@ typedef enum {
     ASDF_TIME_FORMAT_JYEAR_STR,
     ASDF_TIME_FORMAT_PLOT_DATE,
     ASDF_TIME_FORMAT_YMDHMS,
-    ASDF_TIME_FORMAT_datetime64,
-} asdf_time_base_format_t;
+    ASDF_TIME_FORMAT_DATETIME64,
+} asdf_time_format_t;
 
 
 typedef enum {
@@ -58,18 +58,13 @@ typedef struct {
 } asdf_time_location_t;
 
 typedef struct {
-    bool is_base_format;
-    asdf_time_base_format_t type;
-} asdf_time_format_t;
-
-struct asdf_time_info_t {
     struct timespec ts;
     struct tm tm;
-};
+} asdf_time_info_t;
 
 typedef struct {
     char *value;
-    struct asdf_time_info_t info;
+    asdf_time_info_t info;
     asdf_time_format_t format;
     asdf_time_scale_t scale;
     asdf_time_location_t location;
@@ -77,11 +72,7 @@ typedef struct {
 
 ASDF_DECLARE_EXTENSION(time, asdf_time_t);
 
-ASDF_LOCAL int asdf_time_parse_std(
-    const char *s, const asdf_time_format_t *format, struct asdf_time_info_t *out);
-ASDF_LOCAL int asdf_time_parse_byear(const char *s, struct asdf_time_info_t *out);
-ASDF_LOCAL int asdf_time_parse_yday(const char *s, struct asdf_time_info_t *out);
-
+ASDF_EXPORT int asdf_time_parse(asdf_time_t *time);
 
 ASDF_END_DECLS
 

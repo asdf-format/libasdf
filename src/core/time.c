@@ -9,9 +9,10 @@
 
 #include "stc/cregex.h"
 
+#include "./asdf.h"
 #include "./time.h"
-#include "asdf.h"
 
+#include "../error.h"
 #include "../extension_registry.h"
 #include "../log.h"
 #include "../util.h"
@@ -46,7 +47,7 @@ enum {
 };
 
 static const struct {
-    asdf_time_base_format_t type;
+    asdf_time_format_t type;
     const char *pattern;
 } time_auto_patterns[TIME_AUTO_COUNT] = {
     [TIME_AUTO_IDX_ISO_TIME] =
@@ -187,11 +188,9 @@ static double besselian_to_julian(const double b) {
 }
 
 
-int asdf_time_parse_std(
-    const char *s, const asdf_time_format_t *format, struct asdf_time_info_t *out) {
-    if (!s || !out) {
+static int asdf_time_parse_std(asdf_time_t *time) {
+    if (UNLIKELY(!time))
         return -1;
-    }
 
     struct tm tm = {0};
     char tz_sign = 0;
@@ -200,10 +199,12 @@ int asdf_time_parse_std(
     long nsec = 0;
     bool has_time = false;
     char *rest = NULL;
-    char *buf = strdup(s);
+    char *buf = strdup(time->value);
+    int ret = -1;
 
     if (!buf) {
-        return -1;
+        ASDF_ERROR_OOM(NULL);
+        goto cleanup;
     }
 
     /* Normalize separators (replace 'T' or 't' with space) */
@@ -212,7 +213,7 @@ int asdf_time_parse_std(
             *c = ' ';
     }
 
-    switch (format->type) {
+    switch (time->format) {
     case ASDF_TIME_FORMAT_DATETIME:
     case ASDF_TIME_FORMAT_ISO_TIME:
         check_format_strptime(ASDF_TIME_SFMT_ISO_TIME, buf, &tm, has_time, rest);
@@ -224,13 +225,11 @@ int asdf_time_parse_std(
         check_format_strptime(ASDF_TIME_SFMT_UNIX, buf, &tm, has_time, rest);
         break;
     default:
-        free(buf);
-        return -1;
+        goto cleanup;
     }
 
     if (!rest) {
-        free(buf);
-        return -1;
+        goto cleanup;
     }
 
     /* Handle optional fractional seconds */
@@ -254,113 +253,108 @@ int asdf_time_parse_std(
     /* Convert to time_t and adjust for time zone */
     time_t t = timegm(&tm);
     if (t == (time_t)-1) {
-        free(buf);
-        return -1;
+        goto cleanup;
     }
 
     t -= tz_sign * (tz_hour * SECONDS_PER_HOUR + tz_min * SECONDS_PER_MINUTE);
 
-    out->tm = *gmtime(&t);
-    out->ts.tv_sec = t;
-    out->ts.tv_nsec = nsec;
+    time->info.tm = *gmtime(&t);
+    time->info.ts.tv_sec = t;
+    time->info.ts.tv_nsec = nsec;
+    ret = 0;
+cleanup:
     free(buf);
-    return 0;
+    return ret;
 }
 
 
-static int asdf_time_parse_jd(const char *s, struct asdf_time_info_t *out) {
-    const double jd = strtod(s, NULL);
+static int asdf_time_parse_jd(asdf_time_t *time) {
+    if (UNLIKELY(!time))
+        return -1;
+
+    const double jd = strtod(time->value, NULL);
     struct tm jd_tm;
-    time_t nsec = 0;
-    julian_to_tm(jd, &jd_tm, &nsec);
-    const time_t t = timegm(&jd_tm);
+    time_t t_sec;
+    time_t t_nsec = 0;
 
-    if (out) {
-        out->tm = jd_tm;
-        out->ts.tv_sec = t;
-        out->ts.tv_nsec = nsec;
-    } else {
-        return -1;
-    }
+    julian_to_tm(jd, &jd_tm, &t_nsec);
+    t_sec = timegm(&jd_tm);
+    time->info.tm = jd_tm;
+    time->info.ts.tv_sec = t_sec;
+    time->info.ts.tv_nsec = t_nsec;
     return 0;
 }
 
 
-static int asdf_time_parse_mjd(const char *s, struct asdf_time_info_t *out) {
-    const double mjd = strtod(s, NULL);
+static int asdf_time_parse_mjd(asdf_time_t *time) {
+    if (UNLIKELY(!time))
+        return -1;
+
+    const double mjd = strtod(time->value, NULL);
     struct tm mjd_tm;
-    time_t nsec = 0;
-    mjd_to_tm(mjd, &mjd_tm, &nsec);
-    const time_t t = timegm(&mjd_tm);
+    time_t t_nsec = 0;
+    mjd_to_tm(mjd, &mjd_tm, &t_nsec);
+    const time_t t_sec = timegm(&mjd_tm);
 
-    if (out) {
-        out->tm = mjd_tm;
-        out->ts.tv_sec = t;
-        out->ts.tv_nsec = nsec;
-    } else {
-        return -1;
-    }
+    time->info.tm = mjd_tm;
+    time->info.ts.tv_sec = t_sec;
+    time->info.ts.tv_nsec = t_nsec;
     return 0;
 }
 
 
-int asdf_time_parse_byear(const char *s, struct asdf_time_info_t *out) {
+static int asdf_time_parse_byear(asdf_time_t *time) {
+    if (UNLIKELY(!time))
+        return -1;
+
+    char *s = time->value;
+
     if (s && (*s == 'B' || *s == 'b'))
         s++; /* strip optional B prefix from bare-scalar Besselian epoch notation */
+
     const double byear = strtod(s, NULL);
     const double jd = besselian_to_julian(byear);
     struct tm tm;
-    time_t nsec = 0;
+    time_t t_nsec = 0;
 
-    julian_to_tm(jd, &tm, &nsec);
-    const time_t t = timegm(&tm);
+    julian_to_tm(jd, &tm, &t_nsec);
+    const time_t t_sec = timegm(&tm);
 
-    if (out) {
-        out->tm = *gmtime(&t);
-        out->ts.tv_sec = t;
-        out->ts.tv_nsec = nsec;
-    } else {
-        return -1;
-    }
+    time->info.tm = *gmtime(&t_sec);
+    time->info.ts.tv_sec = t_sec;
+    time->info.ts.tv_nsec = t_nsec;
     return 0;
-}
-
-
-int asdf_time_parse_yday(const char *s, struct asdf_time_info_t *out) {
-    const asdf_time_format_t fmt = {.is_base_format = true, .type = ASDF_TIME_FORMAT_YDAY};
-    return asdf_time_parse_std(s, &fmt, out);
 }
 
 #else
 #warning "strptime() not available, times will not be parsed"
-static int asdf_time_parse_std(UNUSED(const char *s), struct timespec *out) {
-    if (out) {
-        out->tv_sec = 0;
-        out->tv_nsec = 0;
+static int asdf_time_parse_std(asdf_time_t *time) {
+    if (time) {
+        time->info.ts.tv_sec = 0;
+        time->info.ts.tv_nsec = 0;
     }
     return 0;
 }
 #endif
 
 
-static int asdf_time_parse_time(
-    const char *s, const asdf_time_format_t *format, struct asdf_time_info_t *out) {
+int asdf_time_parse(asdf_time_t *time) {
     int status = -1;
-    switch (format->type) {
+    switch (time->format) {
     case ASDF_TIME_FORMAT_YDAY:
     case ASDF_TIME_FORMAT_ISO_TIME:
     case ASDF_TIME_FORMAT_DATETIME:
     case ASDF_TIME_FORMAT_UNIX:
-        status = asdf_time_parse_std(s, format, out);
+        status = asdf_time_parse_std(time);
         break;
     case ASDF_TIME_FORMAT_MJD:
-        status = asdf_time_parse_mjd(s, out);
+        status = asdf_time_parse_mjd(time);
         break;
     case ASDF_TIME_FORMAT_JD:
-        status = asdf_time_parse_jd(s, out);
+        status = asdf_time_parse_jd(time);
         break;
     case ASDF_TIME_FORMAT_BYEAR:
-        status = asdf_time_parse_byear(s, out);
+        status = asdf_time_parse_byear(time);
         break;
     default:
         break;
@@ -370,34 +364,32 @@ static int asdf_time_parse_time(
 
 
 /*
- * Lookup table: asdf_time_base_format_t enum value -> YAML format name string
- *
- * Entries must be kept in the same order as asdf_time_base_format_t.
+ * Lookup table: asdf_time_format_t enum value -> YAML format name string
  */
 static const char *const asdf_time_format_names[] = {
-    "iso_time",    /* ASDF_TIME_FORMAT_ISO_TIME */
-    "yday",        /* ASDF_TIME_FORMAT_YDAY */
-    "byear",       /* ASDF_TIME_FORMAT_BYEAR */
-    "jyear",       /* ASDF_TIME_FORMAT_JYEAR */
-    "decimalyear", /* ASDF_TIME_FORMAT_DECIMALYEAR */
-    "jd",          /* ASDF_TIME_FORMAT_JD */
-    "mjd",         /* ASDF_TIME_FORMAT_MJD */
-    "gps",         /* ASDF_TIME_FORMAT_GPS */
-    "unix",        /* ASDF_TIME_FORMAT_UNIX */
-    "utime",       /* ASDF_TIME_FORMAT_UTIME */
-    "tai_seconds", /* ASDF_TIME_FORMAT_TAI_SECONDS */
-    "cxcsec",      /* ASDF_TIME_FORMAT_CXCSEC */
-    "galexsec",    /* ASDF_TIME_FORMAT_GALEXSEC */
-    "unix_tai",    /* ASDF_TIME_FORMAT_UNIX_TAI */
-    NULL,          /* ASDF_TIME_FORMAT_RESERVED1 */
-    "byear_str",   /* ASDF_TIME_FORMAT_BYEAR_STR */
-    "datetime",    /* ASDF_TIME_FORMAT_DATETIME */
-    "fits",        /* ASDF_TIME_FORMAT_FITS */
-    "isot",        /* ASDF_TIME_FORMAT_ISOT */
-    "jyear_str",   /* ASDF_TIME_FORMAT_JYEAR_STR */
-    "plot_date",   /* ASDF_TIME_FORMAT_PLOT_DATE */
-    "ymdhms",      /* ASDF_TIME_FORMAT_YMDHMS */
-    "datetime64",  /* ASDF_TIME_FORMAT_datetime64 */
+    [ASDF_TIME_FORMAT_ISO_TIME] = "iso_time",
+    [ASDF_TIME_FORMAT_YDAY] = "yday",
+    [ASDF_TIME_FORMAT_BYEAR] = "byear",
+    [ASDF_TIME_FORMAT_JYEAR] = "jyear",
+    [ASDF_TIME_FORMAT_DECIMALYEAR] = "decimalyear",
+    [ASDF_TIME_FORMAT_JD] = "jd",
+    [ASDF_TIME_FORMAT_MJD] = "mjd",
+    [ASDF_TIME_FORMAT_GPS] = "gps",
+    [ASDF_TIME_FORMAT_UNIX] = "unix",
+    [ASDF_TIME_FORMAT_UTIME] = "utime",
+    [ASDF_TIME_FORMAT_TAI_SECONDS] = "tai_seconds",
+    [ASDF_TIME_FORMAT_CXCSEC] = "cxcsec",
+    [ASDF_TIME_FORMAT_GALEXSEC] = "galexsec",
+    [ASDF_TIME_FORMAT_UNIX_TAI] = "unix_tai",
+    [ASDF_TIME_FORMAT_RESERVED1] = NULL,
+    [ASDF_TIME_FORMAT_BYEAR_STR] = "byear_str",
+    [ASDF_TIME_FORMAT_DATETIME] = "datetime",
+    [ASDF_TIME_FORMAT_FITS] = "fits",
+    [ASDF_TIME_FORMAT_ISOT] = "isot",
+    [ASDF_TIME_FORMAT_JYEAR_STR] = "jyear_str",
+    [ASDF_TIME_FORMAT_PLOT_DATE] = "plot_date",
+    [ASDF_TIME_FORMAT_YMDHMS] = "ymdhms",
+    [ASDF_TIME_FORMAT_DATETIME64] = "datetime64",
 };
 
 
@@ -405,23 +397,23 @@ static const char *const asdf_time_format_names[] = {
  * Lookup table: asdf_time_scale_t enum value -> YAML scale name string
  */
 static const char *const asdf_time_scale_names[] = {
-    "utc", /* ASDF_TIME_SCALE_UTC */
-    "tai", /* ASDF_TIME_SCALE_TAI */
-    "tcb", /* ASDF_TIME_SCALE_TCB */
-    "tcg", /* ASDF_TIME_SCALE_TCG */
-    "tdb", /* ASDF_TIME_SCALE_TDB */
-    "tt",  /* ASDF_TIME_SCALE_TT */
-    "ut1", /* ASDF_TIME_SCALE_UT1 */
+    [ASDF_TIME_SCALE_UTC] = "utc",
+    [ASDF_TIME_SCALE_TAI] = "tai",
+    [ASDF_TIME_SCALE_TCB] = "tcb",
+    [ASDF_TIME_SCALE_TCG] = "tcg",
+    [ASDF_TIME_SCALE_TDB] = "tdb",
+    [ASDF_TIME_SCALE_TT] = "tt",
+    [ASDF_TIME_SCALE_UT1] = "ut1",
 };
 
 
 /* Helpers for format detection and range validation */
 
-static bool format_name_to_type(const char *name, asdf_time_base_format_t *out) {
-    for (size_t idx = 0; idx < sizeof(asdf_time_format_names) / sizeof(asdf_time_format_names[0]);
-         idx++) {
+static bool format_name_to_type(const char *name, asdf_time_format_t *out) {
+    const size_t nformats = sizeof(asdf_time_format_names) / sizeof(asdf_time_format_names[0]);
+    for (size_t idx = 0; idx < nformats; idx++) {
         if (asdf_time_format_names[idx] && !strcmp(name, asdf_time_format_names[idx])) {
-            *out = (asdf_time_base_format_t)idx;
+            *out = (asdf_time_format_t)idx;
             return true;
         }
     }
@@ -430,7 +422,7 @@ static bool format_name_to_type(const char *name, asdf_time_base_format_t *out) 
 
 
 /* Return the auto-detect pattern index whose type matches, or -1 if none. */
-static int find_auto_pattern_idx(asdf_time_base_format_t type) {
+static int find_auto_pattern_idx(asdf_time_format_t type) {
     for (size_t idx = 0; idx < TIME_AUTO_COUNT; idx++) {
         if (time_auto_patterns[idx].type == type)
             return (int)idx;
@@ -553,7 +545,7 @@ static asdf_value_t *asdf_time_serialize(
     }
 
     const size_t nformats = sizeof(asdf_time_format_names) / sizeof(asdf_time_format_names[0]);
-    if ((size_t)t->format.type >= nformats || !asdf_time_format_names[t->format.type]) {
+    if ((size_t)t->format >= nformats || !asdf_time_format_names[t->format]) {
         ASDF_LOG(file, ASDF_LOG_WARN, ASDF_CORE_TIME_TAG " unknown or reserved format type");
         goto cleanup;
     }
@@ -566,7 +558,7 @@ static asdf_value_t *asdf_time_serialize(
     if (err != ASDF_VALUE_OK)
         goto cleanup;
 
-    err = asdf_mapping_set_string0(map, "format", asdf_time_format_names[t->format.type]);
+    err = asdf_mapping_set_string0(map, "format", asdf_time_format_names[t->format]);
     if (err != ASDF_VALUE_OK)
         goto cleanup;
 
@@ -574,9 +566,13 @@ static asdf_value_t *asdf_time_serialize(
     if (t->scale != ASDF_TIME_SCALE_UTC) {
         const size_t nscales = sizeof(asdf_time_scale_names) / sizeof(asdf_time_scale_names[0]);
         if ((size_t)t->scale < nscales) {
-            err = asdf_mapping_set_string0(map, "scale", asdf_time_scale_names[t->scale]);
-            if (err != ASDF_VALUE_OK)
-                goto cleanup;
+            const char *scale = asdf_time_scale_names[t->scale];
+
+            if (scale) {
+                err = asdf_mapping_set_string0(map, "scale", scale);
+                if (err != ASDF_VALUE_OK)
+                    goto cleanup;
+            }
         }
     }
 
@@ -619,10 +615,10 @@ cleanup:
 }
 
 
-static asdf_time_base_format_t validate_or_guess_time_base_format(
+static asdf_time_format_t validate_or_guess_time_format(
     asdf_value_t *value, const char *time_s, const char *format_s) {
 
-    asdf_time_base_format_t format = -1;
+    asdf_time_format_t format = -1;
     compile_time_auto_regexes();
 
     if (!format_s) {
@@ -750,19 +746,16 @@ static asdf_value_err_t asdf_time_deserialize(
         }
     }
 
-    asdf_time_base_format_t format = validate_or_guess_time_base_format(
-        value, time->value, format_s);
+    asdf_time_format_t format = validate_or_guess_time_format(value, time->value, format_s);
 
     if (format < 0) {
         err = ASDF_VALUE_ERR_PARSE_FAILURE;
         goto failure;
     }
 
-    time->format.type = format;
-    time->format.is_base_format = (time->format.type <= ASDF_TIME_FORMAT_RESERVED1);
+    time->format = format;
     time->scale = ASDF_TIME_SCALE_UTC;
-
-    asdf_time_parse_time(time->value, &time->format, &time->info);
+    asdf_time_parse(time);
 
     *out = time;
 
