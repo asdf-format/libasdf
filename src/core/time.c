@@ -2,6 +2,7 @@
 #include "config.h"
 #endif
 
+#include <math.h>
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
@@ -115,6 +116,8 @@ static const char *ASDF_TIME_SFMT_UNIX[] = {"%s"};
 
 #define JD_B1900 2415020.31352
 #define JD_MJD 2400000.5
+#define JD_J2000 2451545.0
+#define JD_UNIX_EPOCH 2440587.5
 
 /* Calendar constants */
 static const double JD_GREGORIAN_START = 2299161.0;
@@ -185,6 +188,13 @@ static void mjd_to_tm(const double mjd, struct tm *t, time_t *nsec) {
 
 static double besselian_to_julian(const double b) {
     return JD_B1900 + AVG_YEAR_LENGTH * (b - 1900.0);
+}
+
+
+/* Julian epoch (jyear) to Julian Date: J2000.0 == JD 2451545.0, one Julian year
+ * is exactly 365.25 days. */
+static double julian_epoch_to_jd(const double j) {
+    return JD_J2000 + JD_YEAR_LENGTH * (j - 2000.0);
 }
 
 
@@ -326,6 +336,66 @@ static int asdf_time_parse_byear(asdf_time_t *time) {
     return 0;
 }
 
+
+static inline bool is_leap_year(int year) {
+    return year % 4 == 0 && ((year % 100 != 0) || (year % 400 == 0));
+}
+
+
+static int asdf_time_parse_jyear(asdf_time_t *time) {
+    if (UNLIKELY(!time))
+        return -1;
+
+    char *s = time->value;
+
+    if (s && (*s == 'J' || *s == 'j'))
+        s++; /* strip optional J prefix from bare-scalar Julian epoch notation */
+
+    const double jyear = strtod(s, NULL);
+    const double jd = julian_epoch_to_jd(jyear);
+    struct tm tm;
+    time_t t_nsec = 0;
+
+    julian_to_tm(jd, &tm, &t_nsec);
+    const time_t t_sec = timegm(&tm);
+
+    time->info.tm = *gmtime(&t_sec);
+    time->info.ts.tv_sec = t_sec;
+    time->info.ts.tv_nsec = t_nsec;
+    return 0;
+}
+
+
+static int asdf_time_parse_decimalyear(asdf_time_t *time) {
+    if (UNLIKELY(!time))
+        return -1;
+
+    const double decimalyear = strtod(time->value, NULL);
+    const int year = (int)floor(decimalyear);
+
+    /* Compute the Julian Date at the start (Jan 1, 00:00) of the integer year
+     * via the unix epoch, then add the year fraction scaled by the actual
+     * length of that (possibly leap) year. */
+    struct tm year_start = {0};
+    year_start.tm_year = year - 1900;
+    year_start.tm_mon = 0;
+    year_start.tm_mday = 1;
+    const time_t year_start_sec = timegm(&year_start);
+    const double jd_year_start = (double)year_start_sec / SECONDS_PER_DAY + JD_UNIX_EPOCH;
+    const int days_in_year = is_leap_year(year) ? 366 : 365;
+    const double jd = jd_year_start + (decimalyear - year) * days_in_year;
+
+    struct tm tm;
+    time_t t_nsec = 0;
+    julian_to_tm(jd, &tm, &t_nsec);
+    const time_t t_sec = timegm(&tm);
+
+    time->info.tm = *gmtime(&t_sec);
+    time->info.ts.tv_sec = t_sec;
+    time->info.ts.tv_nsec = t_nsec;
+    return 0;
+}
+
 #else
 #warning "strptime() not available, times will not be parsed"
 static int asdf_time_parse_std(asdf_time_t *time) {
@@ -355,6 +425,12 @@ int asdf_time_parse(asdf_time_t *time) {
         break;
     case ASDF_TIME_FORMAT_BYEAR:
         status = asdf_time_parse_byear(time);
+        break;
+    case ASDF_TIME_FORMAT_JYEAR:
+        status = asdf_time_parse_jyear(time);
+        break;
+    case ASDF_TIME_FORMAT_DECIMALYEAR:
+        status = asdf_time_parse_decimalyear(time);
         break;
     default:
         break;
@@ -409,11 +485,23 @@ static const char *const asdf_time_scale_names[] = {
 
 /* Helpers for format detection and range validation */
 
-static bool format_name_to_type(const char *name, asdf_time_format_t *out) {
+static bool asdf_time_format_parse(const char *name, asdf_time_format_t *out) {
     const size_t nformats = sizeof(asdf_time_format_names) / sizeof(asdf_time_format_names[0]);
     for (size_t idx = 0; idx < nformats; idx++) {
         if (asdf_time_format_names[idx] && !strcmp(name, asdf_time_format_names[idx])) {
             *out = (asdf_time_format_t)idx;
+            return true;
+        }
+    }
+    return false;
+}
+
+
+static bool asdf_time_scale_parse(const char *name, asdf_time_scale_t *out) {
+    const size_t nscales = sizeof(asdf_time_scale_names) / sizeof(asdf_time_scale_names[0]);
+    for (size_t idx = 0; idx < nscales; idx++) {
+        if (asdf_time_scale_names[idx] && !strcmp(name, asdf_time_scale_names[idx])) {
+            *out = (asdf_time_scale_t)idx;
             return true;
         }
     }
@@ -476,11 +564,6 @@ static void validate_iso_time_ranges(asdf_file_t *file, const char *cvs, csview 
 
     if (mat[7].buf && csview_to_int(mat[7]) > 60)
         ASDF_LOG(file, ASDF_LOG_WARN, "iso_time value '%s': second out of range [00,60]", cvs);
-}
-
-
-static inline bool is_leap_year(int year) {
-    return year % 4 == 0 && ((year % 100 != 0) || (year % 400 == 0));
 }
 
 
@@ -615,10 +698,18 @@ cleanup:
 }
 
 
-static asdf_time_format_t validate_or_guess_time_format(
+/*
+ * Determine the time format from an explicit ``format`` string, or guess it
+ * from the value string when no explicit format is given.  Returns the
+ * `asdf_time_format_t` value as an ``int``, or -1 if the format could not be
+ * determined.  The return type is a signed ``int`` (not the enum) because
+ * `asdf_time_format_t` may be an unsigned type, in which case a -1 enum value
+ * would compare as a large positive number.
+ */
+static int validate_or_guess_time_format(
     asdf_value_t *value, const char *time_s, const char *format_s) {
 
-    asdf_time_format_t format = -1;
+    asdf_time_format_t format;
     compile_time_auto_regexes();
 
     if (!format_s) {
@@ -630,23 +721,23 @@ static asdf_time_format_t validate_or_guess_time_format(
             if (cregex_match(&time_auto_regexes[idx], time_s, match) != CREG_OK)
                 continue;
             validate_datetime_ranges(value->file, (int)idx, time_s, match);
-            format = time_auto_patterns[idx].type;
-            break;
+            return (int)time_auto_patterns[idx].type;
         }
 
-        if (format < 0)
-            ASDF_LOG(
-                value->file,
-                ASDF_LOG_WARN,
-                "could not guess format of time without explicit format '%s'",
-                time_s);
+        ASDF_LOG(
+            value->file,
+            ASDF_LOG_WARN,
+            "could not guess format of time without explicit format '%s'",
+            time_s);
 
-        return format;
+        return -1;
     }
 
     /* Explicit format: look up the type by name directly. */
-    if (!format_name_to_type(format_s, &format))
+    if (!asdf_time_format_parse(format_s, &format)) {
         ASDF_LOG(value->file, ASDF_LOG_WARN, "unrecognized time format '%s'", format_s);
+        return -1;
+    }
 
     /* Validate the value string against the format's auto-detect pattern,
      * if one exists.  This is informational only -- a mismatch is a
@@ -665,7 +756,7 @@ static asdf_time_format_t validate_or_guess_time_format(
             validate_datetime_ranges(value->file, pat_idx, time_s, match);
     }
 
-    return format;
+    return (int)format;
 }
 
 
@@ -674,6 +765,8 @@ static asdf_value_err_t asdf_time_deserialize(
 
     const char *value_s = NULL;
     const char *format_s = NULL;
+    const char *scale_s = NULL;
+    asdf_time_scale_t scale = ASDF_TIME_SCALE_UTC;
 
     asdf_mapping_t *mapping = NULL;
     asdf_value_t *prop = NULL;
@@ -703,32 +796,13 @@ static asdf_value_err_t asdf_time_deserialize(
         return ASDF_VALUE_ERR_OOM;
     }
 
-    const asdf_value_type_t type = asdf_value_get_type(prop);
-
-    switch (type) {
-    case ASDF_VALUE_INT64: {
-        time_t value_tmp = 0;
-        asdf_value_as_int64(value, &value_tmp);
-        snprintf(time->value, ASDF_TIME_TIMESTR_MAXLEN, "%ld", value_tmp);
-    } break;
-    case ASDF_VALUE_DOUBLE: {
-        double value_tmp = 0.0;
-        asdf_value_as_double(value, &value_tmp);
-        snprintf(time->value, ASDF_TIME_TIMESTR_MAXLEN, "%lf", value_tmp);
-    } break;
-    case ASDF_VALUE_FLOAT: {
-        float value_tmp = 0.0f;
-        asdf_value_as_float(value, &value_tmp);
-        snprintf(time->value, ASDF_TIME_TIMESTR_MAXLEN, "%f", value_tmp);
-    } break;
-    case ASDF_VALUE_STRING: {
-        asdf_value_as_string0(prop, &value_s);
-        strncpy(time->value, value_s, ASDF_TIME_TIMESTR_MAXLEN - 1);
-    } break;
-    default:
-        fprintf(stderr, "unhandled property conversion from scalar enum %d\n", prop->type);
+    /* Capture the original scalar text verbatim regardless of the inferred YAML
+     * type; the raw representation is exactly what the time format parsers
+     * expect, even if it parses as a decimal type. */
+    if (asdf_value_as_scalar0(prop, &value_s) != ASDF_VALUE_OK || !value_s)
         goto failure;
-    }
+
+    strncpy(time->value, value_s, ASDF_TIME_TIMESTR_MAXLEN - 1);
 
     if (prop != value) {
         asdf_value_destroy(prop);
@@ -741,21 +815,47 @@ static asdf_value_err_t asdf_time_deserialize(
         if (prop) {
             if (ASDF_VALUE_OK != asdf_value_as_string0(prop, &format_s))
                 goto failure;
+
+            asdf_value_destroy(prop);
+            prop = NULL;
+        }
+
+        /* scale key is also optional; defaults to UTC when absent */
+        prop = asdf_mapping_get(mapping, "scale");
+        if (prop) {
+            if (ASDF_VALUE_OK != asdf_value_as_string0(prop, &scale_s))
+                goto failure;
+
+            if (!asdf_time_scale_parse(scale_s, &scale))
+                ASDF_LOG(
+                    value->file,
+                    ASDF_LOG_WARN,
+                    "unrecognized time scale '%s'; defaulting to utc",
+                    scale_s);
             asdf_value_destroy(prop);
             prop = NULL;
         }
     }
 
-    asdf_time_format_t format = validate_or_guess_time_format(value, time->value, format_s);
+    int detected = validate_or_guess_time_format(value, time->value, format_s);
 
-    if (format < 0) {
+    if (detected < 0) {
         err = ASDF_VALUE_ERR_PARSE_FAILURE;
         goto failure;
     }
 
+    asdf_time_format_t format = (asdf_time_format_t)detected;
     time->format = format;
-    time->scale = ASDF_TIME_SCALE_UTC;
-    asdf_time_parse(time);
+    time->scale = scale;
+
+    if (asdf_time_parse(time))
+        ASDF_LOG(
+            value->file,
+            ASDF_LOG_WARN,
+            "time format '%s' is not yet fully supported; value '%s' stored "
+            "without a computed timestamp",
+            asdf_time_format_names[format] ? asdf_time_format_names[format] : "(unknown)",
+            time->value);
 
     *out = time;
 

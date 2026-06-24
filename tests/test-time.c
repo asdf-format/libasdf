@@ -240,12 +240,165 @@ MU_TEST(test_asdf_time_explicit_format_types) {
 }
 
 
+/**
+ * Check that ``jyear`` and ``decimalyear`` formats parse to a sensible
+ * timestamp, and that a numeric (unquoted) value is captured verbatim from the
+ * YAML rather than being re-stringified (which would lose precision).
+ */
+MU_TEST(test_asdf_time_jyear_decimalyear) {
+    const char *path = get_fixture_file_path("time.asdf");
+    assert_not_null(path);
+
+    asdf_file_t *file = asdf_open(path, "r");
+    assert_not_null(file);
+
+    static const struct {
+        const char *key;
+        asdf_time_format_t expected_format;
+        const char *expected_value;
+        int expected_year;
+    } cases[] = {
+        {"t_jyear",       ASDF_TIME_FORMAT_JYEAR,       "2025.78707178", 2025},
+        {"t_jyear_num",   ASDF_TIME_FORMAT_JYEAR,       "1948.78707178", 1948},
+        {"t_decimalyear", ASDF_TIME_FORMAT_DECIMALYEAR, "2025.5",        2025},
+    };
+
+    for (size_t idx = 0; idx < sizeof(cases) / sizeof(cases[0]); idx++) {
+        const char *key = cases[idx].key;
+
+        asdf_value_t *value = asdf_get_value(file, key);
+        if (!value) {
+            munit_logf(MUNIT_LOG_ERROR, "failed to get value at '%s'", key);
+            asdf_close(file);
+            return MUNIT_FAIL;
+        }
+
+        asdf_time_t *tm = NULL;
+        asdf_value_err_t err = asdf_value_as_time(value, &tm);
+
+        if (err != ASDF_VALUE_OK) {
+            munit_logf(MUNIT_LOG_ERROR, "asdf_value_as_time failed for '%s'", key);
+            asdf_value_destroy(value);
+            asdf_close(file);
+            return MUNIT_FAIL;
+        }
+
+        assert_not_null(tm);
+        assert_not_null(tm->value);
+        /* The numeric value must be captured verbatim. */
+        assert_string_equal(tm->value, cases[idx].expected_value);
+        assert_int(tm->format, ==, cases[idx].expected_format);
+        assert_int(tm->info.tm.tm_year + 1900, ==, cases[idx].expected_year);
+
+        asdf_time_destroy(tm);
+        asdf_value_destroy(value);
+    }
+
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+/**
+ * Check that the optional ``scale`` mapping key is parsed (and defaults to UTC
+ * when absent).
+ */
+MU_TEST(test_asdf_time_scale) {
+    const char *path = get_fixture_file_path("time.asdf");
+    assert_not_null(path);
+
+    asdf_file_t *file = asdf_open(path, "r");
+    assert_not_null(file);
+
+    static const struct {
+        const char *key;
+        asdf_time_scale_t expected_scale;
+    } cases[] = {
+        {"t_iso_time_tai", ASDF_TIME_SCALE_TAI},
+        {"t_iso_time",     ASDF_TIME_SCALE_UTC},
+    };
+
+    for (size_t idx = 0; idx < sizeof(cases) / sizeof(cases[0]); idx++) {
+        const char *key = cases[idx].key;
+
+        asdf_value_t *value = asdf_get_value(file, key);
+        if (!value) {
+            munit_logf(MUNIT_LOG_ERROR, "failed to get value at '%s'", key);
+            asdf_close(file);
+            return MUNIT_FAIL;
+        }
+
+        asdf_time_t *tm = NULL;
+        asdf_value_err_t err = asdf_value_as_time(value, &tm);
+
+        if (err != ASDF_VALUE_OK) {
+            munit_logf(MUNIT_LOG_ERROR, "asdf_value_as_time failed for '%s'", key);
+            asdf_value_destroy(value);
+            asdf_close(file);
+            return MUNIT_FAIL;
+        }
+
+        assert_not_null(tm);
+        assert_int(tm->scale, ==, cases[idx].expected_scale);
+
+        asdf_time_destroy(tm);
+        asdf_value_destroy(value);
+    }
+
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+/**
+ * Round-trip a non-UTC ``scale`` through serialize + deserialize to confirm the
+ * scale is both written and read back correctly.
+ */
+MU_TEST(test_asdf_time_scale_roundtrip) {
+    const char *path = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    assert_not_null(path);
+
+    asdf_file_t *file = asdf_open(NULL);
+    assert_not_null(file);
+
+    char time_value[] = "2025-10-14T13:26:41.0000";
+    asdf_time_t time_obj = {
+        .value = time_value,
+        .format = ASDF_TIME_FORMAT_ISO_TIME,
+        .scale = ASDF_TIME_SCALE_TAI,
+    };
+
+    asdf_value_err_t err = asdf_set_time(file, "t_scale", &time_obj);
+    assert_int(err, ==, ASDF_VALUE_OK);
+
+    assert_int(asdf_write_to(file, path), ==, 0);
+    asdf_close(file);
+
+    file = asdf_open(path, "r");
+    assert_not_null(file);
+
+    asdf_time_t *t_out = NULL;
+    err = asdf_get_time(file, "t_scale", &t_out);
+    assert_int(err, ==, ASDF_VALUE_OK);
+    assert_not_null(t_out);
+    assert_int(t_out->scale, ==, ASDF_TIME_SCALE_TAI);
+
+    asdf_time_destroy(t_out);
+    asdf_close(file);
+
+    return MUNIT_OK;
+}
+
+
 MU_TEST_SUITE(
     test_asdf_time_extension,
     MU_RUN_TEST(test_asdf_time),
     MU_RUN_TEST(test_asdf_time_serialize),
     MU_RUN_TEST(test_asdf_time_format_detection),
-    MU_RUN_TEST(test_asdf_time_explicit_format_types)
+    MU_RUN_TEST(test_asdf_time_explicit_format_types),
+    MU_RUN_TEST(test_asdf_time_jyear_decimalyear),
+    MU_RUN_TEST(test_asdf_time_scale),
+    MU_RUN_TEST(test_asdf_time_scale_roundtrip)
 );
 
 
