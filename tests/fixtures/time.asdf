@@ -24,8 +24,8 @@ t_iso_time_bare: !time/time-1.4.0 '2025-10-14T13:26:41.0000'
 t_jyear_bare: !time/time-1.4.0 'J2025.78707178'
 t_yday_bare: !time/time-1.4.0 '2025:287:13:26:41.0000'
 t_yday_map_no_format: !time/time-1.4.0 {value: '2025:287:13:26:41.0000'}
-t_jyear: !time/time-1.4.0 {format: jyear, value: '2025.78707178'}
+t_jyear: !time/time-1.4.0 {format: jyear, value: 'J2025.78707178'}
 t_jyear_num: !time/time-1.4.0 {format: jyear, value: 1948.78707178}
-t_decimalyear: !time/time-1.4.0 {format: decimalyear, value: '2025.5'}
+t_decimalyear: !time/time-1.4.0 {format: decimalyear, value: 2025.5}
 t_iso_time_tai: !time/time-1.4.0 {format: iso_time, scale: tai, value: '2025-10-14T13:26:41.0000'}
 ...

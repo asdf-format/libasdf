@@ -705,23 +705,31 @@ cleanup:
  * determined.  The return type is a signed ``int`` (not the enum) because
  * `asdf_time_format_t` may be an unsigned type, in which case a -1 enum value
  * would compare as a large positive number.
+ *
+ * The auto-detect/validation regexps mirror the schema's string-form patterns
+ * (e.g. byear/jyear require a ``B``/``J`` prefix, etc.), so they only apply
+ * when the original YAML value was a string.  Numeric values are accepted
+ * as-is for the explicit format and cannot be guessed.
  */
 static int validate_or_guess_time_format(
-    asdf_value_t *value, const char *time_s, const char *format_s) {
+    asdf_value_t *value, const char *time_s, asdf_value_type_t time_type, const char *format_s) {
 
     asdf_time_format_t format;
     compile_time_auto_regexes();
 
     if (!format_s) {
-        /* No explicit format: auto-detect from the value string. */
-        for (size_t idx = 0; idx < TIME_AUTO_COUNT; idx++) {
-            if (UNLIKELY(time_auto_regexes[idx].error != CREG_OK))
-                continue;
-            csview match[CREG_MAX_CAPTURES] = {0};
-            if (cregex_match(&time_auto_regexes[idx], time_s, match) != CREG_OK)
-                continue;
-            validate_datetime_ranges(value->file, (int)idx, time_s, match);
-            return (int)time_auto_patterns[idx].type;
+        /* No explicit format: auto-detect from the value string.  This is only
+         * possible for string values -- a bare number is ambiguous. */
+        if (time_type == ASDF_VALUE_STRING) {
+            for (size_t idx = 0; idx < TIME_AUTO_COUNT; idx++) {
+                if (UNLIKELY(time_auto_regexes[idx].error != CREG_OK))
+                    continue;
+                csview match[CREG_MAX_CAPTURES] = {0};
+                if (cregex_match(&time_auto_regexes[idx], time_s, match) != CREG_OK)
+                    continue;
+                validate_datetime_ranges(value->file, (int)idx, time_s, match);
+                return (int)time_auto_patterns[idx].type;
+            }
         }
 
         ASDF_LOG(
@@ -739,11 +747,13 @@ static int validate_or_guess_time_format(
         return -1;
     }
 
-    /* Validate the value string against the format's auto-detect pattern,
-     * if one exists.  This is informational only -- a mismatch is a
-     * warning, not an error. */
+    /* Validate a string value against the format's auto-detect pattern, if one
+     * exists.  This is informational only -- a mismatch is a warning, not an
+     * error.  Numeric values have no such pattern and are left to the format
+     * parser. */
     int pat_idx = find_auto_pattern_idx(format);
-    if (pat_idx >= 0 && time_auto_regexes[pat_idx].error == CREG_OK) {
+    if (time_type == ASDF_VALUE_STRING && pat_idx >= 0 &&
+        time_auto_regexes[pat_idx].error == CREG_OK) {
         csview match[CREG_MAX_CAPTURES] = {0};
         if (cregex_match(&time_auto_regexes[pat_idx], time_s, match) != CREG_OK)
             ASDF_LOG(
@@ -796,6 +806,9 @@ static asdf_value_err_t asdf_time_deserialize(
         return ASDF_VALUE_ERR_OOM;
     }
 
+    /* Capture the inferred type of the value for use later */
+    asdf_value_type_t value_type = asdf_value_get_type(prop);
+
     /* Capture the original scalar text verbatim regardless of the inferred YAML
      * type; the raw representation is exactly what the time format parsers
      * expect, even if it parses as a decimal type. */
@@ -837,7 +850,7 @@ static asdf_value_err_t asdf_time_deserialize(
         }
     }
 
-    int detected = validate_or_guess_time_format(value, time->value, format_s);
+    int detected = validate_or_guess_time_format(value, time->value, value_type, format_s);
 
     if (detected < 0) {
         err = ASDF_VALUE_ERR_PARSE_FAILURE;
