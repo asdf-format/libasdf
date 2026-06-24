@@ -258,9 +258,12 @@ MU_TEST(test_asdf_time_jyear_decimalyear) {
         const char *expected_value;
         int expected_year;
     } cases[] = {
-        {"t_jyear",       ASDF_TIME_FORMAT_JYEAR,       "2025.78707178", 2025},
-        {"t_jyear_num",   ASDF_TIME_FORMAT_JYEAR,       "1948.78707178", 1948},
-        {"t_decimalyear", ASDF_TIME_FORMAT_DECIMALYEAR, "2025.5",        2025},
+        /* string form: explicit J prefix is required for a string jyear */
+        {"t_jyear",       ASDF_TIME_FORMAT_JYEAR,       "J2025.78707178", 2025},
+        /* numeric form: a bare number is valid for jyear/decimalyear and the
+         * verbatim scalar text is captured at full precision */
+        {"t_jyear_num",   ASDF_TIME_FORMAT_JYEAR,       "1948.78707178",  1948},
+        {"t_decimalyear", ASDF_TIME_FORMAT_DECIMALYEAR, "2025.5",         2025},
     };
 
     for (size_t idx = 0; idx < sizeof(cases) / sizeof(cases[0]); idx++) {
