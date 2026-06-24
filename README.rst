@@ -74,10 +74,10 @@ to a new file:
            filename = argv[1];
        }
        asdf_file_t *file = asdf_open(NULL);
-       asdf_set_string0(file, "observer", "Nancy Roman");
+       asdf_set_string0(file, "observer", "Dennis Richie");
        
        asdf_time_t time = {
-           .value = "J1948.78707178",
+           .value = "1948.78707178",
            .format = ASDF_TIME_FORMAT_JYEAR
        };
        asdf_set_time(file, "obstime", &time);
@@ -112,9 +112,9 @@ The YAML portion of the ASDF file should contain:
 
 .. code:: yaml
 
-   observer: Nancy Roman
+   observer: Dennis Richie
    obstime: !time/time-1.4.0
-     value: J1948.78707178
+     value: 1948.78707178
      format: jyear
    data: !core/ndarray-1.1.0
      source: 0
@@ -187,8 +187,8 @@ Likewise compile and run the example with the output from the previous program:
 
 This should output::
 
-    Observer: Nancy Roman
-    Observation time: J1948.78707178 (jyear)
+    Observer: Dennis Richie
+    Observation time: 1948.78707178 (jyear)
     Mean value: 49.5
 
 Additional examples can be found in the
