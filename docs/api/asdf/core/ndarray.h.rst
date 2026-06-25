@@ -1,3 +1,5 @@
+:tocdepth: 2
+
 asdf/core/ndarray.h
 ===================
 

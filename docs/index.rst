@@ -44,7 +44,7 @@ Additional less commonly used APIs can be used by including the relevant
 headers.
 
 .. toctree::
-  :maxdepth: 2
+  :maxdepth: 1
 
   api/asdf/emitter.h
   api/asdf/extension.h

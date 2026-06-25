@@ -873,7 +873,7 @@ asdf_get_extension_type(asdf_file_t *file, const char *path, asdf_extension_t *e
  * written into the tree at ``path``, creating any intermediate mappings as
  * needed and replacing any existing value already at that path.
  *
- * Typically it is better to use the higher level `asdf_set_<extension_name>`
+ * Typically it is better to use the higher level ``asdf_set_<extension>``
  * functions, (e.g. ``asdf_set_ndarray``) which are type-safe wrappers around
  * this function, and don't require looking up the extension.
  *
