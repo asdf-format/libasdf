@@ -298,6 +298,7 @@ static int emit_prepare_root_node(asdf_emitter_t *emitter) {
     if (!meta)
         goto cleanup;
 
+    // Replace the original meta->asdf_library, if any
     asdf_software_destroy(meta->asdf_library);
 
     if (asdf_emitter_has_opt(emitter, ASDF_EMITTER_OPT_NO_EMIT_ASDF_LIBRARY)) {
@@ -314,6 +315,14 @@ static int emit_prepare_root_node(asdf_emitter_t *emitter) {
     // that ought to be avoided somehow.  Either change these to use STC
     // vectors or at least an internal sized array type...
     if (file->history_entries && *file->history_entries) {
+        // NOTE: If the history entries were added *before* a call to
+        // asdf_library_set_version then these history entries may show the
+        // "wrong", non-overridden version.  In principle should fix up their
+        // attached software version as is done above with meta->asdf_library.
+        // We opt for now not to go out of our way to fix this, because
+        // overriding the library version is only needed for debug/tests.  The
+        // workaround is to set the version override *before* adding any history
+        // entries.
         meta->history.entries = (const asdf_history_entry_t **)asdf_array_concat(
             (void **)meta->history.entries, (const void **)file->history_entries);
 
@@ -340,7 +349,7 @@ static int emit_prepare_root_node(asdf_emitter_t *emitter) {
     if (asdf_get_mapping(file, "/", &root) != ASDF_VALUE_OK)
         goto cleanup;
 
-    if (asdf_mapping_update(root, meta_map) != ASDF_VALUE_OK)
+    if (asdf_mapping_update_ex(root, meta_map, true) != ASDF_VALUE_OK)
         goto cleanup;
 
     ret = 0;

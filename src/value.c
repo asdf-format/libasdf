@@ -495,8 +495,8 @@ void asdf_mapping_destroy(asdf_mapping_t *mapping) {
 
 
 /** Helper for asdf_mapping_set_* methods */
-static inline asdf_value_err_t asdf_mapping_set_node(
-    asdf_mapping_t *mapping, const char *key, struct fy_node *value) {
+static inline asdf_value_err_t asdf_mapping_set_node_ex(
+    asdf_mapping_t *mapping, const char *key, struct fy_node *value, bool prepend) {
     if (!mapping)
         return ASDF_VALUE_ERR_UNKNOWN;
 
@@ -518,12 +518,25 @@ static inline asdf_value_err_t asdf_mapping_set_node(
         if (fy_node_pair_set_value(pair, value) != 0) {
             return ASDF_VALUE_ERR_OOM;
         }
-    } else if (fy_node_mapping_append(mapping->value.node, key_node, value) != 0) {
-        fy_node_free(key_node);
-        return ASDF_VALUE_ERR_OOM;
+    } else if (prepend) {
+        if (fy_node_mapping_prepend(mapping->value.node, key_node, value) != 0) {
+            fy_node_free(key_node);
+            return ASDF_VALUE_ERR_OOM;
+        }
+    } else {
+        if (fy_node_mapping_append(mapping->value.node, key_node, value) != 0) {
+            fy_node_free(key_node);
+            return ASDF_VALUE_ERR_OOM;
+        }
     }
 
     return ASDF_VALUE_OK;
+}
+
+
+static inline asdf_value_err_t asdf_mapping_set_node(
+    asdf_mapping_t *mapping, const char *key, struct fy_node *value) {
+    return asdf_mapping_set_node_ex(mapping, key, value, false);
 }
 
 
@@ -588,13 +601,20 @@ asdf_value_err_t asdf_mapping_set_null(asdf_mapping_t *mapping, const char *key)
     }
 
 
-asdf_value_err_t asdf_mapping_set(asdf_mapping_t *mapping, const char *key, asdf_value_t *value) {
-    asdf_value_err_t err = asdf_mapping_set_node(mapping, key, asdf_value_normalize_node(value));
+static asdf_value_err_t asdf_mapping_set_ex(
+    asdf_mapping_t *mapping, const char *key, asdf_value_t *value, bool prepend) {
+    asdf_value_err_t err = asdf_mapping_set_node_ex(
+        mapping, key, asdf_value_normalize_node(value), prepend);
     /* fy_node_mapping_append implicitly frees the original node, so here set it
      * to null to avoid double-freeing it and then just destroy the asdf_value_t */
     value->node = NULL;
     asdf_value_destroy(value);
     return err;
+}
+
+
+asdf_value_err_t asdf_mapping_set(asdf_mapping_t *mapping, const char *key, asdf_value_t *value) {
+    return asdf_mapping_set_ex(mapping, key, value, false);
 }
 
 
@@ -741,7 +761,7 @@ asdf_value_err_t asdf_mapping_update_ex(
             asdf_mapping_iter_destroy(iter);
             return ASDF_VALUE_ERR_OOM;
         }
-        err = asdf_mapping_set(mapping, iter->key, clone);
+        err = asdf_mapping_set_ex(mapping, iter->key, clone, prepend);
         if (err) {
             asdf_mapping_iter_destroy(iter);
             break;
@@ -749,6 +769,11 @@ asdf_value_err_t asdf_mapping_update_ex(
     }
 
     return err;
+}
+
+
+asdf_value_err_t asdf_mapping_update(asdf_mapping_t *mapping, asdf_mapping_t *update) {
+    return asdf_mapping_update_ex(mapping, update, false);
 }
 
 

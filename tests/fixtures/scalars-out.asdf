@@ -3,6 +3,11 @@
 %YAML 1.1
 %TAG ! tag:stsci.edu:asdf/
 --- !core/asdf-1.1.0
+asdf_library: !core/software-1.0.0
+  name: libasdf
+  version: 0.0.0
+  author: The libasdf Developers
+  homepage: https://github.com/asdf-format/libasdf
 string: string
 string0: string0
 null: null
@@ -18,9 +23,4 @@ uint32: 4294967295
 uint64: 18446744073709551615
 float: 3.40282347e+38
 double: 1.7976931348623157e+308
-asdf_library: !core/software-1.0.0
-  name: libasdf
-  version: 0.0.0
-  author: The libasdf Developers
-  homepage: https://github.com/asdf-format/libasdf
 ...
