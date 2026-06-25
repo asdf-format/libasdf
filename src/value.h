@@ -53,6 +53,7 @@ typedef struct asdf_mapping_iter_impl {
     asdf_mapping_iter_t pub;
     asdf_mapping_t *mapping;
     void *fy_iter;
+    bool reverse;
 } asdf_mapping_iter_impl_t;
 
 
@@ -66,6 +67,7 @@ typedef struct asdf_sequence_iter_impl {
     asdf_sequence_iter_t pub;
     asdf_sequence_t *sequence;
     void *fy_iter;
+    bool reverse;
 } asdf_sequence_iter_impl_t;
 
 
