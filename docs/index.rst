@@ -18,6 +18,7 @@ Usage
   usage/opening
   usage/values
   usage/writing
+  usage/ndarrays
   usage/extensions
   usage/examples
 
