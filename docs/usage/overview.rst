@@ -6,8 +6,8 @@ High-level overview
 To answer that, it helps to understand what an ASDF file is.
 
 At its core, an ASDF file is a human-readable **YAML document** with optional
-binary data blocks attached. The YAML portion—called the
-:ref:`tree <tree-in-depth>`— describes the structure and metadata of the file.
+binary data blocks attached. The YAML portion--called the
+:ref:`tree <tree-in-depth>`--describes the structure and metadata of the file.
 The binary blocks that may follow typically store large numerical arrays,
 images, or other data that would be inefficient to represent directly in YAML.
 
@@ -16,7 +16,7 @@ the tree provides the structure and metadata, while the blocks hold the raw
 data. The tree itself usually follows a particular *schema* that defines the
 expected keys, value types, and overall organization.
 
-All data in an ASDF file—whether metadata or large arrays—is accessed through
+All data in an ASDF file--whether metadata or large arrays--is accessed through
 this tree. Conceptually, you can think of the file as one big nested mapping
 structure (like a Python :py:obj:`dict`) containing values of many different
 kinds.
@@ -26,21 +26,21 @@ The basic building blocks
 
 A YAML document contains three main types of values:
 
-* Mappings—collection of key/value pairs (aka hash maps, dictionaries, etc.)
-* Sequences—ordered collections (aka arrays, lists, etc.)
-* Scalars—simple values such as numbers, strings, or booleans
+* Mappings--collection of key/value pairs (aka hash maps, dictionaries, etc.)
+* Sequences--ordered collections (aka arrays, lists, etc.)
+* Scalars--simple values such as numbers, strings, or booleans
 
 .. note::
 
-  YAML itself does not prescribe strict types for scalar values—it treats them
+  YAML itself does not prescribe strict types for scalar values--it treats them
   effectively as plain strings. However, the `YAML Core Schema`_ defines a
   common set of interpretations (e.g., numbers, booleans, and null), and most
   high-level languages such as Python, JavaScript, etc. that implement YAML
   parsers adhere to this convention.
 
-  libasdf adheres to this schema as well when reading and writing scalar,
-  though it also :c:func:`possible <asdf_get_scalar>` to access values as raw
-  scalars.
+  libasdf adheres to this schema as well when reading and writing scalars,
+  though it is also :c:func:`possible <asdf_get_scalar>` to access values as
+  raw scalars.
 
 Beyond the core types: tags
 ===========================
@@ -49,8 +49,8 @@ In addition to these core YAML types, ASDF supports values that represent
 complex or domain-specific objects. This is achieved using **YAML tags**, which
 associate a value with a particular type definition known to the software.
 
-Tags allow arbitrary objects—such as coordinate systems, physical units, or
-n-dimensional arrays—to be serialized and deserialized in a structured way.
+Tags allow arbitrary objects--such as coordinate systems, physical units, or
+n-dimensional arrays--to be serialized and deserialized in a structured way.
 For example, a tag might tell libasdf that a particular mapping should be
 interpreted as an ``ndarray`` instead of a plain dictionary.
 
@@ -69,7 +69,7 @@ restore instances of custom classes.
 ASDF was originally designed around a Python reference implementation, and while
 the format itself is language-independent, it retains this spirit of structured
 object serialization. One of the most common tagged objects is the **ndarray**,
-which provides efficient storage for numerical array data—described next.
+which provides efficient storage for numerical array data--described next.
 
 .. _ndarrays:
 
@@ -96,7 +96,7 @@ the binary data.
 From the point of view of the ASDF file format, a binary block is just a
 contiguous sequence of bytes with no intrinsic meaning or structure.  It is
 the corresponding ``ndarray`` metadata in the tree that gives those bytes their
-shape and semantic content—turning them into a structured numerical array.
+shape and semantic content--turning them into a structured numerical array.
 
 This separation between structure (in YAML) and data (in binary blocks) is one
 of the key design principles of ASDF.  It allows the format to combine human

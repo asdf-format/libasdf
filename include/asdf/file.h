@@ -47,7 +47,7 @@ typedef struct asdf_file asdf_file_t;
 
 
 /**
- * .. _int file-configuration:
+ * .. _file-configuration:
  *
  * Configuration
  * -------------
@@ -707,9 +707,9 @@ ASDF_EXPORT bool asdf_is_null(asdf_file_t *file, const char *path);
  * integer type that can hold that value.  For example the number ``42`` is
  * typed as `ASDF_VALUE_UINT8`.
  *
- * However, integer up-casting to larger integer types.  Downcasting that would
- * cause an overflow is not allowed.  For example ``42`` can be cast to an
- * ``int16``, but ``-42`` cannot be cast to a ``uint16``.
+ * However, integer up-casting to larger integer types is allowed
+ * Downcasting that would cause an overflow is not allowed.  For example ``42``
+ * can be cast to an ``int16``, but ``-42`` cannot be cast to a ``uint16``.
  *
  * .. note::
  *
@@ -720,7 +720,7 @@ ASDF_EXPORT bool asdf_is_null(asdf_file_t *file, const char *path);
  * may also be `ASDF_VALUE_ERR_OVERFLOW` if the value is an integer that is too
  * large to represent in the requested type.
  *
- * Big integers (greater than ``UINT64_MAX`` or less than ``INT64_MAX``) are
+ * Big integers (greater than ``UINT64_MAX`` or less than ``INT64_MIN``) are
  * not supported--in fact the ASDF Standard expressly
  * `forbids <ASDF Numeric Literals>`_ writing them to ASDF files.  Nevertheless
  * it could be supported in the future if the need arises.  In fact,
@@ -733,7 +733,7 @@ ASDF_EXPORT bool asdf_is_null(asdf_file_t *file, const char *path);
  * size
  *
  * :param file: The `asdf_file_t *` for the file
- * :param path: The :ref:`yaml-pointer` to the bool
+ * :param path: The :ref:`yaml-pointer` to the int
  * :return: `true` if the value is an integer, `false` if it is another
  *   type of value or if no value exists at that path.
  */
@@ -1030,7 +1030,7 @@ ASDF_EXPORT const char *asdf_block_compression(asdf_block_t *block);
  * :param compression: String representing the compressor to use (e.g. "bzp2")
  *   if any, or NULL or the empty string to set no compression
  * :return: Non-zero if the compression could not be set (e.g. invalid/unknown
- *   compressor; use `asdf_error` to check the error code
+ *   compressor); use `asdf_error` to check the error code
  */
 ASDF_EXPORT int asdf_block_compression_set(asdf_block_t *block, const char *compression);
 
@@ -1066,8 +1066,8 @@ ASDF_EXPORT const unsigned char *asdf_block_checksum(asdf_block_t *block);
  *   Add and document option to automatically verify checksums.
  *
  * :param block: The `asdf_block_t *` handle
- * :param computed: Optional pointer to a `uint8_t` buffer to receive the computed
- *   MD5 digest on return
+ * :param expected: Optional pointer to a `uint8_t` buffer to receive the
+ *   computed MD5 digest on return
  * :return: True if the checksum is valid
  */
 ASDF_EXPORT bool asdf_block_checksum_verify(
@@ -1079,7 +1079,7 @@ ASDF_EXPORT bool asdf_block_checksum_verify(
  *
  * :param block: The `asdf_block_t *` handle
  * :param size: Optional `size_t *` into which the size of the block data is
- *   is returned
+ *   returned
  * :return: A `void *` to the block data
  */
 ASDF_EXPORT const void *asdf_block_data(asdf_block_t *block, size_t *size);
@@ -1096,7 +1096,7 @@ ASDF_EXPORT const void *asdf_block_data(asdf_block_t *block, size_t *size);
  *
  * :param block: The `asdf_block_t *` handle
  * :param size: Optional `size_t *` into which the size of the block data is
- *   is returned
+ *   returned
  * :return: A `void *` to the block data
  */
 ASDF_EXPORT const void *asdf_block_data_raw(asdf_block_t *block, size_t *size);

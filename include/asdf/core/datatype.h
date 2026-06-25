@@ -93,9 +93,9 @@ typedef enum {
      * should not be explicitly written (just use the default)
      */
     ASDF_BYTEORDER_DEFAULT = 0,
-    /** Litle-endian **/
+    /** Big-endian */
     ASDF_BYTEORDER_BIG = '>',
-    /** Big-endian **/
+    /** Little-endian */
     ASDF_BYTEORDER_LITTLE = '<'
 } asdf_byteorder_t;
 
@@ -136,7 +136,7 @@ ASDF_DECLARE_EXTENSION(datatype, asdf_datatype_t);
 /**
  * Parse an ASDF scalar datatype and return the corresponding `asdf_scalar_datatype_t`
  *
- * :param s: Null-terminated string
+ * :param dtype: Null-terminated string
  * :return: The corresponding `asdf_scalar_datatype_t` or `ASDF_DATATYPE_UNKNOWN`
  *
  * .. note::
@@ -197,7 +197,7 @@ ASDF_EXPORT uint64_t asdf_datatype_size(asdf_datatype_t *datatype);
  * Get the size in bytes of a scalar (numeric) ndarray element for a given
  * `asdf_scalar_datatype_t`
  *
- * :param type: A member of `asdf_datatype_t`
+ * :param type: A member of `asdf_scalar_datatype_t`
  * :return: Size in bytes of a single element of that datatype, or ``-1`` for
  *   non-scalar datatypes (for the present purposes strings are not considered
  *   scalars, only numeric datatypes)

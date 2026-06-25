@@ -19,17 +19,20 @@ Example
 
 .. code:: c
 
-   char **author = NULL;
+   char *author = NULL;
    asdf_value_err_t err = asdf_get_string0(file, "metadata/author", &author);
 
-   switch (err):
+   switch (err) {
       case ASDF_VALUE_OK:
          printf("the file's author is: %s\n", author);
+         break;
       case ASDF_VALUE_ERR_NOT_FOUND:
          fprintf(stderr, "the expected value metadata/author was not found\n");
+         break;
       case ASDF_VALUE_ERR_TYPE_MISMATCH:
          fprintf(stderr,
                  "the value metadata/author is expected to be a string\n");
+         break;
       default:
          fprintf(stderr,
                  "an unknown error occurred reading metadata/author\n");
@@ -123,7 +126,7 @@ Value types
 -----------
 
 libasdf supports reading scalar values from the YAML Core Schema into C-native
-datatypes.  The set of support types is in `asdf_value_type_t`.
+datatypes.  The set of supported types is in `asdf_value_type_t`.
 
 Strings
 ^^^^^^^
@@ -135,7 +138,7 @@ of the string.
 Booleans
 ^^^^^^^^
 
-Boolean values can be read with `asdf_get_bool` and supports values like
+Boolean values can be read with `asdf_get_bool` which supports values like
 "true/false" and also exceptionally treats the integers 0 and 1 as booleans
 when read as bools.
 
@@ -150,19 +153,19 @@ interoperability purposes (but does define a separate big integer type via
 tags).
 
 If you try to read an integer into too-small of an integer type (e.g. you try
-to read ``123456789`` with `asdf_get_uint8()`, or likewise if you try to read
+to read ``123456789`` with `asdf_get_uint8()`), or likewise if you try to read
 a negative integer as an unsigned type, the respective
 ``asdf_get_<[u]int<n>>`` call returns `ASDF_VALUE_ERR_OVERFLOW`.
 
 So unless you have a very specific application where some value is always
-expected to be a small integer, your safest best is to just use
+expected to be a small integer, your safest bet is to just use
 `asdf_get_int64`.  In fact, the general `asdf_get_int` is just an alias for
 this.
 
 Floating point numbers
 ^^^^^^^^^^^^^^^^^^^^^^
 
-Floats work effectively the same as with integers, but only supports C 32-bit
+Floats work effectively the same as with integers, but only support C 32-bit
 floats or 64-bit doubles.  Here it is also the safest bet to just use
 `asdf_get_double` unless you are expecting relatively low-precision values.
 

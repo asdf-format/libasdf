@@ -53,8 +53,8 @@ typedef enum {
      * A string
      *
      * A scalar is considered a string if it is explicitly quoted with single-
-     * or double-quotes, or uses a literal or folded scalar represenation style
-     * in the YAML document, or any other scalar that cannot be coecered to one
+     * or double-quotes, or uses a literal or folded scalar representation style
+     * in the YAML document, or any other scalar that cannot be coerced to one
      * of the other types defined in the `YAML Core Schema`_.
      */
     ASDF_VALUE_STRING,
@@ -222,14 +222,26 @@ ASDF_EXPORT asdf_value_t *asdf_value_clone(asdf_value_t *value);
  */
 ASDF_EXPORT asdf_value_type_t asdf_value_get_type(asdf_value_t *value);
 
+
+/**
+ * Get full :ref:`yaml-pointer` path of an `asdf_value_t`
+ *
+ * If the value was created manually and not yet attached to a file, this
+ * will return ``NULL``.
+ *
+ * :param value: The `asdf_value_t *` handle
+ * :return: The path as a string (this is owned by the `asdf_value_t *` and
+ *   must not be freed) or ``NULL`` if the value does not yet have a path in
+ *   the document.
+ */
 ASDF_EXPORT const char *asdf_value_path(asdf_value_t *value);
 
 /**
  * Get the parent value, if any, of the given value
  *
  * :param value: The `asdf_value_t *` handle
- * :return: An `asdf_value_t *` of its parent mapping or sequence; if the input value
- *   is the root node, or is not an attached value, the parent is NULL
+ * :return: An `asdf_value_t *` of its parent mapping or sequence; if the input
+ *   value is the root node, or is not an attached value, the parent is NULL
  */
 ASDF_EXPORT asdf_value_t *asdf_value_parent(asdf_value_t *value);
 
@@ -239,7 +251,10 @@ ASDF_EXPORT asdf_value_t *asdf_value_parent(asdf_value_t *value);
  */
 ASDF_EXPORT const char *asdf_value_type_string(asdf_value_type_t type);
 
-/* Return the value's tag if it has an *explicit* tag (implict tags are not returned) */
+/**
+ * Return the value's tag if it has an *explicit* tag (implicit tags are not
+ * returned)
+ */
 ASDF_EXPORT const char *asdf_value_tag(asdf_value_t *value);
 
 // Forward-declaration needed for `asdf_value_file`
@@ -262,7 +277,7 @@ ASDF_EXPORT asdf_file_t *asdf_value_file(asdf_value_t *value);
  *
  *   By design, it is safe to cast a an `asdf_value_t *` to
  *   `asdf_mapping_t *` so long as the value has been checked to be a
- *   sequence.
+ *   mapping.
  */
 typedef struct asdf_mapping asdf_mapping_t;
 
@@ -418,9 +433,9 @@ ASDF_EXPORT asdf_value_t *asdf_mapping_pop(asdf_mapping_t *mapping, const char *
  *
  * If the key already exists in the mapping its value will be overwritten
  *
- * :params mapping: Handle to the `asdf_mapping_t` to update
- * :params key: The key at which to insert the value
- * :params value: Generic `asdf_value_t *` to insert into the mapping
+ * :param mapping: Handle to the `asdf_mapping_t` to update
+ * :param key: The key at which to insert the value
+ * :param value: Generic `asdf_value_t *` to insert into the mapping
  * :return: `ASDF_VALUE_OK` on success or another `asdf_value_err_t`
  */
 ASDF_EXPORT asdf_value_err_t
@@ -731,7 +746,7 @@ ASDF_EXPORT asdf_sequence_t *asdf_sequence_of_double(
  *
  * :param sequence: The `asdf_sequence_t *` handle
  * :param index: The index of the item to remove; negative indices are also supported (e.g.
- *     ``asdf_sequence_pop(sequence, -1)`` removes the last item
+ *     ``asdf_sequence_pop(sequence, -1)`` removes the last item)
  * :return: The generic `asdf_value_t *` of the removed value if any, or NULL
  */
 ASDF_EXPORT asdf_value_t *asdf_sequence_pop(asdf_sequence_t *sequence, int index);
@@ -816,8 +831,9 @@ ASDF_EXPORT bool asdf_value_is_container(asdf_value_t *value);
 /**
  * Generic container size
  *
- * :param value: `asdf_value_t *` containing a mapping or a sequence
- * :return: The size of the mapping or container, or -1 if the value is not a container type
+ * :param container: `asdf_value_t *` containing a mapping or a sequence
+ * :return: The size of the mapping or sequence, or -1 if the value is not a
+ *   container type
  */
 ASDF_EXPORT int asdf_container_size(asdf_value_t *container);
 
@@ -837,7 +853,7 @@ typedef struct _asdf_extension asdf_extension_t;
  *
  * .. note::
  *
- *   This is usually wrapped by some helper utility named like ``asdf_value_is_<extention>``,
+ *   This is usually wrapped by some helper utility named like ``asdf_value_is_<extension>``,
  *   such as ``asdf_value_is_ndarray``.
  *
  *   But that is equivalent to running:
@@ -855,7 +871,7 @@ ASDF_EXPORT bool asdf_value_is_extension_type(asdf_value_t *value, const asdf_ex
  *
  * .. note::
  *
- *   This is usually wrapped by some helper utility named like ``asdf_value_as_<extention>``,
+ *   This is usually wrapped by some helper utility named like ``asdf_value_as_<extension>``,
  *   such as ``asdf_value_as_ndarray``.
  *
  *   But that is equivalent to running:
