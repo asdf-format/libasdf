@@ -376,11 +376,11 @@ EXTRA_DIST += \
     fixtures/scalars.asdf \
     fixtures/scalars-out.asdf \
     fixtures/tagged-scalars.asdf \
+    fixtures/test-write-file.asdf \
     fixtures/tiles.asdf \
     fixtures/time.asdf \
     fixtures/trivial-extension.asdf \
     fixtures/value-types.asdf \
-    fixtures/write-example.asdf \
     fixtures/verify-checksums/255-2-blocks.verify-checksums.txt \
     fixtures/verify-checksums/255-invalid-checksum.verify-checksums.txt \
     fixtures/verify-checksums/compressed.verify-checksums.txt \
