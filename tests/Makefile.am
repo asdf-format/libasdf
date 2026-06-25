@@ -361,6 +361,7 @@ EXTRA_DIST += \
     fixtures/info/structured.info.txt \
     fixtures/info/unicode_bmp.info.txt \
     fixtures/info/unicode_spp.info.txt \
+    fixtures/issue-204.asdf \
     fixtures/multi-block.asdf \
     fixtures/multiple_hdu.asdf \
     fixtures/nested.asdf \

@@ -495,8 +495,8 @@ void asdf_mapping_destroy(asdf_mapping_t *mapping) {
 
 
 /** Helper for asdf_mapping_set_* methods */
-static inline asdf_value_err_t asdf_mapping_set_node(
-    asdf_mapping_t *mapping, const char *key, struct fy_node *value) {
+static inline asdf_value_err_t asdf_mapping_set_node_ex(
+    asdf_mapping_t *mapping, const char *key, struct fy_node *value, bool prepend) {
     if (!mapping)
         return ASDF_VALUE_ERR_UNKNOWN;
 
@@ -518,12 +518,25 @@ static inline asdf_value_err_t asdf_mapping_set_node(
         if (fy_node_pair_set_value(pair, value) != 0) {
             return ASDF_VALUE_ERR_OOM;
         }
-    } else if (fy_node_mapping_append(mapping->value.node, key_node, value) != 0) {
-        fy_node_free(key_node);
-        return ASDF_VALUE_ERR_OOM;
+    } else if (prepend) {
+        if (fy_node_mapping_prepend(mapping->value.node, key_node, value) != 0) {
+            fy_node_free(key_node);
+            return ASDF_VALUE_ERR_OOM;
+        }
+    } else {
+        if (fy_node_mapping_append(mapping->value.node, key_node, value) != 0) {
+            fy_node_free(key_node);
+            return ASDF_VALUE_ERR_OOM;
+        }
     }
 
     return ASDF_VALUE_OK;
+}
+
+
+static inline asdf_value_err_t asdf_mapping_set_node(
+    asdf_mapping_t *mapping, const char *key, struct fy_node *value) {
+    return asdf_mapping_set_node_ex(mapping, key, value, false);
 }
 
 
@@ -588,13 +601,20 @@ asdf_value_err_t asdf_mapping_set_null(asdf_mapping_t *mapping, const char *key)
     }
 
 
-asdf_value_err_t asdf_mapping_set(asdf_mapping_t *mapping, const char *key, asdf_value_t *value) {
-    asdf_value_err_t err = asdf_mapping_set_node(mapping, key, asdf_value_normalize_node(value));
+static asdf_value_err_t asdf_mapping_set_ex(
+    asdf_mapping_t *mapping, const char *key, asdf_value_t *value, bool prepend) {
+    asdf_value_err_t err = asdf_mapping_set_node_ex(
+        mapping, key, asdf_value_normalize_node(value), prepend);
     /* fy_node_mapping_append implicitly frees the original node, so here set it
      * to null to avoid double-freeing it and then just destroy the asdf_value_t */
     value->node = NULL;
     asdf_value_destroy(value);
     return err;
+}
+
+
+asdf_value_err_t asdf_mapping_set(asdf_mapping_t *mapping, const char *key, asdf_value_t *value) {
+    return asdf_mapping_set_ex(mapping, key, value, false);
 }
 
 
@@ -620,7 +640,7 @@ ASDF_MAPPING_SET_CONTAINER_TYPE(mapping);
 ASDF_MAPPING_SET_CONTAINER_TYPE(sequence);
 
 
-asdf_mapping_iter_t *asdf_mapping_iter_init(asdf_mapping_t *mapping) {
+static asdf_mapping_iter_t *asdf_mapping_iter_init_ex(asdf_mapping_t *mapping, bool reverse) {
     asdf_mapping_iter_impl_t *impl = calloc(1, sizeof(asdf_mapping_iter_impl_t));
 
     if (!impl) {
@@ -629,7 +649,18 @@ asdf_mapping_iter_t *asdf_mapping_iter_init(asdf_mapping_t *mapping) {
     }
 
     impl->mapping = mapping;
+    impl->reverse = reverse;
     return (asdf_mapping_iter_t *)impl;
+}
+
+
+asdf_mapping_iter_t *asdf_mapping_iter_init(asdf_mapping_t *mapping) {
+    return asdf_mapping_iter_init_ex(mapping, false);
+}
+
+
+asdf_mapping_iter_t *asdf_mapping_reverse_iter_init(asdf_mapping_t *mapping) {
+    return asdf_mapping_iter_init_ex(mapping, true);
 }
 
 
@@ -661,9 +692,15 @@ bool asdf_mapping_iter_next(asdf_mapping_iter_t **iter_ptr) {
         goto cleanup;
     }
 
-    struct fy_node_pair *pair = fy_node_mapping_iterate(mapping->value.node, &impl->fy_iter);
+    struct fy_node_pair *pair = NULL;
 
-    if (!pair)
+    if (impl->reverse) {
+        pair = fy_node_mapping_reverse_iterate(mapping->value.node, &impl->fy_iter);
+    } else {
+        pair = fy_node_mapping_iterate(mapping->value.node, &impl->fy_iter);
+    }
+
+    if (UNLIKELY(!pair))
         goto cleanup;
 
     struct fy_node *key_node = fy_node_pair_key(pair);
@@ -702,10 +739,20 @@ cleanup:
 
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-asdf_value_err_t asdf_mapping_update(asdf_mapping_t *mapping, asdf_mapping_t *update) {
-    asdf_mapping_iter_t *iter = asdf_mapping_iter_init(update);
+asdf_value_err_t asdf_mapping_update_ex(
+    asdf_mapping_t *mapping, asdf_mapping_t *update, bool prepend) {
+    asdf_mapping_iter_t *iter = NULL;
+
+    if (prepend) {
+        // Reverse iterate so each item gets prepended in their original order
+        iter = asdf_mapping_reverse_iter_init(update);
+    } else {
+        iter = asdf_mapping_iter_init(update);
+    }
+
     if (!iter)
         return ASDF_VALUE_ERR_OOM;
+
     asdf_value_err_t err = ASDF_VALUE_OK;
 
     while (asdf_mapping_iter_next(&iter)) {
@@ -714,7 +761,7 @@ asdf_value_err_t asdf_mapping_update(asdf_mapping_t *mapping, asdf_mapping_t *up
             asdf_mapping_iter_destroy(iter);
             return ASDF_VALUE_ERR_OOM;
         }
-        err = asdf_mapping_set(mapping, iter->key, clone);
+        err = asdf_mapping_set_ex(mapping, iter->key, clone, prepend);
         if (err) {
             asdf_mapping_iter_destroy(iter);
             break;
@@ -722,6 +769,11 @@ asdf_value_err_t asdf_mapping_update(asdf_mapping_t *mapping, asdf_mapping_t *up
     }
 
     return err;
+}
+
+
+asdf_value_err_t asdf_mapping_update(asdf_mapping_t *mapping, asdf_mapping_t *update) {
+    return asdf_mapping_update_ex(mapping, update, false);
 }
 
 
@@ -840,7 +892,7 @@ void asdf_sequence_destroy(asdf_sequence_t *sequence) {
 }
 
 
-asdf_sequence_iter_t *asdf_sequence_iter_init(asdf_sequence_t *sequence) {
+asdf_sequence_iter_t *asdf_sequence_iter_init_ex(asdf_sequence_t *sequence, bool reverse) {
     asdf_sequence_iter_impl_t *impl = calloc(1, sizeof(asdf_sequence_iter_impl_t));
 
     if (UNLIKELY(!impl)) {
@@ -849,8 +901,25 @@ asdf_sequence_iter_t *asdf_sequence_iter_init(asdf_sequence_t *sequence) {
     }
 
     impl->sequence = sequence;
-    impl->pub.index = -1;
+    impl->reverse = reverse;
+
+    if (reverse) {
+        impl->pub.index = asdf_sequence_size(sequence);
+    } else {
+        impl->pub.index = -1;
+    }
+
     return (asdf_sequence_iter_t *)impl;
+}
+
+
+asdf_sequence_iter_t *asdf_sequence_iter_init(asdf_sequence_t *sequence) {
+    return asdf_sequence_iter_init_ex(sequence, false);
+}
+
+
+asdf_sequence_iter_t *asdf_sequence_reverse_iter_init(asdf_sequence_t *sequence) {
+    return asdf_sequence_iter_init_ex(sequence, true);
 }
 
 
@@ -882,12 +951,23 @@ bool asdf_sequence_iter_next(asdf_sequence_iter_t **iter_ptr) {
         goto cleanup;
     }
 
-    struct fy_node *value_node = fy_node_sequence_iterate(sequence->value.node, &impl->fy_iter);
+    struct fy_node *value_node = NULL;
+
+    if (impl->reverse) {
+        value_node = fy_node_sequence_reverse_iterate(sequence->value.node, &impl->fy_iter);
+    } else {
+        value_node = fy_node_sequence_iterate(sequence->value.node, &impl->fy_iter);
+    }
 
     if (UNLIKELY(!value_node))
         goto cleanup;
 
-    impl->pub.index++;
+    if (impl->reverse) {
+        impl->pub.index--;
+    } else {
+        impl->pub.index++;
+    }
+
     asdf_value_t *value = asdf_value_create_ex(
         sequence->value.file, value_node, &sequence->value, NULL, impl->pub.index);
 
@@ -1205,7 +1285,7 @@ asdf_value_t *asdf_sequence_pop(asdf_sequence_t *sequence, int index) {
 
 
 /** Generic container functions */
-asdf_container_iter_t *asdf_container_iter_init(asdf_value_t *container) {
+asdf_container_iter_t *asdf_container_iter_init_ex(asdf_value_t *container, bool reverse) {
     if (!container)
         return NULL;
 
@@ -1226,16 +1306,25 @@ asdf_container_iter_t *asdf_container_iter_init(asdf_value_t *container) {
 
     impl->container = container;
     impl->is_mapping = (container->raw_type == ASDF_VALUE_MAPPING);
-    impl->pub.index = -1;
+
+    if (reverse) {
+        if (impl->is_mapping) {
+            impl->pub.index = asdf_mapping_size((asdf_mapping_t *)container);
+        } else {
+            impl->pub.index = asdf_sequence_size((asdf_sequence_t *)container);
+        }
+    } else {
+        impl->pub.index = -1;
+    }
 
     if (impl->is_mapping) {
-        impl->iter.mapping = asdf_mapping_iter_init((asdf_mapping_t *)container);
+        impl->iter.mapping = asdf_mapping_iter_init_ex((asdf_mapping_t *)container, reverse);
         if (!impl->iter.mapping) {
             free(impl);
             return NULL;
         }
     } else {
-        impl->iter.sequence = asdf_sequence_iter_init((asdf_sequence_t *)container);
+        impl->iter.sequence = asdf_sequence_iter_init_ex((asdf_sequence_t *)container, reverse);
         if (!impl->iter.sequence) {
             free(impl);
             return NULL;
@@ -1243,6 +1332,16 @@ asdf_container_iter_t *asdf_container_iter_init(asdf_value_t *container) {
     }
 
     return (asdf_container_iter_t *)impl;
+}
+
+
+asdf_container_iter_t *asdf_container_iter_init(asdf_value_t *container) {
+    return asdf_container_iter_init_ex(container, false);
+}
+
+
+asdf_container_iter_t *asdf_container_reverse_iter_init(asdf_value_t *container) {
+    return asdf_container_iter_init_ex(container, true);
 }
 
 
@@ -1273,8 +1372,13 @@ bool asdf_container_iter_next(asdf_container_iter_t **iter_ptr) {
             goto cleanup;
 
         impl->pub.key = impl->iter.mapping->key;
-        impl->pub.index++;
         impl->pub.value = impl->iter.mapping->value;
+
+        if (((asdf_mapping_iter_impl_t *)impl->iter.mapping)->reverse) {
+            impl->pub.index--;
+        } else {
+            impl->pub.index++;
+        }
         return true;
     }
 

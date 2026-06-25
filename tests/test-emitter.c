@@ -131,9 +131,36 @@ MU_TEST(test_emitter_stream_switch) {
 }
 
 
+/** Regression test for issue #204 */
+MU_TEST(meta_prepended_to_root) {
+    const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    asdf_file_t *file = asdf_open(NULL);
+
+    // Add some keys to the file
+    asdf_set_string0(file, "observer", "Dennis Richie");
+
+    asdf_time_t time = {
+        .value = "1948.78707178",
+        .format = ASDF_TIME_FORMAT_JYEAR
+    };
+    asdf_set_time(file, "obstime", &time);
+
+    // Add a history entry
+    asdf_library_set_version(file, "0.0.0");
+    assert_int(asdf_history_entry_add(file, "Test metadata emission."), ==, 0);
+    asdf_write_to(file, filename);
+    asdf_close(file);
+
+    const char *fixture_filename = get_fixture_file_path("issue-204.asdf");
+    assert_true(compare_files(filename, fixture_filename));
+    return MUNIT_OK;
+}
+
+
 MU_TEST_SUITE(
     emitter,
-    MU_RUN_TEST(test_emitter_stream_switch)
+    MU_RUN_TEST(test_emitter_stream_switch),
+    MU_RUN_TEST(meta_prepended_to_root)
 );
 
 

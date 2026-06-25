@@ -297,6 +297,14 @@ typedef struct {
 ASDF_EXPORT asdf_mapping_iter_t *asdf_mapping_iter_init(asdf_mapping_t *mapping);
 
 /**
+ * Create a new reverse iterator over ``mapping``
+ *
+ * :param mapping: The `asdf_mapping_t *` to iterate over
+ * :return: A new `asdf_mapping_iter_t *` handle, or ``NULL`` on allocation failure
+ */
+ASDF_EXPORT asdf_mapping_iter_t *asdf_mapping_reverse_iter_init(asdf_mapping_t *mapping);
+
+/**
  * Advance the iterator to the next mapping entry
  *
  * On success, `asdf_mapping_iter_t.key` and `asdf_mapping_iter_t.value` are
@@ -545,6 +553,14 @@ typedef struct {
 ASDF_EXPORT asdf_sequence_iter_t *asdf_sequence_iter_init(asdf_sequence_t *sequence);
 
 /**
+ * Create a new reverse iterator over ``sequence``
+ *
+ * :param sequence: The `asdf_sequence_t *` to iterate over
+ * :return: A new `asdf_sequence_iter_t *` handle, or ``NULL`` on allocation failure
+ */
+ASDF_EXPORT asdf_sequence_iter_t *asdf_sequence_reverse_iter_init(asdf_sequence_t *sequence);
+
+/**
  * Advance the iterator to the next sequence element
  *
  * Typical usage::
@@ -713,6 +729,16 @@ typedef struct {
  * :return: A new `asdf_container_iter_t *` handle, or ``NULL`` on failure
  */
 ASDF_EXPORT asdf_container_iter_t *asdf_container_iter_init(asdf_value_t *container);
+
+/**
+ * Create a new reverse iterator over ``container`` (mapping or sequence)
+ *
+ * Returns ``NULL`` if ``container`` is neither a mapping nor a sequence.
+ *
+ * :param container: `asdf_value_t *` of mapping or sequence type
+ * :return: A new `asdf_container_iter_t *` handle, or ``NULL`` on failure
+ */
+ASDF_EXPORT asdf_container_iter_t *asdf_container_reverse_iter_init(asdf_value_t *container);
 
 /**
  * Advance the generic container iterator to the next element
