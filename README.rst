@@ -135,6 +135,11 @@ The YAML portion of the ASDF file should contain:
    %YAML 1.1
    %TAG ! tag:stsci.edu:asdf/
    --- !core/asdf-1.1.0
+   asdf_library: !core/software-1.0.0
+     name: libasdf
+     version: 0.1.0a2
+     author: The libasdf Developers
+     homepage: https://github.com/asdf-format/libasdf
    name: Dennis Richie
    foo: 42
    sequence: !core/ndarray-1.1.0
@@ -152,11 +157,6 @@ The YAML portion of the ASDF file should contain:
          100
          ]
        byteorder: little
-   asdf_library: !core/software-1.0.0
-     name: libasdf
-     version: 0.1.0a2
-     author: The libasdf Developers
-     homepage: https://github.com/asdf-format/libasdf
    ...
 
 
