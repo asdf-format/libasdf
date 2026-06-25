@@ -67,8 +67,11 @@ to a new file:
 
    #include <asdf.h>
 
-   int main(void) {
+   int main(int argc, char **argv) {
        const char *filename = "out.asdf";
+
+       if (argc > 1)
+           filename = argv[1];
    
        // open a "NULL" file for writing
        asdf_file_t *file = asdf_open(NULL);
@@ -170,8 +173,11 @@ The next example shows how to read back in the same file:
    #include <stdlib.h>
    #include <asdf.h>
    
-   int main(void) {
+   int main(int argc, char **argv) {
        const char *filename = "out.asdf";
+
+       if (argc > 1)
+           filename = argv[1];
    
        // open the ASDF file for reading
        asdf_file_t *file = asdf_open(filename, "r");
