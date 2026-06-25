@@ -19,6 +19,14 @@ ASDF_BEGIN_DECLS
 
 
 /**
+ * .. _value-types:
+ *
+ * Types
+ * -----
+ */
+
+
+/**
  * Opaque struct representing a generic value from the ASDF tree
  */
 typedef struct asdf_value asdf_value_t;
@@ -174,6 +182,14 @@ typedef struct asdf_file asdf_file_t;
 
 
 /**
+ * .. _value-generic:
+ *
+ * Generic values
+ * --------------
+ */
+
+
+/**
  * Free memory held by an `asdf_value_t`
  *
  * Calling this does *not* destroy any memory allocated for C-native data
@@ -232,7 +248,12 @@ typedef struct asdf_file asdf_file_t;
 /** Get the `asdf_file_t *` handle to the file to which a value belongs */
 ASDF_EXPORT asdf_file_t *asdf_value_file(asdf_value_t *value);
 
-/** Mappings */
+/**
+ * .. _value-mappings:
+ *
+ * Mappings
+ * --------
+ */
 
 /**
  * Opaque struct represening a mapping value
@@ -353,9 +374,10 @@ ASDF_EXPORT void asdf_mapping_iter_destroy(asdf_mapping_iter_t *iter);
  * Values in the RHS mapping are *copied* during the update process, so the
  * RHS mapping remains valid.
  *
- * .. todo::
- *
- *   Finish documenting me.
+ * :param mapping: The `asdf_mapping_t *` to update in place (the LHS)
+ * :param update: The `asdf_mapping_t *` whose entries are merged in (the RHS);
+ *   it is left unmodified
+ * :return: ``ASDF_VALUE_OK`` on success, otherwise an `asdf_value_err_t` error
  */
 ASDF_EXPORT asdf_value_err_t asdf_mapping_update(asdf_mapping_t *mapping, asdf_mapping_t *update);
 
@@ -371,11 +393,24 @@ ASDF_EXPORT asdf_value_err_t asdf_mapping_update(asdf_mapping_t *mapping, asdf_m
 ASDF_EXPORT asdf_value_t *asdf_mapping_pop(asdf_mapping_t *mapping, const char *key);
 
 /**
- * Set values on mappings
+ * Set values on a mapping
  *
- * .. todo::
+ * ``asdf_mapping_set`` inserts an existing generic `asdf_value_t *`; ownership
+ * of ``value`` transfers to the mapping on success.
  *
- *   Document the rest of these.
+ * The ``asdf_mapping_set_<type>`` variants construct a new value from a C
+ * scalar and insert it in one step.  ``asdf_mapping_set_string`` takes an
+ * explicit byte length; ``asdf_mapping_set_string0`` expects a NUL-terminated
+ * string.  ``asdf_mapping_set_null`` takes no value argument.  All other
+ * scalar variants accept the corresponding C type directly.
+ *
+ * ``asdf_mapping_set_mapping`` and ``asdf_mapping_set_sequence`` insert a
+ * nested container, transferring ownership of the supplied container to the
+ * parent mapping on success.
+ *
+ * In every case, if ``key`` already exists in the mapping its previous value
+ * is replaced.  All functions return ``ASDF_VALUE_OK`` on success or an
+ * `asdf_value_err_t` error code on failure.
  */
 
 /**
@@ -433,7 +468,12 @@ ASDF_EXPORT asdf_value_err_t
 asdf_mapping_set_sequence(asdf_mapping_t *mapping, const char *key, asdf_sequence_t *value);
 
 
-/** Sequences */
+/**
+ * .. _value-sequences:
+ *
+ * Sequences
+ * ---------
+ */
 
 /**
  * Opaque struct representing a sequence value
@@ -698,6 +738,14 @@ ASDF_EXPORT asdf_value_t *asdf_sequence_pop(asdf_sequence_t *sequence, int index
 
 
 /**
+ * .. _value-containers:
+ *
+ * Generic containers
+ * ------------------
+ */
+
+
+/**
  * Iterator handle for traversing either a mapping or a sequence
  *
  * When iterating over a mapping: ``key`` holds the current key though index
@@ -774,7 +822,12 @@ ASDF_EXPORT bool asdf_value_is_container(asdf_value_t *value);
 ASDF_EXPORT int asdf_container_size(asdf_value_t *container);
 
 
-/** Extension-related functions */
+/**
+ * .. _value-extensions:
+ *
+ * Extension types
+ * ---------------
+ */
 
 // Forward declaration for asdf_extension_t
 typedef struct _asdf_extension asdf_extension_t;
@@ -820,7 +873,12 @@ asdf_value_as_extension_type(asdf_value_t *value, const asdf_extension_t *ext, v
 ASDF_EXPORT asdf_value_t *asdf_value_of_extension_type(
     asdf_file_t *file, const void *obj, const asdf_extension_t *ext);
 
-/** Generic value functions */
+/**
+ * .. _value-type-generic:
+ *
+ * Type-generic access
+ * -------------------
+ */
 
 /**
  * Given an arbitrary `asdf_value_type_t` enum member, check if the value has
@@ -850,7 +908,13 @@ ASDF_EXPORT asdf_value_err_t
 asdf_value_as_type(asdf_value_t *value, asdf_value_type_t type, void *out);
 
 
-/* Scalar-related definitions */
+/**
+ * .. _value-scalars:
+ *
+ * Scalars
+ * -------
+ */
+
 ASDF_EXPORT bool asdf_value_is_string(asdf_value_t *value);
 ASDF_EXPORT asdf_value_err_t
 asdf_value_as_string(asdf_value_t *value, const char **out, size_t *out_len);
@@ -912,7 +976,12 @@ ASDF_EXPORT bool asdf_value_is_double(asdf_value_t *value);
 ASDF_EXPORT asdf_value_err_t asdf_value_as_double(asdf_value_t *value, double *out);
 ASDF_EXPORT asdf_value_t *asdf_value_of_double(asdf_file_t *file, double value);
 
-/** Tree traversal functions */
+/**
+ * .. _value-traversal:
+ *
+ * Tree traversal
+ * --------------
+ */
 
 /**
  * Type definition for predicate functions used in `asdf_value_find` and

@@ -132,7 +132,7 @@ ASDF_EXPORT void asdf_tag_destroy(asdf_tag_t *tag);
     }
 
 
-/**
+/*
  * Auto-generated helper to clone extension types
  *
  * Extension types may optionally not implement the copy method, in which case a shallow
@@ -157,7 +157,7 @@ ASDF_EXPORT void asdf_tag_destroy(asdf_tag_t *tag);
     }
 
 
-/**
+/*
  * Helper to clone a NULL-terminated array of pointers to an extension object
  *
  * For example, clones an `asdf_history_entry_t **` array.
@@ -184,7 +184,7 @@ ASDF_EXPORT void asdf_tag_destroy(asdf_tag_t *tag);
     }
 
 
-/** Auto-generated helper to free extension type objects */
+/* Auto-generated helper to free extension type objects */
 #define ASDF_EXT_DEFINE_DESTROY(extname, type) \
     ASDF_EXPORT void asdf_##extname##_destroy(type *object) { \
         if (!object) \

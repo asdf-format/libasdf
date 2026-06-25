@@ -14,6 +14,11 @@
 ASDF_BEGIN_DECLS
 
 /**
+ * Error codes
+ * -----------
+ */
+
+/**
  * Error codes set on an `asdf_file_t` or other context.
  *
  * Retrieve with `asdf_error_code`.

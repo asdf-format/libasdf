@@ -18,6 +18,14 @@ ASDF_BEGIN_DECLS
 
 
 /**
+ * .. _datatype-types:
+ *
+ * Types
+ * -----
+ */
+
+
+/**
  * Enum for basic ndarray scalar datatypes
  *
  * The special datatype `ASDF_DATATYPE_STRUCTURED` is reserved for the case where
@@ -118,6 +126,14 @@ ASDF_DECLARE_EXTENSION(datatype, asdf_datatype_t);
 
 
 /**
+ * .. _datatype-strings:
+ *
+ * String conversion
+ * -----------------
+ */
+
+
+/**
  * Parse an ASDF scalar datatype and return the corresponding `asdf_scalar_datatype_t`
  *
  * :param s: Null-terminated string
@@ -149,6 +165,14 @@ ASDF_EXPORT asdf_scalar_datatype_t asdf_scalar_datatype_from_string(const char *
  *   This just provides the string representations for the common scalar datatypes.
  */
 ASDF_EXPORT const char *asdf_scalar_datatype_to_string(asdf_scalar_datatype_t datatype);
+
+
+/**
+ * .. _datatype-sizes:
+ *
+ * Datatype sizes
+ * --------------
+ */
 
 
 /**

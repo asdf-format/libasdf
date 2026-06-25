@@ -51,9 +51,13 @@ headers.
   api/asdf/yaml.h
 
 
-.. todo::
-
-   Document lower-level APIs.
+Beyond the high-level `asdf_file_t` interface, libasdf also exposes a
+lower-level, event-based API for streaming through an ASDF file without
+building the whole tree in memory.  It is built around the parser in
+``asdf/parser.h``, which emits a sequence of `asdf_event_t` values (defined in
+``asdf/event.h``), and the corresponding emitter in ``asdf/emitter.h`` for
+writing.  These are intended for advanced use cases and are not yet fully
+documented; most applications should prefer the high-level API described above.
 
 
 Resources
