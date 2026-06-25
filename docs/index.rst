@@ -19,6 +19,7 @@ Usage
   usage/values
   usage/writing
   usage/ndarrays
+  usage/compression
   usage/extensions
   usage/examples
 

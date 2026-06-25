@@ -217,8 +217,8 @@ Datatypes and byte order
 ------------------------
 
 An element datatype is described by `asdf_datatype_t`, whose ``type`` field is
-one of the `asdf_scalar_datatype_t` enums -- for example `ASDF_DATATYPE_UINT8`,
-`ASDF_DATATYPE_INT32`, `ASDF_DATATYPE_FLOAT32`, or `ASDF_DATATYPE_FLOAT64`. 
+one of the `asdf_scalar_datatype_t` enums -- for example ``ASDF_DATATYPE_UINT8``,
+``ASDF_DATATYPE_INT32``, ``ASDF_DATATYPE_FLOAT32``, or ``ASDF_DATATYPE_FLOAT64``.
 For simple numeric arrays setting ``type`` is all that is required;
 `asdf_datatype_size` then reports the size of a single element in bytes.
 
@@ -298,38 +298,18 @@ storage).  `asdf_ndarray_storage_set` selects a different
 writing it out.  If the array was ready from an existing file, it will also
 report the storage format that was used in that file.
 
-
-.. _compression:
+.. _ndarray-compression:
 
 Compression
 -----------
 
-Internal block data can be compressed.  Call `asdf_ndarray_compression_set`
-on the array *before* passing it to ``asdf_set_ndarray`` (or `asdf_write_to`):
+Internal block data can be compressed.  Call `asdf_ndarray_compression_set` on
+the array *before* passing it to ``asdf_set_ndarray`` (or `asdf_write_to`):
 
 .. code:: c
 
    asdf_ndarray_compression_set(&nd, "lz4");
    asdf_set_ndarray(file, "image", &nd);
 
-The compression string must name one of the compressors built into libasdf:
-``"zlib"``, ``"bzp2"``, or ``"lz4"``.  Pass ``NULL`` or an empty string to
-request no compression.  Internally this is a thin wrapper around
-`asdf_block_compression_set`, which operates on the raw `asdf_block_t` and can
-be used for finer control.
-
-When *reading* compressed arrays, the block is decompressed on demand the first
-time you access its data (for example via `asdf_ndarray_data` or any of the
-reading functions).  How and when that happens is controlled through the
-``decomp`` options of `asdf_config_t` (passed to `asdf_open_ex`):
-
-* **Mode** (`asdf_block_decomp_mode_t`): ``ASDF_BLOCK_DECOMP_MODE_EAGER``
-  decompresses the whole block at once, while ``ASDF_BLOCK_DECOMP_MODE_LAZY``
-  decompresses in page-sized chunks on demand where supported (recent Linux via
-  ``userfaultfd``), falling back to eager decompression otherwise.
-  ``ASDF_BLOCK_DECOMP_MODE_AUTO`` lets the library choose.
-* **Memory limits**: ``max_memory_bytes`` and ``max_memory_threshold`` bound how
-  much decompressed data is kept in memory before the library spills to a
-  temporary file on disk (``tmp_dir``).
-
-For most use cases the defaults are appropriate and no configuration is needed.
+Compressed arrays are transparently decompressed when read back.  See
+:ref:`compression` for the full list of supported compressors.
