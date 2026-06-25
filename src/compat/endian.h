@@ -5,12 +5,23 @@
 #include "config.h"
 #endif
 
-/* Choose the right endian header */
+/* Include every endian header that exists, NOT just the first one.  This must
+ * match the set of headers used by AX_CHECK_ENDIAN_DECL
+ * (m4/ax_check_endian_decl.m4), otherwise the HAVE_DECL_* results can disagree
+ * with what is actually visible here.  On macOS, for example, both
+ * <machine/endian.h> and <sys/endian.h> *may* exist depending on the SDK
+ * version. but the be64toh/htobe* family is declared only in <sys/endian.h>.
+ *
+ * Thank you Apple for respecting the time and sanity of developers who wish
+ * to support your platforms.
+ */
 #if defined(HAVE_ENDIAN_H)
 #include <endian.h>
-#elif defined(HAVE_MACHINE_ENDIAN_H)
+#endif
+#if defined(HAVE_MACHINE_ENDIAN_H)
 #include <machine/endian.h>
-#elif defined(HAVE_SYS_ENDIAN_H)
+#endif
+#if defined(HAVE_SYS_ENDIAN_H)
 #include <sys/endian.h>
 #endif
 

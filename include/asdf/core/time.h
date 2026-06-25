@@ -73,6 +73,7 @@ typedef struct {
 ASDF_DECLARE_EXTENSION(time, asdf_time_t);
 
 ASDF_EXPORT int asdf_time_parse(asdf_time_t *time);
+ASDF_EXPORT const char *asdf_time_format_string(asdf_time_format_t format);
 
 ASDF_END_DECLS
 

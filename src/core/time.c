@@ -483,6 +483,16 @@ static const char *const asdf_time_scale_names[] = {
 };
 
 
+const char *asdf_time_format_string(asdf_time_format_t format) {
+    const size_t nformats = sizeof(asdf_time_format_names) / sizeof(asdf_time_format_names[0]);
+
+    if (format < 0 || format > nformats)
+        return NULL;
+
+    return asdf_time_format_names[format];
+}
+
+
 /* Helpers for format detection and range validation */
 
 static bool asdf_time_format_parse(const char *name, asdf_time_format_t *out) {

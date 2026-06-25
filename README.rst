@@ -35,7 +35,8 @@ This returns an ``asdf_file_t *`` which is your main interface to the ASDF file.
 When done with the file make sure to call ``asdf_close`` to free resources:
 
 .. code:: c
-   :name: test-open-close-file
+   :test: test-open-close-file
+   :fixture: cube.asdf
 
    #include <stdio.h>
    #include <asdf.h>
@@ -57,120 +58,186 @@ When done with the file make sure to call ``asdf_close`` to free resources:
        return 0;
     }
 
-The following more complete example demonstrates how to read different metadata out of
-the ASDF tree, as well as extract block data.  Inline comments provide further explanation:
+The next example demonstrates how to write some simple metadata and an ndarray
+to a new file:
 
 .. code:: c
-   :name: test-read-metadata-ndarray
+   :test: test-write-file
+   :fixture: temp:out.asdf
+
+   #include <asdf.h>
+
+   int main(int argc, char **argv) {
+       const char *filename = "out.asdf";
+
+       if (argc > 1)
+           filename = argv[1];
+   
+       // open a "NULL" file for writing
+       asdf_file_t *file = asdf_open(NULL);
+   
+       // assign a string to the "name" key of the ASDF tree
+       asdf_set_string0(file, "name", "Dennis Richie");
+   
+       // assign a numeric value to the "foo" key
+       asdf_set_int64(file, "foo", 42);
+   
+       // construct 2 arrays containing numeric values
+       uint64_t N = 100;
+   
+       asdf_ndarray_t sequence = {
+           .ndim = 1,
+           .shape = (uint64_t[]){N},
+           .datatype = {.type = ASDF_DATATYPE_UINT64}
+       };
+       uint8_t *sequence_data = asdf_ndarray_data_alloc(&sequence);
+   
+       asdf_ndarray_t squares = {
+           .ndim = 1,
+           .shape = (uint64_t[]){N},
+           .datatype = {.type = ASDF_DATATYPE_UINT64}
+       };
+       uint64_t *squares_data = asdf_ndarray_data_alloc(&squares);
+   
+       for (uint64_t idx = 0; idx < N; idx++) {
+           sequence_data[idx] = idx;
+           squares_data[idx] = idx * idx;
+       };
+   
+       // assign the "sequence" array to the "sequence" key
+       asdf_set_ndarray(file, "sequence", &sequence);
+   
+       // nest the "squares" array under a parent "powers" key
+       asdf_set_ndarray(file, "powers/squares", &squares);
+   
+       // write the ASDF file to disk
+       asdf_write_to(file, filename);
+   
+       // clean up allocations
+       asdf_ndarray_data_dealloc(&sequence);
+       asdf_ndarray_data_dealloc(&squares);
+       asdf_close(file);
+       return 0;
+   }
+
+With libasdf installed on your system (see :ref:`development`) you can compile
+and run this test like:
+
+.. code:: sh
+
+   $ gcc asdf-write.c -o asdf-write -lasdf
+   $ ./asdf-write
+
+It should produce an output file at ``out.asdf`` which you can inspect by hand.
+The YAML portion of the ASDF file should contain:
+
+.. code:: yaml
+
+   #ASDF 1.0.0
+   #ASDF_STANDARD 1.6.0
+   %YAML 1.1
+   %TAG ! tag:stsci.edu:asdf/
+   --- !core/asdf-1.1.0
+   asdf_library: !core/software-1.0.0
+     name: libasdf
+     version: 0.1.0a2
+     author: The libasdf Developers
+     homepage: https://github.com/asdf-format/libasdf
+   name: Dennis Richie
+   foo: 42
+   sequence: !core/ndarray-1.1.0
+     source: 0
+     datatype: uint64
+     shape: [
+       100
+       ]
+     byteorder: little
+   powers:
+     squares: !core/ndarray-1.1.0
+       source: 1
+       datatype: uint64
+       shape: [
+         100
+         ]
+       byteorder: little
+   ...
+
+
+The next example shows how to read back in the same file:
+
+.. code:: c
+   :test: test-read-file
+   :fixture: test-write-file.asdf
 
    #include <stdio.h>
    #include <stdlib.h>
    #include <asdf.h>
    
    int main(int argc, char **argv) {
-       if (argc < 2) {
-           fprintf(stderr, "Usage: %s filename\n", argv[0]);
-           return 1;
-       }
-       const char *filename = argv[1];
+       const char *filename = "out.asdf";
 
-       // The mode string "r" is required and is the only currently-supported mode
+       if (argc > 1)
+           filename = argv[1];
+   
+       // open the ASDF file for reading
        asdf_file_t *file = asdf_open(filename, "r");
- 
-       if (file == NULL) {
-           fprintf(stderr, "error opening the ASDF file\n");
+       if (!file) {
+           fprintf(stderr, "Failed to open the file: %s\n", asdf_error(file));
            return 1;
        }
- 
-       // The simplest way to read metadata from the file is with the
-       // `asdf_get_<type>*` family of functions
-       // They all return a value by pointer argument and return an
-       // `asdf_value_error_t`
-       // For example you can read a string from the metadata like:
- 
-       const char *software = NULL;
-       // Returns a 0-terminated string into *software.
-       asdf_value_err_t err = asdf_get_string0(file, "asdf_library/author", &software);
- 
-       if (err == ASDF_VALUE_OK) {
-           printf("software: %s\n", software);
+   
+       // read and print the string stored under "name"
+       const char *name = NULL;
+       if (asdf_get_string0(file, "name", &name) == ASDF_VALUE_OK) {
+           printf("name: %s\n", name);
        }
- 
-       // Other errors could be e.g. ASDF_VALUE_ERR_NOT_FOUND if the key doesn't
-       // exist, or ASDF_VALUE_ERR_TYPE_MISMATCH if it's not a string.
- 
-       // There are also extensions registered for some (not all yet) of the
-       // core schemas.  Objects defined by extension schemas (identified by
-       // their YAML tags) also have corresponding asdf_get_<type> functions:
-       asdf_meta_t *meta = NULL;
- 
-       // This reads the top-level core/asdf-1.0.0 schema
-       err = asdf_get_meta(file, "/", &meta);
-       if (err == ASDF_VALUE_OK) {
-           if (meta->history.entries[0]) {
-               // This is a NULL-terminated array of asdf_history_entry_t*
-               printf("first history entry: %s\n", meta->history.entries[0]->description);
+   
+       // read and print the numeric value stored under "foo"
+       int64_t foo = 0;
+       if (asdf_get_int64(file, "foo", &foo) == ASDF_VALUE_OK) {
+           printf("foo: %li\n", foo);
+       }
+   
+       // read the "squares" array nested under the "powers" key
+       asdf_ndarray_t *squares = NULL;
+       uint64_t *squares_data = NULL;
+       if (asdf_get_ndarray(file, "powers/squares", &squares) == ASDF_VALUE_OK) {
+           if (asdf_ndarray_read_all(squares, ASDF_DATATYPE_UINT64, (void **)&squares_data) == ASDF_NDARRAY_OK) {
+               // print the sum of the squares array
+               uint64_t nelem = asdf_ndarray_size(squares);
+               uint64_t sum = 0;
+               for (uint64_t idx = 0; idx < nelem; idx++) {
+                   sum += squares_data[idx];
+               }
+               printf("sum of squares values: %li\n", sum);
            }
        }
- 
-       // Functions like `asdf_get_meta` that return into a double-pointer to a
-       // struct allocate memory for that structure automatically.
-       // The all have a corresponding `asdf_<type>_destroy` function.
-       // The plan is to track these on the file object (issue #34) to make
-       // memory management easier and cleaner, but for now you have to free
-       // them manually when you're done with them. This is good practice in any
-       // case.
-       asdf_meta_destroy(meta);
- 
-       // ndarrays work no differently; this reads an ndarray named "cube".
-       asdf_ndarray_t *ndarray = NULL;
-       err = asdf_get_ndarray(file, "cube", &ndarray);
-       if (err != ASDF_VALUE_OK) {
-           fprintf(stderr, "error reading ndarray metadata: %d\n", err);
-           return 1;
-       }
- 
-       printf("number of data dimensions: %d\n", ndarray->ndim);
- 
-       // Get just a raw pointer to the ndarray data block (if uncompressed).
-       // Optionally returns the size in bytes as well
-       size_t size = 0;
-       const void *data = asdf_ndarray_data(ndarray, &size);
-
-       if (data == NULL) {
-           fprintf(stderr, "error reading ndarray data\n");
-           return 1;
-       }
- 
-       // Slightly more useful is the asdf_ndarray_read_tile_ functions.
-       // They can copy the data, including converting endianness into a tile
-       // buffer.  If an existing buffer is not passed it will allocate one of
-       // the correct size to hold the data.  The user is responsible for
-       // freeing the buffer.
- 
-       // Read a 10x10x10 cube
-       const uint64_t origin[3] = {0, 0, 0};
-       const uint64_t shape[3] = {10, 10, 10};
-       void *tile = NULL;
-       asdf_ndarray_err_t array_err = asdf_ndarray_read_tile_ndim(
-           ndarray,
-           origin,
-           shape,
-           ASDF_DATATYPE_SOURCE,
-           &tile
-       );
- 
-       if (array_err != ASDF_NDARRAY_OK) {
-           fprintf(stderr, "error reading ndarray: %d\n", array_err);
-           return 1;
-       }
- 
-       free(tile);
-       asdf_ndarray_destroy(ndarray);
+   
+       // clean up allocations
+       free(squares_data);
+       asdf_ndarray_destroy(squares);
        asdf_close(file);
        return 0;
    }
 
+Likewise compile and run the example with the output from the previous program:
+
+.. code:: sh
+
+   $ gcc asdf-read.c -o asdf-read -lasdf
+   $ ./asdf-read
+
+This should output::
+
+    name: Dennis Richie
+    foo: 42
+    sum of squares values: 328350
+
+Additional examples can be found in the
+`libasdf documentation <https://libasdf.readthedocs.io/en/latest/usage/examples.html>`__.
+
+
+.. _development:
 
 Development
 ===========

@@ -19,6 +19,7 @@ Usage
   usage/values
   usage/writing
   usage/extensions
+  usage/examples
 
 
 API documentation

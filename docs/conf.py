@@ -2,6 +2,9 @@ import re
 from datetime import datetime
 from pathlib import Path
 
+from docutils.parsers.rst import directives
+from sphinx.directives.patches import Code
+
 
 # -- Project information ------------------------------------------------------
 def read_config_h() -> tuple[str, str, str]:
@@ -169,5 +172,24 @@ latex_documents = [("index", project + ".tex", project + " Documentation", autho
 latex_logo = "_static/images/logo-light-mode.png"
 
 
+# -- Doc-example test directive options ----------------------------------------
+# The tests/scripts/extract_doc_examples.py script extracts ``.. code:: c``
+# blocks from the documentation and compiles/runs them as part of the test
+# suite.  A block is marked for extraction with the ``:test:`` option (whose
+# value is the test name) and may declare an input file with ``:fixture:``.
+#
+# These options are meaningful only to the extraction script; here we simply
+# extend the ``code`` directive to accept (and otherwise ignore) them so that
+# the documentation still builds without "unknown option" errors.
+#
+# TODO: Make this more extensible; maybe spin out to a separate plugin
+# Sphinx could use an extension for compilable source code doctests like this...
+class TestableCode(Code):
+    option_spec = dict(Code.option_spec)
+    option_spec["test"] = directives.unchanged
+    option_spec["fixture"] = directives.unchanged
+
+
 def setup(app):
     app.add_css_file("css/globalnav.css")
+    app.add_directive("code", TestableCode, override=True)
