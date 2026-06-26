@@ -172,6 +172,8 @@ static error_t parse_dd_opt(int key, char *arg, struct argp_state *state) {
         if (!(args->has_block_index || args->ndarray_path) ||
             (args->has_block_index && args->ndarray_path))
             argp_error(state, "'dd' requires only one of --block or --ndarray");
+        if (!args->input || !args->output)
+            argp_error(state, "'dd' requires INPUT and OUTPUT arguments.");
         break;
     default:
         return ARGP_ERR_UNKNOWN;
