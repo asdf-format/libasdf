@@ -26,7 +26,7 @@
 #endif
 
 #if !HAVE_DECL_BE64TOH
-#ifdef __APPLE__
+#if (defined(__APPLE__) && !defined(be64toh))
 #include <libkern/OSByteOrder.h>
 #define be64toh(x) OSSwapBigToHostInt64(x)
 #else
@@ -36,7 +36,7 @@
 
 
 #if !HAVE_DECL_BE32TOH
-#ifdef __APPLE__
+#if (defined(__APPLE__) && !defined(be32toh))
 #include <libkern/OSByteOrder.h>
 #define be32toh(x) OSSwapBigToHostInt32(x)
 #else
@@ -46,7 +46,7 @@
 
 
 #if !HAVE_DECL_HTOBE16
-#ifdef __APPLE__
+#if (defined(__APPLE__) && !defined(htobe16))
 #include <libkern/OSByteOrder.h>
 #define htobe16(x) OSSwapHostToBigInt16(x)
 #else
@@ -56,7 +56,7 @@
 
 
 #if !HAVE_DECL_HTOBE32
-#ifdef __APPLE__
+#if (defined(__APPLE__) && !defined(htobe32))
 #include <libkern/OSByteOrder.h>
 #define htobe32(x) OSSwapHostToBigInt32(x)
 #else
@@ -66,7 +66,7 @@
 
 
 #if !HAVE_DECL_HTOBE64
-#ifdef __APPLE__
+#if (defined(__APPLE__) && !defined(htobe64))
 #include <libkern/OSByteOrder.h>
 #define htobe64(x) OSSwapHostToBigInt64(x)
 #else
@@ -76,7 +76,7 @@
 
 
 #if !HAVE_DECL_LE32TOH
-#ifdef __APPLE__
+#if (defined(__APPLE__) && !defined(le32toh))
 #include <libkern/OSByteOrder.h>
 #define le32toh(x) OSSwapLittleToHostInt32(x)
 #else
@@ -86,7 +86,7 @@
 
 
 #if !HAVE_DECL_HTOLE32
-#ifdef __APPLE__
+#if (defined(__APPLE__) && !defined(htole32))
 #include <libkern/OSByteOrder.h>
 #define htole32(x) OSSwapHostToLittleInt32(x)
 #else
