@@ -11,6 +11,9 @@ set(ASDF_DEBUG OFF CACHE BOOL "Enable DEBUG code")
 # Additional feature flags
 option(ENABLE_STATIC "Build as a static library" OFF)
 
+# Build the asdf command-line tool (depends on argp)
+option(ENABLE_TOOL "Build the asdf command-line tool" ON)
+
 # Documentation
 option(ENABLE_DOCS OFF)
 if (ENABLE_DOCS)

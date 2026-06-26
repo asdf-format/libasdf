@@ -298,6 +298,7 @@ Clone the repository and build the project as follows::
     cmake .. \
         -D ENABLE_TESTING=[YES/NO] \
         -D ENABLE_TESTING_SHELL=[YES/NO] \
+        -D ENABLE_TOOL=[YES/NO] \
         -D ENABLE_ASAN=[YES/NO] \
         -D FYAML_NO_PKGCONFIG=[YES/NO] \
             # If YES \
