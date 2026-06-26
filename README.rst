@@ -27,6 +27,12 @@ extract binary block data, as well as typed getters for metadata in the ASDF tre
 It also features an extension mechanism (still nascent) for reading ASDF schemas, including
 the core schemas such as ``core/ndarray-<x.y.z>`` into C-native datastructures.
 
+libasdf additionally installs a companion command-line tool, ``asdf``: a wrapper around the
+library providing utilities for inspecting and extracting data from ASDF files.  Its
+capabilities are currently modest but will be expanded in the future; see the
+`command-line tool documentation <https://libasdf.readthedocs.io/en/latest/usage/cli.html>`__
+for details.
+
 Getting Started
 ---------------
 

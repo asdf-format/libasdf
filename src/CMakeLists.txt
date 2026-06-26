@@ -140,4 +140,11 @@ install(TARGETS asdf-cli
     DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
+# Install the tool's man page.  It is generated from docs/usage/cli.rst with
+# Sphinx but checked in (see that file) so that building/installing does not
+# require Sphinx.
+install(FILES ${CMAKE_SOURCE_DIR}/docs/man/asdf.1
+    DESTINATION ${CMAKE_INSTALL_MANDIR}/man1
+)
+
 

@@ -105,6 +105,11 @@ asdf_SOURCES = src/main.c
 asdf_CFLAGS = $(AM_CFLAGS) $(FYAML_CFLAGS) $(STATGRAB_CFLAGS) $(LZ4_CFLAGS) $(CODE_COVERAGE_CFLAGS)
 asdf_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
 asdf_LDADD =  third_party/libstc.la libasdf.la $(ARGP_LIBS) $(ASDF_LIBS)
+
+# The man page is generated from docs/usage/cli.rst with Sphinx but is checked
+# in (see that file) so that building a release tarball does not require Sphinx.
+# dist_man_MANS both distributes it and installs it to $(mandir)/man1.
+dist_man_MANS = docs/man/asdf.1
 endif # ASDF_BUILD_TOOL
 
 

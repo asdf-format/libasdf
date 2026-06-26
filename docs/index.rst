@@ -62,6 +62,18 @@ writing.  These are intended for advanced use cases and are not yet fully
 documented; most applications should prefer the high-level API described above.
 
 
+Command-line tool
+=================
+
+libasdf installs a companion command-line program, ``asdf``, for inspecting
+and extracting data from ASDF files directly from the shell.
+
+.. toctree::
+  :maxdepth: 2
+
+  usage/cli
+
+
 Resources
 =========
 

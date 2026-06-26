@@ -63,9 +63,10 @@ static struct argp_option global_options[] = {
 /* The pre-doc (text before \v) is the static description.  The help filter
  * appends the sub-command listing to it dynamically.  The post-doc (text
  * after \v) is the static footer. */
-static char doc[] = "asdf -- Commandline utilities for managing ASDF files."
-                    "\v"
-                    "Run 'asdf COMMAND --help' for more information on a sub-command.";
+static char
+    doc[] = "asdf -- Command-line utilities for inspecting and extracting data from ASDF files"
+            "\v"
+            "Run 'asdf COMMAND --help' for more information on a sub-command.";
 
 
 // info subcommand

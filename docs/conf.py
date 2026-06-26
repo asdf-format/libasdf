@@ -51,7 +51,19 @@ latex_documents = [(
 )]
 
 # -- Options for manual page output --------------------------------------------
-man_pages = [("index", project.lower(), project + " Documentation", [author], 1)]
+# Each tuple is (source doc, name, description, authors, manual section).  The
+# ``asdf`` entry generates an asdf(1) man page from the command-line tool page;
+# build it with ``make man-page`` in this directory.
+man_pages = [
+    ("index", project.lower(), project + " Documentation", [author], 1),
+    (
+        "usage/cli",
+        "asdf",
+        "command-line utility for inspecting and extracting data from ASDF files",
+        [author],
+        1,
+    ),
+]
 
 
 todo_include_todos = True
