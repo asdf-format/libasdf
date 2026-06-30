@@ -106,11 +106,6 @@ represented as some more complex structure:
   foo: !tests/foo-1.0.0 foo
   ...
 
-.. todo::
-
-   The ``core/complex`` tag might be a useful example to point to here, but we
-   haven't implemented it yet.
-
 For this example we need to write a few pieces of code:
 
 * A struct representing for our "foo" type (an extension object may also be

@@ -41,19 +41,33 @@ ASDF_BEGIN_DECLS
 typedef enum {
     /** Reserved for invalid/unsupported datatypes */
     ASDF_DATATYPE_UNKNOWN = 0,
+    /** Signed 8-bit integer */
     ASDF_DATATYPE_INT8,
+    /** Unsigned 8-bit integer */
     ASDF_DATATYPE_UINT8,
+    /** Signed 16-bit integer */
     ASDF_DATATYPE_INT16,
+    /** Unsigned 16-bit integer */
     ASDF_DATATYPE_UINT16,
+    /** Signed 32-bit integer */
     ASDF_DATATYPE_INT32,
+    /** Unsigned 32-bit integer */
     ASDF_DATATYPE_UINT32,
+    /** Signed 64-bit integer */
     ASDF_DATATYPE_INT64,
+    /** Unsigned 64-bit integer */
     ASDF_DATATYPE_UINT64,
+    /** 16-bit IEEE float (not yet fully supported) */
     ASDF_DATATYPE_FLOAT16,
+    /** 32-bit IEEE float */
     ASDF_DATATYPE_FLOAT32,
+    /** 64-bit IEEE float */
     ASDF_DATATYPE_FLOAT64,
+    /** 64-bit complex (pair of 32-bit floats; not yet fully supported) */
     ASDF_DATATYPE_COMPLEX64,
+    /** 128-bit complex (pair of 64-bit floats; not yet fully supported) */
     ASDF_DATATYPE_COMPLEX128,
+    /** 8-bit boolean */
     ASDF_DATATYPE_BOOL8,
     /** ASCII text datatype */
     ASDF_DATATYPE_ASCII,
@@ -105,13 +119,27 @@ typedef struct asdf_datatype asdf_datatype_t;
 
 
 struct asdf_datatype {
+    /** The scalar type of the datatype (or its elements, for compound types) */
     asdf_scalar_datatype_t type;
+    /**
+     * Size in bytes of a single element of this datatype
+     *
+     * May be left ``0`` for built-in numeric datatypes, in which case
+     * `asdf_datatype_size` computes and fills it in.  For string datatypes
+     * (`ASDF_DATATYPE_ASCII` / `ASDF_DATATYPE_UCS4`) it must be set explicitly.
+     */
     uint64_t size;
+    /** Optional name of the datatype (e.g. a field name in a compound type) */
     const char *name;
+    /** Byte order of the elements; see `asdf_byteorder_t` */
     asdf_byteorder_t byteorder;
+    /** Number of dimensions, for a sub-array datatype (``0`` for scalars) */
     uint32_t ndim;
+    /** Shape of the sub-array, an array of ``ndim`` values, if any */
     const uint64_t *shape;
+    /** Number of fields, for a compound/structured datatype */
     uint32_t nfields;
+    /** Array of ``nfields`` member datatypes, for a compound datatype */
     const asdf_datatype_t *fields;
 };
 

@@ -215,6 +215,11 @@ static asdf_file_t *asdf_open_mem(const void *buf, size_t size);
  * Opens an ASDF file for reading
  *
  * Equivalent to `asdf_open`.
+ *
+ * :param filename: A null-terminated string containing the local filesystem
+ *   path to open
+ * :param mode: Currently must always be just ``"r"``
+ * :return: An `asdf_file_t *`, or ``NULL`` on error
  */
 static inline asdf_file_t *asdf_open_file(const char *filename, const char *mode) {
     return asdf_open_file_ex(filename, mode, NULL);

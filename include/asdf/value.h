@@ -126,6 +126,7 @@ typedef enum {
  * `ASDF_VALUE_ERR_TYPE_MISMATCH`.
  */
 typedef enum {
+    /** An unknown or unspecified error occurred */
     ASDF_VALUE_ERR_UNKNOWN = -2,
 
     /**
@@ -211,6 +212,9 @@ ASDF_EXPORT void asdf_value_destroy(asdf_value_t *value);
  * The new cloned value is not initially attached to the YAML tree, so
  * modification to its underlying value is not reflected in the YAML; it
  * may be inserted elsewhere in the tree later.
+ *
+ * :param value: The `asdf_value_t *` to clone
+ * :return: A new deep-copied `asdf_value_t *`, or ``NULL`` on failure
  */
 ASDF_EXPORT asdf_value_t *asdf_value_clone(asdf_value_t *value);
 
@@ -281,13 +285,80 @@ ASDF_EXPORT asdf_file_t *asdf_value_file(asdf_value_t *value);
  */
 typedef struct asdf_mapping asdf_mapping_t;
 
+/** Return ``true`` if ``value`` holds a YAML mapping */
 ASDF_EXPORT bool asdf_value_is_mapping(asdf_value_t *value);
+
+/**
+ * Return the number of key/value entries in ``mapping``
+ *
+ * :param mapping: The `asdf_mapping_t *` to query
+ * :return: The number of entries currently in the mapping
+ */
 ASDF_EXPORT int asdf_mapping_size(asdf_mapping_t *mapping);
+
+/**
+ * Obtain a typed `asdf_mapping_t *` view of a generic value
+ *
+ * On success writes the `asdf_mapping_t *` into ``*out`` and returns
+ * ``ASDF_VALUE_OK``.  Returns an error code and leaves ``*out`` unchanged if
+ * ``value`` is not a mapping.
+ *
+ * :param value: The generic `asdf_value_t *` to inspect
+ * :param out: Receives the `asdf_mapping_t *` on success
+ * :return: ``ASDF_VALUE_OK`` on success, otherwise an `asdf_value_err_t` error
+ */
 ASDF_EXPORT asdf_value_err_t asdf_value_as_mapping(asdf_value_t *value, asdf_mapping_t **out);
+
+/**
+ * Return the generic `asdf_value_t *` view of a mapping
+ *
+ * The returned pointer shares ownership with ``mapping``; the caller must not
+ * free it independently.
+ *
+ * :param mapping: The `asdf_mapping_t *` to wrap
+ * :return: The same object as a generic `asdf_value_t *`
+ */
 ASDF_EXPORT asdf_value_t *asdf_value_of_mapping(asdf_mapping_t *mapping);
+
+/**
+ * Create a new, empty mapping attached to ``file``
+ *
+ * The caller owns the returned mapping and must eventually release it with
+ * `asdf_mapping_destroy`, or transfer ownership by inserting it into a parent
+ * mapping or sequence.  Returns ``NULL`` on allocation failure.
+ *
+ * :param file: The `asdf_file_t *` that will own the mapping
+ * :return: A new `asdf_mapping_t *`, or ``NULL`` on failure
+ */
 ASDF_EXPORT asdf_mapping_t *asdf_mapping_create(asdf_file_t *file);
+
+/**
+ * Set the YAML node style used when serializing ``mapping``
+ *
+ * :param mapping: The `asdf_mapping_t *` to modify
+ * :param style: The desired `asdf_yaml_node_style_t` (e.g. block or flow)
+ */
 ASDF_EXPORT void asdf_mapping_set_style(asdf_mapping_t *mapping, asdf_yaml_node_style_t style);
+
+/**
+ * Deep-copy a mapping
+ *
+ * The returned mapping is not attached to the tree; it may be inserted
+ * elsewhere later or released with `asdf_mapping_destroy`.
+ *
+ * :param mapping: The `asdf_mapping_t *` to clone
+ * :return: A new `asdf_mapping_t *`, or ``NULL`` on failure
+ */
 ASDF_EXPORT asdf_mapping_t *asdf_mapping_clone(asdf_mapping_t *mapping);
+
+/**
+ * Free a mapping and all values it contains
+ *
+ * Must not be called on a mapping that has been inserted into a parent mapping
+ * or sequence -- ownership transfers at that point.
+ *
+ * :param mapping: The `asdf_mapping_t *` to free
+ */
 ASDF_EXPORT void asdf_mapping_destroy(asdf_mapping_t *mapping);
 
 /**
@@ -825,6 +896,7 @@ ASDF_EXPORT bool asdf_container_iter_next(asdf_container_iter_t **iter);
  */
 ASDF_EXPORT void asdf_container_iter_destroy(asdf_container_iter_t *iter);
 
+/** Return ``true`` if ``value`` holds a container (a mapping or a sequence) */
 ASDF_EXPORT bool asdf_value_is_container(asdf_value_t *value);
 
 
@@ -862,6 +934,11 @@ typedef struct _asdf_extension asdf_extension_t;
  *
  *     const asdf_extension_t *ext = asdf_extension_get(file, "tag:...");
  *     asdf_value_is_extension_type(value, ext);
+ *
+ * :param value: The `asdf_value_t *` handle
+ * :param ext: The `asdf_extension_t *` describing the extension type
+ * :return: ``true`` if ``value`` is of the given extension type, otherwise
+ *   ``false``
  */
 ASDF_EXPORT bool asdf_value_is_extension_type(asdf_value_t *value, const asdf_extension_t *ext);
 
@@ -881,11 +958,30 @@ ASDF_EXPORT bool asdf_value_is_extension_type(asdf_value_t *value, const asdf_ex
  *     asdf_ndarray_t *ndarray = NULL;
  *     const asdf_extension_t *ext = asdf_extension_get(file, "tag:...");
  *     asdf_value_as_extension_type(value, ext, &ndarray);
+ *
+ * :param value: The `asdf_value_t *` handle
+ * :param ext: The `asdf_extension_t *` describing the extension type
+ * :param out: Receives the deserialized extension object on success; the
+ *   concrete type of ``*out`` is the C type associated with the extension
+ * :return: `ASDF_VALUE_OK` if the value is of the extension type, otherwise
+ *   `ASDF_VALUE_ERR_TYPE_MISMATCH`
  */
 ASDF_EXPORT asdf_value_err_t
 asdf_value_as_extension_type(asdf_value_t *value, const asdf_extension_t *ext, void **out);
 
 
+/**
+ * Construct a generic `asdf_value_t *` by serializing an extension object
+ *
+ * The low-level counterpart to the per-extension ``asdf_value_of_<extension>``
+ * helpers; serializes ``obj`` according to ``ext`` into a new value owned by
+ * ``file``.
+ *
+ * :param file: The `asdf_file_t *` that will own the returned value
+ * :param obj: Pointer to the extension object to serialize
+ * :param ext: The `asdf_extension_t *` describing the extension type
+ * :return: A new `asdf_value_t *`, or ``NULL`` on failure
+ */
 ASDF_EXPORT asdf_value_t *asdf_value_of_extension_type(
     asdf_file_t *file, const void *obj, const asdf_extension_t *ext);
 
@@ -904,6 +1000,10 @@ ASDF_EXPORT asdf_value_t *asdf_value_of_extension_type(
  *
  *   For checking against a specific extension type it's still necessary to use
  *   `asdf_value_is_extension_type`
+ *
+ * :param value: The `asdf_value_t *` handle
+ * :param type: The `asdf_value_type_t` to test against
+ * :return: ``true`` if ``value`` is of the given type, otherwise ``false``
  */
 ASDF_EXPORT bool asdf_value_is_type(asdf_value_t *value, asdf_value_type_t type);
 
@@ -919,6 +1019,12 @@ ASDF_EXPORT bool asdf_value_is_type(asdf_value_t *value, asdf_value_type_t type)
  *
  *   For getting the value of a specific extension type it's still necessary to use
  *   `asdf_value_as_extension_type`
+ *
+ * :param value: The `asdf_value_t *` handle
+ * :param type: The `asdf_value_type_t` to coerce the value to
+ * :param out: Address of the output destination, whose concrete type
+ *   corresponds to ``type``
+ * :return: `ASDF_VALUE_OK` on success, otherwise an `asdf_value_err_t` error
  */
 ASDF_EXPORT asdf_value_err_t
 asdf_value_as_type(asdf_value_t *value, asdf_value_type_t type, void *out);
@@ -929,6 +1035,29 @@ asdf_value_as_type(asdf_value_t *value, asdf_value_type_t type, void *out);
  *
  * Scalars
  * -------
+ */
+
+/**
+ * The functions below are the `asdf_value_t`-level scalar accessors, and come
+ * in three families for each scalar type (``string``, ``scalar``, ``bool``,
+ * ``null``, the sized integer types, ``float``, and ``double``):
+ *
+ * * ``asdf_value_is_<type>`` -- return ``true`` if the value is of that type
+ *   (following the `YAML Core Schema`_ interpretation; see :ref:`values`).
+ * * ``asdf_value_as_<type>`` -- coerce the value to the corresponding C type,
+ *   writing it through an output pointer and returning an `asdf_value_err_t`
+ *   (``ASDF_VALUE_OK`` on success, ``ASDF_VALUE_ERR_TYPE_MISMATCH`` if the
+ *   value is not of that type, and ``ASDF_VALUE_ERR_OVERFLOW`` for numeric
+ *   values that do not fit the requested type).
+ * * ``asdf_value_of_<type>`` -- construct a new `asdf_value_t *` from a C
+ *   value, for insertion into the tree; it is owned by ``file``.
+ *
+ * These are the same operations performed by the file-level ``asdf_get_<type>``
+ * and ``asdf_set_<type>`` functions, but acting directly on a generic
+ * `asdf_value_t *` rather than looking the value up by path.  The ``string``
+ * and ``scalar`` accessors have ``0``-suffixed variants
+ * (e.g. ``asdf_value_as_string0``) that return a NUL-terminated string instead
+ * of a pointer/length pair.
  */
 
 ASDF_EXPORT bool asdf_value_is_string(asdf_value_t *value);

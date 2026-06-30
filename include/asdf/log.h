@@ -69,7 +69,11 @@ typedef enum {
     X(ASDF_LOG_FIELD_MSG, 4)
 
 
-/** Bitmask selecting every available log field */
+/**
+ * Bitmask selecting every available log field
+ *
+ * See `asdf_log_field_t`.
+ */
 #define ASDF_LOG_FIELD_ALL \
     (ASDF_LOG_FIELD_LEVEL | ASDF_LOG_FIELD_PACKAGE | ASDF_LOG_FIELD_FILE | ASDF_LOG_FIELD_LINE | \
      ASDF_LOG_FIELD_MSG)
