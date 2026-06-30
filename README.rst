@@ -315,6 +315,25 @@ If doing a system install, as usual it's recommended to install to ``/usr/local`
 by providing ``-DCMAKE_INSTALL_PREFIX=/usr/local`` when running ``cmake``.  Or, if you
 have a ``${HOME}/.local`` you can set the prefix there, etc.
 
+Logging
+^^^^^^^
+
+libasdf can emit diagnostic log messages, controlled by the following options:
+
+- ``-D ENABLE_LOG=[YES/NO]`` -- compile libasdf's internal log statements into
+  the library (default ``YES``).  When ``NO`` they compile to nothing.
+- ``-D ENABLE_LOG_COLOR=[YES/NO]`` -- colorize log output (default ``YES``).
+- ``-D LOG_DEFAULT=LEVEL`` -- the default runtime log level, used when none is
+  set explicitly; one of ``TRACE``, ``DEBUG``, ``INFO``, ``WARN`` (the
+  default), ``ERROR``, ``FATAL``, or ``NONE``.
+- ``-D LOG_MIN=LEVEL`` -- the compile-time minimum level; messages below it are
+  compiled out entirely (default ``TRACE``).
+
+At runtime the default level can also be overridden through the
+``ASDF_LOG_LEVEL`` environment variable.  See the
+`logging documentation <https://libasdf.readthedocs.io/en/latest/usage/opening.html#logging>`__
+for details.
+
 Notes
 ^^^^^
 
