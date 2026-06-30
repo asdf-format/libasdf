@@ -111,7 +111,7 @@ filled in with the default settings.
 Any option in the user-provided config left as ``0`` will be filled in from the
 default configuration.
 
-Currently the only configuration options documented for end users are those
+The configuration options most likely to be of interest to end users are those
 under ``decomp``, which control the behavior of *decompression* of compressed
 blocks:
 
@@ -126,6 +126,48 @@ blocks:
   decompression temporary file.
 
 These are described in detail, along with the trade-offs between the different
-decompression modes, in :ref:`compression`.  The remaining ``parser``,
-``emitter``, and ``log`` sub-structs are lower-level and not yet documented for
-general use.
+decompression modes, in :ref:`compression`.
+
+The ``log`` sub-struct (an `asdf_log_cfg_t`) controls libasdf's diagnostic
+logging for the file -- the verbosity level, the destination stream, and the
+formatting; see :ref:`logging` below.  The remaining ``parser`` and ``emitter``
+sub-structs are lower-level and not yet documented for general use.
+
+
+.. _logging:
+
+Logging
+-------
+
+libasdf can emit diagnostic log messages associated with an open file.  Logging
+is configured per file through the ``log`` field of `asdf_config_t` (an
+`asdf_log_cfg_t`), so different files may log independently.  For example, to
+send informational and higher-severity messages to ``stderr``:
+
+.. code:: c
+
+   asdf_config_t config = {
+       .log = {.level = ASDF_LOG_INFO}
+   };
+   asdf_file_t *file = asdf_open_ex("observation.asdf", "r", &config);
+
+Messages are emitted only if their severity meets the configured
+`asdf_log_level_t` threshold.  Any field left zero-initialized takes a default:
+the destination defaults to ``stderr``, the included fields to
+`ASDF_LOG_FIELD_ALL`, and the level to the value of the ``ASDF_LOG_LEVEL``
+environment variable (one of ``NONE``, ``TRACE``, ``DEBUG``, ``INFO``,
+``WARN``, ``ERROR``, ``FATAL``), or ``WARN`` if it is unset.  This makes it
+possible to raise the log level of an application without recompiling it::
+
+   ASDF_LOG_LEVEL=debug ./my-program observation.asdf
+
+.. note::
+
+   libasdf's own internal log statements are compiled in only when the library
+   is built with logging enabled (the default; disable with ``-DENABLE_LOG=NO``
+   under CMake or ``--disable-logging`` under the Autotools build).  The logging
+   API itself -- `asdf_file_log` and the `ASDF_LOG` macro -- is always available
+   for extension authors to emit their own messages through the same
+   configuration.
+
+See :ref:`log.h` for the full logging API.

@@ -11,6 +11,7 @@ EXTRA_DIST = \
     api/asdf/error.h.rst \
     api/asdf/extension.h.rst \
     api/asdf/file.h.rst \
+    api/asdf/log.h.rst \
     api/asdf/value.h.rst \
     api/asdf/yaml.h.rst \
     environment.yml \

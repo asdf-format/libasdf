@@ -99,6 +99,7 @@ typedef struct {
     /** Low-level emitter configuration; see `asdf_emitter_cfg_t` */
     asdf_emitter_cfg_t emitter;
 
+    /** Logging configuration; see ``asdf_log_cfg_t`` */
     asdf_log_cfg_t log;
 
     /** Decompression options */

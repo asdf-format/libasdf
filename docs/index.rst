@@ -50,6 +50,7 @@ headers.
 
   api/asdf/emitter.h
   api/asdf/extension.h
+  api/asdf/log.h
   api/asdf/yaml.h
 
 
