@@ -73,7 +73,8 @@ else()
 endif()
 
 
-if(APPLE)
+# argp is only needed by the command-line tool
+if(ENABLE_TOOL AND APPLE)
     option(ARGP_NO_PKGCONFIG NO)
     if(ARGP_NO_PKGCONFIG)
         set(ARGP_LIBRARIES "argp")

@@ -18,6 +18,8 @@ Usage
   usage/opening
   usage/values
   usage/writing
+  usage/ndarrays
+  usage/compression
   usage/extensions
   usage/examples
 
@@ -44,16 +46,33 @@ Additional less commonly used APIs can be used by including the relevant
 headers.
 
 .. toctree::
-  :maxdepth: 2
+  :maxdepth: 1
 
   api/asdf/emitter.h
   api/asdf/extension.h
+  api/asdf/log.h
   api/asdf/yaml.h
 
 
-.. todo::
+Beyond the high-level `asdf_file_t` interface, libasdf also exposes a
+lower-level, event-based API for streaming through an ASDF file without
+building the whole tree in memory.  It is built around the parser in
+``asdf/parser.h``, which emits a sequence of `asdf_event_t` values (defined in
+``asdf/event.h``), and the corresponding emitter in ``asdf/emitter.h`` for
+writing.  These are intended for advanced use cases and are not yet fully
+documented; most applications should prefer the high-level API described above.
 
-   Document lower-level APIs.
+
+Command-line tool
+=================
+
+libasdf installs a companion command-line program, ``asdf``, for inspecting
+and extracting data from ASDF files directly from the shell.
+
+.. toctree::
+  :maxdepth: 2
+
+  usage/cli
 
 
 Resources

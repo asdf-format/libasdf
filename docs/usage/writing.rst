@@ -294,11 +294,5 @@ By default ndarray data is written uncompressed.  To enable compression, call
    asdf_ndarray_compression_set(&nd, "lz4");
    asdf_set_ndarray(file, "image", &nd);
 
-The compression string must name one of the compressors built into libasdf.
-The three supported values are ``"zlib"``, ``"bzp2"``, and ``"lz4"``.  Pass
-``NULL`` or an empty string to explicitly request no compression.
-
-`asdf_ndarray_compression_set` is a thin wrapper around the lower-level
-`asdf_block_compression_set`, which operates on the raw `asdf_block_t`
-associated with a block.  For the vast majority of use cases the ndarray-level
-shortcut is all you need.
+See :ref:`compression` for the list of supported compressors and for more
+detail on how compression and decompression work.

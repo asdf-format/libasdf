@@ -18,6 +18,14 @@ ASDF_BEGIN_DECLS
 
 
 /**
+ * .. _datatype-types:
+ *
+ * Types
+ * -----
+ */
+
+
+/**
  * Enum for basic ndarray scalar datatypes
  *
  * The special datatype `ASDF_DATATYPE_STRUCTURED` is reserved for the case where
@@ -33,19 +41,33 @@ ASDF_BEGIN_DECLS
 typedef enum {
     /** Reserved for invalid/unsupported datatypes */
     ASDF_DATATYPE_UNKNOWN = 0,
+    /** Signed 8-bit integer */
     ASDF_DATATYPE_INT8,
+    /** Unsigned 8-bit integer */
     ASDF_DATATYPE_UINT8,
+    /** Signed 16-bit integer */
     ASDF_DATATYPE_INT16,
+    /** Unsigned 16-bit integer */
     ASDF_DATATYPE_UINT16,
+    /** Signed 32-bit integer */
     ASDF_DATATYPE_INT32,
+    /** Unsigned 32-bit integer */
     ASDF_DATATYPE_UINT32,
+    /** Signed 64-bit integer */
     ASDF_DATATYPE_INT64,
+    /** Unsigned 64-bit integer */
     ASDF_DATATYPE_UINT64,
+    /** 16-bit IEEE float (not yet fully supported) */
     ASDF_DATATYPE_FLOAT16,
+    /** 32-bit IEEE float */
     ASDF_DATATYPE_FLOAT32,
+    /** 64-bit IEEE float */
     ASDF_DATATYPE_FLOAT64,
+    /** 64-bit complex (pair of 32-bit floats; not yet fully supported) */
     ASDF_DATATYPE_COMPLEX64,
+    /** 128-bit complex (pair of 64-bit floats; not yet fully supported) */
     ASDF_DATATYPE_COMPLEX128,
+    /** 8-bit boolean */
     ASDF_DATATYPE_BOOL8,
     /** ASCII text datatype */
     ASDF_DATATYPE_ASCII,
@@ -85,9 +107,9 @@ typedef enum {
      * should not be explicitly written (just use the default)
      */
     ASDF_BYTEORDER_DEFAULT = 0,
-    /** Litle-endian **/
+    /** Big-endian */
     ASDF_BYTEORDER_BIG = '>',
-    /** Big-endian **/
+    /** Little-endian */
     ASDF_BYTEORDER_LITTLE = '<'
 } asdf_byteorder_t;
 
@@ -97,13 +119,27 @@ typedef struct asdf_datatype asdf_datatype_t;
 
 
 struct asdf_datatype {
+    /** The scalar type of the datatype (or its elements, for compound types) */
     asdf_scalar_datatype_t type;
+    /**
+     * Size in bytes of a single element of this datatype
+     *
+     * May be left ``0`` for built-in numeric datatypes, in which case
+     * `asdf_datatype_size` computes and fills it in.  For string datatypes
+     * (`ASDF_DATATYPE_ASCII` / `ASDF_DATATYPE_UCS4`) it must be set explicitly.
+     */
     uint64_t size;
+    /** Optional name of the datatype (e.g. a field name in a compound type) */
     const char *name;
+    /** Byte order of the elements; see `asdf_byteorder_t` */
     asdf_byteorder_t byteorder;
+    /** Number of dimensions, for a sub-array datatype (``0`` for scalars) */
     uint32_t ndim;
+    /** Shape of the sub-array, an array of ``ndim`` values, if any */
     const uint64_t *shape;
+    /** Number of fields, for a compound/structured datatype */
     uint32_t nfields;
+    /** Array of ``nfields`` member datatypes, for a compound datatype */
     const asdf_datatype_t *fields;
 };
 
@@ -118,9 +154,17 @@ ASDF_DECLARE_EXTENSION(datatype, asdf_datatype_t);
 
 
 /**
+ * .. _datatype-strings:
+ *
+ * String conversion
+ * -----------------
+ */
+
+
+/**
  * Parse an ASDF scalar datatype and return the corresponding `asdf_scalar_datatype_t`
  *
- * :param s: Null-terminated string
+ * :param dtype: Null-terminated string
  * :return: The corresponding `asdf_scalar_datatype_t` or `ASDF_DATATYPE_UNKNOWN`
  *
  * .. note::
@@ -152,6 +196,14 @@ ASDF_EXPORT const char *asdf_scalar_datatype_to_string(asdf_scalar_datatype_t da
 
 
 /**
+ * .. _datatype-sizes:
+ *
+ * Datatype sizes
+ * --------------
+ */
+
+
+/**
  * Get the size of an `asdf_datatype_t` in bytes
  *
  * This is equivalent to looking up the public field ``asdf_datatype_t.size``.
@@ -173,7 +225,7 @@ ASDF_EXPORT uint64_t asdf_datatype_size(asdf_datatype_t *datatype);
  * Get the size in bytes of a scalar (numeric) ndarray element for a given
  * `asdf_scalar_datatype_t`
  *
- * :param type: A member of `asdf_datatype_t`
+ * :param type: A member of `asdf_scalar_datatype_t`
  * :return: Size in bytes of a single element of that datatype, or ``-1`` for
  *   non-scalar datatypes (for the present purposes strings are not considered
  *   scalars, only numeric datatypes)

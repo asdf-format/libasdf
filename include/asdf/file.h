@@ -29,6 +29,14 @@
 ASDF_BEGIN_DECLS
 
 /**
+ * .. _file-handles:
+ *
+ * File handles
+ * ------------
+ */
+
+
+/**
  * An opaque struct representing an open ASDF file handle
  *
  * Pointers to `asdf_file_t` are the primary interface to each open ASDF file
@@ -39,7 +47,7 @@ typedef struct asdf_file asdf_file_t;
 
 
 /**
- * .. _int file-configuration:
+ * .. _file-configuration:
  *
  * Configuration
  * -------------
@@ -47,12 +55,13 @@ typedef struct asdf_file asdf_file_t;
 
 
 /**
- * Options for decompression mode, for use with
- * :c:type:`asdf_config_t`
+ * Options for block decompression mode, for use with the ``decomp.mode`` field
+ * of `asdf_config_t`
  *
- * .. todo::
- *
- *   Document modes
+ * This controls *when* compressed binary block data is decompressed: eagerly
+ * (all at once the first time a block is accessed) or lazily (decompressed in
+ * page-sized chunks on demand, where supported).  See :ref:`compression` for
+ * details, and the individual `asdf_block_decomp_mode_t` members below.
  *
  * .. todo::
  *
@@ -90,6 +99,7 @@ typedef struct {
     /** Low-level emitter configuration; see `asdf_emitter_cfg_t` */
     asdf_emitter_cfg_t emitter;
 
+    /** Logging configuration; see ``asdf_log_cfg_t`` */
     asdf_log_cfg_t log;
 
     /** Decompression options */
@@ -205,6 +215,11 @@ static asdf_file_t *asdf_open_mem(const void *buf, size_t size);
  * Opens an ASDF file for reading
  *
  * Equivalent to `asdf_open`.
+ *
+ * :param filename: A null-terminated string containing the local filesystem
+ *   path to open
+ * :param mode: Currently must always be just ``"r"``
+ * :return: An `asdf_file_t *`, or ``NULL`` on error
  */
 static inline asdf_file_t *asdf_open_file(const char *filename, const char *mode) {
     return asdf_open_file_ex(filename, mode, NULL);
@@ -698,9 +713,9 @@ ASDF_EXPORT bool asdf_is_null(asdf_file_t *file, const char *path);
  * integer type that can hold that value.  For example the number ``42`` is
  * typed as `ASDF_VALUE_UINT8`.
  *
- * However, integer up-casting to larger integer types.  Downcasting that would
- * cause an overflow is not allowed.  For example ``42`` can be cast to an
- * ``int16``, but ``-42`` cannot be cast to a ``uint16``.
+ * However, integer up-casting to larger integer types is allowed
+ * Downcasting that would cause an overflow is not allowed.  For example ``42``
+ * can be cast to an ``int16``, but ``-42`` cannot be cast to a ``uint16``.
  *
  * .. note::
  *
@@ -711,7 +726,7 @@ ASDF_EXPORT bool asdf_is_null(asdf_file_t *file, const char *path);
  * may also be `ASDF_VALUE_ERR_OVERFLOW` if the value is an integer that is too
  * large to represent in the requested type.
  *
- * Big integers (greater than ``UINT64_MAX`` or less than ``INT64_MAX``) are
+ * Big integers (greater than ``UINT64_MAX`` or less than ``INT64_MIN``) are
  * not supported--in fact the ASDF Standard expressly
  * `forbids <ASDF Numeric Literals>`_ writing them to ASDF files.  Nevertheless
  * it could be supported in the future if the need arises.  In fact,
@@ -724,7 +739,7 @@ ASDF_EXPORT bool asdf_is_null(asdf_file_t *file, const char *path);
  * size
  *
  * :param file: The `asdf_file_t *` for the file
- * :param path: The :ref:`yaml-pointer` to the bool
+ * :param path: The :ref:`yaml-pointer` to the int
  * :return: `true` if the value is an integer, `false` if it is another
  *   type of value or if no value exists at that path.
  */
@@ -810,24 +825,70 @@ ASDF_EXPORT bool asdf_is_double(asdf_file_t *file, const char *path);
 ASDF_EXPORT asdf_value_err_t asdf_get_double(asdf_file_t *file, const char *path, double *out);
 
 /**
+ * .. _file-extension-getters:
+ *
  * Extension object getters
  * ------------------------
+ */
+
+/**
+ * These functions are the generic forms behind the per-extension
+ * ``asdf_is_<extension>`` / ``asdf_get_<extension>`` / ``asdf_set_<extension>``
+ * helpers (such as ``asdf_get_ndarray``) that each registered extension
+ * generates.  They take an explicit `asdf_extension_t *`, which can be looked
+ * up for a registered tag with ``asdf_extension_get``, and are useful when the
+ * extension type is only known at runtime.  See :ref:`extensions` for more on
+ * the extension mechanism.
+ */
+
+/**
+ * Check whether the value at ``path`` is of the given extension type
  *
- * .. todo::
- *
- *   Needs :ref:`extensions` documentation.
+ * :param file: The `asdf_file_t *` for the file
+ * :param path: The :ref:`yaml-pointer` to the value
+ * :param ext: The `asdf_extension_t *` describing the extension type
+ * :return: ``true`` if a value exists at ``path`` and matches the extension
+ *   type, otherwise ``false``
  */
 ASDF_EXPORT bool asdf_is_extension_type(asdf_file_t *file, const char *path, asdf_extension_t *ext);
 
 /**
- * .. todo::
+ * Get the value at ``path`` deserialized into the given extension type
  *
- *   Needs :ref:`extensions` documentation.
+ * On success the deserialized extension object is written through ``out``; the
+ * concrete type of ``*out`` is the C type associated with the extension (for
+ * example ``asdf_ndarray_t *`` for the ndarray extension).  The caller owns the
+ * returned object and must release it with the extension's corresponding
+ * ``asdf_<extension>_destroy`` function.
+ *
+ * :param file: The `asdf_file_t *` for the file
+ * :param path: The :ref:`yaml-pointer` to the value
+ * :param ext: The `asdf_extension_t *` describing the extension type
+ * :param out: Receives the deserialized extension object on success
+ * :return: `ASDF_VALUE_OK` if the value exists and is of the extension type,
+ *   otherwise `ASDF_VALUE_ERR_NOT_FOUND` or `ASDF_VALUE_ERR_TYPE_MISMATCH`
  */
 ASDF_EXPORT asdf_value_err_t
 asdf_get_extension_type(asdf_file_t *file, const char *path, asdf_extension_t *ext, void **out);
 
 
+/**
+ * Serialize an extension object into the tree at ``path``
+ *
+ * The object pointed to by ``obj`` is serialized according to ``ext`` and
+ * written into the tree at ``path``, creating any intermediate mappings as
+ * needed and replacing any existing value already at that path.
+ *
+ * Typically it is better to use the higher level ``asdf_set_<extension>``
+ * functions, (e.g. ``asdf_set_ndarray``) which are type-safe wrappers around
+ * this function, and don't require looking up the extension.
+ *
+ * :param file: The `asdf_file_t *` for the file
+ * :param path: The :ref:`yaml-pointer` at which to write the value
+ * :param obj: Pointer to the extension object to serialize
+ * :param ext: The `asdf_extension_t *` describing the extension type
+ * :return: `ASDF_VALUE_OK` on success, otherwise an `asdf_value_err_t` error
+ */
 ASDF_EXPORT asdf_value_err_t asdf_set_extension_type(
     asdf_file_t *file, const char *path, const void *obj, asdf_extension_t *ext);
 
@@ -838,9 +899,22 @@ ASDF_EXPORT asdf_value_err_t asdf_set_extension_type(
  * Writing values
  * --------------
  *
- * .. todo::
+ * The ``asdf_set_<type>`` family is the high-level counterpart to the
+ * ``asdf_get_<type>`` getters: each writes a value into the ASDF metadata tree
+ * at a given :ref:`yaml-pointer` path.  Every setter takes the `asdf_file_t *`
+ * as its first argument, the path as its second, and the value to write as the
+ * remaining argument(s).
  *
- *   Needs general explanation, to do in #114
+ * Any intermediate mappings named in the path that do not yet exist are
+ * created automatically, and an existing value already at the path is
+ * replaced.  Each function returns `ASDF_VALUE_OK` on success or an
+ * `asdf_value_err_t` error code.
+ *
+ * ``asdf_set_value`` inserts a pre-built generic `asdf_value_t *`;
+ * ``asdf_set_string`` takes an explicit byte length while ``asdf_set_string0``
+ * expects a NUL-terminated string; ``asdf_set_null`` takes no value argument.
+ * The remaining scalar variants accept the corresponding C type directly.  See
+ * :ref:`writing` for a narrative guide.
  */
 
 ASDF_EXPORT asdf_value_err_t
@@ -962,7 +1036,7 @@ ASDF_EXPORT const char *asdf_block_compression(asdf_block_t *block);
  * :param compression: String representing the compressor to use (e.g. "bzp2")
  *   if any, or NULL or the empty string to set no compression
  * :return: Non-zero if the compression could not be set (e.g. invalid/unknown
- *   compressor; use `asdf_error` to check the error code
+ *   compressor); use `asdf_error` to check the error code
  */
 ASDF_EXPORT int asdf_block_compression_set(asdf_block_t *block, const char *compression);
 
@@ -998,8 +1072,8 @@ ASDF_EXPORT const unsigned char *asdf_block_checksum(asdf_block_t *block);
  *   Add and document option to automatically verify checksums.
  *
  * :param block: The `asdf_block_t *` handle
- * :param computed: Optional pointer to a `uint8_t` buffer to receive the computed
- *   MD5 digest on return
+ * :param expected: Optional pointer to a `uint8_t` buffer to receive the
+ *   computed MD5 digest on return
  * :return: True if the checksum is valid
  */
 ASDF_EXPORT bool asdf_block_checksum_verify(
@@ -1011,7 +1085,7 @@ ASDF_EXPORT bool asdf_block_checksum_verify(
  *
  * :param block: The `asdf_block_t *` handle
  * :param size: Optional `size_t *` into which the size of the block data is
- *   is returned
+ *   returned
  * :return: A `void *` to the block data
  */
 ASDF_EXPORT const void *asdf_block_data(asdf_block_t *block, size_t *size);
@@ -1028,7 +1102,7 @@ ASDF_EXPORT const void *asdf_block_data(asdf_block_t *block, size_t *size);
  *
  * :param block: The `asdf_block_t *` handle
  * :param size: Optional `size_t *` into which the size of the block data is
- *   is returned
+ *   returned
  * :return: A `void *` to the block data
  */
 ASDF_EXPORT const void *asdf_block_data_raw(asdf_block_t *block, size_t *size);

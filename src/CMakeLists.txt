@@ -122,22 +122,28 @@ install(TARGETS libasdf_static
 endif()
 
 # Generate CLI program
-project(asdf-cli)
-add_executable(asdf-cli main.c)
-target_link_libraries(asdf-cli PRIVATE libasdf stc ${ARGP_LIBRARIES})
-target_link_directories(asdf-cli PRIVATE ${ARGP_LIBDIR})
-target_include_directories(asdf-cli PRIVATE
-    ${STC_DIR}/include
-    ${CMAKE_BINARY_DIR}/include
-    ${CMAKE_CURRENT_BINARY_DIR}
-    ${ARGP_INCLUDEDIR}
-    ${FYAML_INCLUDEDIR}
-)
+if(ENABLE_TOOL)
+    project(asdf-cli)
+    add_executable(asdf-cli main.c)
+    target_link_libraries(asdf-cli PRIVATE libasdf stc ${ARGP_LIBRARIES})
+    target_link_directories(asdf-cli PRIVATE ${ARGP_LIBDIR})
+    target_include_directories(asdf-cli PRIVATE
+        ${STC_DIR}/include
+        ${CMAKE_BINARY_DIR}/include
+        ${CMAKE_CURRENT_BINARY_DIR}
+        ${ARGP_INCLUDEDIR}
+    )
+    set_target_properties(asdf-cli ${PROJECT_NAME} PROPERTIES OUTPUT_NAME "asdf")
+    install(TARGETS asdf-cli
+        DESTINATION ${CMAKE_INSTALL_BINDIR}
+    )
+endif()
 
-# Set CLI program's name on-disk
-set_target_properties(asdf-cli ${PROJECT_NAME} PROPERTIES OUTPUT_NAME "asdf")
-install(TARGETS asdf-cli
-    DESTINATION ${CMAKE_INSTALL_BINDIR}
+# Install the tool's man page.  It is generated from docs/usage/cli.rst with
+# Sphinx but checked in (see that file) so that building/installing does not
+# require Sphinx.
+install(FILES ${CMAKE_SOURCE_DIR}/docs/man/asdf.1
+    DESTINATION ${CMAKE_INSTALL_MANDIR}/man1
 )
 
 

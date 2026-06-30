@@ -27,6 +27,12 @@ extract binary block data, as well as typed getters for metadata in the ASDF tre
 It also features an extension mechanism (still nascent) for reading ASDF schemas, including
 the core schemas such as ``core/ndarray-<x.y.z>`` into C-native datastructures.
 
+libasdf additionally installs a companion command-line tool, ``asdf``: a wrapper around the
+library providing utilities for inspecting and extracting data from ASDF files.  Its
+capabilities are currently modest but will be expanded in the future; see the
+`command-line tool documentation <https://libasdf.readthedocs.io/en/latest/usage/cli.html>`__
+for details.
+
 Getting Started
 ---------------
 
@@ -292,6 +298,7 @@ Clone the repository and build the project as follows::
     cmake .. \
         -D ENABLE_TESTING=[YES/NO] \
         -D ENABLE_TESTING_SHELL=[YES/NO] \
+        -D ENABLE_TOOL=[YES/NO] \
         -D ENABLE_ASAN=[YES/NO] \
         -D FYAML_NO_PKGCONFIG=[YES/NO] \
             # If YES \
@@ -307,6 +314,25 @@ Clone the repository and build the project as follows::
 If doing a system install, as usual it's recommended to install to ``/usr/local``
 by providing ``-DCMAKE_INSTALL_PREFIX=/usr/local`` when running ``cmake``.  Or, if you
 have a ``${HOME}/.local`` you can set the prefix there, etc.
+
+Logging
+^^^^^^^
+
+libasdf can emit diagnostic log messages, controlled by the following options:
+
+- ``-D ENABLE_LOG=[YES/NO]`` -- compile libasdf's internal log statements into
+  the library (default ``YES``).  When ``NO`` they compile to nothing.
+- ``-D ENABLE_LOG_COLOR=[YES/NO]`` -- colorize log output (default ``YES``).
+- ``-D LOG_DEFAULT=LEVEL`` -- the default runtime log level, used when none is
+  set explicitly; one of ``TRACE``, ``DEBUG``, ``INFO``, ``WARN`` (the
+  default), ``ERROR``, ``FATAL``, or ``NONE``.
+- ``-D LOG_MIN=LEVEL`` -- the compile-time minimum level; messages below it are
+  compiled out entirely (default ``TRACE``).
+
+At runtime the default level can also be overridden through the
+``ASDF_LOG_LEVEL`` environment variable.  See the
+`logging documentation <https://libasdf.readthedocs.io/en/latest/usage/opening.html#logging>`__
+for details.
 
 Notes
 ^^^^^

@@ -35,7 +35,7 @@ the ASDF tree, as well as extract block data.  Inline comments provide further e
        // The simplest way to read metadata from the file is with the
        // `asdf_get_<type>*` family of functions
        // They all return a value by pointer argument and return an
-       // `asdf_value_error_t`
+       // `asdf_value_err_t`
        // For example you can read a string from the metadata like:
    
        const char *software = NULL;
@@ -67,7 +67,7 @@ the ASDF tree, as well as extract block data.  Inline comments provide further e
    
        // Functions like `asdf_get_meta` that return into a double-pointer to a
        // struct allocate memory for that structure automatically.
-       // The all have a corresponding `asdf_<type>_destroy` function.
+       // They all have a corresponding `asdf_<type>_destroy` function.
        // The plan is to track these on the file object (issue #34) to make
        // memory management easier and cleaner, but for now you have to free
        // them manually when you're done with them. This is good practice in any

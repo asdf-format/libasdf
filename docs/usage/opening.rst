@@ -109,102 +109,65 @@ filled in with the default settings.
    in defaults), so it's safe to point to a local variable.
 
 Any option in the user-provided config left as ``0`` will be filled in from the
-default configuration (though this may change in the future).
+default configuration.
 
-Currently, the only documented configuration options that may be of interest to
-end users are the options for controlling the behavior of *decompression* of
-compressed blocks.  For example:
+The configuration options most likely to be of interest to end users are those
+under ``decomp``, which control the behavior of *decompression* of compressed
+blocks:
 
-.. code::
+* :c:member:`decomp.mode <asdf_config_t.mode>` -- eager, lazy, or automatic
+  decompression (see `asdf_block_decomp_mode_t`).
+* :c:member:`max_memory_bytes <asdf_config_t.max_memory_bytes>` and
+  :c:member:`max_memory_threshold <asdf_config_t.max_memory_threshold>` --
+  thresholds above which decompression spills to a temporary file on disk.
+* :c:member:`chunk_size <asdf_config_t.chunk_size>` -- chunk size for lazy
+  decompression.
+* :c:member:`tmp_dir <asdf_config_t.tmp_dir>` -- directory for the on-disk
+  decompression temporary file.
+
+These are described in detail, along with the trade-offs between the different
+decompression modes, in :ref:`compression`.
+
+The ``log`` sub-struct (an `asdf_log_cfg_t`) controls libasdf's diagnostic
+logging for the file -- the verbosity level, the destination stream, and the
+formatting; see :ref:`logging` below.  The remaining ``parser`` and ``emitter``
+sub-structs are lower-level and not yet documented for general use.
+
+
+.. _logging:
+
+Logging
+-------
+
+libasdf can emit diagnostic log messages associated with an open file.  Logging
+is configured per file through the ``log`` field of `asdf_config_t` (an
+`asdf_log_cfg_t`), so different files may log independently.  For example, to
+send informational and higher-severity messages to ``stderr``:
+
+.. code:: c
 
    asdf_config_t config = {
-       .decomp = {
-           mode = ASDF_BLOCK_DECOMP_MODE_EAGER,
-           max_memory_bytes = 1073741824,
-           max_memory_threshold = 0.8,
-           chunk_size = 409600,
-           tmp_dir = "/var/tmp"
-         }
+       .log = {.level = ASDF_LOG_INFO}
    };
+   asdf_file_t *file = asdf_open_ex("observation.asdf", "r", &config);
 
-Two things that deserve explanation here are handling of the *size* of
-the decompressed data, and the decompression *mode*.
+Messages are emitted only if their severity meets the configured
+`asdf_log_level_t` threshold.  Any field left zero-initialized takes a default:
+the destination defaults to ``stderr``, the included fields to
+`ASDF_LOG_FIELD_ALL`, and the level to the value of the ``ASDF_LOG_LEVEL``
+environment variable (one of ``NONE``, ``TRACE``, ``DEBUG``, ``INFO``,
+``WARN``, ``ERROR``, ``FATAL``), or ``WARN`` if it is unset.  This makes it
+possible to raise the log level of an application without recompiling it::
 
-Compressed data size
-^^^^^^^^^^^^^^^^^^^^
+   ASDF_LOG_LEVEL=debug ./my-program observation.asdf
 
-An array containing sparsely populated data may be very small compressed, but
-explode significantly when decompressed.
+.. note::
 
-.. todo::
+   libasdf's own internal log statements are compiled in only when the library
+   is built with logging enabled (the default; disable with ``-DENABLE_LOG=NO``
+   under CMake or ``--disable-logging`` under the Autotools build).  The logging
+   API itself -- `asdf_file_log` and the `ASDF_LOG` macro -- is always available
+   for extension authors to emit their own messages through the same
+   configuration.
 
-   Document better how to inspect the compressed vs. decompressed sizes of a
-   block.
-
-By *default* decompression is performed entirely in-memory.  For most files on
-modern systems with significant RAM and swap space this won't be an issue.
-However, libasdf also has the option to decompress to a temporary file on disk
-(effectively a temporary pagefile).  To control this behavior you can use one
-or both of the
-:c:member:`max_memory_bytes <asdf_config_t.max_memory_bytes>` and
-:c:member:`max_memory_threshold <asdf_config_t.max_memory_threshold>`
-options.
-
-The former sets a maximum number of *bytes* of decompressed data above which to
-use decompression to disk.  The latter sets a percentage (from ``0.0`` to
-``1.0``) of total system memory above which to enable this behavior.  If both
-are specified, then the lower value of the two is applied as the absolute
-threshold.
-
-Most users won't need these settings but they are there in case you do.
-
-By default this will write the file to your system's ``TMPDIR`` (typically
-``/tmp`` or ``/var/tmp``).  It also understands the environment variable
-``ASDF_TMPDIR`` to use as the default for all ASDF files read with libasdf.
-
-.. warning::
-
-   However, many systems use a RAM-based filesystem like
-   `tmpfs <https://en.wikipedia.org/wiki/Tmpfs>`_ to back their temporary
-   directory, which also renders this feature meaningless.  If you are
-   sure you definitely need this for large file support, you can either
-   pass the :c:member`tmp_dir <asdf_config_t.tmp_dir` option to also
-   specify a specific disk-backed directory to use for the temp file.
-
-Currently every individual `asdf_file_t*` handle does its own decompression
-separately, though a future option might be to allow multiple `asdf_file_t*`
-to share the same decompressed data pages.
-
-Decompression mode
-^^^^^^^^^^^^^^^^^^
-
-In most cases, compressed block data is decompressed eagerly by default when
-using either `ASDF_BLOCK_DECOMP_MODE_AUTO` or `ASDF_BLOCK_DECOMP_MODE_EAGER`.
-This means that as soon as the decompressed data is needed the full block is
-decompressed.
-
-However, there is also experimental support for `ASDF_BLOCK_DECOMP_MODE_LAZY`
-(currently on supported Linux versions *only*).  This allows blocks to be
-decompressed one or more pages at a time on an as-needed basis, and works
-totally transparently.
-
-For zlib and bzip2 compression this is mostly only useful if you want to access
-just bytes early in the block, as these algorithms can only be decompressed
-sequentially (and the ASDF Standard does not currently define a scheme for
-tiled compression).  If you need the entire block data it will all be
-decompressed anyways.  This can still be useful even in that case if one is
-taking chunks of the data and processing them sequentially.
-
-By default lazy compression decompresses one system page at a time.  However,
-it may be more efficient to use a larger value--this can be controlled with the
-`asdf_config_t.chunk_size` setting (in bytes).  This will always be
-automatically rounded up to the nearest page size.
-
-.. warning::
-
-   Due to technical limitations, lazy decompression does *not* work with
-   disk-backed decompression, and the memory threshold options are ignored.
-   If you really need both the best way is to ensure a sufficiently large
-   pagefile available on your system, and to let the kernel manage swapping.
-   See your system's documentation for the best way to create and manage
-   a pagefile.
+See :ref:`log.h` for the full logging API.

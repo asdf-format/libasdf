@@ -1,0 +1,240 @@
+'\" t
+.\" Man page generated from reStructuredText
+.\" by the Docutils 0.22.4 manpage writer.
+.
+.
+.nr rst2man-indent-level 0
+.
+.de1 rstReportMargin
+\\$1 \\n[an-margin]
+level \\n[rst2man-indent-level]
+level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
+-
+\\n[rst2man-indent0]
+\\n[rst2man-indent1]
+\\n[rst2man-indent2]
+..
+.de1 INDENT
+.\" .rstReportMargin pre:
+. RS \\$1
+. nr rst2man-indent\\n[rst2man-indent-level] \\n[an-margin]
+. nr rst2man-indent-level +1
+.\" .rstReportMargin post:
+..
+.de UNINDENT
+. RE
+.\" indent \\n[an-margin]
+.\" old: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.nr rst2man-indent-level -1
+.\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.in \\n[rst2man-indent\\n[rst2man-indent-level]]u
+..
+.TH "ASDF" "1" "Jun 26, 2026" "0.1" "libasdf"
+.SH NAME
+asdf \- command-line utility for inspecting and extracting data from ASDF files
+.sp
+The \fBasdf\fP command\-line tool is a companion utility installed alongside
+libasdf.  It is a thin wrapper around the library offering a handful of
+sub\-commands for inspecting ASDF files and extracting their data.  Its
+capabilities are currently modest but will be expanded in future releases.
+.sp
+Each tool provided by \fBasdf\fP is run as a separate sub\-command.
+.SH SYNOPSIS
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+asdf COMMAND [ARGS...]
+.EE
+.UNINDENT
+.UNINDENT
+.sp
+Run \fBasdf COMMAND \-\-help\fP for detailed help on any sub\-command.  The
+available sub\-commands are:
+.TS
+box center;
+l|l.
+T{
+Command
+T}	T{
+Description
+T}
+_
+T{
+info
+T}	T{
+Print a rendering of an ASDF tree
+T}
+_
+T{
+dd
+T}	T{
+Dump data from an ASDF binary block
+T}
+_
+T{
+events
+T}	T{
+Print the event stream from the ASDF parser (for debugging)
+T}
+_
+T{
+verify\-checksums
+T}	T{
+Verify binary block MD5 checksums
+T}
+.TE
+.sp
+The global \fBasdf\fP command itself accepts \fB\-h\fP / \fB\-\-help\fP and \fB\-\-usage\fP\&.
+.SH ASDF INFO
+.sp
+Print a human\-readable rendering of an ASDF file\(aqs YAML tree, and optionally
+information about its binary blocks.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+asdf info [OPTIONS] FILENAME
+.EE
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-no\-tree
+Do not show the tree.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-b, \-\-blocks
+Show information about the file\(aqs binary blocks.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-verify\-checksums
+Verify the MD5 checksum of each block (implies \fB\-b\fP).
+.UNINDENT
+.sp
+For example, to print the tree of a file together with its block information:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+asdf info \-\-blocks observation.asdf
+.EE
+.UNINDENT
+.UNINDENT
+.SH ASDF DD
+.sp
+Dump the raw bytes of a single binary block to a file or to standard output,
+named either by block index or by the tree path of an ndarray that references
+it.  Exactly one of \fB\-\-block\fP or \fB\-\-ndarray\fP must be given.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+asdf dd [OPTIONS] INPUT [OUTPUT|\-]
+.EE
+.UNINDENT
+.UNINDENT
+.sp
+\fBINPUT\fP is the ASDF file to read.  \fBOUTPUT\fP is the destination file; a
+single \fB\-\fP writes the data to standard output.
+.INDENT 0.0
+.TP
+.B \-b N, \-\-block N
+Index of the block to extract (starting from \fB0\fP).
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-n PATH, \-\-ndarray PATH
+Tree path \%<#\:yaml-pointer> of an ndarray whose underlying block should
+be extracted.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-r, \-\-raw
+For a compressed block, dump the raw compressed bytes rather than
+decompressing them first.  Has no effect on uncompressed blocks.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-c N, \-\-chunk\-size N
+Read/write the data in chunks of \fBN\fP bytes.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-no\-lazy\-decompression
+Disable lazy (page\-fault\-driven) decompression; decompress eagerly instead.
+Intended mainly for debugging.
+.UNINDENT
+.sp
+For example, to extract the data of the ndarray at \fB/data\fP into a file:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+asdf dd \-\-ndarray data observation.asdf data.bin
+.EE
+.UNINDENT
+.UNINDENT
+.SH ASDF EVENTS
+.sp
+Print the low\-level event stream produced by the ASDF parser as it walks a
+file.  This is primarily a debugging aid for libasdf itself and exposes the
+event\-based parsing API (see libasdf \- The ASDF C Library \%<#\:asdf>).
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+asdf events [OPTIONS] FILENAME
+.EE
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-v, \-\-verbose
+Show extra information about each event.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-no\-yaml
+Do not produce YAML stream events (emit only the ASDF\-structural events).
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-cap\-tree
+Buffer the YAML tree and print it.  This corresponds to the parser\(aqs
+tree\-buffering option and is mainly useful for debugging.
+.UNINDENT
+.SH ASDF VERIFY-CHECKSUMS
+.sp
+Verify the MD5 checksum recorded in each binary block header against the
+checksum computed from the block\(aqs data.  The exit status is non\-zero if any
+block fails verification.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+asdf verify\-checksums [OPTIONS] FILENAME
+.EE
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-v, \-\-verbose
+Print the checksum of every block, whether or not it verifies.  Without this
+option the command is quiet on success and reports only mismatches.
+.UNINDENT
+.sp
+\fBNote:\fP
+.INDENT 0.0
+.INDENT 3.5
+Checksum verification requires that libasdf was built with MD5 support
+(via \fBlibbsd\fP).  Without it, blocks are always reported as valid.
+.UNINDENT
+.UNINDENT
+.SH Author
+The ASDF Developers
+.SH Copyright
+2026, The ASDF Developers
+.\" End of generated man page.

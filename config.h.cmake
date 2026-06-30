@@ -2,16 +2,16 @@
 #define CONFIG_H
 
 /* Enable color output in logs */
-#define ASDF_LOG_COLOR @ASDF_LOG_COLOR@
+#cmakedefine ASDF_LOG_COLOR
 
 /* Default runtime log level */
-#define ASDF_LOG_DEFAULT_LEVEL ASDF_LOG_@ASDF_LOG_MIN_LEVEL@
+#define ASDF_LOG_DEFAULT_LEVEL ASDF_LOG_@LOG_DEFAULT@
 
 /* Enable logging */
-#define ASDF_LOG_ENABLED @ASDF_LOG_ENABLED@
+#cmakedefine ASDF_LOG_ENABLED
 
 /* Compile-time minimum log level */
-#define ASDF_LOG_MIN_LEVEL ASDF_LOG_@ASDF_LOG_MIN_LEVEL@
+#define ASDF_LOG_MIN_LEVEL ASDF_LOG_@LOG_MIN@
 
 /* Name of package */
 #define PACKAGE "@PACKAGE_NAME@"

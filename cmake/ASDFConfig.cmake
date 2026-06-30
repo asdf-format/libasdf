@@ -26,10 +26,10 @@ check_include_file(sys/endian.h HAVE_SYS_ENDIAN_H)
 
 if(HAVE_ENDIAN_H)
     set(ENDIAN_H endian.h)
-elseif(HAVE_MACHINE_ENDIAN_H)
-    set(ENDIAN_H machine/endian.h)
 elseif(HAVE_SYS_ENDIAN_H)
     set(ENDIAN_H sys/endian.h)
+elseif(HAVE_MACHINE_ENDIAN_H)
+    set(ENDIAN_H machine/endian.h)
 endif()
 
 macro(check_endian_decl func)

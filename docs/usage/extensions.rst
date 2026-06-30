@@ -6,7 +6,7 @@ Extending libasdf with extension types
 .. note::
 
    The extension mechanism in libasdf is not fully stable and subject to
-   change, thought it is already possible to write third-party extensions.
+   change, though it is already possible to write third-party extensions.
 
 The extension mechanism allows providing custom code for handling tagged
 values in the ASDF tree, and converting it to a user-defined custom data
@@ -42,10 +42,10 @@ tag in the YAML file.
 
    There is some open discussion about allowing implicit type conversion as
    well, if the value can be successfully deserialized.  Though this is
-   generally againt the spirit of ASDF and YAML, where the semantic meaning
+   generally against the spirit of ASDF and YAML, where the semantic meaning
    carried by tags is considered important.
 
-libasdf includes builtin extension types for many of the core ASDF types,
+libasdf includes built-in extension types for many of the core ASDF types,
 including:
 
 * :ref:`core/asdf <stsci.edu/asdf/core/asdf-1.1.0>`
@@ -106,11 +106,6 @@ represented as some more complex structure:
   foo: !tests/foo-1.0.0 foo
   ...
 
-.. todo::
-
-   The ``core/complex`` tag might be a useful example to point to here, but we
-   haven't implemented it yet.
-
 For this example we need to write a few pieces of code:
 
 * A struct representing for our "foo" type (an extension object may also be
@@ -139,7 +134,7 @@ For this example we need to write a few pieces of code:
    static asdf_version_t asdf_foo_version = {
        .version = "1.0.0",
        .major = 1
-   }
+   };
 
    static asdf_software_t asdf_foo_software = {
        .name = "foo",
@@ -159,16 +154,28 @@ or ``NULL`` if parsing the value failed:
   static asdf_value_err_t asdf_foo_deserialize(asdf_value_t *value, const void *userdata, void **out) {
       const char **foo_val = NULL;
       asdf_value_err_t err = asdf_value_as_string(value, &foo_val);
+      static const char *foo_prefix = "foo:";
 
       if (ASDF_VALUE_OK != err)
           return err;
 
+      size_t prefix_len = strlen(foo_prefix);
+      char *buf = malloc(prefix_len + foo_len + 1);
+
+      if (!buf)
+          return ASDF_VALUE_ERR_OOM;
+
+      memcpy(buf, foo_prefix, prefix_len);
+      memcpy(buf + prefix_len, foo_val, foo_len);
+      buf[prefix_len + foo_len] = '\0';
+
       asdf_foo_t *foo = malloc(sizeof(asdf_foo_t));
 
       if (!foo) {
+          free(buf);
           return ASDF_VALUE_ERR_OOM;
       }
-      foo->foo = strdup(*foo_val);
+      foo->foo = (const char *)buf;
       *out = foo;
       return ASDF_VALUE_OK;
   }
@@ -197,7 +204,7 @@ generic YAML value generated from the extension value:
       if (!foo->foo)
           return NULL;
 
-      size_t prefix_len = strlen(foo_prefix);
+      size_t prefix_len = strlen("foo:");
       size_t len = strlen(foo->foo);
 
       if (len < prefix_len)

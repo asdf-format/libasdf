@@ -6,19 +6,20 @@
  *
  * Support is not yet fully complete.  What is implemented:
  *
+ * * ASDF internal block sources
+ * * All int and most float data types (other data types can be read but are
+ *   not fully implemented)
+ * * :c:member:`shape <asdf_ndarray_t.shape>`,
+ *   :c:member:`byteorder <asdf_ndarray_t.byteorder>`, and
+ *   :c:member:`offset <asdf_ndarray_t.offset>`
+ * * :c:member:`strides <asdf_ndarray_t.strides>` are partially supported
+ *
  * It can provide direct access to the raw data of an ndarray (via a
  * ``void *``); users must use
  * the metadata provided in the `asdf_ndarray_t` struct to interpret the data.
  * However, data can also be copied as tiles using the
  * `asdf_ndarray_read_tile_ndim` and `asdf_ndarray_read_tile_2d` functions.
  *
- * * ASDF internal block sources
- * * All int and most float data types (other data types can be read but are
- *   not fully implemented)
- * * :c:member:`shape <asdf_ndarray_t.shape>`,
- *   :c:member:`byeorder <asdf_ndarray_t.byteorder>`, and
- *   :c:member:`offset <asdf_ndarray_t.offset>`
- * * :c:member:`strides <asdf_ndarray_t.strides>` are partially supported
  *
  * What is not yet supported:
  *
@@ -26,12 +27,12 @@
  * * Reading ``complex64`` or ``complex128``, or ``float16`` datatypes
  * * Reading string datatypes (``ascii`` or ``ucs4``)
  * * Reading structured datatypes (the datatypes are parsed but there is are
- *   no APIs yet for interpreted structured array data
+ *   no APIs yet for interpreting structured array data)
  * * Reading arbitrarily strided data
  * * Masks are not parsed or used at all, whether simple mask values or mask
  *   arrays (though if present a warning is logged indicating lack of support)
  *
- * The current limitations are purely aritificial--it is so that we can rapidly
+ * The current limitations are purely artificial--it is so that we can rapidly
  * develop the minimal viable product needed to make ASDF ndarray data
  * available in common use cases.
  *
@@ -57,6 +58,14 @@ ASDF_BEGIN_DECLS
 
 
 /**
+ * .. _ndarray-types:
+ *
+ * Types
+ * -----
+ */
+
+
+/**
  * Error codes returned by some functions that read ndarray data
  */
 typedef enum {
@@ -67,9 +76,19 @@ typedef enum {
      * bounds of the ndarray
      */
     ASDF_NDARRAY_ERR_OUT_OF_BOUNDS,
+    /** A memory error occurred (typically out-of-memory) */
     ASDF_NDARRAY_ERR_OOM,
+    /**
+     * An invalid argument was passed to the function (e.g. incorrect number
+     * of shape dimensions)
+     */
     ASDF_NDARRAY_ERR_INVAL,
+    /** An overflow occurred, particularly when reading integer values */
     ASDF_NDARRAY_ERR_OVERFLOW,
+    /**
+     * Some ndarray data elements could not be converted to the requested
+     * output datatype
+     */
     ASDF_NDARRAY_ERR_CONVERSION,
 } asdf_ndarray_err_t;
 
@@ -81,7 +100,7 @@ typedef enum {
  * This is the main object through which ndarrays are used.  They can be
  * retrieved via `asdf_get_ndarray` and `asdf_value_as_ndarray`.  The library
  * allocates memory for this data structure which must be freed by the user with
- * `asdf_ndarray_destroy` when no-longer needed..
+ * `asdf_ndarray_destroy` when no-longer needed.
  *
  * For convenience some basic fields are made public for now, though this may
  * not be ABI-stable in future releases.
@@ -95,7 +114,7 @@ typedef struct {
     const uint64_t *shape;
     /** The datatype of the array as represented by `asdf_datatype_t` */
     asdf_datatype_t datatype;
-    /** The byteorder of the array data where appliable */
+    /** The byteorder of the array data where applicable */
     asdf_byteorder_t byteorder;
     /** Optional offset into the binary block where the array data begins */
     uint64_t offset;
@@ -111,6 +130,14 @@ typedef struct {
 #else
 typedef struct asdf_ndarray asdf_ndarray_t;
 #endif
+
+
+/**
+ * .. _ndarray-get:
+ *
+ * Getting ndarrays
+ * ----------------
+ */
 
 
 // NOTE: For now I don't see any good way to generate docstrings for functions
@@ -153,7 +180,7 @@ typedef struct asdf_ndarray asdf_ndarray_t;
  *
  *   Release datastructures and memory allocated for an `asdf_ndarray_t`
  *
- *   :param value: The `asdf_ndarray_t *`
+ *   :param ndarray: The `asdf_ndarray_t *`
  */
 
 // clang-format on
@@ -161,27 +188,47 @@ typedef struct asdf_ndarray asdf_ndarray_t;
 ASDF_DECLARE_EXTENSION(ndarray, asdf_ndarray_t);
 
 
-/** ndarray methods */
+/**
+ * .. _ndarray-data-access:
+ *
+ * Data access
+ * -----------
+ */
 
 /**
- * Return a pointer to the ndarray data
+ * Return a pointer to the ndarray's element data
  *
- * ..todo::
+ * If the array is stored in a compressed block a buffer containing the
+ * decompressed data is returned (see also :ref:`compression`).
+ * The data is presented in the array's source datatype and byte order;
+ * use `asdf_ndarray_read_all` or the ``asdf_ndarray_read_tile_*``
+ * functions to read it converted to a host datatype and native byte order.
  *
- *   Finish documenting me.
+ * The returned pointer is owned by ``ndarray`` and remains valid until the
+ * ndarray (or its file) is destroyed; the caller must not free it.
+ *
+ * :param ndarray: An `asdf_ndarray_t *`
+ * :param size: If non-``NULL``, receives the size of the data in bytes
+ * :return: A pointer to the (decompressed) data, or ``NULL`` on error -- for
+ *   example if the array has no associated data block (such as an inline
+ *   array) or if decompression failed
  */
 ASDF_EXPORT const void *asdf_ndarray_data(asdf_ndarray_t *ndarray, size_t *size);
 
 
 /**
- * Return a pointer to the raw (compressed, in the case of compressed arrays) ndarray
- * data
+ * Return a pointer to the raw ndarray data, without decompressing it
  *
- * On non-compressed arrays this is equivalent to `asdf_ndarray_data`.
+ * For arrays stored in a compressed block this returns the still-compressed
+ * bytes exactly as they appear in the file.  For uncompressed arrays it is
+ * equivalent to `asdf_ndarray_data`.
  *
- * ..todo::
+ * As with `asdf_ndarray_data`, the returned pointer is owned by ``ndarray``
+ * and must not be freed by the caller.
  *
- *   Finish documenting me.
+ * :param ndarray: An `asdf_ndarray_t *`
+ * :param size: If non-``NULL``, receives the size of the raw data in bytes
+ * :return: A pointer to the raw data, or ``NULL`` on error
  */
 ASDF_EXPORT const void *asdf_ndarray_data_raw(asdf_ndarray_t *ndarray, size_t *size);
 
@@ -203,6 +250,14 @@ ASDF_EXPORT uint64_t asdf_ndarray_size(const asdf_ndarray_t *ndarray);
  *   datatype nbytes)
  */
 ASDF_EXPORT uint64_t asdf_ndarray_nbytes(const asdf_ndarray_t *ndarray);
+
+
+/**
+ * .. _ndarray-alloc:
+ *
+ * Allocating data buffers
+ * -----------------------
+ */
 
 
 /**
@@ -249,6 +304,14 @@ ASDF_EXPORT void asdf_ndarray_data_dealloc(asdf_ndarray_t *ndarray);
 
 
 /**
+ * .. _ndarray-storage:
+ *
+ * Storage and compression
+ * -----------------------
+ */
+
+
+/**
  * Set the compression method to use for the ndarray data when writing
  *
  * See also `asdf_block_compression_set` for which this is a shortcut (applies
@@ -258,7 +321,7 @@ ASDF_EXPORT void asdf_ndarray_data_dealloc(asdf_ndarray_t *ndarray);
  * :param compression: String representing the compressor to use (e.g. "bzp2")
  *   if any, or NULL or the empty string to set no compression
  * :return: Non-zero if the compression could not be set (e.g. invalid/unknown
- *   compressor; use `asdf_error` to check the error code
+ *   compressor); use `asdf_error` to check the error code
  */
 ASDF_EXPORT int asdf_ndarray_compression_set(asdf_ndarray_t *ndarray, const char *compression);
 
@@ -312,6 +375,14 @@ ASDF_EXPORT asdf_block_t *asdf_ndarray_block(asdf_ndarray_t *ndarray);
 
 
 /**
+ * .. _ndarray-read:
+ *
+ * Reading array data
+ * ------------------
+ */
+
+
+/**
  * Read the full ndarray, copying into the provided buffer (or allocating a
  * destination buffer if ``dst = NULL``)
  *
@@ -327,6 +398,8 @@ ASDF_EXPORT asdf_block_t *asdf_ndarray_block(asdf_ndarray_t *ndarray);
  *   the exact number of bytes in the source ndarray, or `NULL` to indicate
  *   that a buffer should be allocated.  In the latter case the caller is
  *   responsible for freeing the allocated buffer.
+ * :return: An `asdf_ndarray_err_t`; either `ASDF_NDARRAY_OK` if the data read
+ *   successfully; otherwise the relevant error code.
  */
 ASDF_EXPORT asdf_ndarray_err_t
 asdf_ndarray_read_all(asdf_ndarray_t *ndarray, asdf_scalar_datatype_t dst_t, void **dst);
@@ -343,7 +416,7 @@ asdf_ndarray_read_all(asdf_ndarray_t *ndarray, asdf_scalar_datatype_t dst_t, voi
  *   :c:member:`ndim <asdf_ndarray_t.ndim>`
  * :param shape: The shape of the tile to read--an array of size
  *   :c:member:`ndim <asdf_ndarray_t.ndim>`
- * :param: dst_t: The output datatype, if conversion from the source array's
+ * :param dst_t: The output datatype, if conversion from the source array's
  *   datatype to the output datatype is possible
  *
  *   Currently, if no conversion is possible it will just copy the tile data
@@ -354,6 +427,8 @@ asdf_ndarray_read_all(asdf_ndarray_t *ndarray, asdf_scalar_datatype_t dst_t, voi
  *   the exact number of bytes in the output tile based on shape and datatype,
  *   or `NULL` to indicate that a buffer should be allocated.  In the latter
  *   case the caller is responsible for freeing the allocated buffer.
+ * :return: An `asdf_ndarray_err_t`; either `ASDF_NDARRAY_OK` if the data read
+ *   successfully; otherwise the relevant error code.
  */
 ASDF_EXPORT asdf_ndarray_err_t asdf_ndarray_read_tile_ndim(
     asdf_ndarray_t *ndarray,
@@ -374,7 +449,7 @@ ASDF_EXPORT asdf_ndarray_err_t asdf_ndarray_read_tile_ndim(
  * :param plane_origin: If the source array is greater than 2-dimensional, the
  *   ``ndim - 2`` array of plane coordinates--may be `NULL` if either the source
  *   array is 2-D or otherwise the outer-most plane is used
- * :param: dst_t: The output datatype, if conversion from the source array's
+ * :param dst_t: The output datatype, if conversion from the source array's
  *   datatype to the output datatype is possible
  *
  *   Currently, if no conversion is possible it will just copy the tile data
@@ -385,6 +460,8 @@ ASDF_EXPORT asdf_ndarray_err_t asdf_ndarray_read_tile_ndim(
  *   the exact number of bytes in the output tile based on shape and datatype,
  *   or `NULL` to indicate that a buffer should be allocated.  In the latter
  *   case the caller is responsible for freeing the allocated buffer.
+ * :return: An `asdf_ndarray_err_t`; either `ASDF_NDARRAY_OK` if the data read
+ *   successfully; otherwise the relevant error code.
  */
 ASDF_EXPORT asdf_ndarray_err_t asdf_ndarray_read_tile_2d(
     asdf_ndarray_t *ndarray,
