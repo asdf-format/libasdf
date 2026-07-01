@@ -378,6 +378,8 @@ static int print_block(FILE *out, asdf_file_t *file, size_t block_idx, bool veri
         else
             verified = " " COLOR(COLOR_RED, "✗");
     }
+#else
+    (void)verify;
 #endif
 
     print_field(out, LEFT, "checksum: %s%s", checksum, verified);

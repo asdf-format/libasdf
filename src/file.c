@@ -1259,6 +1259,7 @@ bool asdf_block_checksum_verify(
 
 #ifndef HAVE_MD5
     (void)block;
+    (void)computed;
     return true;
 #else
     const asdf_block_header_t *header = &block->info.header;
