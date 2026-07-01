@@ -81,7 +81,7 @@ This will allocate a buffer on the heap of the correct size for your ndarray
 given the required datatype and shape specifications.
 
 Then place the ndarray in the file's YAML tree at the path of your choice
-with ``asdf_set_ndarray``:
+with `asdf_set_ndarray`:
 
 .. code:: c
 
@@ -287,7 +287,7 @@ Compressing ndarray blocks
 
 By default ndarray data is written uncompressed.  To enable compression, call
 `asdf_ndarray_compression_set` on the ndarray *before* passing it to
-``asdf_set_ndarray`` (or `asdf_write_to`):
+`asdf_set_ndarray` (or `asdf_write_to`):
 
 .. code:: c
 

@@ -163,6 +163,26 @@ typedef struct asdf_ndarray asdf_ndarray_t;
 
 
 /**
+ * .. c:function:: asdf_value_err_t asdf_set_ndarray(asdf_file_t *file, const char *path, asdf_ndarray_t *ndarray)
+ *
+ *   Set an `asdf_ndarray_t *` to a path in the ASDF tree
+ *
+ *   This is used to add a new ndarray to the file at a given path. If the
+ *   ndarray has data allocated for it and is set to internal storage (see
+ *   `asdf_ndarray_storage_set`, a new binary block will be allocated for its
+ *   data when writing the file.
+ *
+ *   :param file: The `asdf_file_t *` for the file
+ *   :param path: The :ref:`yaml-pointer` for the ndarray
+ *   :param ndarray: An `asdf_ndarray_t *` to store
+ *
+ *   :return: `ASDF_VALUE_OK` if the value exists and is an ndarray, otherwise
+ *     an error if an inconsistency in the `asdf_ndarray_t` struct prevents
+ *     serialization.
+ */
+
+
+/**
  * .. c:function:: asdf_value_err_t asdf_value_as_ndarray(asdf_value_t *value, asdf_ndarray_t **out)
  *
  *   Cast a generic `asdf_value_t *` as an ndarray value, if possible
