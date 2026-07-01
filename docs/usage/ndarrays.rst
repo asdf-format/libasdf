@@ -304,7 +304,7 @@ Compression
 -----------
 
 Internal block data can be compressed.  Call `asdf_ndarray_compression_set` on
-the array *before* passing it to ``asdf_set_ndarray`` (or `asdf_write_to`):
+the array *before* passing it to `asdf_set_ndarray` (or `asdf_write_to`):
 
 .. code:: c
 

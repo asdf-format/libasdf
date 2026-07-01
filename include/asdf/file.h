@@ -503,18 +503,6 @@ ASDF_EXPORT bool asdf_is_mapping(asdf_file_t *file, const char *path);
 /**
  * Get a mapping out of the ASDF tree
  *
- * .. note::
- *
- *   Mappings are currently represented as generic `asdf_value_t *`, though if
- *   this function returns `ASDF_VALUE_OK` it is guaranteed to be a mapping.
- *   This function will also ignore tags, so that tagged objects like
- *   ``core/ndarray`` can be read as a raw YAML mapping.
- *
- * .. todo::
- *
- *   In the future may add a dedicated typedef for mappings to make this more
- *   explicit.
- *
  * :param file: The `asdf_file_t *` for the file
  * :param path: The :ref:`yaml-pointer` to the mapping
  * :param value: An `asdf_mapping_t **` into which to return the mapping
@@ -536,19 +524,6 @@ ASDF_EXPORT bool asdf_is_sequence(asdf_file_t *file, const char *path);
 
 /**
  * Get a sequence out of the ASDF tree
- *
- * .. note::
- *
- *   Sequences are currently represented as generic `asdf_value_t *`, though if
- *   this function returns `ASDF_VALUE_OK` it is guaranteed to be a sequence.
- *   Like `asdf_get_mapping`, this function will ignore tags, so that tagged
- *   sequences associated with an extension schema can be read as a raw YAML
- *   sequence.
- *
- * .. todo::
- *
- *   In the future may add a dedicated typedef for sequences to make this more
- *   explicit.
  *
  * :param file: The `asdf_file_t *` for the file
  * :param path: The :ref:`yaml-pointer` to the sequence
@@ -834,7 +809,7 @@ ASDF_EXPORT asdf_value_err_t asdf_get_double(asdf_file_t *file, const char *path
 /**
  * These functions are the generic forms behind the per-extension
  * ``asdf_is_<extension>`` / ``asdf_get_<extension>`` / ``asdf_set_<extension>``
- * helpers (such as ``asdf_get_ndarray``) that each registered extension
+ * helpers (such as `asdf_get_ndarray`) that each registered extension
  * generates.  They take an explicit `asdf_extension_t *`, which can be looked
  * up for a registered tag with ``asdf_extension_get``, and are useful when the
  * extension type is only known at runtime.  See :ref:`extensions` for more on
@@ -880,7 +855,7 @@ asdf_get_extension_type(asdf_file_t *file, const char *path, asdf_extension_t *e
  * needed and replacing any existing value already at that path.
  *
  * Typically it is better to use the higher level ``asdf_set_<extension>``
- * functions, (e.g. ``asdf_set_ndarray``) which are type-safe wrappers around
+ * functions, (e.g. `asdf_set_ndarray`) which are type-safe wrappers around
  * this function, and don't require looking up the extension.
  *
  * :param file: The `asdf_file_t *` for the file
@@ -896,7 +871,7 @@ ASDF_EXPORT asdf_value_err_t asdf_set_extension_type(
 /**
  * .. _file-value-setters:
  *
- * Writing values
+ * Setting values
  * --------------
  *
  * The ``asdf_set_<type>`` family is the high-level counterpart to the
@@ -910,37 +885,64 @@ ASDF_EXPORT asdf_value_err_t asdf_set_extension_type(
  * replaced.  Each function returns `ASDF_VALUE_OK` on success or an
  * `asdf_value_err_t` error code.
  *
- * ``asdf_set_value`` inserts a pre-built generic `asdf_value_t *`;
- * ``asdf_set_string`` takes an explicit byte length while ``asdf_set_string0``
- * expects a NUL-terminated string; ``asdf_set_null`` takes no value argument.
- * The remaining scalar variants accept the corresponding C type directly.  See
- * :ref:`writing` for a narrative guide.
+ * `asdf_set_value` inserts a pre-built generic `asdf_value_t *`;
+ * `asdf_set_string` takes an explicit byte length while `asdf_set_string0`
+ * expects a NUL-terminated string; `asdf_set_null` takes no value argument.
+ * The remaining scalar variants accept the corresponding C type directly
+ *
+ * For extension types, each register extension has a corresponding
+ * ``asdf_set_<extension>``, mirroring the ``asdf_get_<extension>`` functions
+ * described in :ref:`file-extension-getters`.  For example, `asdf_set_ndarray`
+ * can be used to assign an `asdf_ndarray_t *` to a path in YAML tree.
+ *
+ * See :ref:`writing` for a narrative guide.
  */
 
+//
+
+/** See :ref:`file-value-setters` */
 ASDF_EXPORT asdf_value_err_t
 asdf_set_value(asdf_file_t *file, const char *path, asdf_value_t *value);
+
+/** See :ref:`file-value-setters` */
 ASDF_EXPORT asdf_value_err_t
 asdf_set_string(asdf_file_t *file, const char *path, const char *str, size_t len);
+
+/** See :ref:`file-value-setters` */
 ASDF_EXPORT asdf_value_err_t asdf_set_string0(asdf_file_t *file, const char *path, const char *str);
 
+/** See :ref:`file-value-setters` */
 ASDF_EXPORT asdf_value_err_t asdf_set_bool(asdf_file_t *file, const char *path, bool val);
 
+/** See :ref:`file-value-setters` */
 ASDF_EXPORT asdf_value_err_t asdf_set_null(asdf_file_t *file, const char *path);
 
+/** See :ref:`file-value-setters` */
 ASDF_EXPORT asdf_value_err_t asdf_set_int8(asdf_file_t *file, const char *path, int8_t val);
+/** See :ref:`file-value-setters` */
 ASDF_EXPORT asdf_value_err_t asdf_set_int16(asdf_file_t *file, const char *path, int16_t val);
+/** See :ref:`file-value-setters` */
 ASDF_EXPORT asdf_value_err_t asdf_set_int32(asdf_file_t *file, const char *path, int32_t val);
+/** See :ref:`file-value-setters` */
 ASDF_EXPORT asdf_value_err_t asdf_set_int64(asdf_file_t *file, const char *path, int64_t val);
+/** See :ref:`file-value-setters` */
 ASDF_EXPORT asdf_value_err_t asdf_set_uint8(asdf_file_t *file, const char *path, uint8_t val);
+/** See :ref:`file-value-setters` */
 ASDF_EXPORT asdf_value_err_t asdf_set_uint16(asdf_file_t *file, const char *path, uint16_t val);
+/** See :ref:`file-value-setters` */
 ASDF_EXPORT asdf_value_err_t asdf_set_uint32(asdf_file_t *file, const char *path, uint32_t val);
+/** See :ref:`file-value-setters` */
 ASDF_EXPORT asdf_value_err_t asdf_set_uint64(asdf_file_t *file, const char *path, uint64_t val);
 
+/** See :ref:`file-value-setters` */
 ASDF_EXPORT asdf_value_err_t asdf_set_float(asdf_file_t *file, const char *path, float val);
+/** See :ref:`file-value-setters` */
 ASDF_EXPORT asdf_value_err_t asdf_set_double(asdf_file_t *file, const char *path, double val);
 
+/** See :ref:`file-value-setters` */
 ASDF_EXPORT asdf_value_err_t
 asdf_set_mapping(asdf_file_t *file, const char *path, asdf_mapping_t *mapping);
+/** See :ref:`file-value-setters` */
 ASDF_EXPORT asdf_value_err_t
 asdf_set_sequence(asdf_file_t *file, const char *path, asdf_sequence_t *sequence);
 

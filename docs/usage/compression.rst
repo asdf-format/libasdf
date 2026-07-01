@@ -23,7 +23,7 @@ Compressing on write
 
 By default ndarray data is written uncompressed.  To enable compression, call
 `asdf_ndarray_compression_set` on the ndarray *before* passing it to
-``asdf_set_ndarray`` (or `asdf_write_to`):
+`asdf_set_ndarray` (or `asdf_write_to`):
 
 .. code:: c
 
