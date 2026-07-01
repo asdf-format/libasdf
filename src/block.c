@@ -5,7 +5,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdlib.h>
-#include <string.h>
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -173,7 +172,7 @@ bool asdf_block_info_write(asdf_stream_t *stream, asdf_block_info_t *block, bool
      * whatever was in the block header (e.g. when passing through already-compressed data) */
     char comp_field[ASDF_BLOCK_COMPRESSION_FIELD_SIZE] = {0};
     if (compressor != NULL)
-        strncpy(comp_field, compressor->compression, ASDF_BLOCK_COMPRESSION_FIELD_SIZE);
+        memcpy(comp_field, compressor->compression, ASDF_BLOCK_COMPRESSION_FIELD_SIZE);
     else
         memcpy(comp_field, block->header.compression, ASDF_BLOCK_COMPRESSION_FIELD_SIZE);
     WRITE_CHECK(stream, comp_field, ASDF_BLOCK_COMPRESSION_FIELD_SIZE);
