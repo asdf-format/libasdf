@@ -123,6 +123,7 @@ def make_numeric_asdf():
         'uint32': np.dtype('u4'),
         'int64': np.dtype('i8'),
         'uint64': np.dtype('u8'),
+        'float16': np.dtype('f2'),
         'float32': np.dtype('f4'),
         'float64': np.dtype('f8')
     }

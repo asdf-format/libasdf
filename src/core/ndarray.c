@@ -10,6 +10,7 @@
 #include "config.h"
 #endif
 
+#include "../compat/numeric.h"
 #include "../context.h"
 #include "../error.h"
 #include "../extension_util.h"
@@ -398,6 +399,9 @@ static asdf_value_err_t convert_scalar_to_native(
     case ASDF_DATATYPE_UINT64:
         err = asdf_value_as_uint64(elem, (uint64_t *)dst);
         break;
+#ifdef HAVE_FLOAT16
+    case ASDF_DATATYPE_FLOAT16:
+#endif
     case ASDF_DATATYPE_FLOAT32:
     case ASDF_DATATYPE_FLOAT64: {
         /* Integers in YAML should be coercible to float targets */
@@ -416,10 +420,18 @@ static asdf_value_err_t convert_scalar_to_native(
             }
         }
         if (ASDF_VALUE_OK == err) {
-            if (dtype == ASDF_DATATYPE_FLOAT32)
+            switch (dtype) {
+#ifdef HAVE_FLOAT16
+            case ASDF_DATATYPE_FLOAT16:
+                *(half *)dst = (half)dval;
+                break;
+#endif
+            case ASDF_DATATYPE_FLOAT32:
                 *(float *)dst = (float)dval;
-            else
+                break;
+            default: /* ASDF_DATATYPE_FLOAT64 */
                 *(double *)dst = dval;
+            }
         }
         break;
     }
@@ -868,6 +880,24 @@ static asdf_sequence_t *asdf_ndarray_serialize_seq_level(
         case ASDF_DATATYPE_UINT64:
             seq = asdf_sequence_of_uint64(file, (const uint64_t *)start, (int)dim_size);
             break;
+#ifdef HAVE_FLOAT16
+        case ASDF_DATATYPE_FLOAT16: {
+            // Convert to an array of float
+            float *tmp = malloc(dim_size * sizeof(float));
+
+            if (!tmp) {
+                ASDF_ERROR_OOM(file);
+                return NULL;
+            }
+
+            for (uint64_t idx = 0; idx < dim_size; idx++) {
+                tmp[idx] = (float)((const _Float16 *)start)[idx];
+            }
+
+            seq = asdf_sequence_of_float(file, (const float *)start, (int)dim_size);
+            break;
+        }
+#endif
         case ASDF_DATATYPE_FLOAT32:
             seq = asdf_sequence_of_float(file, (const float *)start, (int)dim_size);
             break;
@@ -1611,6 +1641,30 @@ asdf_ndarray_err_t asdf_ndarray_read_tile_ndim(
     if (data_size < src_tile_size)
         return ASDF_NDARRAY_ERR_OUT_OF_BOUNDS;
 
+    // Determine the copy strategy to use; right now this just handles whether-or-not byteswap
+    // is needed, may have others depending on alignment, vectorization etc.
+    bool byteswap = should_byteswap(src_elsize, ndarray->byteorder);
+    asdf_ndarray_convert_fn_t convert = asdf_ndarray_get_convert_fn(src_t, dst_t, byteswap);
+
+    if (convert == NULL) {
+        const char *src_datatype = asdf_scalar_datatype_to_string(src_t);
+        const char *dst_datatype = asdf_scalar_datatype_to_string(dst_t);
+        ASDF_LOG(
+            ndarray->internal->file,
+            ASDF_LOG_ERROR,
+            "datatype conversion from \"%s\" to \"%s\" not supported for ndarray tile copy",
+            src_datatype,
+            dst_datatype);
+#ifndef HAVE_FLOAT16
+        if (src_t == ASDF_DATATYPE_FLOAT16 || dst_t == ASDF_DATATYPE_FLOAT16)
+            ASDF_LOG(
+                ndarray->internal->file,
+                ASDF_LOG_ERROR,
+                "libasdf was compiled without _Float16 support detected");
+#endif
+        return ASDF_NDARRAY_ERR_CONVERSION;
+    }
+
     // If the function is passed a null pointer, allocate memory for the tile ourselves
     // User is responsible for freeing it.
     void *tile = *dst;
@@ -1629,26 +1683,6 @@ asdf_ndarray_err_t asdf_ndarray_read_tile_ndim(
     if (UNLIKELY(0 == ndim || 0 == tile_size)) {
         *dst = tile;
         return ASDF_NDARRAY_OK;
-    }
-
-    // Determine the copy strategy to use; right now this just handles whether-or-not byteswap
-    // is needed, may have others depending on alignment, vectorization etc.
-    bool byteswap = should_byteswap(src_elsize, ndarray->byteorder);
-    asdf_ndarray_convert_fn_t convert = asdf_ndarray_get_convert_fn(src_t, dst_t, byteswap);
-
-    if (convert == NULL) {
-        const char *src_datatype = asdf_scalar_datatype_to_string(src_t);
-        const char *dst_datatype = asdf_scalar_datatype_to_string(dst_t);
-        ASDF_LOG(
-            ndarray->internal->file,
-            ASDF_LOG_WARN,
-            "datatype conversion from \"%s\" to \"%s\" not supported for ndarray tile copy; "
-            "source bytes will be copied without conversion",
-            src_datatype,
-            dst_datatype);
-        memcpy(tile, data, src_tile_size);
-        *dst = tile;
-        return ASDF_NDARRAY_ERR_CONVERSION;
     }
 
     bool overflow = false;

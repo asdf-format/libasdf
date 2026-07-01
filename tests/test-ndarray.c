@@ -9,6 +9,8 @@
 #include "asdf/core/ndarray.h"
 #include "asdf/file.h"
 
+#include "compat/numeric.h"
+
 #include "munit.h"
 #include "util.h"
 
@@ -178,8 +180,18 @@ MU_TEST(ndarray_read_tile_byteswap) {
 
 
 static char *supported_numeric_dtypes[] = {
-    "int8", "uint8", "int16", "uint16", "int32", "uint32", "int64", "uint64",
-    "float32", "float64", NULL};
+    "int8",
+    "uint8",
+    "int16",
+    "uint16",
+    "int32",
+    "uint32",
+    "int64",
+    "uint64",
+    "float16",
+    "float32",
+    "float64",
+    NULL};
 
 static char *endianness[] = {"<", ">", NULL};
 
@@ -199,11 +211,17 @@ static MunitParameterEnum test_numeric_conversion_params[] = {
  *
  * This is not a guaranteed overflow in general (as it depends on the data in
  * the arrays, but this test always has boundary values that will overflow in
- * certain cases.
+ * certain cases).
  *
  * For now this is just a big dumb switch statement--in issue #50 we will
  * refactor asdf_scalar_datatype_t to contain more information that can be used to
  * determine this.
+ *
+ * .. todo::
+ *
+ *  This was not, in fact, handled as part of issue #50 but it would be worth
+ *  having some standard APIs to determine datatype info / limits similar to
+ *  np.iinfo and np.finfo for example.
  */
 static bool should_overflow(asdf_scalar_datatype_t src_t, asdf_scalar_datatype_t dst_t) {
     if (src_t == dst_t)
@@ -243,6 +261,7 @@ static bool should_overflow(asdf_scalar_datatype_t src_t, asdf_scalar_datatype_t
         case ASDF_DATATYPE_INT8:
         case ASDF_DATATYPE_UINT8:
         case ASDF_DATATYPE_INT16:
+        case ASDF_DATATYPE_FLOAT16:
             return true;
         default:
             return false;
@@ -255,6 +274,7 @@ static bool should_overflow(asdf_scalar_datatype_t src_t, asdf_scalar_datatype_t
         case ASDF_DATATYPE_UINT16:
         case ASDF_DATATYPE_UINT32:
         case ASDF_DATATYPE_UINT64:
+        case ASDF_DATATYPE_FLOAT16:
             return true;
         default:
             return false;
@@ -266,6 +286,7 @@ static bool should_overflow(asdf_scalar_datatype_t src_t, asdf_scalar_datatype_t
         case ASDF_DATATYPE_INT16:
         case ASDF_DATATYPE_UINT16:
         case ASDF_DATATYPE_INT32:
+        case ASDF_DATATYPE_FLOAT16:
             return true;
         default:
             return false;
@@ -279,6 +300,7 @@ static bool should_overflow(asdf_scalar_datatype_t src_t, asdf_scalar_datatype_t
         case ASDF_DATATYPE_INT32:
         case ASDF_DATATYPE_UINT32:
         case ASDF_DATATYPE_UINT64:
+        case ASDF_DATATYPE_FLOAT16:
             return true;
         default:
             return false;
@@ -292,9 +314,18 @@ static bool should_overflow(asdf_scalar_datatype_t src_t, asdf_scalar_datatype_t
         case ASDF_DATATYPE_INT32:
         case ASDF_DATATYPE_UINT32:
         case ASDF_DATATYPE_INT64:
+        case ASDF_DATATYPE_FLOAT16:
             return true;
         default:
             return false;
+        }
+    case ASDF_DATATYPE_FLOAT16:
+        switch(dst_t) {
+        case ASDF_DATATYPE_FLOAT32:
+        case ASDF_DATATYPE_FLOAT64:
+            return false;
+        default:
+            return true;
         }
     case ASDF_DATATYPE_FLOAT32:
         switch(dst_t) {
@@ -322,6 +353,9 @@ static double normalize_to_double(const void *src, asdf_scalar_datatype_t src_ty
         case ASDF_DATATYPE_UINT32:  return ((const uint32_t*)src)[idx];
         case ASDF_DATATYPE_INT64:   return ((const int64_t*)src)[idx];
         case ASDF_DATATYPE_UINT64:  return ((const uint64_t*)src)[idx];
+#ifdef HAVE_FLOAT16
+        case ASDF_DATATYPE_FLOAT16: return ((const half*)src)[idx];
+#endif
         case ASDF_DATATYPE_FLOAT32: return ((const float*)src)[idx];
         case ASDF_DATATYPE_FLOAT64: return ((const double*)src)[idx];
         default: return 0; // or handle error
@@ -347,6 +381,9 @@ static inline dtype_limits_t get_dtype_limits(asdf_scalar_datatype_t t) {
     case ASDF_DATATYPE_UINT16: return (dtype_limits_t){ 0,         UINT16_MAX };
     case ASDF_DATATYPE_UINT32: return (dtype_limits_t){ 0,         UINT32_MAX };
     case ASDF_DATATYPE_UINT64: return (dtype_limits_t){ 0,         (double)UINT64_MAX };
+#ifdef HAVE_FLOAT16
+    case ASDF_DATATYPE_FLOAT16: return (dtype_limits_t){ -FLT16_MAX, FLT16_MAX };
+#endif
     case ASDF_DATATYPE_FLOAT32:return (dtype_limits_t){ -FLT_MAX,  FLT_MAX };
     case ASDF_DATATYPE_FLOAT64:return (dtype_limits_t){ -DBL_MAX,  DBL_MAX };
     default:
@@ -366,14 +403,44 @@ static double clamp_value(double val, double min, double max) {
 }
 
 
+static inline bool is_float_dtype(asdf_scalar_datatype_t t) {
+    switch (t) {
+    case ASDF_DATATYPE_FLOAT16:
+    case ASDF_DATATYPE_FLOAT32:
+    case ASDF_DATATYPE_FLOAT64:
+        return true;
+    default:
+        return false;
+    }
+}
+
+
+/**
+ * Expected result of narrowing ``val`` into ``dst_t``.
+ *
+ * For a floating-point destination a finite value beyond the destination's
+ * finite range overflows to +/-infinity (IEC 60559 / NumPy semantics); for an
+ * integer destination it saturates to the destination min/max.
+ */
+static double expected_narrowed(double val, asdf_scalar_datatype_t dst_t, dtype_limits_t dst_limits) {
+    if (is_float_dtype(dst_t)) {
+        if (val > dst_limits.max)
+            return INFINITY;
+        if (val < dst_limits.min)
+            return -INFINITY;
+        return val;
+    }
+    return clamp_value(val, dst_limits.min, dst_limits.max);
+}
+
+
 static void check_expected_values(void *arr, asdf_scalar_datatype_t src_t, asdf_scalar_datatype_t dst_t) {
     dtype_limits_t src_limits = get_dtype_limits(src_t);
     dtype_limits_t dst_limits = get_dtype_limits(dst_t);
-    switch (src_t) {
-    case ASDF_DATATYPE_FLOAT32:
-    case ASDF_DATATYPE_FLOAT64: {
+
+    if (is_float_dtype(src_t)) {
         double minval = normalize_to_double(arr, dst_t, 0);
-        assert_double(minval, ==, clamp_value(src_limits.min, dst_limits.min, dst_limits.max));
+        assert_double(minval, ==, expected_narrowed(src_limits.min, dst_t, dst_limits));
         double neg_one = normalize_to_double(arr, dst_t, 1);
         assert_double(neg_one, ==, clamp_value(clamp_value(-1, src_limits.min, src_limits.max),
                                                dst_limits.min, dst_limits.max));
@@ -383,37 +450,33 @@ static void check_expected_values(void *arr, asdf_scalar_datatype_t src_t, asdf_
         assert_double(one, ==, 1);
         double maxval = normalize_to_double(arr, dst_t, 6);
         double ulp = 1.0;
-        double expected_maxval = clamp_value(src_limits.max, dst_limits.min, dst_limits.max);
-        assert_double(fabs(maxval - expected_maxval), <=, ulp);
+        double expected_maxval = expected_narrowed(src_limits.max, dst_t, dst_limits);
+        if (isinf(expected_maxval))
+            assert_double(maxval, ==, expected_maxval);
+        else
+            assert_double(fabs(maxval - expected_maxval), <=, ulp);
+
         double nan = normalize_to_double(arr, dst_t, 7);
-        switch (dst_t) {
-        case ASDF_DATATYPE_FLOAT32:
-        case ASDF_DATATYPE_FLOAT64:
+
+        if (is_float_dtype(dst_t)) {
             assert_true(isnan(nan));
-            break;
-        default:
             // Conversion of NaNs to integers is not well-defined; see issue #58
-            break;
         }
+
         double inf = normalize_to_double(arr, dst_t, 8);
         double neg_inf = normalize_to_double(arr, dst_t, 9);
-        switch (dst_t) {
-        case ASDF_DATATYPE_FLOAT32:
-        case ASDF_DATATYPE_FLOAT64:
+
+        if (is_float_dtype(dst_t)) {
             assert_true(isinf(inf));
             assert_true(isinf(neg_inf));
             assert_true(neg_inf < 0);
-            break;
-        default:
+        } else {
             assert_double(inf, ==, clamp_value(INFINITY, dst_limits.min, dst_limits.max));
             assert_double(neg_inf, ==, clamp_value(-INFINITY, dst_limits.min, dst_limits.max));
-            break;
         }
-        break;
-    }
-    default: {
+    } else {
         double minval = normalize_to_double(arr, dst_t, 0);
-        assert_double(minval, ==, clamp_value(src_limits.min, dst_limits.min, dst_limits.max));
+        assert_double(minval, ==, expected_narrowed(src_limits.min, dst_t, dst_limits));
         double neg_one = normalize_to_double(arr, dst_t, 1);
         assert_double(neg_one, ==, clamp_value(clamp_value(-1, src_limits.min, src_limits.max),
                                                dst_limits.min, dst_limits.max));
@@ -424,9 +487,11 @@ static void check_expected_values(void *arr, asdf_scalar_datatype_t src_t, asdf_
         // Here we can run into some trouble with float rounding
         double maxval = normalize_to_double(arr, dst_t, 4);
         double ulp = 1.0;
-        double expected_maxval = clamp_value(src_limits.max, dst_limits.min, dst_limits.max);
-        assert_double(fabs(maxval - expected_maxval), <=, ulp);
-    }
+        double expected_maxval = expected_narrowed(src_limits.max, dst_t, dst_limits);
+        if (isinf(expected_maxval))
+            assert_double(maxval, ==, expected_maxval);
+        else
+            assert_double(fabs(maxval - expected_maxval), <=, ulp);
     }
 }
 
@@ -464,6 +529,20 @@ MU_TEST(ndarray_numeric_conversion) {
     void *array = NULL;
     asdf_ndarray_err_t n_err = asdf_ndarray_read_all(ndarray, dst_t, &array);
 
+#ifndef HAVE_FLOAT16
+    /* If float16 is not supported the correct behavior
+     * is to return an error
+     */
+    if (src_t == ASDF_DATATYPE_FLOAT16 || dst_t == ASDF_DATATYPE_FLOAT16) {
+        munit_log(
+            MUNIT_LOG_INFO, "src or destination datatype is float16 but "
+            "libasdf compiled without float16 support; test should pass "
+            "only if ASDF_NDARRAY_ERR_CONVERSION was returned");
+        assert_int(n_err, ==, ASDF_NDARRAY_ERR_CONVERSION);
+        goto cleanup;
+    }
+#endif
+
     if (should_overflow(src_t, dst_t))
         assert_int(n_err, ==, ASDF_NDARRAY_ERR_OVERFLOW);
     else
@@ -471,6 +550,9 @@ MU_TEST(ndarray_numeric_conversion) {
 
     assert_not_null(array);
     check_expected_values(array, src_t, dst_t);
+#ifndef HAVE_FLOAT16
+cleanup:
+#endif
     free(array);
     asdf_ndarray_destroy(ndarray);
     asdf_close(file);

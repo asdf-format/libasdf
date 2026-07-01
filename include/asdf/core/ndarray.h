@@ -24,7 +24,7 @@
  * What is not yet supported:
  *
  * * Shape containing '*'
- * * Reading ``complex64`` or ``complex128``, or ``float16`` datatypes
+ * * Reading ``complex64`` or ``complex128`` datatypes
  * * Reading string datatypes (``ascii`` or ``ucs4``)
  * * Reading structured datatypes (the datatypes are parsed but there is are
  *   no APIs yet for interpreting structured array data)
