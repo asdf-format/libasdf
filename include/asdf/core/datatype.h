@@ -57,7 +57,7 @@ typedef enum {
     ASDF_DATATYPE_INT64,
     /** Unsigned 64-bit integer */
     ASDF_DATATYPE_UINT64,
-    /** 16-bit IEEE float (not yet fully supported) */
+    /** 16-bit IEEE float (dependent on compiler support) */
     ASDF_DATATYPE_FLOAT16,
     /** 32-bit IEEE float */
     ASDF_DATATYPE_FLOAT32,

@@ -62,6 +62,22 @@ check_endian_decl(htole32)
 check_function_exists(strptime HAVE_STRPTIME)
 
 
+# Check for usable _Float16 for datatype support
+# Requires that `isinf` works, as that is used in some of the datatype
+# conversion routines.
+check_c_source_compiles("
+    #include <math.h>
+    int main(void) {
+        _Float16 h = 1.5f16;
+        float f = (float)h; /* widen */
+        h = (_Float16)f;    /* narrow */
+        int i = (int)h;     /* round-to-int */
+        (void)i; (void)isinf(f);
+        return 0;
+    }
+" HAVE_FLOAT16)
+
+
 # Check for userfaultfd (for lazy decompression support, Linux only currently)
 check_include_file("linux/userfaultfd.h" HAVE_LINUX_USERFAULTFD_H)
 check_c_source_compiles("

@@ -54,6 +54,7 @@
 #cmakedefine HAVE_LZ4
 #cmakedefine HAVE_ZLIB
 #cmakedefine HAVE_STATGRAB
+#cmakedefine HAVE_FLOAT16
 #cmakedefine HAVE_USERFAULTFD
 #cmakedefine HAVE_DECL_SYS_USERFAULTFD
 

@@ -45,6 +45,29 @@ AX_CHECK_ENDIAN_DECL([htole32])
 # Check functions
 AC_CHECK_FUNCS([strptime])
 
+# Check for usable _Float16 for datatype support
+# Requires that `isinf` works, as that is used in some of the datatype
+# conversion routines.
+AC_MSG_CHECKING([for usable _Float16])
+AC_COMPILE_IFELSE(
+  [AC_LANG_PROGRAM([[
+    #include <math.h>
+  ]], [[
+    _Float16 h = 1.5f16;
+    float f = (float)h; /* widen */
+    h = (_Float16)f;    /* narrow */
+    int i = (int)h;     /* round-to-int */
+    (void)i; (void)isinf(f);
+  ]])],
+  [have_float16=yes],
+  [have_float16=no]
+)
+AC_MSG_RESULT([$have_float16])
+AS_IF([test "x$have_float16" = "xyes"], [
+  AC_DEFINE([HAVE_FLOAT16], [1],
+            [Define to 1 if the _Float16 type and its conversions are usable])
+])
+
 # Check for userfaultfd (for lazy decompression support, Linux only currently)
 AC_CHECK_HEADERS([linux/userfaultfd.h], [], [])
 AC_COMPILE_IFELSE(

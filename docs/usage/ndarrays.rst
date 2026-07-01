@@ -57,9 +57,9 @@ one in yourself, typically on the stack.  The publicly visible fields are:
 .. note::
 
    Only a subset of full ndarray functionality is implemented so far.  In
-   particular ``complex`` and ``float16`` datatypes, string (``ascii`` /
-   ``ucs4``) and structured datatypes, masks, and arbitrarily strided data are
-   not yet fully supported for reading.  See the 
+   particular ``complex`` datatypes, string (``ascii`` / ``ucs4``) and
+   structured datatypes, masks, and arbitrarily strided data are not yet fully
+   supported for reading.  See the
    `asdf/core/ndarray.h <https://github.com/asdf-format/libasdf/blob/main/include/asdf/core/ndarray.h>`__
    header for the current status.
 
