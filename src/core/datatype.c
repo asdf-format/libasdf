@@ -129,9 +129,6 @@ const char *asdf_scalar_datatype_to_string(asdf_scalar_datatype_t datatype) {
 
 
 #ifdef ASDF_LOG_ENABLED
-static void warn_unsupported_datatype(UNUSED(asdf_value_t *value)) {
-}
-#else
 static void warn_unsupported_datatype(asdf_value_t *value) {
     const char *path = asdf_value_path(value);
     ASDF_LOG(
@@ -141,6 +138,9 @@ static void warn_unsupported_datatype(asdf_value_t *value) {
         "that the current version only supports basic scalar numeric (non-string) "
         "datatypes",
         path);
+}
+#else
+static void warn_unsupported_datatype(UNUSED(asdf_value_t *value)) {
 }
 #endif
 

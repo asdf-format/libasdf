@@ -57,9 +57,6 @@ asdf_block_t *asdf_ndarray_block(asdf_ndarray_t *ndarray) {
 
 
 #ifdef ASDF_LOG_ENABLED
-static void warn_invalid_strides(UNUSED(asdf_value_t *value)) {
-}
-#else
 static void warn_invalid_strides(asdf_value_t *value) {
     const char *path = asdf_value_path(value);
     ASDF_LOG(
@@ -69,9 +66,13 @@ static void warn_invalid_strides(asdf_value_t *value) {
         "non-zero integers with the same length as shape",
         path);
 }
+#else
+static void warn_invalid_strides(UNUSED(asdf_value_t *value)) {
+}
 #endif
 
 
+#ifdef ASDF_LOG_ENABLED
 typedef struct {
     asdf_scalar_datatype_t type;
     unsigned int major;
@@ -90,7 +91,6 @@ static const ndarray_datatype_version_t ndarray_datatype_versions[] = {
  * version that introduced it; the value is still read
  */
 static void warn_datatype_tag_version(asdf_value_t *value, const asdf_datatype_t *datatype) {
-#ifdef ASDF_LOG_ENABLED
     const char *tag = asdf_value_tag(value);
 
     if (!tag)
@@ -132,11 +132,11 @@ static void warn_datatype_tag_version(asdf_value_t *value, const asdf_datatype_t
 
 cleanup:
     asdf_tag_destroy(parsed);
-#else
-    (void)value;
-    (void)datatype;
-#endif
 }
+#else
+static void warn_datatype_tag_version(asdf_value_t *value, const asdf_datatype_t *datatype) {
+}
+#endif
 
 
 /**
