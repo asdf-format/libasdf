@@ -59,7 +59,8 @@ unit_test_cppflags = \
     $(unit_test_base_cppflags)
 
 unit_test_cflags = \
-    $(munit_cflags) $(FYAML_CFLAGS) $(STATGRAB_CFLAGS) $(LZ4_CFLAGS) $(CODE_COVERAGE_CFLAGS) $(ASDF_CFLAGS)
+    $(munit_cflags) $(FYAML_CFLAGS) $(STATGRAB_CFLAGS) $(LZ4_CFLAGS) $(CODE_COVERAGE_CFLAGS) $(ASDF_CFLAGS) \
+    -fmacro-prefix-map=$(top_srcdir)/=
 unit_test_ldflags =
 
 if DEBUG

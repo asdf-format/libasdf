@@ -68,8 +68,14 @@ foreach(source_file ${source_files})
     add_executable(${test_executable} ${source_file})
     if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
         target_compile_options(${test_executable} PRIVATE ${nix_cflags} ${nix_gnu_cflags})
+        # Make __FILE__ names relative to source root
+        target_compile_options(${test_executable} PRIVATE
+            -fmacro-prefix-map=${CMAKE_SOURCE_DIR}/=)
     elseif (CMAKE_C_COMPILER_ID MATCHES "Clang")
         target_compile_options(${test_executable} PRIVATE ${nix_cflags} ${nix_clang_cflags})
+        # Make __FILE__ names relative to source root
+        target_compile_options(${test_executable} PRIVATE
+            -fmacro-prefix-map=${CMAKE_SOURCE_DIR}/=)
     elseif (CMAKE_C_COMPILER_ID STREQUAL "MSVC")
         target_compile_options(${test_executable} PRIVATE ${win_cflags} ${win_msvc_cflags})
     endif()

@@ -106,10 +106,14 @@ static int check_block_checksums(asdf_file_t *file, const char *relative_path) {
 }
 
 
-/* Returns the number of tagged values in the file that could not be read */
-static int check_reference_file(const char *dirname, const char *filename) {
-    char relative_path[NAME_MAX * 2 + 2] = {0};
-    snprintf(relative_path, sizeof(relative_path), "%s/%s", dirname, filename);
+/*
+ * Returns the number of problems found in the file: tagged values that could
+ * not be read, plus blocks with an invalid checksum
+ */
+static int check_reference_file(const char *relative_path) {
+    /* The exceptions are keyed on the basename, not the version directory */
+    const char *sep = strrchr(relative_path, '/');
+    const char *filename = sep ? sep + 1 : relative_path;
 
     asdf_file_t *file = asdf_open(get_reference_file_path(relative_path), "r");
 
@@ -264,39 +268,98 @@ static bool is_asdf_file(const struct dirent *entry) {
     return ext && 0 == strcmp(ext, ".asdf");
 }
 
+#define DEFINE_INT_WITH_LINENO(name, value) \
+    enum { name = (value), name##_LINENO = __LINE__ }
 
-MU_TEST(reference_files_deserialize) {
+/*
+ * The reference files are discovered at runtime rather than listed here, so
+ * that new ones are picked up automatically.  They are stored statically: the
+ * parameter array must outlive main, and freeing it from a destructor would
+ * run after LeakSanitizer has already reported it.
+ */
+DEFINE_INT_WITH_LINENO(MAX_REFERENCE_FILES, 256);
+#define MAX_RELATIVE_PATH (NAME_MAX * 2 + 2)
+
+
+static char reference_file_paths[MAX_REFERENCE_FILES][MAX_RELATIVE_PATH];
+static char *reference_file_values[MAX_REFERENCE_FILES + 1];
+static size_t reference_file_count = 0;
+static bool reference_files_overflowed = false;
+
+
+static MunitParameterEnum reference_file_params[] = {
+    {"file", NULL},
+    {NULL, NULL},
+};
+
+
+__attribute__((constructor)) static void collect_reference_files(void) {
     char **versions = list_dir(REFERENCE_FILES_DIR, is_version_dir);
-    assert_not_null(versions);
-    assert_not_null(versions[0]);
 
-    int failures = 0;
-    int checked = 0;
+    if (!versions)
+        return;
 
     for (char **version = versions; *version; version++) {
         char **filenames = list_dir(get_reference_file_path(*version), is_asdf_file);
-        assert_not_null(filenames);
+
+        if (!filenames)
+            continue;
 
         for (char **filename = filenames; *filename; filename++) {
-            failures += check_reference_file(*version, *filename);
-            checked++;
+            if (reference_file_count >= MAX_REFERENCE_FILES) {
+                reference_files_overflowed = true;
+            }
+
+            if (!reference_files_overflowed) {
+                char *path = reference_file_paths[reference_file_count];
+                snprintf(path, MAX_RELATIVE_PATH, "%s/%s", *version, *filename);
+                reference_file_values[reference_file_count] = path;
+            }
+            reference_file_count++;
         }
 
         free_names(filenames);
     }
 
     free_names(versions);
+    reference_file_values[reference_file_count] = NULL;
+    reference_file_params[0].values = reference_file_values;
+}
 
-    /* Guard against the reference files having gone missing entirely */
-    assert_int(checked, >, 0);
-    assert_int(failures, ==, 0);
+
+/* Guards against the reference files having gone missing, or outgrown the array
+ *
+ * If this test fails it means the number of reference files has outgrown
+ * the `MAX_REFERENCE_FILES` defined above.  In that case just increase
+ * `MAX_REFERENCE_FILES`.
+ */
+MU_TEST(reference_files_found) {
+    assert_size(reference_file_count, >, 0);
+    if (!reference_files_overflowed)
+        return MUNIT_OK;
+
+    munit_logf(MUNIT_LOG_ERROR, "number of reference files in %s has outgrown "
+               "MAX_REFERENCE_FILES defined at %s:%d (%zu > %d); in this case "
+               "the value of MAX_REFERENCE_FILES must be increased and the "
+               "test recompiled", REFERENCE_FILES_DIR, __FILE__,
+               MAX_REFERENCE_FILES_LINENO, reference_file_count,
+               MAX_REFERENCE_FILES);
+    return MUNIT_FAIL;
+}
+
+
+MU_TEST(reference_file) {
+    const char *relative_path = munit_parameters_get(params, "file");
+    assert_not_null(relative_path);
+    assert_int(check_reference_file(relative_path), ==, 0);
     return MUNIT_OK;
 }
 
 
 MU_TEST_SUITE(
     reference_files,
-    MU_RUN_TEST(reference_files_deserialize)
+    MU_RUN_TEST(reference_files_found),
+    MU_RUN_TEST(reference_file, reference_file_params)
 );
 
 
