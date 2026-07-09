@@ -1348,9 +1348,7 @@ cleanup:
 
 
 /*
- * Define the extension for the core/ndarray-1.1.0 schema
- *
- * TODO: Also support ndarray-1.0.0
+ * Define the extension for the core/ndarray-x.y.z schema
  */
 static const asdf_extension_vtab_t asdf_ndarray_vtab = {
     .serialize = asdf_ndarray_serialize,
