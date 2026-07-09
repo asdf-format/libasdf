@@ -5,16 +5,16 @@
 #include "munit.h"
 #include "util.h"
 
-#include <asdf/core/asdf.h>
-#include <asdf/core/datatype.h>
-#include <asdf/core/extension_metadata.h>
-#include <asdf/core/time.h>
-#include <asdf/core/history_entry.h>
-#include <asdf/core/ndarray.h>
-#include <asdf/core/software.h>
-#include <asdf/extension.h>
-#include <asdf/file.h>
-#include <asdf/value.h>
+#include "asdf/core/asdf.h"
+#include "asdf/core/datatype.h"
+#include "asdf/core/extension_metadata.h"
+#include "asdf/core/time.h"
+#include "asdf/core/history_entry.h"
+#include "asdf/core/ndarray.h"
+#include "asdf/core/software.h"
+#include "asdf/extension.h"
+#include "asdf/file.h"
+#include "asdf/value.h"
 
 
 /* TODO: Should have more tests for this, for now just using one test case that's already lying

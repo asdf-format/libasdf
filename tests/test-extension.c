@@ -4,11 +4,11 @@
 #include "munit.h"
 #include "util.h"
 
-#include <asdf/core/software.h>
-#include <asdf/extension.h>
-#include <asdf/file.h>
-#include <asdf/util.h>
-#include <asdf/version.h>
+#include "asdf/core/software.h"
+#include "asdf/extension.h"
+#include "asdf/file.h"
+#include "asdf/util.h"
+#include "asdf/version.h"
 
 
 /* Struct that represents the "foo" type extension */

@@ -457,7 +457,8 @@ ASDF_REGISTER_EXTENSION(
     &libasdf_software,
     &asdf_meta_vtab,
     NULL,
-    ASDF_CORE_ASDF_TAG);
+    ASDF_CORE_ASDF_TAG,
+    ASDF_CORE_TAG_PREFIX "asdf-1.0.0");
 // clang-format on
 
 

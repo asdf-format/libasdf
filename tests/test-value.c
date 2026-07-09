@@ -6,10 +6,10 @@
 
 #include <libfyaml.h>
 
-#include <asdf/core/asdf.h>
-#include <asdf/core/ndarray.h>
-#include <asdf/file.h>
-#include <asdf/value.h>
+#include "asdf/core/asdf.h"
+#include "asdf/core/ndarray.h"
+#include "asdf/file.h"
+#include "asdf/value.h"
 
 #include "munit.h"
 #include "util.h"
