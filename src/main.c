@@ -15,6 +15,7 @@
 #include "file.h"
 #include "info.h"
 #include "parser.h"
+#include "util.h"
 
 const char *argp_program_version = PACKAGE_STRING;
 const char *argp_program_bug_address = PACKAGE_BUGREPORT;
@@ -671,7 +672,7 @@ static const asdf_subcmd_def_t subcmds[] = {
     [ASDF_SUBCMD_VERIFY_CHECKSUMS] = {"verify-checksums", verify_checksums_doc, verify_checksums_main},
 };
 // clang-format on
-#define N_SUBCMDS (sizeof(subcmds) / sizeof(subcmds[0]))
+#define N_SUBCMDS ARRAY_SIZE(subcmds)
 
 
 /* Help filter for the global parser.  Intercepts ARGP_KEY_HELP_PRE_DOC to

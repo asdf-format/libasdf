@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/mman.h>
 
 #ifdef HAVE_CONFIG_H
@@ -69,6 +70,73 @@ static void warn_invalid_strides(asdf_value_t *value) {
         path);
 }
 #endif
+
+
+typedef struct {
+    asdf_scalar_datatype_t type;
+    unsigned int major;
+    unsigned int minor;
+} ndarray_datatype_version_t;
+
+
+/* Scalar datatypes introduced after ndarray-1.0.0 */
+static const ndarray_datatype_version_t ndarray_datatype_versions[] = {
+    {ASDF_DATATYPE_FLOAT16, 1, 1},
+};
+
+
+/*
+ * Warn if a datatype is used under an ndarray tag older than the schema
+ * version that introduced it; the value is still read
+ */
+static void warn_datatype_tag_version(asdf_value_t *value, const asdf_datatype_t *datatype) {
+#ifdef ASDF_LOG_ENABLED
+    const char *tag = asdf_value_tag(value);
+
+    if (!tag)
+        return;
+
+    asdf_tag_t *parsed = asdf_tag_parse(tag);
+
+    if (!parsed)
+        return;
+
+    const asdf_version_t *version = parsed->version;
+
+    /* A version that did not parse as MAJOR.MINOR.PATCH is left all-zero */
+    if (!version || (0 == version->major && 0 == version->minor && 0 == version->patch))
+        goto cleanup;
+
+    for (size_t idx = 0; idx < ARRAY_SIZE(ndarray_datatype_versions); idx++) {
+        const ndarray_datatype_version_t *introduced = &ndarray_datatype_versions[idx];
+
+        if (introduced->type != datatype->type)
+            continue;
+
+        if (version->major > introduced->major ||
+            (version->major == introduced->major && version->minor >= introduced->minor))
+            continue;
+
+        const char *path = asdf_value_path(value);
+        ASDF_LOG(
+            value->file,
+            ASDF_LOG_WARN,
+            "ndarray at %s has a %s datatype, which was only introduced in %s-%u.%u.0",
+            path,
+            asdf_scalar_datatype_to_string(datatype->type),
+            parsed->name,
+            introduced->major,
+            introduced->minor);
+        break;
+    }
+
+cleanup:
+    asdf_tag_destroy(parsed);
+#else
+    (void)value;
+    (void)datatype;
+#endif
+}
 
 
 /**
@@ -635,6 +703,8 @@ static asdf_value_err_t asdf_ndarray_deserialize_inline(
     /* Mark as inline so the same ndarray re-serializes inline by default */
     ndarray->internal->array_storage = ASDF_ARRAY_STORAGE_INLINE;
 
+    warn_datatype_tag_version(value, &ndarray->datatype);
+
     *out = ndarray;
     err = ASDF_VALUE_OK;
 
@@ -751,6 +821,8 @@ static asdf_value_err_t asdf_ndarray_deserialize(
 
     if (ASDF_IS_ERR(err))
         goto cleanup;
+
+    warn_datatype_tag_version(value, &ndarray->datatype);
 
     ndarray->source = source;
     internal->file = value->file;
@@ -1295,7 +1367,10 @@ ASDF_REGISTER_EXTENSION(
     &libasdf_software,
     &asdf_ndarray_vtab,
     NULL,
-    ASDF_CORE_NDARRAY_TAG);
+    ASDF_CORE_NDARRAY_TAG,
+    /* ndarray-1.1.0 adds float16 and requires one of source/data; otherwise
+     * 1.0.0 is read by the same deserializer */
+    ASDF_CORE_TAG_PREFIX "ndarray-1.0.0");
 // clang-format on
 
 
