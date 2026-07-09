@@ -104,14 +104,14 @@ static asdf_value_err_t asdf_software_deserialize(
     asdf_value_destroy(prop);
 
     prop = asdf_mapping_get(software_map, "homepage");
-    if (ASDF_VALUE_OK != asdf_value_as_string0(prop, &homepage))
+    if (prop && ASDF_VALUE_OK != asdf_value_as_string0(prop, &homepage))
         ASDF_LOG(
             value->file, ASDF_LOG_WARN, "ignoring invalid value for for homepage in software tag");
 
     asdf_value_destroy(prop);
 
     prop = asdf_mapping_get(software_map, "author");
-    if (ASDF_VALUE_OK != asdf_value_as_string0(prop, &author))
+    if (prop && ASDF_VALUE_OK != asdf_value_as_string0(prop, &author))
         ASDF_LOG(
             value->file, ASDF_LOG_WARN, "ignoring invalid value for for author in software tag");
 
