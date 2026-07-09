@@ -40,34 +40,61 @@ typedef struct {
 } asdf_software_t;
 
 
+/**
+ * Serialize a native object into an `asdf_value_t`
+ *
+ * :param file: The `asdf_file_t *` the value is created for
+ * :param obj: The native object to serialize
+ * :param userdata: The extension's ``userdata``
+ * :return: The new `asdf_value_t *`, or ``NULL`` on failure
+ */
 typedef asdf_value_t *(*asdf_extension_serialize_t)(
     asdf_file_t *file, const void *obj, const void *userdata);
 
 
+/**
+ * Deserialize an `asdf_value_t` into a native object
+ *
+ * :param value: The raw `asdf_value_t *` read from the file
+ * :param userdata: The extension's ``userdata``
+ * :param out: Set to the newly allocated native object on success
+ * :return: ``ASDF_VALUE_OK`` on success, otherwise an error code
+ */
 typedef asdf_value_err_t (*asdf_extension_deserialize_t)(
     asdf_value_t *value, const void *userdata, void **out);
 
 
+/**
+ * Deep-copy a native object
+ *
+ * :param obj: The native object to copy
+ * :return: The newly allocated copy, or ``NULL`` on failure
+ */
 typedef void *(*asdf_extension_copy_t)(const void *obj);
 
 
+/**
+ * Free a native object produced by an `asdf_extension_deserialize_t`
+ *
+ * :param obj: The native object to free
+ */
 typedef void (*asdf_extension_dealloc_t)(void *obj);
 
 
 /**
- * Table of callbacks implementing an extension's behavior
+ * Table of the methods implementing an extension's behavior
  *
  * Extension authors define one of these statically and pass a pointer to it to
  * `ASDF_REGISTER_EXTENSION`.
  */
 typedef struct {
-    /** Serialize a native object into an `asdf_value_t`, or ``NULL`` */
+    /** Serializer for the extension type, or ``NULL`` if it cannot be written */
     asdf_extension_serialize_t serialize;
-    /** Deserialize an `asdf_value_t` into a native object */
+    /** Deserializer for the extension type */
     asdf_extension_deserialize_t deserialize;
-    /** Deep-copy callback, or ``NULL`` for a shallow copy */
+    /** Deep-copy method, or ``NULL`` for a shallow copy */
     asdf_extension_copy_t copy;
-    /** Free a native object produced by ``deserialize`` */
+    /** Method to free objects produced by ``deserialize`` */
     asdf_extension_dealloc_t dealloc;
 } asdf_extension_vtab_t;
 
