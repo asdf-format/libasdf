@@ -199,13 +199,20 @@ failure:
 }
 
 
+static const asdf_extension_vtab_t asdf_extension_metadata_vtab = {
+    .serialize = asdf_extension_metadata_serialize,
+    .deserialize = asdf_extension_metadata_deserialize,
+    .copy = asdf_extension_metadata_copy,
+    .dealloc = asdf_extension_metadata_dealloc,
+};
+
+
+// clang-format off
 ASDF_REGISTER_EXTENSION(
     extension_metadata,
-    ASDF_CORE_EXTENSION_METADATA_TAG,
     asdf_extension_metadata_t,
     &libasdf_software,
-    asdf_extension_metadata_serialize,
-    asdf_extension_metadata_deserialize,
-    asdf_extension_metadata_copy,
-    asdf_extension_metadata_dealloc,
-    NULL);
+    &asdf_extension_metadata_vtab,
+    NULL,
+    ASDF_CORE_EXTENSION_METADATA_TAG);
+// clang-format on

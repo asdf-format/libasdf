@@ -54,13 +54,34 @@ typedef void *(*asdf_extension_copy_t)(const void *obj);
 typedef void (*asdf_extension_dealloc_t)(void *obj);
 
 
-struct _asdf_extension {
-    const char *tag;
-    asdf_software_t *software;
+/**
+ * Table of callbacks implementing an extension's behavior
+ *
+ * Extension authors define one of these statically and pass a pointer to it to
+ * `ASDF_REGISTER_EXTENSION`.
+ */
+typedef struct {
+    /** Serialize a native object into an `asdf_value_t`, or ``NULL`` */
     asdf_extension_serialize_t serialize;
+    /** Deserialize an `asdf_value_t` into a native object */
     asdf_extension_deserialize_t deserialize;
+    /** Deep-copy callback, or ``NULL`` for a shallow copy */
     asdf_extension_copy_t copy;
+    /** Free a native object produced by ``deserialize`` */
     asdf_extension_dealloc_t dealloc;
+} asdf_extension_vtab_t;
+
+
+struct _asdf_extension {
+    /**
+     * ``NULL``-terminated array of full YAML tags this extension handles
+     *
+     * ``tags[0]`` is written when serializing a newly created or replaced
+     * object of this type; any of the listed tags is recognized when reading.
+     */
+    const char *const *tags;
+    asdf_software_t *software;
+    const asdf_extension_vtab_t *vtab;
     void *userdata;
 };
 
@@ -119,15 +140,15 @@ ASDF_EXPORT void asdf_tag_destroy(asdf_tag_t *tag);
 #define ASDF_EXT_STATIC_NAME(extname) ASDF_EXPAND(ASDF_EXT_PREFIX, _##extname##_extension)
 
 
-#define ASDF_EXT_DEFINE( \
-    extname, _tag, _software, _serialize, _deserialize, _copy, _dealloc, _userdata) \
+#define ASDF_EXT_TAGS_NAME(extname) ASDF_EXPAND(ASDF_EXT_PREFIX, _##extname##_extension_tags)
+
+
+#define ASDF_EXT_DEFINE(extname, _software, _vtab, _userdata, ...) \
+    static const char *const ASDF_EXT_TAGS_NAME(extname)[] = {__VA_ARGS__, NULL}; \
     static asdf_extension_t ASDF_EXT_STATIC_NAME(extname) = { \
-        .tag = (_tag), \
+        .tags = ASDF_EXT_TAGS_NAME(extname), \
         .software = (_software), \
-        .serialize = (_serialize), \
-        .deserialize = (_deserialize), \
-        .copy = (_copy), \
-        .dealloc = (_dealloc), \
+        .vtab = (_vtab), \
         .userdata = (_userdata)}
 
 
@@ -184,14 +205,14 @@ ASDF_EXPORT void asdf_tag_destroy(asdf_tag_t *tag);
         asdf_extension_t *ext = &ASDF_EXT_STATIC_NAME(extname); \
         if (!ext) \
             return NULL; \
-        if (!ext->copy) { \
+        if (!ext->vtab || !ext->vtab->copy) { \
             void *clone = malloc(sizeof(type)); \
             if (!clone) \
                 return NULL; \
             memcpy(clone, object, sizeof(type)); \
             return clone; \
         } \
-        return (type *)ext->copy(object); \
+        return (type *)ext->vtab->copy(object); \
     }
 
 
@@ -228,9 +249,9 @@ ASDF_EXPORT void asdf_tag_destroy(asdf_tag_t *tag);
         if (!object) \
             return; \
         asdf_extension_t *ext = &ASDF_EXT_STATIC_NAME(extname); \
-        if (!ext && ext->dealloc) \
+        if (!ext->vtab || !ext->vtab->dealloc) \
             return; \
-        ext->dealloc(object); \
+        ext->vtab->dealloc(object); \
     }
 
 
@@ -249,23 +270,26 @@ ASDF_EXPORT void asdf_tag_destroy(asdf_tag_t *tag);
  * ``asdf_<extname>_clone``, ``asdf_<extname>_array_clone``, and
  * ``asdf_<extname>_destroy``.
  *
+ * One or more YAML tags are passed as trailing arguments; the extension is
+ * registered for each of them, so a single extension can handle several
+ * versions of the same schema.  At least one tag is required.  When an object
+ * of this type is serialized it is written with the *first* tag listed, so put
+ * the preferred tag first.  Values read from a file and left unmodified keep
+ * the tag they were read with.
+ *
  * :param extname: Base name for the generated functions (need not match the
  *   C ``type``)
- * :param tag: The YAML tag string the extension is registered for
  * :param type: The C type the extension deserializes to (e.g. ``asdf_foo_t``)
  * :param software: Pointer to an `asdf_software_t` describing the software that
  *   implements the extension
- * :param serialize: A ``asdf_extension_serialize_t`` callback, or ``NULL``
- * :param deserialize: A ``asdf_extension_deserialize_t`` callback
- * :param copy: A ``asdf_extension_copy_t`` deep-copy callback, or ``NULL`` for
- *   a shallow copy
- * :param dealloc: A ``asdf_extension_dealloc_t`` callback to free the type
+ * :param vtab: Pointer to an `asdf_extension_vtab_t` holding the extension's
+ *   callbacks
  * :param userdata: Optional ``void *`` passed through to the callbacks, or
  *   ``NULL``
+ * :param ...: One or more YAML tag strings the extension is registered for
  */
-#define ASDF_REGISTER_EXTENSION( \
-    extname, tag, type, software, serialize, deserialize, copy, dealloc, userdata) \
-    ASDF_EXT_DEFINE(extname, tag, software, serialize, deserialize, copy, dealloc, userdata); \
+#define ASDF_REGISTER_EXTENSION(extname, type, software, vtab, userdata, ...) \
+    ASDF_EXT_DEFINE(extname, software, vtab, userdata, __VA_ARGS__); \
     ASDF_EXT_DEFINE_VALUE_AS_TYPE(extname, type) \
     ASDF_EXT_DEFINE_VALUE_IS_TYPE(extname) \
     ASDF_EXT_DEFINE_VALUE_OF_TYPE(extname, type) \

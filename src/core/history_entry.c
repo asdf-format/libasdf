@@ -178,7 +178,7 @@ static asdf_value_err_t asdf_history_entry_deserialize(
         const asdf_extension_t *time_ext = asdf_extension_get(value->file, ASDF_CORE_TIME_TAG);
         if (time_ext) {
             bool valid_time = false;
-            time_ext->deserialize(prop, NULL, (void *)&time);
+            time_ext->vtab->deserialize(prop, NULL, (void *)&time);
 
             if (time) {
                 valid_time = true;
@@ -298,16 +298,23 @@ failure:
 /* Define the extension for the core/history_entry-1.0.0 schema
  *
  */
+static const asdf_extension_vtab_t asdf_history_entry_vtab = {
+    .serialize = asdf_history_entry_serialize,
+    .deserialize = asdf_history_entry_deserialize,
+    .copy = asdf_history_entry_copy,
+    .dealloc = asdf_history_entry_dealloc,
+};
+
+
+// clang-format off
 ASDF_REGISTER_EXTENSION(
     history_entry,
-    ASDF_CORE_HISTORY_ENTRY_TAG,
     asdf_history_entry_t,
     &libasdf_software,
-    asdf_history_entry_serialize,
-    asdf_history_entry_deserialize,
-    asdf_history_entry_copy,
-    asdf_history_entry_dealloc,
-    NULL);
+    &asdf_history_entry_vtab,
+    NULL,
+    ASDF_CORE_HISTORY_ENTRY_TAG);
+// clang-format on
 
 
 /** Additional history entry methods */

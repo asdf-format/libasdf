@@ -195,16 +195,23 @@ failure:
 }
 
 
+static const asdf_extension_vtab_t asdf_software_vtab = {
+    .serialize = asdf_software_serialize,
+    .deserialize = asdf_software_deserialize,
+    .copy = asdf_software_copy,
+    .dealloc = asdf_software_dealloc,
+};
+
+
+// clang-format off
 ASDF_REGISTER_EXTENSION(
     software,
-    ASDF_CORE_SOFTWARE_TAG,
     asdf_software_t,
     &libasdf_software,
-    asdf_software_serialize,
-    asdf_software_deserialize,
-    asdf_software_copy,
-    asdf_software_dealloc,
-    NULL);
+    &asdf_software_vtab,
+    NULL,
+    ASDF_CORE_SOFTWARE_TAG);
+// clang-format on
 
 
 /** Additional software-related methods */

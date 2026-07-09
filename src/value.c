@@ -1487,7 +1487,7 @@ asdf_value_err_t asdf_value_as_extension_type(
         return ASDF_VALUE_OK;
     }
 
-    assert(ext->deserialize);
+    assert(ext->vtab && ext->vtab->deserialize);
     // Clone the raw value without existing extension inference to pass to the the extension's
     // deserialize method.
     asdf_value_t *raw_value = asdf_value_clone_impl(value, true);
@@ -1497,7 +1497,7 @@ asdf_value_err_t asdf_value_as_extension_type(
         return ASDF_VALUE_ERR_OOM;
     }
 
-    asdf_value_err_t err = ext->deserialize(raw_value, ext->userdata, out);
+    asdf_value_err_t err = ext->vtab->deserialize(raw_value, ext->userdata, out);
     asdf_value_destroy(raw_value);
 
     if (ASDF_VALUE_OK == err)
@@ -1511,8 +1511,12 @@ asdf_value_err_t asdf_value_as_extension_type(
 asdf_value_t *asdf_value_of_extension_type(
     asdf_file_t *file, const void *obj, const asdf_extension_t *ext) {
 
-    if (!ext->serialize) {
-        ASDF_ERROR_COMMON(file, ASDF_ERR_EXTENSION_NOT_FOUND, ext->tag);
+    // The first tag registered with an extension is the one written for newly
+    // serialized objects
+    const char *tag = (ext->tags && ext->tags[0]) ? ext->tags[0] : NULL;
+
+    if (!tag || !ext->vtab || !ext->vtab->serialize) {
+        ASDF_ERROR_COMMON(file, ASDF_ERR_EXTENSION_NOT_FOUND, tag ? tag : "(untagged)");
         return NULL;
     }
 
@@ -1530,7 +1534,7 @@ asdf_value_t *asdf_value_of_extension_type(
     //
     // Should also look into better managing exactly when to attach a new block
     // to the file for an ndarray; look to the Python library for inspiration
-    asdf_value_t *value = ext->serialize(file, obj, ext->userdata);
+    asdf_value_t *value = ext->vtab->serialize(file, obj, ext->userdata);
 
     // TODO: Might be better if serialize also returned an asdf_value_t so we
     // can report serialization errors better
@@ -1546,9 +1550,9 @@ asdf_value_t *asdf_value_of_extension_type(
     value->scalar.ext = new_ext;
     value->extension_checked = true;
     value->type = ASDF_VALUE_EXTENSION;
-    value->tag = strdup(ext->tag);
+    value->tag = strdup(tag);
 
-    const char *normalized_tag = asdf_file_tag_normalize(file, ext->tag);
+    const char *normalized_tag = asdf_file_tag_normalize(file, tag);
 
     if (!normalized_tag) {
         ASDF_ERROR_OOM(file);

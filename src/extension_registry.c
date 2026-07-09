@@ -56,28 +56,39 @@ void asdf_extension_register(asdf_extension_t *ext) {
     /* TODO: Handle tag overlaps on registration */
     // Ensure extension map initialized
     asdf_extension_map_create();
-    const char *tag = ext->tag;
+
+    const char *tag = NULL;
+    char *full_tag = NULL;
 
 #ifdef ASDF_LOG_ENABLED
     asdf_global_context_t *ctx = asdf_global_context_get();
 #endif
 
-    char *full_tag = asdf_yaml_tag_canonicalize(tag);
-    if (!full_tag) {
-#ifdef ASDF_LOG_ENABLED
-        ASDF_LOG(ctx, ASDF_LOG_FATAL, "failed to allocate memory for extension tag %s", tag);
-#endif
+    if (!ext->tags)
         return;
-    }
-    asdf_extension_map_result res = asdf_extension_map_emplace(&extension_map, full_tag, ext);
+
+    // The extension is registered once per tag it declares support for; all
+    // entries map to the same asdf_extension_t
+    for (size_t idx = 0; (tag = ext->tags[idx]); idx++) {
+        full_tag = asdf_yaml_tag_canonicalize(tag);
+        if (!full_tag) {
+#ifdef ASDF_LOG_ENABLED
+            ASDF_LOG(ctx, ASDF_LOG_FATAL, "failed to allocate memory for extension tag %s", tag);
+#endif
+            return;
+        }
+        asdf_extension_map_result res = asdf_extension_map_emplace(&extension_map, full_tag, ext);
 
 #ifdef ASDF_LOG_ENABLED
-    /* TODO: Improve extension registration logging; more details about each extension */
-    if (res.inserted)
-        ASDF_LOG(ctx, ASDF_LOG_DEBUG, "registered extension for tag %s", full_tag);
-    else
-        ASDF_LOG(ctx, ASDF_LOG_WARN, "failed to register extension for tag %s", full_tag);
+        /* TODO: Improve extension registration logging; more details about each extension */
+        if (res.inserted)
+            ASDF_LOG(ctx, ASDF_LOG_DEBUG, "registered extension for tag %s", full_tag);
+        else
+            ASDF_LOG(ctx, ASDF_LOG_WARN, "failed to register extension for tag %s", full_tag);
+#else
+        (void)res;
 #endif
 
-    free(full_tag);
+        free(full_tag);
+    }
 }

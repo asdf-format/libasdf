@@ -1280,16 +1280,23 @@ cleanup:
  *
  * TODO: Also support ndarray-1.0.0
  */
+static const asdf_extension_vtab_t asdf_ndarray_vtab = {
+    .serialize = asdf_ndarray_serialize,
+    .deserialize = asdf_ndarray_deserialize,
+    .copy = NULL, /* TODO: copy */
+    .dealloc = asdf_ndarray_dealloc,
+};
+
+
+// clang-format off
 ASDF_REGISTER_EXTENSION(
     ndarray,
-    ASDF_CORE_NDARRAY_TAG,
     asdf_ndarray_t,
     &libasdf_software,
-    asdf_ndarray_serialize,
-    asdf_ndarray_deserialize,
-    NULL, /* TODO: copy */
-    asdf_ndarray_dealloc,
-    NULL);
+    &asdf_ndarray_vtab,
+    NULL,
+    ASDF_CORE_NDARRAY_TAG);
+// clang-format on
 
 
 /* ndarray methods */

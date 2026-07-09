@@ -915,13 +915,20 @@ static void asdf_time_dealloc(void *value) {
 }
 
 
+static const asdf_extension_vtab_t asdf_time_vtab = {
+    .serialize = asdf_time_serialize,
+    .deserialize = asdf_time_deserialize,
+    .copy = asdf_time_copy,
+    .dealloc = asdf_time_dealloc,
+};
+
+
+// clang-format off
 ASDF_REGISTER_EXTENSION(
     time,
-    ASDF_CORE_TIME_TAG,
     asdf_time_t,
     &libasdf_software,
-    asdf_time_serialize,
-    asdf_time_deserialize,
-    asdf_time_copy,
-    asdf_time_dealloc,
-    NULL);
+    &asdf_time_vtab,
+    NULL,
+    ASDF_CORE_TIME_TAG);
+// clang-format on
