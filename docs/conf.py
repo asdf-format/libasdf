@@ -93,6 +93,7 @@ nitpicky = True
 # (someone should write one!) so we list most of those here when they come up
 # in the docs.  Try to keep this sorted...
 nitpick_ignore = [
+    ('c:identifier', '_Float16'),
     ('c:identifier', 'ERANGE'),
     ('c:identifier', 'FILE'),
     ('c:identifier', 'NULL'),

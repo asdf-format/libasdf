@@ -1036,6 +1036,69 @@ MU_TEST(ndarray_data_alloc_temp_storage_set_ordering) {
 }
 
 
+/* Reading single elements with asdf_ndarray_at and friends */
+MU_TEST(ndarray_read_at) {
+    const char *path = get_fixture_file_path("tiles.asdf");
+    asdf_file_t *file = asdf_open(path, "r");
+    assert_not_null(file);
+
+    asdf_ndarray_t *nd1 = NULL;
+    asdf_ndarray_t *nd2 = NULL;
+    assert_int(asdf_get_ndarray(file, "1d", &nd1), ==, ASDF_VALUE_OK);
+    assert_int(asdf_get_ndarray(file, "2d", &nd2), ==, ASDF_VALUE_OK);
+
+    asdf_ndarray_err_t err = ASDF_NDARRAY_ERR_INVAL;
+
+    /* The 1-D array holds 1, 2, 3, 4 */
+    assert_int(asdf_ndarray_at_err(nd1, uint8_t, &err, 1), ==, 2);
+    assert_int(err, ==, ASDF_NDARRAY_OK);
+
+    /* The element is converted to the requested type */
+    assert_double(asdf_ndarray_at_err(nd1, double, &err, 2), ==, 3.0);
+    assert_int(err, ==, ASDF_NDARRAY_OK);
+
+    assert_int(asdf_ndarray_at_err(nd2, uint16_t, &err, 1, 1), ==, 22);
+    assert_int(err, ==, ASDF_NDARRAY_OK);
+
+    /* An index beyond the array's shape is out of bounds, not invalid */
+    assert_int(asdf_ndarray_at_err(nd1, uint8_t, &err, 4), ==, 0);
+    assert_int(err, ==, ASDF_NDARRAY_ERR_OUT_OF_BOUNDS);
+
+    /* Too few indices for the array's ndim */
+    assert_int(asdf_ndarray_at_err(nd2, uint16_t, &err, 1), ==, 0);
+    assert_int(err, ==, ASDF_NDARRAY_ERR_INVAL);
+
+    /* Too many indices for the array's ndim */
+    assert_int(asdf_ndarray_at_err(nd1, uint8_t, &err, 1, 1), ==, 0);
+    assert_int(err, ==, ASDF_NDARRAY_ERR_INVAL);
+
+    /* The same conditions through the underlying functions */
+    const uint64_t indices[] = {1, 1};
+    assert_int(asdf_ndarray_read_uint16_at(nd2, indices, &err), ==, 22);
+    assert_int(err, ==, ASDF_NDARRAY_OK);
+
+    uint16_t value = 0;
+    assert_int(
+        asdf_ndarray_read_at(nd2, indices, ASDF_DATATYPE_UINT16, &value), ==, ASDF_NDARRAY_OK);
+    assert_int(value, ==, 22);
+
+    /* NULL indices, as the at() macros pass when given the wrong number */
+    assert_int(
+        asdf_ndarray_read_at(nd2, NULL, ASDF_DATATYPE_UINT16, &value), ==,
+        ASDF_NDARRAY_ERR_INVAL);
+    assert_int(asdf_ndarray_read_uint16_at(nd2, NULL, &err), ==, 0);
+    assert_int(err, ==, ASDF_NDARRAY_ERR_INVAL);
+
+    /* Errors are silent without the _err variant; the value is zero */
+    assert_int(asdf_ndarray_at(nd2, uint16_t, 1), ==, 0);
+
+    asdf_ndarray_destroy(nd1);
+    asdf_ndarray_destroy(nd2);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
 MU_TEST_SUITE(
     ndarray,
     MU_RUN_TEST(ndarray_read_1d_tile_contiguous),
@@ -1050,7 +1113,8 @@ MU_TEST_SUITE(
     MU_RUN_TEST(ndarray_inline_warning_thresh),
     MU_RUN_TEST(ndarray_array_storage_override, ndarray_array_storage_params),
     MU_RUN_TEST(heap_use_after_free_issue_63),
-    MU_RUN_TEST(ndarray_data_alloc_temp_storage_set_ordering)
+    MU_RUN_TEST(ndarray_data_alloc_temp_storage_set_ordering),
+    MU_RUN_TEST(ndarray_read_at)
 );
 
 

@@ -493,6 +493,196 @@ ASDF_EXPORT asdf_ndarray_err_t asdf_ndarray_read_tile_2d(
     asdf_scalar_datatype_t dst_t,
     void **dst);
 
+// Forward-declaration for documentation; the real implementations of
+// asdf_read_at and asdf_read_at_err are later in this file.
+
+/**
+ * Read the element at the given indices, converted to ``type``
+ *
+ * ``type`` must be one of the C scalar types named by the
+ * ``asdf_ndarray_read_<type>_at`` functions.  The number of indices is taken
+ * from the number of arguments, and must equal the array's
+ * :c:member:`ndim <asdf_ndarray_t.ndim>`.  At least one index is required::
+ *
+ *   double value = asdf_ndarray_at(ndarray, double, 3, 7);
+ *
+ * Errors are not reported: on any error the value is zero, which is
+ * indistinguishable from an element whose value is zero.  Use
+ * `asdf_ndarray_at_err` where that matters.
+ *
+ * This is a macro and is unavailable in C++; use the
+ * ``asdf_ndarray_read_<type>_at`` functions instead.
+ *
+ * :param ndarray: The `asdf_ndarray_t *` handle to the ndarray
+ * :param type: The C scalar type to convert the element to
+ * :param ...: The indices of the element to read
+ * :return: The element converted to ``type``, or zero on error
+ */
+#define asdf_ndarray_at(ndarray, type, ...)
+#undef asdf_ndarray_at
+
+/**
+ * Like `asdf_ndarray_at` but reporting errors through ``err``
+ *
+ * The indices are given as a variadic argument list after ``err``::
+ *
+ *   asdf_ndarray_err_t err = ASDF_NDARRAY_OK;
+ *   double value = asdf_ndarray_at_err(ndarray, double, &err, 3, 7);
+ *
+ * :param ndarray: The `asdf_ndarray_t *` handle to the ndarray
+ * :param type: The C scalar type to convert the element to
+ * :param err: An `asdf_ndarray_err_t *` receiving the error code, or ``NULL``
+ * :param ...: The indices of the element to read
+ * :return: The element converted to ``type``, or zero on error
+ */
+#define asdf_ndarray_at_err(ndarray, type, err, ...)
+#undef asdf_ndarray_at_err
+
+
+/**
+ * Read a single element of the ndarray, converting it as `asdf_ndarray_read_all`
+ * does
+ *
+ * The element is copied into ``dst``, which must have room for one value of
+ * ``dst_t``.  ``dst`` need not be aligned for its type.
+ *
+ * For C code the `asdf_ndarray_at` and `asdf_ndarray_at_err` macros are more
+ * convenient.
+ *
+ * .. note::
+ *
+ *   If reading many elements of an array in a loop this call is inefficient;
+ *   it is better to read multiple elements in a single pass using
+ *   `asdf_ndarray_read_tile_ndim`, `asdf_ndarray_read_tile_2d` or
+ *   `asdf_ndarray_read_all` depending on the use case.  This method can still
+ *   be useful for a few incidental single-element reads.
+ *
+ * ``indices`` must have :c:member:`ndim <asdf_ndarray_t.ndim>` entries; that
+ * many are read from it.
+ *
+ * :param ndarray: The `asdf_ndarray_t *` handle to the ndarray
+ * :param indices: The indices of the element to read--an array of size
+ *   :c:member:`ndim <asdf_ndarray_t.ndim>`
+ * :param dst_t: An `asdf_scalar_datatype_t` to convert to, or
+ *   `ASDF_DATATYPE_SOURCE` to keep the original source datatype
+ * :param dst: Pointer to storage receiving the element
+ * :return: An `asdf_ndarray_err_t`; `ASDF_NDARRAY_OK` if the element was read
+ *   successfully, `ASDF_NDARRAY_ERR_OUT_OF_BOUNDS` if any index is outside the
+ *   array's shape; otherwise the relevant error code.
+ */
+ASDF_EXPORT asdf_ndarray_err_t asdf_ndarray_read_at(
+    asdf_ndarray_t *ndarray, const uint64_t *indices, asdf_scalar_datatype_t dst_t, void *dst);
+
+
+/**
+ * Read a single element of the ndarray, converted to the named type
+ *
+ * These are the same as `asdf_ndarray_read_at` with ``dst_t`` fixed by the
+ * function name, except that the element is returned rather than copied into
+ * ``dst``.  On error the returned value is zero and, if ``err`` is not
+ * ``NULL``, the error code is stored in it.
+ *
+ * The `asdf_ndarray_at` and `asdf_ndarray_at_err` macros select among these
+ * automatically and are usually easier to read.  They are unavailable in C++,
+ * which must call these directly.
+ *
+ * ``indices`` must have :c:member:`ndim <asdf_ndarray_t.ndim>` entries; that
+ * many are read from it.
+ *
+ * :param ndarray: The `asdf_ndarray_t *` handle to the ndarray
+ * :param indices: The indices of the element to read--an array of size
+ *   :c:member:`ndim <asdf_ndarray_t.ndim>`
+ * :param err: Optional `asdf_ndarray_err_t *` receiving the error code, or
+ *   ``NULL`` to ignore errors
+ * :return: The element converted to the function's type, or zero on error
+ */
+ASDF_EXPORT int8_t asdf_ndarray_read_int8_at(
+    asdf_ndarray_t *ndarray, const uint64_t *indices, asdf_ndarray_err_t *err);
+/** See `asdf_ndarray_read_int8_at` */
+ASDF_EXPORT uint8_t asdf_ndarray_read_uint8_at(
+    asdf_ndarray_t *ndarray, const uint64_t *indices, asdf_ndarray_err_t *err);
+/** See `asdf_ndarray_read_int8_at` */
+ASDF_EXPORT int16_t asdf_ndarray_read_int16_at(
+    asdf_ndarray_t *ndarray, const uint64_t *indices, asdf_ndarray_err_t *err);
+/** See `asdf_ndarray_read_int8_at` */
+ASDF_EXPORT uint16_t asdf_ndarray_read_uint16_at(
+    asdf_ndarray_t *ndarray, const uint64_t *indices, asdf_ndarray_err_t *err);
+/** See `asdf_ndarray_read_int8_at` */
+ASDF_EXPORT int32_t asdf_ndarray_read_int32_at(
+    asdf_ndarray_t *ndarray, const uint64_t *indices, asdf_ndarray_err_t *err);
+/** See `asdf_ndarray_read_int8_at` */
+ASDF_EXPORT uint32_t asdf_ndarray_read_uint32_at(
+    asdf_ndarray_t *ndarray, const uint64_t *indices, asdf_ndarray_err_t *err);
+/** See `asdf_ndarray_read_int8_at` */
+ASDF_EXPORT int64_t asdf_ndarray_read_int64_at(
+    asdf_ndarray_t *ndarray, const uint64_t *indices, asdf_ndarray_err_t *err);
+/** See `asdf_ndarray_read_int8_at` */
+ASDF_EXPORT uint64_t asdf_ndarray_read_uint64_at(
+    asdf_ndarray_t *ndarray, const uint64_t *indices, asdf_ndarray_err_t *err);
+#ifdef ASDF_HAVE_FLOAT16
+/** See `asdf_ndarray_read_int8_at`; declared only if ``ASDF_HAVE_FLOAT16`` */
+ASDF_EXPORT _Float16 asdf_ndarray_read_float16_at(
+    asdf_ndarray_t *ndarray, const uint64_t *indices, asdf_ndarray_err_t *err);
+#endif
+/** See `asdf_ndarray_read_int8_at` */
+ASDF_EXPORT float asdf_ndarray_read_float32_at(
+    asdf_ndarray_t *ndarray, const uint64_t *indices, asdf_ndarray_err_t *err);
+/** See `asdf_ndarray_read_int8_at` */
+ASDF_EXPORT double asdf_ndarray_read_float64_at(
+    asdf_ndarray_t *ndarray, const uint64_t *indices, asdf_ndarray_err_t *err);
+
+
+#ifndef __cplusplus
+#ifdef ASDF_HAVE_FLOAT16
+#define ASDF__READ_AT_FLOAT16 _Float16 : asdf_ndarray_read_float16_at,
+#else
+#define ASDF__READ_AT_FLOAT16
+#endif
+
+
+/* Selects the asdf_ndarray_read_<type>_at function for a C scalar type */
+// clang-format off
+#define ASDF__READ_AT_FN(type) \
+    _Generic( \
+        ((type){0}), \
+        ASDF__READ_AT_FLOAT16 \
+        int8_t: asdf_ndarray_read_int8_at, \
+        uint8_t: asdf_ndarray_read_uint8_at, \
+        int16_t: asdf_ndarray_read_int16_at, \
+        uint16_t: asdf_ndarray_read_uint16_at, \
+        int32_t: asdf_ndarray_read_int32_at, \
+        uint32_t: asdf_ndarray_read_uint32_at, \
+        int64_t: asdf_ndarray_read_int64_at, \
+        uint64_t: asdf_ndarray_read_uint64_at, \
+        float: asdf_ndarray_read_float32_at, \
+        double: asdf_ndarray_read_float64_at)
+// clang-format on
+
+
+/* The indices appear twice, but the operand of sizeof is not evaluated */
+#define ASDF__INDICES(...) ((const uint64_t[]){__VA_ARGS__})
+#define ASDF__NINDICES(...) (sizeof(ASDF__INDICES(__VA_ARGS__)) / sizeof(uint64_t))
+
+
+/*
+ * The read functions take ndim indices, so passing the wrong number of them
+ * would read past the end of the array built above.  Substitute NULL in that
+ * case, which the read functions reject with ASDF_NDARRAY_ERR_INVAL.
+ */
+#define ASDF__AT_INDICES(ndarray, ...) \
+    (ASDF__NINDICES(__VA_ARGS__) == (ndarray)->ndim ? ASDF__INDICES(__VA_ARGS__) : NULL)
+
+
+/* Implementation of asdf_ndarray_at; see documentation further up */
+#define asdf_ndarray_at(ndarray, type, ...) \
+    ASDF__READ_AT_FN(type)((ndarray), ASDF__AT_INDICES((ndarray), __VA_ARGS__), NULL)
+
+
+/* Implementation of asdf_ndarray_at_err; see documentation further up */
+#define asdf_ndarray_at_err(ndarray, type, err, ...) \
+    ASDF__READ_AT_FN(type)((ndarray), ASDF__AT_INDICES((ndarray), __VA_ARGS__), (err))
+#endif /* __cplusplus */
+
 
 ASDF_END_DECLS
 

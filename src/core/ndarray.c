@@ -1761,6 +1761,71 @@ asdf_ndarray_err_t asdf_ndarray_read_all(
 }
 
 
+/* Dimensions handled without allocating a shape array in asdf_ndarray_read_at */
+#define ASDF_NDARRAY_READ_AT_STACK_NDIM 8
+
+
+asdf_ndarray_err_t asdf_ndarray_read_at(
+    asdf_ndarray_t *ndarray, const uint64_t *indices, asdf_scalar_datatype_t dst_t, void *dst) {
+    if (UNLIKELY(!ndarray || !indices || !dst))
+        return ASDF_NDARRAY_ERR_INVAL;
+
+    uint32_t ndim = ndarray->ndim;
+
+    /* A zero-dimensional array has no element to index */
+    if (UNLIKELY(ndim == 0))
+        return ASDF_NDARRAY_ERR_INVAL;
+
+    uint64_t stack_shape[ASDF_NDARRAY_READ_AT_STACK_NDIM] = {0};
+    uint64_t *shape = stack_shape;
+
+    if (UNLIKELY(ndim > ASDF_NDARRAY_READ_AT_STACK_NDIM)) {
+        shape = malloc(ndim * sizeof(uint64_t));
+
+        if (UNLIKELY(!shape))
+            return ASDF_NDARRAY_ERR_OOM;
+    }
+
+    /* A single element is a tile of unit shape */
+    for (uint32_t dim = 0; dim < ndim; dim++)
+        shape[dim] = 1;
+
+    asdf_ndarray_err_t err = asdf_ndarray_read_tile_ndim(ndarray, indices, shape, dst_t, &dst);
+
+    if (UNLIKELY(shape != stack_shape))
+        free(shape);
+
+    return err;
+}
+
+
+/* Generates the asdf_ndarray_read_<name>_at family */
+#define ASDF_DEFINE_READ_AT(name, type, datatype) \
+    type asdf_ndarray_read_##name##_at( \
+        asdf_ndarray_t *ndarray, const uint64_t *indices, asdf_ndarray_err_t *err) { \
+        type value = 0; \
+        asdf_ndarray_err_t res = asdf_ndarray_read_at(ndarray, indices, (datatype), &value); \
+        if (err) \
+            *err = res; \
+        return value; \
+    }
+
+
+ASDF_DEFINE_READ_AT(int8, int8_t, ASDF_DATATYPE_INT8)
+ASDF_DEFINE_READ_AT(uint8, uint8_t, ASDF_DATATYPE_UINT8)
+ASDF_DEFINE_READ_AT(int16, int16_t, ASDF_DATATYPE_INT16)
+ASDF_DEFINE_READ_AT(uint16, uint16_t, ASDF_DATATYPE_UINT16)
+ASDF_DEFINE_READ_AT(int32, int32_t, ASDF_DATATYPE_INT32)
+ASDF_DEFINE_READ_AT(uint32, uint32_t, ASDF_DATATYPE_UINT32)
+ASDF_DEFINE_READ_AT(int64, int64_t, ASDF_DATATYPE_INT64)
+ASDF_DEFINE_READ_AT(uint64, uint64_t, ASDF_DATATYPE_UINT64)
+#ifdef HAVE_FLOAT16
+ASDF_DEFINE_READ_AT(float16, _Float16, ASDF_DATATYPE_FLOAT16)
+#endif
+ASDF_DEFINE_READ_AT(float32, float, ASDF_DATATYPE_FLOAT32)
+ASDF_DEFINE_READ_AT(float64, double, ASDF_DATATYPE_FLOAT64)
+
+
 asdf_ndarray_err_t asdf_ndarray_read_tile_2d(
     asdf_ndarray_t *ndarray,
     uint64_t x, // NOLINT(readability-identifier-length,bugprone-easily-swappable-parameters)

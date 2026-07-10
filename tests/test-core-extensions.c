@@ -567,8 +567,8 @@ MU_TEST(ndarray) {
     assert_not_null(data);
     assert_int(size, ==, sizeof(int64_t) * 8);
     // The actual array in this file is just 64-bit ints 0 through 7
-    for (int64_t idx = 0; idx < 8; idx++) {
-        assert_int(((int64_t *)data)[idx], ==, idx);
+    for (uint64_t idx = 0; idx < 8; idx++) {
+        assert_int(asdf_ndarray_at(ndarray, int64_t, idx), ==, (int64_t)idx);
     }
     asdf_ndarray_destroy(ndarray);
     asdf_close(file);
