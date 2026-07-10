@@ -1,3 +1,4 @@
+import os
 import re
 from datetime import datetime
 from pathlib import Path
@@ -138,12 +139,48 @@ extensions = ['sphinx.ext.intersphinx', 'sphinx.ext.todo', 'hawkmoth']
 
 hawkmoth_root = Path(__file__).parent.parent
 
+
+def _config_h_includedir():
+    """
+    Locate an include directory containing the generated ``asdf/config.h``.
+
+    ``asdf/util.h`` includes it, so hawkmoth cannot parse any public header
+    without it.  Set ``ASDF_BUILD_INCLUDEDIR`` to the ``include`` directory of a
+    configured build tree to use its real config.h.  Otherwise one is generated
+    from the template with the optional features enabled, so that the whole API
+    is documented.
+    """
+    from_env = os.environ.get('ASDF_BUILD_INCLUDEDIR')
+
+    if from_env:
+        return from_env
+
+    substitutions = {
+        'ASDF_HAVE_FLOAT16_DEFINE': '#define ASDF_HAVE_FLOAT16 1',
+        'ASDF_LOG_ENABLED_DEFINE': '#define ASDF_LOG_ENABLED 1',
+        'ASDF_LOG_COLOR_DEFINE': '#define ASDF_LOG_COLOR 1',
+        'ASDF_LOG_DEFAULT_LEVEL_DEFINE': '#define ASDF_LOG_DEFAULT_LEVEL ASDF_LOG_WARN',
+        'ASDF_LOG_MIN_LEVEL_DEFINE': '#define ASDF_LOG_MIN_LEVEL ASDF_LOG_TRACE',
+    }
+
+    template = (hawkmoth_root / 'include' / 'asdf' / 'config.h.in').read_text()
+
+    for name, define in substitutions.items():
+        template = template.replace(f'@{name}@', define)
+
+    includedir = Path(__file__).parent / '_build' / 'gen'
+    (includedir / 'asdf').mkdir(parents=True, exist_ok=True)
+    (includedir / 'asdf' / 'config.h').write_text(template)
+    return str(includedir)
+
+
 # These are options that should be passed to the compiler when hawkmoth processes
 # files.
 #
 # Should see if we can glean what we need here from configure/automake output
 # For now see what we can get away with by simply hard-coding...
-hawkmoth_clang = [f'-I{hawkmoth_root}/include', '-Iinclude']
+hawkmoth_clang = [
+    f'-I{hawkmoth_root}/include', f'-I{_config_h_includedir()}', '-Iinclude']
 
 
 # -- Options for theme and HTML output -----------------------------------------
