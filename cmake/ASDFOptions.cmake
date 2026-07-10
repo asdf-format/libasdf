@@ -1,5 +1,6 @@
 # Configure options for ASDF library
 include(AddressAnalyzer)
+include(UndefinedBehaviorAnalyzer)
 
 # Logging (mirrors the Autotools --enable-logging / --enable-log-color /
 # --with-log-default / --with-log-min options)

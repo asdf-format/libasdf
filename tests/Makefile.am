@@ -45,6 +45,16 @@ check_PROGRAMS = \
     test-yaml.unit
 
 TESTS_ENVIRONMENT = top_builddir=$(top_builddir) top_srcdir=$(top_srcdir)
+
+if UBSAN
+# UBSan reports go to stderr, which munit captures and discards unless the test
+# fails; halt_on_error turns a report into an abort so the report is surfaced.
+# Override UBSAN_OPTIONS in the environment to change this, e.g. to collect
+# every report rather than stopping at the first:
+#   make check UBSAN_OPTIONS=print_stacktrace=1:log_path=$PWD/ubsan
+TESTS_ENVIRONMENT += UBSAN_OPTIONS="$${UBSAN_OPTIONS:-print_stacktrace=1:halt_on_error=1}"
+endif
+
 TESTS = $(check_PROGRAMS)
 
 unit_test_base_cppflags = \

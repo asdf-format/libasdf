@@ -154,6 +154,21 @@ AS_IF([test "x$with_asan" = "xyes"], [
   ASDF_BUILD_MODE="${ASDF_BUILD_MODE}asan "
 ])
 
+# --with-ubsan
+AC_ARG_WITH([ubsan],
+  [AS_HELP_STRING([--with-ubsan], [Build with UndefinedBehaviorSanitizer support])],
+  [with_ubsan=yes],
+  [with_ubsan=no])
+
+AS_IF([test "x$with_ubsan" = "xyes"], [
+  ASDF_CFLAGS="$ASDF_CFLAGS -O1 -g -fsanitize=undefined -fno-omit-frame-pointer"
+  ASDF_LDFLAGS="$ASDF_LDFLAGS -fsanitize=undefined"
+  AC_DEFINE([WITH_UBSAN], [1], [Defined if building with UndefinedBehaviorSanitizer])
+  ASDF_BUILD_MODE="${ASDF_BUILD_MODE}ubsan "
+])
+
+AM_CONDITIONAL([UBSAN], [test "x$with_ubsan" = "xyes"])
+
 # Logging flags
 AC_ARG_ENABLE([logging],
   [AS_HELP_STRING([--enable-logging], [Enable logging (default: yes)])],

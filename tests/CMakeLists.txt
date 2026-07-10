@@ -49,6 +49,12 @@ add_compile_definitions(TEMP_DIR=\"${TEMP_DIR}\")
 
 set(runtime "WITH_CMAKE=set:YES;OBJC_DISABLE_INITIALIZE_FORK_SAFETY=set:YES;srcdir=set:${CMAKE_CURRENT_SOURCE_DIR};top_srcdir=set:${CMAKE_SOURCE_DIR};top_builddir=set:${CMAKE_BINARY_DIR};LD_LIBRARY_PATH=path_list_prepend:${CMAKE_BINARY_DIR}/src")
 
+# UBSan reports go to stderr, which munit captures and discards unless the test
+# fails; halt_on_error turns a report into an abort so the report is surfaced
+if (ENABLE_UBSAN)
+    string(APPEND runtime ";UBSAN_OPTIONS=set:print_stacktrace=1:halt_on_error=1")
+endif()
+
 # -------- Run optional shell command tests ----------------------------------
 if (BASH_PROGRAM AND ENABLE_TESTING_SHELL)
     foreach(shell_file ${shell_files})
