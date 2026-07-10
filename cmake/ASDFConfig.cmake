@@ -145,3 +145,34 @@ include_directories(${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/include)
 
 # Write out the header
 configure_file(config.h.cmake include/config.h @ONLY)
+
+
+# Substitutions for the installed include/asdf/config.h.  Unlike config.h above
+# this is limited to the macros that are part of the public API; the template is
+# shared with the Autotools build, so it uses plain @VAR@ substitutions rather
+# than #cmakedefine.
+if(HAVE_FLOAT16)
+    set(ASDF_HAVE_FLOAT16_DEFINE "#define ASDF_HAVE_FLOAT16 1")
+else()
+    set(ASDF_HAVE_FLOAT16_DEFINE "/* #undef ASDF_HAVE_FLOAT16 */")
+endif()
+
+if(ASDF_LOG_ENABLED)
+    set(ASDF_LOG_ENABLED_DEFINE "#define ASDF_LOG_ENABLED 1")
+else()
+    set(ASDF_LOG_ENABLED_DEFINE "/* #undef ASDF_LOG_ENABLED */")
+endif()
+
+if(ASDF_LOG_COLOR)
+    set(ASDF_LOG_COLOR_DEFINE "#define ASDF_LOG_COLOR 1")
+else()
+    set(ASDF_LOG_COLOR_DEFINE "/* #undef ASDF_LOG_COLOR */")
+endif()
+
+set(ASDF_LOG_DEFAULT_LEVEL_DEFINE "#define ASDF_LOG_DEFAULT_LEVEL ASDF_LOG_${LOG_DEFAULT}")
+set(ASDF_LOG_MIN_LEVEL_DEFINE "#define ASDF_LOG_MIN_LEVEL ASDF_LOG_${LOG_MIN}")
+
+configure_file(
+    ${CMAKE_SOURCE_DIR}/include/asdf/config.h.in
+    ${CMAKE_BINARY_DIR}/include/asdf/config.h
+    @ONLY)

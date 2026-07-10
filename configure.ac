@@ -214,6 +214,32 @@ AC_DEFINE_UNQUOTED([ASDF_LOG_MIN_LEVEL], [ASDF_LOG_$with_log_min],
                    [Compile-time minimum log level])
 
 
+# Substitutions for the installed include/asdf/config.h.  Unlike the internal
+# config.h this is limited to the macros that are part of the public API, and
+# is written with plain @VAR@ substitutions so that the same template can be
+# used by the CMake build.
+AS_IF([test "x$have_float16" = "xyes"],
+  [ASDF_HAVE_FLOAT16_DEFINE="#define ASDF_HAVE_FLOAT16 1"],
+  [ASDF_HAVE_FLOAT16_DEFINE="/* #undef ASDF_HAVE_FLOAT16 */"])
+AC_SUBST([ASDF_HAVE_FLOAT16_DEFINE])
+
+AS_IF([test "x$enable_logging" = "xyes"],
+  [ASDF_LOG_ENABLED_DEFINE="#define ASDF_LOG_ENABLED 1"],
+  [ASDF_LOG_ENABLED_DEFINE="/* #undef ASDF_LOG_ENABLED */"])
+AC_SUBST([ASDF_LOG_ENABLED_DEFINE])
+
+AS_IF([test "x$enable_log_color" = "xyes"],
+  [ASDF_LOG_COLOR_DEFINE="#define ASDF_LOG_COLOR 1"],
+  [ASDF_LOG_COLOR_DEFINE="/* #undef ASDF_LOG_COLOR */"])
+AC_SUBST([ASDF_LOG_COLOR_DEFINE])
+
+ASDF_LOG_DEFAULT_LEVEL_DEFINE="#define ASDF_LOG_DEFAULT_LEVEL ASDF_LOG_$with_log_default"
+AC_SUBST([ASDF_LOG_DEFAULT_LEVEL_DEFINE])
+
+ASDF_LOG_MIN_LEVEL_DEFINE="#define ASDF_LOG_MIN_LEVEL ASDF_LOG_$with_log_min"
+AC_SUBST([ASDF_LOG_MIN_LEVEL_DEFINE])
+
+
 # Initalize submodules needed for the build
 AS_IF([test ! -f "$srcdir/third_party/STC/LICENSE"],
   [AC_MSG_NOTICE([Initializing submodule third_party/STC...])
@@ -335,7 +361,7 @@ AC_SUBST([PYTHON3])
 AC_SUBST([ASDF_CFLAGS])
 AC_SUBST([ASDF_LDFLAGS])
 AC_CONFIG_HEADERS([config.h]) # use config.h instead of passing -D in the command line
-AC_CONFIG_FILES([Makefile include/Makefile tests/Makefile third_party/Makefile docs/Makefile libasdf.pc])
+AC_CONFIG_FILES([Makefile include/Makefile tests/Makefile third_party/Makefile docs/Makefile libasdf.pc include/asdf/config.h])
 
 AC_OUTPUT
 

@@ -73,7 +73,7 @@ src_headers = \
 include_dir = $(top_srcdir)/include
 
 AM_CFLAGS = $(ASDF_CFLAGS) -fvisibility=hidden -fmacro-prefix-map=$(top_srcdir)/=
-AM_CPPFLAGS = $(ASDF_CPPFLAGS) -I$(top_srcdir)/third_party/STC/include -I$(top_srcdir)/include
+AM_CPPFLAGS = $(ASDF_CPPFLAGS) -I$(top_srcdir)/third_party/STC/include -I$(top_srcdir)/include -I$(top_builddir)/include
 AM_LDFLAGS = $(ASDF_LDFLAGS)
 ACLOCAL_AMFLAGS = -Im4
 

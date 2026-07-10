@@ -1,6 +1,8 @@
 #ifndef ASDF_UTIL_H
 #define ASDF_UTIL_H
 
+#include <asdf/config.h> // IWYU pragma: export
+
 #if defined(__clang__) || (defined(__GNUC__) && __GNUC__ >= 4)
 #define ASDF_EXPORT __attribute__((visibility("default")))
 #define ASDF_LOCAL __attribute__((visibility("hidden")))
