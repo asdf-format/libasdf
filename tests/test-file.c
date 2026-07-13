@@ -293,8 +293,8 @@ MU_TEST(test_asdf_block_count) {
 static int test_multi_block_asdf_content(asdf_file_t *file) {
     assert_int(asdf_block_count(file), ==, 4);
 
-    char key[2];
-    for (int idx = 1; idx <= 4; idx++) {
+    char key[3];
+    for (uint8_t idx = 1; idx <= 4; idx++) {
         snprintf(key, 2, "%d", idx);
         asdf_ndarray_t *ndarray = NULL;
         assert_int(asdf_get_ndarray(file, key, &ndarray), ==, ASDF_VALUE_OK);
