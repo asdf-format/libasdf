@@ -20,6 +20,8 @@ nobase_include_HEADERS = \
     asdf/version.h \
     asdf/yaml.h
 
+# Generated into the build directory by config.status
+nobase_nodist_include_HEADERS = asdf/config.h
 
 
 # CMake-related files to include in the distribution

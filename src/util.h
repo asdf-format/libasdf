@@ -46,6 +46,16 @@
     } while (0)
 
 
+/*
+ * Read sizeof(dst) bytes from src into dst without assuming src is aligned
+ *
+ * Block data is mapped at whatever offset it occupies in the file, so pointers
+ * into it carry that offset's alignment.  Compilers lower a fixed-size memcpy
+ * to the same load a typed dereference would use, so this costs nothing.
+ */
+#define LOAD_UNALIGNED(dst, src) memcpy(&(dst), (src), sizeof(dst))
+
+
 ASDF_LOCAL size_t asdf_util_get_total_memory(void);
 
 

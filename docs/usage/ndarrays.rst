@@ -3,7 +3,7 @@
 Working with ndarrays
 =====================
 
-The :ref:`overview <ndarrays>` introduced the **ndarray** -- a typed,
+The :ref:`overview <ndarrays>` introduced the **ndarray**--a typed,
 multi-dimensional array whose bulk numeric data lives in a binary block while
 its shape, datatype, and byte order are described by metadata in the YAML tree.
 This page is a practical guide to *doing things* with ndarrays in libasdf:
@@ -126,7 +126,7 @@ a pointer to the (decompressed) bytes and optionally their size:
    const void *data = asdf_ndarray_data(array, &nbytes);
 
 This pointer is owned by ``array`` and must not be freed.  The data is in the
-array's *source* datatype and byte order, exactly as stored -- no conversion is
+array's *source* datatype and byte order, exactly as stored--no conversion is
 performed.  Two helpers describe the array's extent without touching the data:
 
 * `asdf_ndarray_size` -- total number of elements (the product of the shape).
@@ -137,9 +137,11 @@ returns the still-compressed bytes without decompressing them; for uncompressed
 arrays it is equivalent to `asdf_ndarray_data`.
 
 Because `asdf_ndarray_data` exposes the data in its original layout, you are
-responsible for honoring ``byteorder`` and ``datatype`` yourself.  When you want
-the data converted to a convenient host type, use the reading functions in the
-next section instead.
+responsible for honoring ``byteorder`` and ``datatype`` yourself.  The pointer
+is also not necessarily aligned for the element type, so it should not simply
+be cast and indexed; see :ref:`ndarray-read-element`.  When you want the data
+converted to a convenient host type, use the reading functions in the next
+section instead.
 
 
 .. _ndarray-read-convert:
@@ -211,13 +213,75 @@ array):
        /* plane_origin= */ NULL, ASDF_DATATYPE_FLOAT32, (void **)&tile);
 
 
+.. _ndarray-read-element:
+
+Reading single elements
+~~~~~~~~~~~~~~~~~~~~~~~
+
+To pick out one element, `asdf_ndarray_at` reads it and returns it as the type
+you ask for.  You name the type and the indices; the number of indices must
+match the array's ``ndim``:
+
+.. code:: c
+
+   double value = asdf_ndarray_at(array, double, 3, 7);
+
+This does the same work as the tile functions, for one element: it converts
+from the array's stored datatype to the type you named, and from the file's
+byte order to the host's.  So an ``int32`` array stored big-endian can be read
+as ``double`` on a little-endian machine without you doing anything.
+
+It also side-steps a portability trap.  It is tempting to take the pointer from
+`asdf_ndarray_data` and index it as an array of the element type:
+
+.. code:: c
+
+   /* Don't do this */
+   const void *data = asdf_ndarray_data(array, NULL);
+   int64_t value = ((const int64_t *)data)[3];
+
+The data of an uncompressed array is mapped straight from the file, beginning
+wherever the binary block happens to start.  That offset depends on how long
+the YAML tree above it is, so the pointer usually is *not* aligned for its
+element type.  Casting and dereferencing it is undefined behavior in C: it
+happens to work on x86, but it can crash on other processors, and compilers
+are free to assume the alignment holds.  `asdf_ndarray_at` reads the element
+safely regardless of where it sits.
+
+By default nothing is reported if the read fails--an out-of-range index, or
+the wrong number of indices, simply yields zero, which you cannot tell apart
+from an element that really is zero.  Where that matters, `asdf_ndarray_at_err`
+takes a pointer to an `asdf_ndarray_err_t` before the indices:
+
+.. code:: c
+
+   asdf_ndarray_err_t err = ASDF_NDARRAY_OK;
+   double value = asdf_ndarray_at_err(array, double, &err, 3, 7);
+
+   if (err != ASDF_NDARRAY_OK)
+       fprintf(stderr, "could not read element\n");
+
+Both are macros, and each call converts one element on its own.  That is a fine
+way to sample scattered points, but a poor way to walk a large part of an
+array: reach for `asdf_ndarray_read_tile_ndim` or `asdf_ndarray_read_all` to
+convert a whole region in one pass, then loop over the resulting buffer, which
+is aligned and already in host byte order.
+
+.. note::
+
+   C++ code cannot use the macros; it calls the underlying functions directly,
+   either `asdf_ndarray_read_at` (which copies into a destination you provide)
+   or one of the ``asdf_ndarray_read_<type>_at`` functions such as
+   `asdf_ndarray_read_float64_at`.
+
+
 .. _ndarray-datatypes:
 
 Datatypes and byte order
 ------------------------
 
 An element datatype is described by `asdf_datatype_t`, whose ``type`` field is
-one of the `asdf_scalar_datatype_t` enums -- for example ``ASDF_DATATYPE_UINT8``,
+one of the `asdf_scalar_datatype_t` enums--for example ``ASDF_DATATYPE_UINT8``,
 ``ASDF_DATATYPE_INT32``, ``ASDF_DATATYPE_FLOAT32``, or ``ASDF_DATATYPE_FLOAT64``.
 For simple numeric arrays setting ``type`` is all that is required;
 `asdf_datatype_size` then reports the size of a single element in bytes.
@@ -267,7 +331,7 @@ with `asdf_ndarray_data_dealloc` (safe to call after `asdf_close`):
 .. note::
 
    When building an ndarray *inside* an extension's serialize callback, use
-   `asdf_ndarray_data_alloc_temp` instead -- its buffer is freed automatically
+   `asdf_ndarray_data_alloc_temp` instead, its buffer is freed automatically
    once the write completes.
 
 See :ref:`writing` for the surrounding file-writing workflow.

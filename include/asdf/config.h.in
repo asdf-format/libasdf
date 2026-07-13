@@ -1,0 +1,56 @@
+/**
+ * .. _asdf/config.h:
+ *
+ * Build-time configuration of the libasdf that is installed
+ *
+ * This header is generated when libasdf is built and records the options it
+ * was built with.  It is included by ``asdf/util.h``, so it is available to
+ * every public header; there is normally no need to include it directly.
+ *
+ * Each macro below is defined only if the corresponding feature was enabled.
+ */
+
+#ifndef ASDF_CONFIG_H
+#define ASDF_CONFIG_H
+
+/**
+ * Defined to 1 if libasdf's internal log statements were compiled into the
+ * library
+ *
+ * When it is not defined `ASDF_LOG` expands to nothing.  See
+ * :ref:`asdf/log.h`.
+ */
+@ASDF_LOG_ENABLED_DEFINE@
+
+/**
+ * The default runtime log level, as an `asdf_log_level_t`
+ *
+ * This is the threshold used when none is set explicitly through
+ * `asdf_config_t` or the ``ASDF_LOG_LEVEL`` environment variable.
+ */
+@ASDF_LOG_DEFAULT_LEVEL_DEFINE@
+
+/**
+ * The compile-time minimum log level, as an `asdf_log_level_t`
+ *
+ * Log statements below this level were compiled out of the library.
+ */
+@ASDF_LOG_MIN_LEVEL_DEFINE@
+
+
+/**
+ * Defined to 1 if log messages are colorized when written to a terminal
+ */
+@ASDF_LOG_COLOR_DEFINE@
+
+/**
+ * Defined to 1 if the ``_Float16`` type is usable
+ *
+ * When it is not defined the ``float16`` datatype can still be read, but
+ * only converted to another datatype; the APIs taking or returning a
+ * ``_Float16`` directly are not declared.
+ */
+@ASDF_HAVE_FLOAT16_DEFINE@
+
+
+#endif /* ASDF_CONFIG_H */

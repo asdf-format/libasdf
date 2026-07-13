@@ -490,6 +490,9 @@ asdf_mapping_t *asdf_mapping_clone(asdf_mapping_t *mapping) {
 
 
 void asdf_mapping_destroy(asdf_mapping_t *mapping) {
+    if (UNLIKELY(!mapping))
+        return;
+
     asdf_value_destroy(&mapping->value);
 }
 
@@ -888,6 +891,9 @@ void asdf_sequence_set_style(asdf_sequence_t *sequence, asdf_yaml_node_style_t s
 
 
 void asdf_sequence_destroy(asdf_sequence_t *sequence) {
+    if (UNLIKELY(!sequence))
+        return;
+
     asdf_value_destroy(&sequence->value);
 }
 

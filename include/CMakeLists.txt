@@ -7,6 +7,7 @@ install(
 
 install(
     FILES
+        ${CMAKE_BINARY_DIR}/include/asdf/config.h
         asdf/emitter.h
         asdf/error.h
         asdf/event.h

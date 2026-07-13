@@ -33,6 +33,7 @@ config.log
 config.status
 configure
 configure~
+include/asdf/config.h
 stamp-h1
 Makefile.in
 */Makefile.in
