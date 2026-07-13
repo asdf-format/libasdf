@@ -11,6 +11,7 @@
 
 #include "event.h"
 #include "file.h"
+#include "util.h"
 #include "yaml.h"
 
 
@@ -45,7 +46,7 @@ asdf_yaml_event_type_t asdf_yaml_event_type(const asdf_event_t *event) {
         return ASDF_YAML_NONE_EVENT;
 
     enum fy_event_type type = event->payload.yaml->type;
-    if (type < 0 || type >= (int)(sizeof(fyet_to_asdf_event) / sizeof(fyet_to_asdf_event[0]))) {
+    if (type < 0 || type >= (int)ARRAY_SIZE(fyet_to_asdf_event)) {
         abort();
     }
     return fyet_to_asdf_event[type];

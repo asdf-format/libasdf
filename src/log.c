@@ -31,7 +31,7 @@ static const char *level_names[] = {"NONE", "TRACE", "DEBUG", "INFO", "WARN", "E
 
 
 _Static_assert(
-    ASDF_LOG_NUM_LEVELS == (sizeof(level_names) / sizeof(level_names[0])),
+    ASDF_LOG_NUM_LEVELS == ARRAY_SIZE(level_names),
     "Mismatch between log level enum and level_strings array");
 
 
@@ -39,7 +39,7 @@ _Static_assert(
 static const char *level_colors[] = {
     "", COLOR_BRIGHT_BLUE, COLOR_CYAN, COLOR_GREEN, COLOR_YELLOW, COLOR_RED, COLOR_MAGENTA};
 _Static_assert(
-    ASDF_LOG_NUM_LEVELS == (sizeof(level_colors) / sizeof(level_colors[0])),
+    ASDF_LOG_NUM_LEVELS == ARRAY_SIZE(level_colors),
     "Mismatch between log level enum and level_strings array");
 #endif
 

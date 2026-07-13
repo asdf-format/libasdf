@@ -5,16 +5,16 @@
 #include "munit.h"
 #include "util.h"
 
-#include <asdf/core/asdf.h>
-#include <asdf/core/datatype.h>
-#include <asdf/core/extension_metadata.h>
-#include <asdf/core/time.h>
-#include <asdf/core/history_entry.h>
-#include <asdf/core/ndarray.h>
-#include <asdf/core/software.h>
-#include <asdf/extension.h>
-#include <asdf/file.h>
-#include <asdf/value.h>
+#include "asdf/core/asdf.h"
+#include "asdf/core/datatype.h"
+#include "asdf/core/extension_metadata.h"
+#include "asdf/core/time.h"
+#include "asdf/core/history_entry.h"
+#include "asdf/core/ndarray.h"
+#include "asdf/core/software.h"
+#include "asdf/extension.h"
+#include "asdf/file.h"
+#include "asdf/value.h"
 
 
 /* TODO: Should have more tests for this, for now just using one test case that's already lying
@@ -385,7 +385,7 @@ MU_TEST(datatype) {
     // implicit tags
     asdf_value_t *value = asdf_get_value(file, "data/datatype");
     assert_not_null(value);
-    asdf_value_err_t err = ext->deserialize(value, NULL, (void **)&datatype);
+    asdf_value_err_t err = ext->vtab->deserialize(value, NULL, (void **)&datatype);
     assert_int(err, ==, ASDF_VALUE_OK);
     assert_not_null(datatype);
     asdf_value_destroy(value);
@@ -410,7 +410,7 @@ MU_TEST(datatype) {
     datatype = NULL;
     value = asdf_get_value(file, "structured/datatype");
     assert_not_null(value);
-    err = ext->deserialize(value, NULL, (void **)&datatype);
+    err = ext->vtab->deserialize(value, NULL, (void **)&datatype);
     assert_int(err, ==, ASDF_VALUE_OK);
     assert_not_null(datatype);
     asdf_value_destroy(value);

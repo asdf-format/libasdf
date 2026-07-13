@@ -124,6 +124,8 @@ For this example we need to write a few pieces of code:
 
 * An ``asdf_foo_copy`` function
 
+* An `asdf_extension_vtab_t` collecting the four functions above
+
 
 .. code:: c
 
@@ -261,6 +263,17 @@ copy of the object can be created correctly:
   }
 
 
+The four functions are collected into an `asdf_extension_vtab_t`:
+
+.. code:: c
+
+  static const asdf_extension_vtab_t asdf_foo_vtab = {
+      .serialize = asdf_foo_serialize,
+      .deserialize = asdf_foo_deserialize,
+      .copy = asdf_foo_copy,
+      .dealloc = asdf_foo_dealloc,
+  };
+
 Finally, we register the extension by making the following call in the same
 source file as where these functions were defined (or in a different file if
 the functions have external linkage):
@@ -269,44 +282,31 @@ the functions have external linkage):
 
   ASDF_REGISTER_EXTENSION(
       foo,
-      "stsci.edu:asdf/ext/foo-1.0.0",
       asdf_foo_t,
       &asdf_foo_software,
-      asdf_foo_serialize,
-      asdf_foo_deserialize,
-      asdf_foo_copy,
-      asdf_foo_dealloc,
-      NULL
+      &asdf_foo_vtab,
+      NULL,
+      "stsci.edu:asdf/ext/foo-1.0.0"
   )
 
-This is a macro which currently takes 9 arguments:
+This is a macro which takes 5 arguments, followed by one or more tags:
 
 * The base name of the extension type--this is not necessarily the name of the
   C type returned by the extension (though it could be the same).  This defines
   the type name used in the generated ``asdf_get_<type>`` and related functions.
   For example, this defines ``asdf_get_foo``, ``asdf_is_foo``, and so on.
 
-* The tag for which the extension should be registered.  Currently this only
-  supports a single tag, though there are plans to change that, as in many
-  cases the same extension code can support multiple tag versions.
-
-  It is, however, perfectly possible to register multiple extensions under
-  different tags but using the same ``asdf_foo_*`` functions.
-
 * The C-native type returned by the extension--this is our ``asdf_foo_t``.
 
 * An ``asdf_software_t *`` for the software metadata.
 
-* The serialize function we defined
-
-* The deserialize function we defined
-
-* The clone function we defined
-
-* The dealloc function we defined
+* An `asdf_extension_vtab_t` pointer--this is our ``asdf_foo_vtab``.
 
 * A pointer to optional userdata stored by the extension (this is not used yet
   but could be supplied, e.g. at runtime, to configure the extension).
+
+* One or more tags for which the extension should be registered.  See
+  :ref:`extension-tag-versions`.
 
 Finally, if we wish to make our extension usable by external code, we provide
 the following declaration in our ``foo.h`` header:
@@ -328,3 +328,38 @@ Our extension type can now be used in code like:
       printf("the foo: %s\n", foo->foo);
   else
       fprintf(stderr, "invalid foo value");
+
+
+.. _extension-tag-versions:
+
+Supporting multiple tag versions
+--------------------------------
+
+Schema tags are conventionally versioned, and the same extension code can often
+read more than one version of its schema.  Every tag passed to
+`ASDF_REGISTER_EXTENSION` is registered for the extension, so listing several
+of them lets one extension read all of those versions:
+
+.. code:: c
+
+  ASDF_REGISTER_EXTENSION(
+      foo,
+      asdf_foo_t,
+      &asdf_foo_software,
+      &asdf_foo_vtab,
+      NULL,
+      "stsci.edu:asdf/ext/foo-1.1.0",
+      "stsci.edu:asdf/ext/foo-1.0.0"
+  )
+
+Tags are matched exactly, so only the versions listed here are recognized.  A
+``foo-1.2.0`` value in a file is simply an unknown tag, and is read as a plain
+value.
+
+The order matters when *writing*.  A newly created or replaced ``asdf_foo_t``
+is serialized with the **first** tag listed, so put the preferred version
+first.  A value read from a file and left alone keeps the tag it was read with.
+
+If two versions of a schema differ enough to warrant separate deserializers, it
+is also possible to register multiple extensions under different tags, sharing
+whichever of the ``asdf_foo_*`` functions still apply.

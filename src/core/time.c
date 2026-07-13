@@ -111,7 +111,7 @@ static const char *ASDF_TIME_SFMT_UNIX[] = {"%s"};
                 (HAS_TIME) = true; \
                 break; \
             } \
-        } while (idx++ && idx < sizeof((TYPE)) / sizeof(*(TYPE))); \
+        } while (idx++ && idx < ARRAY_SIZE(TYPE)); \
     }
 
 #define JD_B1900 2415020.31352
@@ -484,7 +484,7 @@ static const char *const asdf_time_scale_names[] = {
 
 
 const char *asdf_time_format_string(asdf_time_format_t format) {
-    const size_t nformats = sizeof(asdf_time_format_names) / sizeof(asdf_time_format_names[0]);
+    const size_t nformats = ARRAY_SIZE(asdf_time_format_names);
 
     if (format < 0 || format > nformats)
         return NULL;
@@ -496,7 +496,7 @@ const char *asdf_time_format_string(asdf_time_format_t format) {
 /* Helpers for format detection and range validation */
 
 static bool asdf_time_format_parse(const char *name, asdf_time_format_t *out) {
-    const size_t nformats = sizeof(asdf_time_format_names) / sizeof(asdf_time_format_names[0]);
+    const size_t nformats = ARRAY_SIZE(asdf_time_format_names);
     for (size_t idx = 0; idx < nformats; idx++) {
         if (asdf_time_format_names[idx] && !strcmp(name, asdf_time_format_names[idx])) {
             *out = (asdf_time_format_t)idx;
@@ -508,7 +508,7 @@ static bool asdf_time_format_parse(const char *name, asdf_time_format_t *out) {
 
 
 static bool asdf_time_scale_parse(const char *name, asdf_time_scale_t *out) {
-    const size_t nscales = sizeof(asdf_time_scale_names) / sizeof(asdf_time_scale_names[0]);
+    const size_t nscales = ARRAY_SIZE(asdf_time_scale_names);
     for (size_t idx = 0; idx < nscales; idx++) {
         if (asdf_time_scale_names[idx] && !strcmp(name, asdf_time_scale_names[idx])) {
             *out = (asdf_time_scale_t)idx;
@@ -637,7 +637,7 @@ static asdf_value_t *asdf_time_serialize(
         goto cleanup;
     }
 
-    const size_t nformats = sizeof(asdf_time_format_names) / sizeof(asdf_time_format_names[0]);
+    const size_t nformats = ARRAY_SIZE(asdf_time_format_names);
     if ((size_t)t->format >= nformats || !asdf_time_format_names[t->format]) {
         ASDF_LOG(file, ASDF_LOG_WARN, ASDF_CORE_TIME_TAG " unknown or reserved format type");
         goto cleanup;
@@ -657,7 +657,7 @@ static asdf_value_t *asdf_time_serialize(
 
     /* Write scale only if non-UTC */
     if (t->scale != ASDF_TIME_SCALE_UTC) {
-        const size_t nscales = sizeof(asdf_time_scale_names) / sizeof(asdf_time_scale_names[0]);
+        const size_t nscales = ARRAY_SIZE(asdf_time_scale_names);
         if ((size_t)t->scale < nscales) {
             const char *scale = asdf_time_scale_names[t->scale];
 
@@ -915,13 +915,20 @@ static void asdf_time_dealloc(void *value) {
 }
 
 
+static const asdf_extension_vtab_t asdf_time_vtab = {
+    .serialize = asdf_time_serialize,
+    .deserialize = asdf_time_deserialize,
+    .copy = asdf_time_copy,
+    .dealloc = asdf_time_dealloc,
+};
+
+
+// clang-format off
 ASDF_REGISTER_EXTENSION(
     time,
-    ASDF_CORE_TIME_TAG,
     asdf_time_t,
     &libasdf_software,
-    asdf_time_serialize,
-    asdf_time_deserialize,
-    asdf_time_copy,
-    asdf_time_dealloc,
-    NULL);
+    &asdf_time_vtab,
+    NULL,
+    ASDF_CORE_TIME_TAG);
+// clang-format on

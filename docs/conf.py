@@ -116,6 +116,11 @@ nitpick_ignore = [
     ('c:identifier', 'uint64_t'),
     ('c:identifier', 'uint8_t'),
 
+# Struct tags of opaque types; Hawkmoth references the tag rather than the
+# typedef name, so the tag itself never gets a target
+# https://github.com/jnikula/hawkmoth/issues/11
+    ('c:identifier', 'asdf_value'),
+
 # libasdf identifiers that should be documented but aren't yet
     ('c:identifier', 'asdf_emitter_cfg_t'),
     ('c:identifier', 'asdf_event_t'),

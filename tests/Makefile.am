@@ -36,6 +36,7 @@ check_PROGRAMS = \
     test-ndarray.unit \
     test-parse-util.unit \
     test-parser.unit \
+    test-reference-files.unit \
     test-stream.unit \
     test-tag.unit \
     test-tests.unit \
@@ -69,7 +70,8 @@ unit_test_cppflags = \
     $(unit_test_base_cppflags)
 
 unit_test_cflags = \
-    $(munit_cflags) $(FYAML_CFLAGS) $(STATGRAB_CFLAGS) $(LZ4_CFLAGS) $(CODE_COVERAGE_CFLAGS) $(ASDF_CFLAGS)
+    $(munit_cflags) $(FYAML_CFLAGS) $(STATGRAB_CFLAGS) $(LZ4_CFLAGS) $(CODE_COVERAGE_CFLAGS) $(ASDF_CFLAGS) \
+    -fmacro-prefix-map=$(top_srcdir)/=
 unit_test_ldflags =
 
 if DEBUG
@@ -184,6 +186,13 @@ test_emitter_unit_CFLAGS = $(unit_test_cflags)
 test_emitter_unit_LDFLAGS = $(unit_test_ldflags)
 test_emitter_unit_LDADD = libmunit.a $(top_builddir)/libasdf_static.la
 endif
+
+# test-reference-files.unit
+test_reference_files_unit_SOURCES = test-reference-files.c
+test_reference_files_unit_CPPFLAGS = $(unit_test_cppflags)
+test_reference_files_unit_CFLAGS = $(unit_test_cflags)
+test_reference_files_unit_LDFLAGS = $(unit_test_ldflags)
+test_reference_files_unit_LDADD = $(unit_test_ldadd)
 
 # test-stream.unit
 test_stream_unit_SOURCES = \

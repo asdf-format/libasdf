@@ -442,16 +442,24 @@ failure:
  * The internal types and methods are named ``asdf_meta_*``, however, to avoid names like
  * ``asdf_asdf_t`` and ``asdf_get_asdf`` and so on.
  */
+static const asdf_extension_vtab_t asdf_meta_vtab = {
+    .serialize = asdf_meta_serialize,
+    .deserialize = asdf_meta_deserialize,
+    .copy = asdf_meta_copy,
+    .dealloc = asdf_meta_dealloc,
+};
+
+
+// clang-format off
 ASDF_REGISTER_EXTENSION(
     meta,
-    ASDF_CORE_ASDF_TAG,
     asdf_meta_t,
     &libasdf_software,
-    asdf_meta_serialize,
-    asdf_meta_deserialize,
-    asdf_meta_copy,
-    asdf_meta_dealloc,
-    NULL);
+    &asdf_meta_vtab,
+    NULL,
+    ASDF_CORE_ASDF_TAG,
+    ASDF_CORE_TAG_PREFIX "asdf-1.0.0");
+// clang-format on
 
 
 ASDF_CONSTRUCTOR static void asdf_libasdf_version_init() {

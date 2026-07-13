@@ -4,11 +4,11 @@
 #include "munit.h"
 #include "util.h"
 
-#include <asdf/core/software.h>
-#include <asdf/extension.h>
-#include <asdf/file.h>
-#include <asdf/util.h>
-#include <asdf/version.h>
+#include "asdf/core/software.h"
+#include "asdf/extension.h"
+#include "asdf/file.h"
+#include "asdf/util.h"
+#include "asdf/version.h"
 
 
 /* Struct that represents the "foo" type extension */
@@ -121,24 +121,32 @@ failure:
 }
 
 
+static const asdf_extension_vtab_t asdf_foo_vtab = {
+    .serialize = asdf_foo_serialize,
+    .deserialize = asdf_foo_deserialize,
+    .copy = asdf_foo_copy,
+    .dealloc = asdf_foo_dealloc,
+};
+
+
+// clang-format off
 ASDF_REGISTER_EXTENSION(
     foo,
-    "stsci.edu:asdf/tests/foo-1.0.0",
     asdf_foo_t,
     &asdf_foo_software,
-    asdf_foo_serialize,
-    asdf_foo_deserialize,
-    asdf_foo_copy,
-    asdf_foo_dealloc,
-    NULL
+    &asdf_foo_vtab,
+    NULL,
+    "stsci.edu:asdf/tests/foo-1.1.0",
+    "stsci.edu:asdf/tests/foo-1.0.0"
 )
+// clang-format on
 
 
 MU_TEST(extension_registered) {
     const char *path = get_fixture_file_path("trivial-extension.asdf");
     asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
-    const asdf_extension_t *ext = asdf_extension_get(file, "stsci.edu:asdf/tests/foo-1.0.0");
+    const asdf_extension_t *ext = asdf_extension_get(file, "stsci.edu:asdf/tests/foo-1.1.0");
     assert_not_null(ext);
     assert_ptr_equal(ext, &asdf_foo_extension);
     asdf_close(file);
@@ -152,6 +160,50 @@ MU_TEST(extension_get_unregistered) {
     assert_not_null(file);
     const asdf_extension_t *ext = asdf_extension_get(file, "unregistered-tag");
     assert_null(ext);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+/* Every tag listed in the registration resolves to the same extension, and any
+ * version not listed resolves to none */
+MU_TEST(extension_registered_multiple_versions) {
+    const char *path = get_fixture_file_path("trivial-extension.asdf");
+    asdf_file_t *file = asdf_open(path, "r");
+    assert_not_null(file);
+    const asdf_extension_t *ext_110 = asdf_extension_get(file, "stsci.edu:asdf/tests/foo-1.1.0");
+    const asdf_extension_t *ext_100 = asdf_extension_get(file, "stsci.edu:asdf/tests/foo-1.0.0");
+    assert_not_null(ext_110);
+    assert_ptr_equal(ext_110, ext_100);
+    assert_null(asdf_extension_get(file, "stsci.edu:asdf/tests/foo-2.0.0"));
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+/* A value tagged with an older registered version still deserializes through
+ * the same extension */
+MU_TEST(test_asdf_value_as_foo_1_0_0) {
+    static const char contents[] =
+        "#ASDF 1.0.0\n"
+        "#ASDF_STANDARD 1.6.0\n"
+        "%YAML 1.1\n"
+        "%TAG ! tag:stsci.edu:asdf/\n"
+        "--- !core/asdf-1.1.0\n"
+        "foo: !tests/foo-1.0.0 foo\n"
+        "...\n";
+
+    asdf_file_t *file = asdf_open_mem(contents, sizeof(contents) - 1);
+    assert_not_null(file);
+    asdf_value_t *value = asdf_get_value(file, "foo");
+    assert_not_null(value);
+    assert_true(asdf_value_is_foo(value));
+    asdf_foo_t *foo = NULL;
+    assert_int(asdf_value_as_foo(value, &foo), ==, ASDF_VALUE_OK);
+    assert_not_null(foo);
+    assert_string_equal(foo->foo, "foo:foo");
+    asdf_value_destroy(value);
+    asdf_foo_destroy(foo);
     asdf_close(file);
     return MUNIT_OK;
 }
@@ -267,8 +319,10 @@ MU_TEST_SUITE(
     extension,
     MU_RUN_TEST(extension_registered),
     MU_RUN_TEST(extension_get_unregistered),
+    MU_RUN_TEST(extension_registered_multiple_versions),
     MU_RUN_TEST(test_asdf_value_is_foo),
     MU_RUN_TEST(test_asdf_value_as_foo),
+    MU_RUN_TEST(test_asdf_value_as_foo_1_0_0),
     MU_RUN_TEST(test_asdf_value_of_foo),
     MU_RUN_TEST(test_asdf_is_foo),
     MU_RUN_TEST(test_asdf_get_foo),

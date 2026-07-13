@@ -129,9 +129,6 @@ const char *asdf_scalar_datatype_to_string(asdf_scalar_datatype_t datatype) {
 
 
 #ifdef ASDF_LOG_ENABLED
-static void warn_unsupported_datatype(UNUSED(asdf_value_t *value)) {
-}
-#else
 static void warn_unsupported_datatype(asdf_value_t *value) {
     const char *path = asdf_value_path(value);
     ASDF_LOG(
@@ -141,6 +138,9 @@ static void warn_unsupported_datatype(asdf_value_t *value) {
         "that the current version only supports basic scalar numeric (non-string) "
         "datatypes",
         path);
+}
+#else
+static void warn_unsupported_datatype(UNUSED(asdf_value_t *value)) {
 }
 #endif
 
@@ -777,16 +777,23 @@ static asdf_value_t *asdf_datatype_serialize(
 
 
 // Declare the extension for datatype-1.0.0
+static const asdf_extension_vtab_t asdf_datatype_vtab = {
+    .serialize = asdf_datatype_serialize,
+    .deserialize = asdf_datatype_deserialize,
+    .copy = NULL, /* TODO: copy */
+    .dealloc = asdf_datatype_dealloc,
+};
+
+
+// clang-format off
 ASDF_REGISTER_EXTENSION(
     datatype,
-    ASDF_CORE_DATATYPE_TAG,
     asdf_datatype_t,
     &libasdf_software,
-    asdf_datatype_serialize,
-    asdf_datatype_deserialize,
-    NULL, /* TODO: copy */
-    asdf_datatype_dealloc,
-    NULL);
+    &asdf_datatype_vtab,
+    NULL,
+    ASDF_CORE_DATATYPE_TAG);
+// clang-format on
 
 
 /** Additional public datatype APIs */

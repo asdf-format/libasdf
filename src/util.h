@@ -38,6 +38,10 @@
 #define FIELD_SIZEOF(t, f) (sizeof(((t *)0)->f))
 
 
+/* Number of elements in a fixed-size array */
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+
+
 /* Cast memset to volatile to prevent opt-away */
 #define ZERO_MEMORY(ptr, size) \
     do { \

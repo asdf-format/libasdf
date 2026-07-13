@@ -8,5 +8,5 @@ asdf_library: !core/software-1.0.0
   version: 0.0.0
   author: The libasdf Developers
   homepage: https://github.com/asdf-format/libasdf
-foo: !tests/foo-1.0.0 foo
+foo: !tests/foo-1.1.0 foo
 ...
