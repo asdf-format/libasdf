@@ -195,6 +195,7 @@ CMAKE_DIST = \
     cmake/ASDFDependencies.cmake \
     cmake/ASDFOptions.cmake \
     cmake/SubmoduleInit.cmake \
+    cmake/UndefinedBehaviorAnalyzer.cmake \
     config.h.cmake \
     src/CMakeLists.txt
 
