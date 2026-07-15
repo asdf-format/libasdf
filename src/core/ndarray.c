@@ -1533,9 +1533,9 @@ void asdf_ndarray_data_dealloc(asdf_ndarray_t *ndarray) {
     if (UNLIKELY(!internal || (!internal->data && !internal->data_is_empty))) {
         asdf_context_t *ctx = NULL;
         if (ndarray->internal)
-            ctx = asdf_get_context_helper(ndarray->internal->file);
+            ctx = asdf_context_get(ndarray->internal->file);
         else
-            ctx = asdf_get_context_helper(NULL);
+            ctx = asdf_context_get(NULL);
 
         ASDF_LOG_CTX(
             ctx,

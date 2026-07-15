@@ -6,13 +6,21 @@
 
 #include "context.h"
 #include "error.h"
+#include "file.h"
 #include "log.h"
+#include "value.h"
 
 
 /* Per-code format strings.  Codes whose format is NULL either carry no
  * message (ASDF_ERR_NONE) or compute the message dynamically
  * (ASDF_ERR_SYSTEM).  Codes whose format string contains no '%' are stored
- * as static strings with no heap allocation. */
+ * as static strings with no heap allocation.
+ *
+ * These are documented in the public API documentation for ``asdf/error.h``
+ * so when adding or updating any of these please make sure to update the
+ * documentation for parameters associated with each error code (if any--most
+ * are not parameterized).
+ */
 static const char *const asdf_error_formats[] = {
     [ASDF_ERR_NONE] = NULL,
     [ASDF_ERR_UNKNOWN_STATE] = "unknown parser state",
@@ -56,7 +64,7 @@ static const asdf_log_level_t asdf_error_log_levels[] = {
 
 /* Internal helper: replace the stored error string with a static (non-heap) one.
  * This never allocates, so it is safe to use from OOM paths. */
-static void asdf_context_error_set_static(asdf_context_t *ctx, const char *error) {
+static void asdf_context_error_static(asdf_context_t *ctx, const char *error) {
     if (ctx->error_type == ASDF_ERROR_HEAP)
         free((void *)ctx->error);
 
@@ -89,10 +97,39 @@ int asdf_context_saved_errno_get(asdf_context_t *ctx) {
 }
 
 
-void asdf_context_error_set_common(
-    asdf_context_t *ctx, asdf_error_code_t code, const char *src_file, int lineno, ...) {
+/* Format string has specifiers--build the message on the heap */
+static void asdf_context_error_heapv(asdf_context_t *ctx, const char *fmt, va_list args) {
+    /* Clear any existing heap-allocated error */
+    if (ctx->error_type == ASDF_ERROR_HEAP)
+        free((void *)ctx->error);
+
+    ctx->error = NULL;
+
+    va_list args_size;
+    va_copy(args_size, args);
+    int size = vsnprintf(NULL, 0, fmt, args_size);
+    va_end(args_size);
+
+    char *error = malloc(size + 1);
+
+    if (!error) {
+        /* OOM while setting error--fall back to the static OOM message */
+        ctx->error = asdf_error_formats[ASDF_ERR_OUT_OF_MEMORY];
+        ctx->error_type = ASDF_ERROR_STATIC;
+        ctx->error_code = ASDF_ERR_OUT_OF_MEMORY;
+        return;
+    }
+
+    vsnprintf(error, size + 1, fmt, args);
+    ctx->error = error;
+    ctx->error_type = ASDF_ERROR_HEAP;
+}
+
+
+static void asdf_context_error_commonv(
+    asdf_context_t *ctx, asdf_error_code_t code, const char *src_file, int lineno, va_list args) {
     assert(ctx);
-    assert(code != ASDF_ERR_SYSTEM); /* use asdf_context_error_set_system for OS errors */
+    assert(code != ASDF_ERR_SYSTEM); /* use asdf_context_error_system for OS errors */
 
     const char *fmt = asdf_error_formats[code];
     asdf_log_level_t level = asdf_error_log_levels[code];
@@ -111,36 +148,9 @@ void asdf_context_error_set_common(
 
     if (!strchr(fmt, '%')) {
         /* No format specifiers -- use the table string directly (no allocation) */
-        asdf_context_error_set_static(ctx, fmt);
+        asdf_context_error_static(ctx, fmt);
     } else {
-        /* Format string has specifiers -- build the message on the heap */
-        if (ctx->error_type == ASDF_ERROR_HEAP)
-            free((void *)ctx->error);
-
-        ctx->error = NULL;
-
-        va_list args;
-        va_start(args, lineno);
-        // NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized)
-        int size = vsnprintf(NULL, 0, fmt, args);
-        va_end(args);
-
-        char *error = malloc(size + 1);
-
-        if (!error) {
-            /* OOM while setting error -- fall back to the static OOM message */
-            ctx->error = asdf_error_formats[ASDF_ERR_OUT_OF_MEMORY];
-            ctx->error_type = ASDF_ERROR_STATIC;
-            ctx->error_code = ASDF_ERR_OUT_OF_MEMORY;
-            return;
-        }
-
-        va_start(args, lineno);
-        vsnprintf(error, size + 1, fmt, args);
-        va_end(args);
-
-        ctx->error = error;
-        ctx->error_type = ASDF_ERROR_HEAP;
+        asdf_context_error_heapv(ctx, fmt, args);
     }
 
 #ifdef ASDF_LOG_ENABLED
@@ -154,9 +164,18 @@ void asdf_context_error_set_common(
 }
 
 
-void asdf_context_error_set_oom(asdf_context_t *ctx, const char *src_file, int lineno) {
+void asdf_context_error_common(
+    asdf_context_t *ctx, asdf_error_code_t code, const char *src_file, int lineno, ...) {
+    va_list args;
+    va_start(args, lineno);
+    asdf_context_error_commonv(ctx, code, src_file, lineno, args);
+    va_end(args);
+}
+
+
+void asdf_context_error_oom(asdf_context_t *ctx, const char *src_file, int lineno) {
     /* Never allocates -- safe to call from OOM paths */
-    asdf_context_error_set_static(ctx, asdf_error_formats[ASDF_ERR_OUT_OF_MEMORY]);
+    asdf_context_error_static(ctx, asdf_error_formats[ASDF_ERR_OUT_OF_MEMORY]);
     ctx->error_code = ASDF_ERR_OUT_OF_MEMORY;
     ctx->saved_errno = 0;
 
@@ -170,8 +189,7 @@ void asdf_context_error_set_oom(asdf_context_t *ctx, const char *src_file, int l
 }
 
 
-void asdf_context_error_set_system(
-    asdf_context_t *ctx, int errnum, const char *src_file, int lineno) {
+void asdf_context_error_system(asdf_context_t *ctx, int errnum, const char *src_file, int lineno) {
     assert(ctx);
 
     if (ctx->error_type == ASDF_ERROR_HEAP)
@@ -194,10 +212,10 @@ void asdf_context_error_set_system(
 
 void asdf_context_error_copy(asdf_context_t *dst, const asdf_context_t *src) {
     if (!dst)
-        dst = asdf_get_context_helper(NULL);
+        dst = asdf_context_get(NULL);
 
     if (!src)
-        src = asdf_get_context_helper(NULL);
+        src = asdf_context_get(NULL);
 
     if (dst == src || !dst || !src)
         return;
@@ -210,4 +228,48 @@ void asdf_context_error_copy(asdf_context_t *dst, const asdf_context_t *src) {
     dst->error_type = src->error_type;
     dst->error_code = src->error_code;
     dst->saved_errno = src->saved_errno;
+}
+
+
+/* External wrappers */
+void asdf_file_error_common(
+    asdf_file_t *file, asdf_error_code_t code, const char *src_file, int lineno, ...) {
+    va_list args;
+    va_start(args, lineno);
+    asdf_context_t *ctx = asdf_context_get(file);
+    asdf_context_error_commonv(ctx, code, src_file, lineno, args);
+    va_end(args);
+}
+
+void asdf_value_error_common(
+    asdf_value_t *value, asdf_error_code_t code, const char *src_file, int lineno, ...) {
+    va_list args;
+    va_start(args, lineno);
+    asdf_context_t *ctx = asdf_context_get(value ? value->file : NULL);
+    asdf_context_error_commonv(ctx, code, src_file, lineno, args);
+    va_end(args);
+}
+
+
+void asdf_file_error_oom(asdf_file_t *file, const char *src_file, int lineno) {
+    asdf_context_t *ctx = asdf_context_get(file);
+    asdf_context_error_oom(ctx, src_file, lineno);
+}
+
+
+void asdf_value_error_oom(asdf_value_t *value, const char *src_file, int lineno) {
+    asdf_context_t *ctx = asdf_context_get(value ? value->file : NULL);
+    asdf_context_error_oom(ctx, src_file, lineno);
+}
+
+
+void asdf_file_error_system(asdf_file_t *file, int errnum, const char *src_file, int lineno) {
+    asdf_context_t *ctx = asdf_context_get(file);
+    asdf_context_error_system(ctx, errnum, src_file, lineno);
+}
+
+
+void asdf_value_error_system(asdf_value_t *value, int errnum, const char *src_file, int lineno) {
+    asdf_context_t *ctx = asdf_context_get(value ? value->file : NULL);
+    asdf_context_error_system(ctx, errnum, src_file, lineno);
 }

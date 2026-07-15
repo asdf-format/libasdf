@@ -30,6 +30,7 @@ check_PROGRAMS = \
     test-block.unit \
     test-compression.unit \
     test-core-extensions.unit \
+    test-error.unit \
     test-event.unit \
     test-extension.unit \
     test-file.unit \
@@ -109,13 +110,20 @@ test_core_extensions_unit_CFLAGS = $(unit_test_cflags)
 test_core_extensions_unit_LDFLAGS = $(unit_test_ldflags)
 test_core_extensions_unit_LDADD = $(unit_test_ldadd)
 
+# test-error.unit
+test_error_unit_SOURCES = test-error.c
+test_error_unit_CPPFLAGS = $(unit_test_cppflags)
+test_error_unit_CFLAGS = $(unit_test_cflags)
+test_error_unit_LDFLAGS = $(unit_test_ldflags)
+test_error_unit_LDADD = $(unit_test_ldadd)
+
 # test-event.unit
 test_event_unit_SOURCES = test-event.c
 test_event_unit_CPPFLAGS = $(unit_test_cppflags)
 test_event_unit_CFLAGS = $(unit_test_cflags)
 test_event_unit_LDFLAGS = $(unit_test_ldflags)
 test_event_unit_LDADD = $(unit_test_ldadd)
-#
+
 # test-extension.unit
 test_extension_unit_SOURCES = test-extension.c
 test_extension_unit_CPPFLAGS = $(unit_test_cppflags)
