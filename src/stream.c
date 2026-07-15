@@ -695,7 +695,7 @@ asdf_stream_t *asdf_stream_from_file(asdf_context_t *ctx, const char *filename, 
     if (!file && is_writeable && errno == ENOENT)
         file = fopen(filename, "w+b");
     if (!file) {
-        asdf_context_error_set_system(ctx, errno, __FILE__, __LINE__);
+        asdf_context_error_system(ctx, errno, __FILE__, __LINE__);
         return NULL;
     }
 

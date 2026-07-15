@@ -162,7 +162,7 @@ void asdf_file_log(
     int lineno,
     const char *fmt,
     ...) {
-    asdf_context_t *ctx = asdf_get_context_helper((void *)file);
+    asdf_context_t *ctx = asdf_context_get((void *)file);
     va_list args;
     va_start(args, fmt);
     if (!ctx || !ctx->log.stream) {

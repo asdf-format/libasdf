@@ -34,8 +34,7 @@
 #define ASDF_LOG(obj, level, ...) \
     do { \
         if ((level) >= ASDF_LOG_MIN_LEVEL) { \
-            ASDF_GET_CONTEXT(obj); \
-            asdf_context_log(__ctx, (level), __FILE__, __LINE__, __VA_ARGS__); \
+            asdf_context_log(asdf_context_get(obj), (level), __FILE__, __LINE__, __VA_ARGS__); \
         } \
     } while (0)
 

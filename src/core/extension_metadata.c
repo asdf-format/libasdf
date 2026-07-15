@@ -158,7 +158,7 @@ static void asdf_extension_metadata_dealloc(void *value) {
 }
 
 
-static void *asdf_extension_metadata_copy(const void *value) {
+static void *asdf_extension_metadata_copy(asdf_file_t *file, const void *value) {
     if (!value)
         return NULL;
 
@@ -177,7 +177,7 @@ static void *asdf_extension_metadata_copy(const void *value) {
     }
 
     if (metadata->package) {
-        copy->package = asdf_software_clone(metadata->package);
+        copy->package = asdf_software_clone(file, metadata->package);
 
         if (!copy->package)
             goto failure;
@@ -194,7 +194,7 @@ static void *asdf_extension_metadata_copy(const void *value) {
 
 failure:
     asdf_extension_metadata_dealloc(copy);
-    ASDF_ERROR_OOM(NULL);
+    ASDF_ERROR_OOM(file);
     return NULL;
 }
 

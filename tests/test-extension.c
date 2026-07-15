@@ -97,7 +97,7 @@ static void asdf_foo_dealloc(void *value) {
 }
 
 
-static void *asdf_foo_copy(const void *value) {
+static void *asdf_foo_copy(asdf_file_t *file, const void *value) {
     if (!value)
         return NULL;
 
@@ -288,20 +288,25 @@ MU_TEST(test_asdf_get_foo) {
 
 
 MU_TEST(test_asdf_foo_clone) {
+    asdf_file_t *file = asdf_open(NULL);
+    assert_not_null(file);
     asdf_foo_t foo = {.foo = "foo:foo"};
-    asdf_foo_t *clone = asdf_foo_clone(&foo);
+    asdf_foo_t *clone = asdf_foo_clone(file, &foo);
     assert_not_null(clone);
     assert_ptr_not_equal(foo.foo, clone->foo);
     assert_string_equal(foo.foo, clone->foo);
     asdf_foo_destroy(clone);
+    asdf_close(file);
     return MUNIT_OK;
 }
 
 
 MU_TEST(test_asdf_foo_array_clone) {
+    asdf_file_t *file = asdf_open(NULL);
+    assert_not_null(file);
     asdf_foo_t foo = {.foo = "foo:foo"};
     const asdf_foo_t *foos[] = {&foo, NULL};
-    asdf_foo_t **clone = asdf_foo_array_clone(foos);
+    asdf_foo_t **clone = asdf_foo_array_clone(file, foos);
     assert_not_null(clone[0]);
     assert_null(clone[1]);
     assert_ptr_not_equal(clone[0], foos[0]);
@@ -311,6 +316,7 @@ MU_TEST(test_asdf_foo_array_clone) {
         asdf_foo_destroy(*fp);
     }
     free((void *)clone);
+    asdf_close(file);
     return MUNIT_OK;
 }
 

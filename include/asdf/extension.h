@@ -67,10 +67,11 @@ typedef asdf_value_err_t (*asdf_extension_deserialize_t)(
 /**
  * Deep-copy a native object
  *
+ * :param file: A handle to the file to which the object belongs
  * :param obj: The native object to copy
  * :return: The newly allocated copy, or ``NULL`` on failure
  */
-typedef void *(*asdf_extension_copy_t)(const void *obj);
+typedef void *(*asdf_extension_copy_t)(asdf_file_t *file, const void *obj);
 
 
 /**
@@ -226,7 +227,7 @@ ASDF_EXPORT void asdf_tag_destroy(asdf_tag_t *tag);
  * sure to implement this if the extension object contains nested data structures.
  */
 #define ASDF_EXT_DEFINE_CLONE(extname, type) \
-    ASDF_EXPORT type *asdf_##extname##_clone(const type *object) { \
+    ASDF_EXPORT type *asdf_##extname##_clone(asdf_file_t *file, const type *object) { \
         if (!object) \
             return NULL; \
         asdf_extension_t *ext = &ASDF_EXT_STATIC_NAME(extname); \
@@ -239,7 +240,7 @@ ASDF_EXPORT void asdf_tag_destroy(asdf_tag_t *tag);
             memcpy(clone, object, sizeof(type)); \
             return clone; \
         } \
-        return (type *)ext->vtab->copy(object); \
+        return (type *)ext->vtab->copy(file, object); \
     }
 
 
@@ -249,7 +250,7 @@ ASDF_EXPORT void asdf_tag_destroy(asdf_tag_t *tag);
  * For example, clones an `asdf_history_entry_t **` array.
  */
 #define ASDF_EXT_DEFINE_ARRAY_CLONE(extname, type) \
-    ASDF_EXPORT type **asdf_##extname##_array_clone(const type **src) { \
+    ASDF_EXPORT type **asdf_##extname##_array_clone(asdf_file_t *file, const type **src) { \
         size_t nelem = 0; \
         while (src[nelem]) \
             nelem++; \
@@ -257,7 +258,7 @@ ASDF_EXPORT void asdf_tag_destroy(asdf_tag_t *tag);
         if (!dst) \
             return NULL; \
         for (size_t idx = 0; idx < nelem; idx++) { \
-            dst[idx] = asdf_##extname##_clone(src[idx]); \
+            dst[idx] = asdf_##extname##_clone(file, src[idx]); \
             if (!dst[idx]) { \
                 for (size_t jdx = 0; jdx < idx; jdx++) \
                     asdf_##extname##_destroy(dst[jdx]); \
@@ -352,8 +353,8 @@ ASDF_EXPORT void asdf_tag_destroy(asdf_tag_t *tag);
         asdf_file_t *file, const char *path, type **out); \
     ASDF_EXPORT asdf_value_err_t asdf_set_##extname( \
         asdf_file_t *file, const char *path, const type *obj); \
-    ASDF_EXPORT type *asdf_##extname##_clone(const type *object); \
-    ASDF_EXPORT type **asdf_##extname##_array_clone(const type **src); \
+    ASDF_EXPORT type *asdf_##extname##_clone(asdf_file_t *file, const type *object); \
+    ASDF_EXPORT type **asdf_##extname##_array_clone(asdf_file_t *file, const type **src); \
     ASDF_EXPORT void asdf_##extname##_destroy(type *object)
 
 ASDF_END_DECLS
