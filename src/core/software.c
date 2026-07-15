@@ -149,7 +149,7 @@ static void asdf_software_dealloc(void *value) {
 }
 
 
-static void *asdf_software_copy(const void *value) {
+static void *asdf_software_copy(asdf_file_t *file, const void *value) {
     if (!value)
         return NULL;
 
@@ -190,7 +190,7 @@ static void *asdf_software_copy(const void *value) {
     return copy;
 failure:
     asdf_software_dealloc(copy);
-    ASDF_ERROR_OOM(NULL);
+    ASDF_ERROR_OOM(file);
     return NULL;
 }
 
@@ -216,17 +216,15 @@ ASDF_REGISTER_EXTENSION(
 
 /** Additional software-related methods */
 void asdf_library_set(asdf_file_t *file, const asdf_software_t *software) {
-    file->asdf_library = asdf_software_clone(software);
+    file->asdf_library = asdf_software_clone(file, software);
 }
 
 
 void asdf_library_set_version(asdf_file_t *file, const char *version) {
-    asdf_software_t *software = asdf_software_clone(&libasdf_software);
+    asdf_software_t *software = asdf_software_clone(file, &libasdf_software);
 
-    if (!software) {
-        ASDF_ERROR_OOM(file);
+    if (!software)
         return;
-    }
 
     if (software->version)
         asdf_version_destroy((asdf_version_t *)software->version);

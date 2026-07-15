@@ -891,20 +891,27 @@ failure:
 }
 
 
-static void *asdf_time_copy(const void *obj) {
+static void *asdf_time_copy(asdf_file_t *file, const void *obj) {
     if (!obj)
         return NULL;
 
     const asdf_time_t *tm = obj;
     asdf_time_t *copy = calloc(1, sizeof(asdf_time_t));
 
-    if (!copy)
-        return NULL;
+    if (UNLIKELY(!copy))
+        goto failure;
 
     *copy = *tm;
     copy->value = tm->value ? strdup(tm->value) : NULL;
 
+    if (UNLIKELY(tm->value && !copy->value))
+        goto failure;
+
     return copy;
+failure:
+    ASDF_ERROR_OOM(file);
+    free(copy);
+    return NULL;
 }
 
 

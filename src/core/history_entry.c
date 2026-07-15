@@ -255,7 +255,7 @@ static void asdf_history_entry_dealloc(void *value) {
 }
 
 
-static void *asdf_history_entry_copy(const void *value) {
+static void *asdf_history_entry_copy(asdf_file_t *file, const void *value) {
     if (!value)
         return NULL;
 
@@ -274,14 +274,14 @@ static void *asdf_history_entry_copy(const void *value) {
     }
 
     if (entry->time) {
-        copy->time = asdf_time_clone(entry->time);
+        copy->time = asdf_time_clone(file, entry->time);
 
         if (!copy->time)
             goto failure;
     }
 
     if (entry->software) {
-        copy->software = (const asdf_software_t **)asdf_software_array_clone(entry->software);
+        copy->software = (const asdf_software_t **)asdf_software_array_clone(file, entry->software);
 
         if (!copy->software)
             goto failure;
@@ -290,7 +290,7 @@ static void *asdf_history_entry_copy(const void *value) {
     return copy;
 failure:
     asdf_history_entry_destroy(copy);
-    ASDF_ERROR_OOM(NULL);
+    ASDF_ERROR_OOM(file);
     return NULL;
 }
 
@@ -335,7 +335,7 @@ int asdf_history_entry_add(asdf_file_t *file, const char *description) {
         goto failure;
 
     asdf_software_t *asdf_library = file->asdf_library ? file->asdf_library : &libasdf_software;
-    entry->software[0] = asdf_software_clone(asdf_library);
+    entry->software[0] = asdf_software_clone(file, asdf_library);
 
     if (!entry->software[0])
         goto failure;

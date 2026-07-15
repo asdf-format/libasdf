@@ -351,7 +351,7 @@ static void asdf_meta_dealloc(void *value) {
 }
 
 
-static void *asdf_meta_copy(const void *value) {
+static void *asdf_meta_copy(asdf_file_t *file, const void *value) {
     if (!value)
         return NULL;
 
@@ -364,7 +364,7 @@ static void *asdf_meta_copy(const void *value) {
     }
 
     if (meta->asdf_library) {
-        copy->asdf_library = asdf_software_clone(meta->asdf_library);
+        copy->asdf_library = asdf_software_clone(file, meta->asdf_library);
 
         if (!copy->asdf_library)
             goto failure;
@@ -372,7 +372,7 @@ static void *asdf_meta_copy(const void *value) {
 
     if (meta->history.extensions) {
         copy->history.extensions = (const asdf_extension_metadata_t **)
-            asdf_extension_metadata_array_clone(meta->history.extensions);
+            asdf_extension_metadata_array_clone(file, meta->history.extensions);
 
         if (!copy->history.extensions)
             goto failure;
@@ -380,7 +380,7 @@ static void *asdf_meta_copy(const void *value) {
 
     if (meta->history.entries) {
         copy->history.entries = (const asdf_history_entry_t **)asdf_history_entry_array_clone(
-            meta->history.entries);
+            file, meta->history.entries);
 
         if (!copy->history.entries)
             goto failure;
@@ -390,6 +390,7 @@ static void *asdf_meta_copy(const void *value) {
 
 failure:
     asdf_meta_dealloc(copy);
+    ASDF_ERROR_OOM(file);
     return NULL;
 }
 
