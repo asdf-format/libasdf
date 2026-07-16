@@ -291,7 +291,7 @@ static int emit_prepare_root_node(asdf_emitter_t *emitter) {
         meta = calloc(1, sizeof(asdf_meta_t));
     } else {
         asdf_meta_t *orig_meta = meta;
-        meta = asdf_meta_clone(file, orig_meta);
+        meta = asdf_meta_copy(file, orig_meta);
         asdf_meta_destroy(orig_meta);
     }
 
@@ -305,7 +305,7 @@ static int emit_prepare_root_node(asdf_emitter_t *emitter) {
         meta->asdf_library = NULL;
     } else {
         asdf_software_t *asdf_library = file->asdf_library ? file->asdf_library : &libasdf_software;
-        meta->asdf_library = asdf_software_clone(file, asdf_library);
+        meta->asdf_library = asdf_software_copy(file, asdf_library);
 
         if (!meta->asdf_library)
             goto cleanup;

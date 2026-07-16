@@ -176,8 +176,9 @@ static int check_reference_file(const char *relative_path) {
             continue;
         }
 
-        if (ext->vtab && ext->vtab->dealloc)
-            ext->vtab->dealloc(obj);
+        if (ext->vtab && ext->vtab->deinit)
+            ext->vtab->deinit(obj);
+        free(obj);
     }
 
     failures += check_block_checksums(file, relative_path);

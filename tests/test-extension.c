@@ -87,45 +87,35 @@ static asdf_value_err_t asdf_foo_deserialize(asdf_value_t *value,
 }
 
 
-static void asdf_foo_dealloc(void *value) {
+static void asdf_foo_deinit_impl(void *value) {
     asdf_foo_t *foo = value;
     if (foo && foo->foo) {
         free((void *)foo->foo);
         foo->foo = NULL;
     }
-    free(foo);
 }
 
 
-static void *asdf_foo_copy(asdf_file_t *file, const void *value) {
-    if (!value)
-        return NULL;
-
-    const asdf_foo_t *foo = value;
-    asdf_foo_t *copy = calloc(1, sizeof(asdf_foo_t));
-
-    if (!copy)
-        goto failure;
+static bool asdf_foo_copy_impl(UNUSED(asdf_file_t *file), const void *src, void *dst) {
+    const asdf_foo_t *foo = src;
+    asdf_foo_t *copy = dst;
 
     if (foo->foo) {
         copy->foo = strdup(foo->foo);
 
         if (!copy->foo)
-            goto failure;
+            return false;
     }
 
-    return copy;
-failure:
-    asdf_foo_dealloc(copy);
-    return NULL;
+    return true;
 }
 
 
 static const asdf_extension_vtab_t asdf_foo_vtab = {
     .serialize = asdf_foo_serialize,
     .deserialize = asdf_foo_deserialize,
-    .copy = asdf_foo_copy,
-    .dealloc = asdf_foo_dealloc,
+    .copy = asdf_foo_copy_impl,
+    .deinit = asdf_foo_deinit_impl,
 };
 
 
@@ -287,35 +277,72 @@ MU_TEST(test_asdf_get_foo) {
 }
 
 
-MU_TEST(test_asdf_foo_clone) {
+MU_TEST(test_asdf_foo_copy) {
     asdf_file_t *file = asdf_open(NULL);
     assert_not_null(file);
     asdf_foo_t foo = {.foo = "foo:foo"};
-    asdf_foo_t *clone = asdf_foo_clone(file, &foo);
-    assert_not_null(clone);
-    assert_ptr_not_equal(foo.foo, clone->foo);
-    assert_string_equal(foo.foo, clone->foo);
-    asdf_foo_destroy(clone);
+    asdf_foo_t *copy = asdf_foo_copy(file, &foo);
+    assert_not_null(copy);
+    assert_ptr_not_equal(foo.foo, copy->foo);
+    assert_string_equal(foo.foo, copy->foo);
+    asdf_foo_destroy(copy);
     asdf_close(file);
     return MUNIT_OK;
 }
 
 
-MU_TEST(test_asdf_foo_array_clone) {
+/* Copy into caller-provided (here, stack) storage, then de-initialize it in
+ * place without freeing the object itself. */
+MU_TEST(test_asdf_foo_copy_into) {
+    asdf_file_t *file = asdf_open(NULL);
+    assert_not_null(file);
+    asdf_foo_t foo = {.foo = "foo:foo"};
+    asdf_foo_t dst = {0};
+    assert_true(asdf_foo_copy_into(file, &foo, &dst));
+    assert_not_null(dst.foo);
+    assert_ptr_not_equal(foo.foo, dst.foo);
+    assert_string_equal(foo.foo, dst.foo);
+    asdf_foo_deinit(&dst);
+    assert_null(dst.foo);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+/* deinit frees the object's fields but not the object; destroy does both. */
+MU_TEST(test_asdf_foo_deinit) {
+    asdf_file_t *file = asdf_open(NULL);
+    assert_not_null(file);
+    asdf_foo_t foo = {.foo = "foo:foo"};
+    asdf_foo_t *copy = asdf_foo_copy(file, &foo);
+    assert_not_null(copy);
+    asdf_foo_deinit(copy);
+    assert_null(copy->foo);
+    free(copy);
+    // destroy still works end-to-end on a fresh copy
+    asdf_foo_t *copy2 = asdf_foo_copy(file, &foo);
+    assert_not_null(copy2);
+    asdf_foo_destroy(copy2);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+MU_TEST(test_asdf_foo_array_copy) {
     asdf_file_t *file = asdf_open(NULL);
     assert_not_null(file);
     asdf_foo_t foo = {.foo = "foo:foo"};
     const asdf_foo_t *foos[] = {&foo, NULL};
-    asdf_foo_t **clone = asdf_foo_array_clone(file, foos);
-    assert_not_null(clone[0]);
-    assert_null(clone[1]);
-    assert_ptr_not_equal(clone[0], foos[0]);
-    assert_string_equal(clone[0]->foo, foos[0]->foo);
+    asdf_foo_t **copy = asdf_foo_array_copy(file, foos);
+    assert_not_null(copy[0]);
+    assert_null(copy[1]);
+    assert_ptr_not_equal(copy[0], foos[0]);
+    assert_string_equal(copy[0]->foo, foos[0]->foo);
     // TODO: Maybe a convenience method for this as well?
-    for (asdf_foo_t **fp = clone; *fp; ++fp) {
+    for (asdf_foo_t **fp = copy; *fp; ++fp) {
         asdf_foo_destroy(*fp);
     }
-    free((void *)clone);
+    free((void *)copy);
     asdf_close(file);
     return MUNIT_OK;
 }
@@ -332,8 +359,10 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_value_of_foo),
     MU_RUN_TEST(test_asdf_is_foo),
     MU_RUN_TEST(test_asdf_get_foo),
-    MU_RUN_TEST(test_asdf_foo_clone),
-    MU_RUN_TEST(test_asdf_foo_array_clone)
+    MU_RUN_TEST(test_asdf_foo_copy),
+    MU_RUN_TEST(test_asdf_foo_copy_into),
+    MU_RUN_TEST(test_asdf_foo_deinit),
+    MU_RUN_TEST(test_asdf_foo_array_copy)
 );
 
 

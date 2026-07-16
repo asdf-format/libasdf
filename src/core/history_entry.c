@@ -232,7 +232,7 @@ failure:
 }
 
 
-static void asdf_history_entry_dealloc(void *value) {
+static void asdf_history_entry_deinit_impl(void *value) {
     if (!value)
         return;
 
@@ -251,47 +251,36 @@ static void asdf_history_entry_dealloc(void *value) {
         free((void *)entry->software);
     }
 
-    free(entry);
+    ZERO_MEMORY(entry, sizeof(*entry));
 }
 
 
-static void *asdf_history_entry_copy(asdf_file_t *file, const void *value) {
-    if (!value)
-        return NULL;
-
-    const asdf_history_entry_t *entry = value;
-
-    asdf_history_entry_t *copy = calloc(1, sizeof(asdf_history_entry_t));
-
-    if (!copy)
-        goto failure;
+static bool asdf_history_entry_copy_impl(asdf_file_t *file, const void *src, void *dst) {
+    const asdf_history_entry_t *entry = src;
+    asdf_history_entry_t *copy = dst;
 
     if (entry->description) {
         copy->description = strdup(entry->description);
 
         if (!copy->description)
-            goto failure;
+            return false;
     }
 
     if (entry->time) {
-        copy->time = asdf_time_clone(file, entry->time);
+        copy->time = asdf_time_copy(file, entry->time);
 
         if (!copy->time)
-            goto failure;
+            return false;
     }
 
     if (entry->software) {
-        copy->software = (const asdf_software_t **)asdf_software_array_clone(file, entry->software);
+        copy->software = (const asdf_software_t **)asdf_software_array_copy(file, entry->software);
 
         if (!copy->software)
-            goto failure;
+            return false;
     }
 
-    return copy;
-failure:
-    asdf_history_entry_destroy(copy);
-    ASDF_ERROR_OOM(file);
-    return NULL;
+    return true;
 }
 
 
@@ -301,8 +290,8 @@ failure:
 static const asdf_extension_vtab_t asdf_history_entry_vtab = {
     .serialize = asdf_history_entry_serialize,
     .deserialize = asdf_history_entry_deserialize,
-    .copy = asdf_history_entry_copy,
-    .dealloc = asdf_history_entry_dealloc,
+    .copy = asdf_history_entry_copy_impl,
+    .deinit = asdf_history_entry_deinit_impl,
 };
 
 
@@ -335,7 +324,7 @@ int asdf_history_entry_add(asdf_file_t *file, const char *description) {
         goto failure;
 
     asdf_software_t *asdf_library = file->asdf_library ? file->asdf_library : &libasdf_software;
-    entry->software[0] = asdf_software_clone(file, asdf_library);
+    entry->software[0] = asdf_software_copy(file, asdf_library);
 
     if (!entry->software[0])
         goto failure;

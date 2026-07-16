@@ -294,10 +294,23 @@ static asdf_value_err_t asdf_structured_datatype_field_parse(
     if (ASDF_IS_ERR(err))
         return err;
 
-    err = asdf_get_optional_property(value, "name", ASDF_VALUE_STRING, NULL, (void *)&field->name);
+    // The borrowed name points into the YAML document; the datatype owns its
+    // own copy so it stays valid after the file is closed and can be deep-copied
+    const char *field_name = NULL;
+    err = asdf_get_optional_property(value, "name", ASDF_VALUE_STRING, NULL, (void *)&field_name);
 
+    if (ASDF_IS_OPTIONAL_OK(err)) {
+        if (field_name) {
+            field->name = strdup(field_name);
+
+            if (!field->name) {
+                err = ASDF_VALUE_ERR_OOM;
+                goto cleanup;
+            }
+        }
+    }
 #ifdef ASDF_LOG_ENABLED
-    if (!ASDF_IS_OPTIONAL_OK(err)) {
+    else {
         const char *path = asdf_value_path(&value->value);
         ASDF_LOG(value->value.file, ASDF_LOG_WARN, "invalid name field in datatype at %s", path);
     }
@@ -437,30 +450,72 @@ asdf_value_err_t asdf_datatype_parse(
 
 /**
  * Free resources allocated for an asdf_datatype_t
- *
- * Later, however, we may want users to be able to build datatypes (for writing new files)
- * so we may make this available as part of a more extensive datatype API.
  */
 // NOLINTNEXTLINE(misc-no-recursion)
-void asdf_datatype_clean(asdf_datatype_t *datatype) {
-    if (!datatype)
+static void asdf_datatype_deinit_impl(void *obj) {
+    if (!obj)
         return;
+
+    asdf_datatype_t *datatype = obj;
+
+    free((char *)datatype->name);
 
     if (datatype->shape)
         free((size_t *)datatype->shape);
 
     if (datatype->fields) {
         for (uint32_t field_idx = 0; field_idx < datatype->nfields; field_idx++)
-            asdf_datatype_clean((asdf_datatype_t *)&datatype->fields[field_idx]);
+            asdf_datatype_deinit_impl((asdf_datatype_t *)&datatype->fields[field_idx]);
         free((asdf_datatype_t *)datatype->fields);
     }
     ZERO_MEMORY(datatype, sizeof(asdf_datatype_t));
 }
 
 
-static void asdf_datatype_dealloc(void *datatype) {
-    asdf_datatype_clean(datatype);
-    free(datatype);
+// NOLINTNEXTLINE(misc-no-recursion)
+static bool asdf_datatype_copy_impl(asdf_file_t *file, const void *src, void *dst) {
+    const asdf_datatype_t *datatype = src;
+    asdf_datatype_t *copy = dst;
+
+    copy->type = datatype->type;
+    copy->size = datatype->size;
+    copy->byteorder = datatype->byteorder;
+    copy->ndim = datatype->ndim;
+    copy->nfields = datatype->nfields;
+
+    if (datatype->name) {
+        copy->name = strdup(datatype->name);
+
+        if (!copy->name)
+            return false;
+    }
+
+    if (datatype->shape && datatype->ndim > 0) {
+        uint64_t *shape = malloc(datatype->ndim * sizeof(uint64_t));
+
+        if (!shape)
+            return false;
+
+        memcpy(shape, datatype->shape, datatype->ndim * sizeof(uint64_t));
+        copy->shape = shape;
+    }
+
+    if (datatype->fields && datatype->nfields > 0) {
+        // The fields array is zero-terminated like the one built by the parser
+        asdf_datatype_t *fields = calloc(datatype->nfields + 1, sizeof(asdf_datatype_t));
+
+        if (!fields)
+            return false;
+
+        copy->fields = fields;
+
+        for (uint32_t idx = 0; idx < datatype->nfields; idx++) {
+            if (!asdf_datatype_copy_impl(file, &datatype->fields[idx], &fields[idx]))
+                return false;
+        }
+    }
+
+    return true;
 }
 
 
@@ -485,7 +540,7 @@ static asdf_value_err_t asdf_datatype_deserialize(
     asdf_value_err_t err = asdf_datatype_parse(value, ASDF_BYTEORDER_LITTLE, datatype);
 
     if (err != ASDF_VALUE_OK) {
-        asdf_datatype_dealloc(datatype);
+        asdf_datatype_destroy(datatype);
     } else if (out) {
         *out = datatype;
     }
@@ -780,8 +835,8 @@ static asdf_value_t *asdf_datatype_serialize(
 static const asdf_extension_vtab_t asdf_datatype_vtab = {
     .serialize = asdf_datatype_serialize,
     .deserialize = asdf_datatype_deserialize,
-    .copy = NULL, /* TODO: copy */
-    .dealloc = asdf_datatype_dealloc,
+    .copy = asdf_datatype_copy_impl,
+    .deinit = asdf_datatype_deinit_impl,
 };
 
 

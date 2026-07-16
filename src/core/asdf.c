@@ -337,7 +337,7 @@ static void asdf_meta_history_dealloc(asdf_meta_history_t *history) {
 }
 
 
-static void asdf_meta_dealloc(void *value) {
+static void asdf_meta_deinit_impl(void *value) {
     if (!value)
         return;
 
@@ -347,51 +347,38 @@ static void asdf_meta_dealloc(void *value) {
         asdf_software_destroy(meta->asdf_library);
 
     asdf_meta_history_dealloc(&meta->history);
-    free(meta);
+    ZERO_MEMORY(meta, sizeof(*meta));
 }
 
 
-static void *asdf_meta_copy(asdf_file_t *file, const void *value) {
-    if (!value)
-        return NULL;
-
-    const asdf_meta_t *meta = value;
-    asdf_meta_t *copy = calloc(1, sizeof(asdf_meta_t));
-
-    if (!copy) {
-        ASDF_ERROR_OOM(NULL);
-        return NULL;
-    }
+static bool asdf_meta_copy_impl(asdf_file_t *file, const void *src, void *dst) {
+    const asdf_meta_t *meta = src;
+    asdf_meta_t *copy = dst;
 
     if (meta->asdf_library) {
-        copy->asdf_library = asdf_software_clone(file, meta->asdf_library);
+        copy->asdf_library = asdf_software_copy(file, meta->asdf_library);
 
         if (!copy->asdf_library)
-            goto failure;
+            return false;
     }
 
     if (meta->history.extensions) {
         copy->history.extensions = (const asdf_extension_metadata_t **)
-            asdf_extension_metadata_array_clone(file, meta->history.extensions);
+            asdf_extension_metadata_array_copy(file, meta->history.extensions);
 
         if (!copy->history.extensions)
-            goto failure;
+            return false;
     }
 
     if (meta->history.entries) {
-        copy->history.entries = (const asdf_history_entry_t **)asdf_history_entry_array_clone(
+        copy->history.entries = (const asdf_history_entry_t **)asdf_history_entry_array_copy(
             file, meta->history.entries);
 
         if (!copy->history.entries)
-            goto failure;
+            return false;
     }
 
-    return copy;
-
-failure:
-    asdf_meta_dealloc(copy);
-    ASDF_ERROR_OOM(file);
-    return NULL;
+    return true;
 }
 
 
@@ -446,8 +433,8 @@ failure:
 static const asdf_extension_vtab_t asdf_meta_vtab = {
     .serialize = asdf_meta_serialize,
     .deserialize = asdf_meta_deserialize,
-    .copy = asdf_meta_copy,
-    .dealloc = asdf_meta_dealloc,
+    .copy = asdf_meta_copy_impl,
+    .deinit = asdf_meta_deinit_impl,
 };
 
 
