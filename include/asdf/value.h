@@ -918,7 +918,7 @@ ASDF_EXPORT int asdf_container_size(asdf_value_t *container);
  */
 
 // Forward declaration for asdf_extension_t
-typedef struct _asdf_extension asdf_extension_t;
+typedef struct asdf_extension asdf_extension_t;
 
 /**
  * Check if an `asdf_value_t *` has the specified extension type
