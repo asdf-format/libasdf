@@ -141,7 +141,7 @@ static_assert(
     "asdf_extension_vtab_t must stay ASDF_EXTENSION_VTAB_MAX_METHODS methods wide");
 
 
-struct _asdf_extension {
+struct asdf_extension {
     /**
      * ``NULL``-terminated array of full YAML tags this extension handles
      *
@@ -151,6 +151,13 @@ struct _asdf_extension {
     const char *const *tags;
     asdf_software_t *software;
     const asdf_extension_vtab_t *vtab;
+    /**
+     * Size of the extension's objects
+     *
+     * Useful for dynamic allocations in situations where the extension
+     * object's type is not known.
+     */
+    size_t size;
     void *userdata;
 };
 
@@ -158,7 +165,7 @@ struct _asdf_extension {
 /**
  * Struct representing a registered libasdf extension
  */
-typedef struct _asdf_extension asdf_extension_t;
+typedef struct asdf_extension asdf_extension_t;
 
 
 /**
@@ -212,12 +219,13 @@ ASDF_EXPORT void asdf_tag_destroy(asdf_tag_t *tag);
 #define ASDF_EXT_TAGS_NAME(extname) ASDF_EXPAND(ASDF_EXT_PREFIX, _##extname##_extension_tags)
 
 
-#define ASDF_EXT_DEFINE(extname, _software, _vtab, _userdata, ...) \
+#define ASDF_EXT_DEFINE(extname, type, _software, _vtab, _userdata, ...) \
     static const char *const ASDF_EXT_TAGS_NAME(extname)[] = {__VA_ARGS__, NULL}; \
     static asdf_extension_t ASDF_EXT_STATIC_NAME(extname) = { \
         .tags = ASDF_EXT_TAGS_NAME(extname), \
         .software = (_software), \
         .vtab = (_vtab), \
+        .size = sizeof(type), \
         .userdata = (_userdata)}
 
 
@@ -394,7 +402,7 @@ ASDF_EXPORT void asdf_tag_destroy(asdf_tag_t *tag);
  * :param ...: One or more YAML tag strings the extension is registered for
  */
 #define ASDF_REGISTER_EXTENSION(extname, type, software, vtab, userdata, ...) \
-    ASDF_EXT_DEFINE(extname, software, vtab, userdata, __VA_ARGS__); \
+    ASDF_EXT_DEFINE(extname, type, software, vtab, userdata, __VA_ARGS__); \
     ASDF_EXT_DEFINE_VALUE_AS_TYPE(extname, type) \
     ASDF_EXT_DEFINE_VALUE_IS_TYPE(extname) \
     ASDF_EXT_DEFINE_VALUE_OF_TYPE(extname, type) \
