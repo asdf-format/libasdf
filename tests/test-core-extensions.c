@@ -543,6 +543,38 @@ MU_TEST(datatype_serialize) {
 }
 
 
+MU_TEST(datatype_copy) {
+    const asdf_datatype_t datatype = {
+        .type = ASDF_DATATYPE_STRUCTURED,
+        .nfields = 4,
+        .fields = (const asdf_datatype_t []){
+            {.name = "string", .type = ASDF_DATATYPE_ASCII, .size = 4,
+             .byteorder = ASDF_BYTEORDER_BIG},
+            {.name = "unicode", .type = ASDF_DATATYPE_UCS4, .size = 16,
+             .byteorder = ASDF_BYTEORDER_LITTLE},
+            {.name = "int", .type = ASDF_DATATYPE_INT16, .byteorder = ASDF_BYTEORDER_BIG},
+            {.name = "matrix", .type = ASDF_DATATYPE_FLOAT32, .byteorder = ASDF_BYTEORDER_LITTLE,
+             .ndim = 2, .shape = (const uint64_t[]){3, 3}}
+        }
+    };
+
+    asdf_file_t *file = asdf_open(NULL);
+    assert_not_null(file);
+    asdf_datatype_t *copy = asdf_datatype_copy(file, &datatype);
+    assert_not_null(copy);
+    assert_datatype_equal(copy, &datatype);
+
+    // The copy owns independent storage for its nested fields, names, and shapes
+    assert_ptr_not_equal(copy->fields, datatype.fields);
+    assert_ptr_not_equal(copy->fields[0].name, datatype.fields[0].name);
+    assert_ptr_not_equal(copy->fields[3].shape, datatype.fields[3].shape);
+
+    asdf_datatype_destroy(copy);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
 /*
  * Very basic test of ndarray parsing; will have more comprehensive ndarray tests in their own suite
  */
@@ -726,6 +758,7 @@ MU_TEST_SUITE(
     MU_RUN_TEST(meta_serialize),
     MU_RUN_TEST(datatype),
     MU_RUN_TEST(datatype_serialize),
+    MU_RUN_TEST(datatype_copy),
     MU_RUN_TEST(ndarray),
     MU_RUN_TEST(ndarray_serialize),
     MU_RUN_TEST(software),
