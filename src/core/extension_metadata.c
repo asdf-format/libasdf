@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -146,7 +147,7 @@ failure:
 }
 
 
-static void asdf_extension_metadata_dealloc(void *value) {
+static void asdf_extension_metadata_deinit_impl(void *value) {
     if (!value)
         return;
 
@@ -154,56 +155,44 @@ static void asdf_extension_metadata_dealloc(void *value) {
     free((void *)metadata->extension_class);
     asdf_software_destroy((asdf_software_t *)metadata->package);
     asdf_mapping_destroy(metadata->metadata);
-    free(metadata);
+    ZERO_MEMORY(metadata, sizeof(*metadata));
 }
 
 
-static void *asdf_extension_metadata_copy(asdf_file_t *file, const void *value) {
-    if (!value)
-        return NULL;
-
-    const asdf_extension_metadata_t *metadata = value;
-
-    asdf_extension_metadata_t *copy = calloc(1, sizeof(asdf_extension_metadata_t));
-
-    if (!copy)
-        goto failure;
+static bool asdf_extension_metadata_copy_impl(asdf_file_t *file, const void *src, void *dst) {
+    const asdf_extension_metadata_t *metadata = src;
+    asdf_extension_metadata_t *copy = dst;
 
     if (metadata->extension_class) {
         copy->extension_class = strdup(metadata->extension_class);
 
         if (!copy->extension_class)
-            goto failure;
+            return false;
     }
 
     if (metadata->package) {
-        copy->package = asdf_software_clone(file, metadata->package);
+        copy->package = asdf_software_copy(file, metadata->package);
 
         if (!copy->package)
-            goto failure;
+            return false;
     }
 
     if (metadata->metadata) {
         copy->metadata = asdf_mapping_clone(metadata->metadata);
 
         if (!copy->metadata)
-            goto failure;
+            return false;
     }
 
-    return copy;
-
-failure:
-    asdf_extension_metadata_dealloc(copy);
-    ASDF_ERROR_OOM(file);
-    return NULL;
+    return true;
 }
 
 
 static const asdf_extension_vtab_t asdf_extension_metadata_vtab = {
     .serialize = asdf_extension_metadata_serialize,
     .deserialize = asdf_extension_metadata_deserialize,
-    .copy = asdf_extension_metadata_copy,
-    .dealloc = asdf_extension_metadata_dealloc,
+    .copy = asdf_extension_metadata_copy_impl,
+    .deinit = asdf_extension_metadata_deinit_impl,
 };
 
 

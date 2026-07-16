@@ -2,8 +2,10 @@
 #ifndef ASDF_EXTENSION_H
 #define ASDF_EXTENSION_H
 
+#include <assert.h>
 #include <stdbool.h>
 
+#include <asdf/error.h>
 #include <asdf/file.h>
 #include <asdf/util.h>
 #include <asdf/value.h>
@@ -65,21 +67,51 @@ typedef asdf_value_err_t (*asdf_extension_deserialize_t)(
 
 
 /**
- * Deep-copy a native object
+ * Deep-copy a native object into caller-provided storage
+ *
+ * The generated ``asdf_<ext>_copy``/``asdf_<ext>_copy_into`` wrappers zero
+ * ``dst`` before this is called, and on failure they call the extension's
+ * ``deinit`` method on ``dst`` to unwind any partial work.  An implementation
+ * therefore only needs to populate ``dst`` and, on failure, return ``false``
+ * (the sole assumed failure mode being out-of-memory).
  *
  * :param file: A handle to the file to which the object belongs
- * :param obj: The native object to copy
- * :return: The newly allocated copy, or ``NULL`` on failure
+ * :param src: The native object to copy
+ * :param dst: Pre-zeroed storage to copy ``src`` into
+ * :return: ``true`` on success, ``false`` on failure
  */
-typedef void *(*asdf_extension_copy_t)(asdf_file_t *file, const void *obj);
+typedef bool (*asdf_extension_copy_t)(asdf_file_t *file, const void *src, void *dst);
 
 
 /**
- * Free a native object produced by an `asdf_extension_deserialize_t`
+ * De-initialize a native object produced by an `asdf_extension_deserialize_t`
  *
- * :param obj: The native object to free
+ * This frees any resources owned by ``obj``'s fields but *must not* free ``obj``
+ * itself--its storage may be embedded, an array element, or static.  Freeing
+ * the object's own storage is done by the generated ``asdf_<ext>_destroy``.
+ * It must be safe to call on a zero-initialized object and on a
+ * partially-initialized object left behind by a failed `asdf_extension_copy_t`.
+ *
+ * :param obj: The native object whose fields to de-initialize
  */
-typedef void (*asdf_extension_dealloc_t)(void *obj);
+typedef void (*asdf_extension_deinit_t)(void *obj);
+
+
+/**
+ * Generic method-pointer type for reserved `asdf_extension_vtab_t` slots
+ */
+typedef void (*asdf_extension_method_t)(void);
+
+
+/** Total number of method slots in `asdf_extension_vtab_t` (used + reserved) */
+#define ASDF_EXTENSION_VTAB_MAX_METHODS 8
+
+/**
+ * Number of currently-defined `asdf_extension_vtab_t` methods
+ *
+ * Bump this when adding new methods to the vtab.
+ */
+#define ASDF_EXTENSION_VTAB_METHODS 4
 
 
 /**
@@ -95,9 +127,18 @@ typedef struct {
     asdf_extension_deserialize_t deserialize;
     /** Deep-copy method, or ``NULL`` for a shallow copy */
     asdf_extension_copy_t copy;
-    /** Method to free objects produced by ``deserialize`` */
-    asdf_extension_dealloc_t dealloc;
+    /** Method to de-initialize objects produced by ``deserialize`` */
+    asdf_extension_deinit_t deinit;
+    /** Reserved for future methods; keeps the ABI stable as methods are added */
+    asdf_extension_method_t
+        _reserved[ASDF_EXTENSION_VTAB_MAX_METHODS - ASDF_EXTENSION_VTAB_METHODS];
 } asdf_extension_vtab_t;
+
+
+static_assert(
+    sizeof(asdf_extension_vtab_t) ==
+        ASDF_EXTENSION_VTAB_MAX_METHODS * sizeof(asdf_extension_method_t),
+    "asdf_extension_vtab_t must stay ASDF_EXTENSION_VTAB_MAX_METHODS methods wide");
 
 
 struct _asdf_extension {
@@ -220,37 +261,84 @@ ASDF_EXPORT void asdf_tag_destroy(asdf_tag_t *tag);
 
 
 /*
- * Auto-generated helper to clone extension types
+ * Auto-generated helper to de-initialize an extension type object in place
  *
- * Extension types may optionally not implement the copy method, in which case a shallow
- * copy is performed.  This may result in undesired effects (double-frees, etc.) so do make
- * sure to implement this if the extension object contains nested data structures.
+ * Frees resources owned by the object's fields but does not free the object's
+ * own storage; use for embedded, array-element, or static objects.
  */
-#define ASDF_EXT_DEFINE_CLONE(extname, type) \
-    ASDF_EXPORT type *asdf_##extname##_clone(asdf_file_t *file, const type *object) { \
+#define ASDF_EXT_DEFINE_DEINIT(extname, type) \
+    ASDF_EXPORT void asdf_##extname##_deinit(type *object) { \
         if (!object) \
-            return NULL; \
+            return; \
         asdf_extension_t *ext = &ASDF_EXT_STATIC_NAME(extname); \
-        if (!ext) \
-            return NULL; \
-        if (!ext->vtab || !ext->vtab->copy) { \
-            void *clone = malloc(sizeof(type)); \
-            if (!clone) \
-                return NULL; \
-            memcpy(clone, object, sizeof(type)); \
-            return clone; \
-        } \
-        return (type *)ext->vtab->copy(file, object); \
+        if (ext->vtab && ext->vtab->deinit) \
+            ext->vtab->deinit(object); \
+    }
+
+
+/* Auto-generated helper to de-initialize and free an extension type object */
+#define ASDF_EXT_DEFINE_DESTROY(extname, type) \
+    ASDF_EXPORT void asdf_##extname##_destroy(type *object) { \
+        if (!object) \
+            return; \
+        asdf_##extname##_deinit(object); \
+        free(object); \
     }
 
 
 /*
- * Helper to clone a NULL-terminated array of pointers to an extension object
+ * Auto-generated helper to copy an extension type into caller-provided storage
  *
- * For example, clones an `asdf_history_entry_t **` array.
+ * ``dst`` is zeroed before the extension's copy method runs; on failure the
+ * partial ``dst`` is de-initialized via ``asdf_<ext>_deinit``.  Extension types
+ * may optionally not implement the copy method, in which case a shallow copy is
+ * performed.  This may result in undesired effects (double-frees, etc.) so do
+ * make sure to implement it if the extension object contains nested data.
  */
-#define ASDF_EXT_DEFINE_ARRAY_CLONE(extname, type) \
-    ASDF_EXPORT type **asdf_##extname##_array_clone(asdf_file_t *file, const type **src) { \
+#define ASDF_EXT_DEFINE_COPY_INTO(extname, type) \
+    ASDF_EXPORT bool asdf_##extname##_copy_into(asdf_file_t *file, const type *src, type *dst) { \
+        if (!src || !dst) \
+            return false; \
+        asdf_extension_t *ext = &ASDF_EXT_STATIC_NAME(extname); \
+        memset(dst, 0, sizeof(type)); \
+        if (!ext->vtab || !ext->vtab->copy) { \
+            memcpy(dst, src, sizeof(type)); \
+            return true; \
+        } \
+        if (!ext->vtab->copy(file, src, dst)) { \
+            asdf_##extname##_deinit(dst); \
+            ASDF_ERROR_OOM(file); \
+            return false; \
+        } \
+        return true; \
+    }
+
+
+/*
+ * Auto-generated helper to copy an extension type into freshly allocated storage
+ */
+#define ASDF_EXT_DEFINE_COPY(extname, type) \
+    ASDF_EXPORT type *asdf_##extname##_copy(asdf_file_t *file, const type *src) { \
+        if (!src) \
+            return NULL; \
+        type *copy = (type *)calloc(1, sizeof(type)); \
+        if (!copy) \
+            return NULL; \
+        if (!asdf_##extname##_copy_into(file, src, copy)) { \
+            free(copy); \
+            return NULL; \
+        } \
+        return copy; \
+    }
+
+
+/*
+ * Helper to copy a NULL-terminated array of pointers to an extension object
+ *
+ * For example, copies an `asdf_history_entry_t **` array.
+ */
+#define ASDF_EXT_DEFINE_ARRAY_COPY(extname, type) \
+    ASDF_EXPORT type **asdf_##extname##_array_copy(asdf_file_t *file, const type **src) { \
         size_t nelem = 0; \
         while (src[nelem]) \
             nelem++; \
@@ -258,7 +346,7 @@ ASDF_EXPORT void asdf_tag_destroy(asdf_tag_t *tag);
         if (!dst) \
             return NULL; \
         for (size_t idx = 0; idx < nelem; idx++) { \
-            dst[idx] = asdf_##extname##_clone(file, src[idx]); \
+            dst[idx] = asdf_##extname##_copy(file, src[idx]); \
             if (!dst[idx]) { \
                 for (size_t jdx = 0; jdx < idx; jdx++) \
                     asdf_##extname##_destroy(dst[jdx]); \
@@ -268,18 +356,6 @@ ASDF_EXPORT void asdf_tag_destroy(asdf_tag_t *tag);
         } \
         dst[nelem] = NULL; \
         return dst; \
-    }
-
-
-/* Auto-generated helper to free extension type objects */
-#define ASDF_EXT_DEFINE_DESTROY(extname, type) \
-    ASDF_EXPORT void asdf_##extname##_destroy(type *object) { \
-        if (!object) \
-            return; \
-        asdf_extension_t *ext = &ASDF_EXT_STATIC_NAME(extname); \
-        if (!ext->vtab || !ext->vtab->dealloc) \
-            return; \
-        ext->vtab->dealloc(object); \
     }
 
 
@@ -295,7 +371,8 @@ ASDF_EXPORT void asdf_tag_destroy(asdf_tag_t *tag);
  * The generated functions are named after ``extname``: ``asdf_get_<extname>``,
  * ``asdf_set_<extname>``, ``asdf_is_<extname>``, ``asdf_value_is_<extname>``,
  * ``asdf_value_as_<extname>``, ``asdf_value_of_<extname>``,
- * ``asdf_<extname>_clone``, ``asdf_<extname>_array_clone``, and
+ * ``asdf_<extname>_copy``, ``asdf_<extname>_copy_into``,
+ * ``asdf_<extname>_array_copy``, ``asdf_<extname>_deinit``, and
  * ``asdf_<extname>_destroy``.
  *
  * One or more YAML tags are passed as trailing arguments; the extension is
@@ -324,9 +401,11 @@ ASDF_EXPORT void asdf_tag_destroy(asdf_tag_t *tag);
     ASDF_EXT_DEFINE_IS_TYPE(extname, type) \
     ASDF_EXT_DEFINE_GET(extname, type) \
     ASDF_EXT_DEFINE_SET(extname, type) \
+    ASDF_EXT_DEFINE_DEINIT(extname, type) \
     ASDF_EXT_DEFINE_DESTROY(extname, type) \
-    ASDF_EXT_DEFINE_CLONE(extname, type) \
-    ASDF_EXT_DEFINE_ARRAY_CLONE(extname, type) \
+    ASDF_EXT_DEFINE_COPY_INTO(extname, type) \
+    ASDF_EXT_DEFINE_COPY(extname, type) \
+    ASDF_EXT_DEFINE_ARRAY_COPY(extname, type) \
     static ASDF_CONSTRUCTOR void ASDF_EXPAND( \
         ASDF_EXT_PREFIX, _register_##extname##_extension)(void) { \
         asdf_extension_register(&ASDF_EXT_STATIC_NAME(extname)); \
@@ -353,8 +432,10 @@ ASDF_EXPORT void asdf_tag_destroy(asdf_tag_t *tag);
         asdf_file_t *file, const char *path, type **out); \
     ASDF_EXPORT asdf_value_err_t asdf_set_##extname( \
         asdf_file_t *file, const char *path, const type *obj); \
-    ASDF_EXPORT type *asdf_##extname##_clone(asdf_file_t *file, const type *object); \
-    ASDF_EXPORT type **asdf_##extname##_array_clone(asdf_file_t *file, const type **src); \
+    ASDF_EXPORT type *asdf_##extname##_copy(asdf_file_t *file, const type *src); \
+    ASDF_EXPORT bool asdf_##extname##_copy_into(asdf_file_t *file, const type *src, type *dst); \
+    ASDF_EXPORT type **asdf_##extname##_array_copy(asdf_file_t *file, const type **src); \
+    ASDF_EXPORT void asdf_##extname##_deinit(type *object); \
     ASDF_EXPORT void asdf_##extname##_destroy(type *object)
 
 ASDF_END_DECLS

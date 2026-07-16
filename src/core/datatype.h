@@ -24,8 +24,6 @@ typedef struct {
 ASDF_LOCAL asdf_value_err_t
 asdf_datatype_parse(asdf_value_t *value, asdf_byteorder_t byteorder, asdf_datatype_t *datatype);
 
-ASDF_LOCAL void asdf_datatype_clean(asdf_datatype_t *datatype);
-
 ASDF_LOCAL asdf_value_err_t
 asdf_datatype_byteorder_parse(asdf_mapping_t *parent, const char *path, asdf_byteorder_t *out);
 

@@ -136,7 +136,7 @@ failure:
 }
 
 
-static void asdf_software_dealloc(void *value) {
+static void asdf_software_deinit_impl(void *value) {
     if (!value)
         return;
 
@@ -145,61 +145,51 @@ static void asdf_software_dealloc(void *value) {
     asdf_version_destroy((asdf_version_t *)software->version);
     free((void *)software->homepage);
     free((void *)software->author);
-    free(value);
+    ZERO_MEMORY(software, sizeof(*software));
 }
 
 
-static void *asdf_software_copy(asdf_file_t *file, const void *value) {
-    if (!value)
-        return NULL;
-
-    const asdf_software_t *software = value;
-    asdf_software_t *copy = calloc(1, sizeof(asdf_software_t));
-
-    if (!copy)
-        goto failure;
+static bool asdf_software_copy_impl(UNUSED(asdf_file_t *file), const void *src, void *dst) {
+    const asdf_software_t *software = src;
+    asdf_software_t *copy = dst;
 
     if (software->name) {
         copy->name = strdup(software->name);
 
         if (!copy->name)
-            goto failure;
+            return false;
     }
 
     if (software->version) {
         copy->version = asdf_version_copy(software->version);
 
         if (!copy->version)
-            goto failure;
+            return false;
     }
 
     if (software->homepage) {
         copy->homepage = strdup(software->homepage);
 
         if (!copy->homepage)
-            goto failure;
+            return false;
     }
 
     if (software->author) {
         copy->author = strdup(software->author);
 
         if (!copy->author)
-            goto failure;
+            return false;
     }
 
-    return copy;
-failure:
-    asdf_software_dealloc(copy);
-    ASDF_ERROR_OOM(file);
-    return NULL;
+    return true;
 }
 
 
 static const asdf_extension_vtab_t asdf_software_vtab = {
     .serialize = asdf_software_serialize,
     .deserialize = asdf_software_deserialize,
-    .copy = asdf_software_copy,
-    .dealloc = asdf_software_dealloc,
+    .copy = asdf_software_copy_impl,
+    .deinit = asdf_software_deinit_impl,
 };
 
 
@@ -216,12 +206,12 @@ ASDF_REGISTER_EXTENSION(
 
 /** Additional software-related methods */
 void asdf_library_set(asdf_file_t *file, const asdf_software_t *software) {
-    file->asdf_library = asdf_software_clone(file, software);
+    file->asdf_library = asdf_software_copy(file, software);
 }
 
 
 void asdf_library_set_version(asdf_file_t *file, const char *version) {
-    asdf_software_t *software = asdf_software_clone(file, &libasdf_software);
+    asdf_software_t *software = asdf_software_copy(file, &libasdf_software);
 
     if (!software)
         return;

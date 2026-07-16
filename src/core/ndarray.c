@@ -715,7 +715,7 @@ cleanup:
     if (ASDF_IS_ERR(err)) {
         if (ndarray) {
             free(ndarray->shape);
-            asdf_datatype_clean(&ndarray->datatype);
+            asdf_datatype_deinit(&ndarray->datatype);
         }
         free(internal);
         free(ndarray);
@@ -845,7 +845,7 @@ cleanup:
 }
 
 
-static void asdf_ndarray_dealloc(void *value) {
+static void asdf_ndarray_deinit_impl(void *value) {
     if (!value)
         return;
 
@@ -861,9 +861,8 @@ static void asdf_ndarray_dealloc(void *value) {
     free(ndarray->internal);
     free(ndarray->shape);
     free(ndarray->strides);
-    asdf_datatype_clean(&ndarray->datatype);
-    ZERO_MEMORY(ndarray, sizeof(asdf_ndarray_t));
-    free(ndarray);
+    asdf_datatype_deinit(&ndarray->datatype);
+    ZERO_MEMORY(ndarray, sizeof(*ndarray));
 }
 
 
@@ -1354,7 +1353,7 @@ static const asdf_extension_vtab_t asdf_ndarray_vtab = {
     .serialize = asdf_ndarray_serialize,
     .deserialize = asdf_ndarray_deserialize,
     .copy = NULL, /* TODO: copy */
-    .dealloc = asdf_ndarray_dealloc,
+    .deinit = asdf_ndarray_deinit_impl,
 };
 
 

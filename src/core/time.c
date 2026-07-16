@@ -891,42 +891,32 @@ failure:
 }
 
 
-static void *asdf_time_copy(asdf_file_t *file, const void *obj) {
-    if (!obj)
-        return NULL;
-
-    const asdf_time_t *tm = obj;
-    asdf_time_t *copy = calloc(1, sizeof(asdf_time_t));
-
-    if (UNLIKELY(!copy))
-        goto failure;
+static bool asdf_time_copy_impl(UNUSED(asdf_file_t *file), const void *src, void *dst) {
+    const asdf_time_t *tm = src;
+    asdf_time_t *copy = dst;
 
     *copy = *tm;
     copy->value = tm->value ? strdup(tm->value) : NULL;
 
     if (UNLIKELY(tm->value && !copy->value))
-        goto failure;
+        return false;
 
-    return copy;
-failure:
-    ASDF_ERROR_OOM(file);
-    free(copy);
-    return NULL;
+    return true;
 }
 
 
-static void asdf_time_dealloc(void *value) {
+static void asdf_time_deinit_impl(void *value) {
     asdf_time_t *tm = (asdf_time_t *)value;
     free(tm->value);
-    free(tm);
+    ZERO_MEMORY(tm, sizeof(*tm));
 }
 
 
 static const asdf_extension_vtab_t asdf_time_vtab = {
     .serialize = asdf_time_serialize,
     .deserialize = asdf_time_deserialize,
-    .copy = asdf_time_copy,
-    .dealloc = asdf_time_dealloc,
+    .copy = asdf_time_copy_impl,
+    .deinit = asdf_time_deinit_impl,
 };
 
 

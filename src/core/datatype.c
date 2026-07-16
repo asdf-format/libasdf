@@ -437,30 +437,23 @@ asdf_value_err_t asdf_datatype_parse(
 
 /**
  * Free resources allocated for an asdf_datatype_t
- *
- * Later, however, we may want users to be able to build datatypes (for writing new files)
- * so we may make this available as part of a more extensive datatype API.
  */
 // NOLINTNEXTLINE(misc-no-recursion)
-void asdf_datatype_clean(asdf_datatype_t *datatype) {
-    if (!datatype)
+static void asdf_datatype_deinit_impl(void *obj) {
+    if (!obj)
         return;
+
+    asdf_datatype_t *datatype = obj;
 
     if (datatype->shape)
         free((size_t *)datatype->shape);
 
     if (datatype->fields) {
         for (uint32_t field_idx = 0; field_idx < datatype->nfields; field_idx++)
-            asdf_datatype_clean((asdf_datatype_t *)&datatype->fields[field_idx]);
+            asdf_datatype_deinit_impl((asdf_datatype_t *)&datatype->fields[field_idx]);
         free((asdf_datatype_t *)datatype->fields);
     }
     ZERO_MEMORY(datatype, sizeof(asdf_datatype_t));
-}
-
-
-static void asdf_datatype_dealloc(void *datatype) {
-    asdf_datatype_clean(datatype);
-    free(datatype);
 }
 
 
@@ -485,7 +478,7 @@ static asdf_value_err_t asdf_datatype_deserialize(
     asdf_value_err_t err = asdf_datatype_parse(value, ASDF_BYTEORDER_LITTLE, datatype);
 
     if (err != ASDF_VALUE_OK) {
-        asdf_datatype_dealloc(datatype);
+        asdf_datatype_destroy(datatype);
     } else if (out) {
         *out = datatype;
     }
@@ -781,7 +774,7 @@ static const asdf_extension_vtab_t asdf_datatype_vtab = {
     .serialize = asdf_datatype_serialize,
     .deserialize = asdf_datatype_deserialize,
     .copy = NULL, /* TODO: copy */
-    .dealloc = asdf_datatype_dealloc,
+    .deinit = asdf_datatype_deinit_impl,
 };
 
 
