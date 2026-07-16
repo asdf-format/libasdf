@@ -1,0 +1,6 @@
+The extension vtab's ``.dealloc`` method is renamed ``.deinit`` and no longer
+frees the extension object itself, only its (possibly nested) fields; a shallow
+object needs no ``.deinit`` at all.  ``asdf_<ext>_destroy()`` is unchanged (it
+de-initializes and frees the object), and a new generated ``asdf_<ext>_deinit()``
+de-initializes an object without freeing it, for use with objects that are
+embedded in another object, stack-allocated, etc.

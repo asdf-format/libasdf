@@ -9,6 +9,8 @@ The core ``ndarray`` extension now also reads ``ndarray-1.0.0`` in addition to
 addition to ``asdf-1.1.0``.
 
 As part of this the extension methods (``serialize``, ``deserialize``,
-``copy``, and ``dealloc``) moved out of ``asdf_extension_t`` and into a new
+``copy``, and ``deinit``) moved out of ``asdf_extension_t`` and into a new
 ``asdf_extension_vtab_t``, a pointer to which is passed to
-``ASDF_REGISTER_EXTENSION`` in place of the four individual methods.
+``ASDF_REGISTER_EXTENSION`` in place of the four individual methods.  The
+``asdf_extension_vtab_t`` also reserves space for additional methods to be added
+in the future without breaking ABI compatibility.
