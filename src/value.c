@@ -154,7 +154,7 @@ void asdf_value_destroy(asdf_value_t *value) {
 }
 
 
-static asdf_value_t *asdf_value_clone_impl(asdf_value_t *value, bool raw_shallow) {
+static asdf_value_t *asdf_value_copy_impl(asdf_value_t *value, bool raw_shallow) {
 
     if (!value)
         return NULL;
@@ -181,7 +181,7 @@ static asdf_value_t *asdf_value_clone_impl(asdf_value_t *value, bool raw_shallow
     if (value->path)
         new_value->path = strdup(value->path);
     else
-        // We must look up the full path of the node to store on the clone or
+        // We must look up the full path of the node to store on the copy or
         // else it will be lost; see issue #69
         new_value->path = fy_node_get_path(value->node);
 
@@ -215,14 +215,14 @@ static asdf_value_t *asdf_value_clone_impl(asdf_value_t *value, bool raw_shallow
 }
 
 
-/* Shallow clone that preserves all type information from the source value
+/* Shallow copy that preserves all type information from the source value
  *
  * Only valid for nodes that are attached to a document (where the document owns
  * the fy_node); fy_node_free() is a no-op on attached nodes so the shallow
  * reference is always safe.
  *
- * Unlike asdf_value_clone_impl(value, true) ("raw shallow"), this preserves the
- * computed type, extension type information, and scalar cache so the clone is
+ * Unlike asdf_value_copy_impl(value, true) ("raw shallow"), this preserves the
+ * computed type, extension type information, and scalar cache so the copy is
  * immediately usable without re-inferring anything.  Extension values get a new
  * ext wrapper struct that shares the already-deserialized object pointer; only
  * the wrapper is freed on destroy, not the object itself (consistent with the
@@ -230,9 +230,9 @@ static asdf_value_t *asdf_value_clone_impl(asdf_value_t *value, bool raw_shallow
  *
  * .. todo::
  *
- *   Merge this into asdf_value_clone_impl
+ *   Merge this into asdf_value_copy_impl
  */
-static asdf_value_t *asdf_value_clone_shallow(asdf_value_t *value) {
+static asdf_value_t *asdf_value_copy_shallow(asdf_value_t *value) {
     if (!value)
         return NULL;
 
@@ -272,25 +272,25 @@ static asdf_value_t *asdf_value_clone_shallow(asdf_value_t *value) {
 }
 
 
-asdf_value_t *asdf_value_clone(asdf_value_t *value) {
+asdf_value_t *asdf_value_copy(asdf_value_t *value) {
     if (!value)
         return NULL;
 
     // For nodes owned by a document (attached or document root), use a shallow
-    // clone: the document manages the fy_node lifetime, fy_node_free() is a
+    // copy: the document manages the fy_node lifetime, fy_node_free() is a
     // no-op, and avoiding a full deep copy prevents failures on deeply nested
     // structures (libfyaml has a hard limit on recursive copy depth).
     if (value->node && (fy_node_is_attached(value->node) || is_root_node(value->node)))
-        return asdf_value_clone_shallow(value);
+        return asdf_value_copy_shallow(value);
 
-    return asdf_value_clone_impl(value, false);
+    return asdf_value_copy_impl(value, false);
 }
 
 
-// Deep-clone variant for when an independent (detached) copy is truly needed,
+// Deep-copy variant for when an independent (detached) copy is truly needed,
 // e.g. when moving a value from one document/container into another.
-asdf_value_t *asdf_value_clone_deep(asdf_value_t *value) {
-    return asdf_value_clone_impl(value, false);
+asdf_value_t *asdf_value_copy_deep(asdf_value_t *value) {
+    return asdf_value_copy_impl(value, false);
 }
 
 
@@ -483,9 +483,9 @@ void asdf_mapping_set_style(asdf_mapping_t *mapping, asdf_yaml_node_style_t styl
 }
 
 
-asdf_mapping_t *asdf_mapping_clone(asdf_mapping_t *mapping) {
-    asdf_value_t *clone = asdf_value_clone_deep(&mapping->value);
-    return (asdf_mapping_t *)clone;
+asdf_mapping_t *asdf_mapping_copy(asdf_mapping_t *mapping) {
+    asdf_value_t *copy = asdf_value_copy_deep(&mapping->value);
+    return (asdf_mapping_t *)copy;
 }
 
 
@@ -759,12 +759,12 @@ asdf_value_err_t asdf_mapping_update_ex(
     asdf_value_err_t err = ASDF_VALUE_OK;
 
     while (asdf_mapping_iter_next(&iter)) {
-        asdf_value_t *clone = asdf_value_clone_deep(iter->value);
-        if (!clone) {
+        asdf_value_t *copy = asdf_value_copy_deep(iter->value);
+        if (!copy) {
             asdf_mapping_iter_destroy(iter);
             return ASDF_VALUE_ERR_OOM;
         }
-        err = asdf_mapping_set_ex(mapping, iter->key, clone, prepend);
+        err = asdf_mapping_set_ex(mapping, iter->key, copy, prepend);
         if (err) {
             asdf_mapping_iter_destroy(iter);
             break;
@@ -1494,9 +1494,9 @@ asdf_value_err_t asdf_value_as_extension_type(
     }
 
     assert(ext->vtab && ext->vtab->deserialize);
-    // Clone the raw value without existing extension inference to pass to the the extension's
+    // copy the raw value without existing extension inference to pass to the the extension's
     // deserialize method.
-    asdf_value_t *raw_value = asdf_value_clone_impl(value, true);
+    asdf_value_t *raw_value = asdf_value_copy_impl(value, true);
 
     if (!raw_value) {
         ASDF_ERROR_OOM(value->file);
@@ -2764,7 +2764,7 @@ asdf_value_err_t asdf_value_as_type(asdf_value_t *value, asdf_value_type_t type,
     switch (type) {
     case ASDF_VALUE_UNKNOWN:
         if (LIKELY(out))
-            (*(asdf_value_t **)out) = asdf_value_clone(value);
+            (*(asdf_value_t **)out) = asdf_value_copy(value);
 
         return ASDF_VALUE_OK;
     case ASDF_VALUE_SEQUENCE:
@@ -2772,7 +2772,7 @@ asdf_value_err_t asdf_value_as_type(asdf_value_t *value, asdf_value_type_t type,
             return ASDF_VALUE_ERR_TYPE_MISMATCH;
 
         if (LIKELY(out))
-            (*(asdf_value_t **)out) = asdf_value_clone(value);
+            (*(asdf_value_t **)out) = asdf_value_copy(value);
 
         return ASDF_VALUE_OK;
     case ASDF_VALUE_MAPPING:
@@ -2780,7 +2780,7 @@ asdf_value_err_t asdf_value_as_type(asdf_value_t *value, asdf_value_type_t type,
             return ASDF_VALUE_ERR_TYPE_MISMATCH;
 
         if (LIKELY(out))
-            (*(asdf_value_t **)out) = asdf_value_clone(value);
+            (*(asdf_value_t **)out) = asdf_value_copy(value);
 
         return ASDF_VALUE_OK;
     case ASDF_VALUE_SCALAR:
@@ -3056,10 +3056,10 @@ static asdf_value_t *asdf_find_iter_next_bfs(asdf_find_iter_impl_t *iter) {
     while (asdf_container_iter_next(&frame->iter)) {
         asdf_value_t *child = frame->iter->value;
         if (asdf_value_is_container(child)) {
-            // In BFS, clone the child before pushing: the next container_iter_next
+            // In BFS, copy the child before pushing: the next container_iter_next
             // call will destroy the original value wrapper.
             asdf_find_frame_t *new_frame = asdf_find_iter_push_frame(
-                iter, asdf_value_clone(child), frame->depth + 1);
+                iter, asdf_value_copy(child), frame->depth + 1);
 
             if (!new_frame)
                 return NULL;
@@ -3160,7 +3160,7 @@ asdf_value_t *asdf_value_find_ex(
     ssize_t max_depth) {
     if (!asdf_value_is_container(root)) {
         if (!pred || pred(root))
-            return asdf_value_clone(root);
+            return asdf_value_copy(root);
         return NULL;
     }
 
@@ -3172,7 +3172,7 @@ asdf_value_t *asdf_value_find_ex(
     if (!asdf_value_find_iter_next(&iter))
         return NULL;
 
-    asdf_value_t *result = asdf_value_clone(iter->value);
+    asdf_value_t *result = asdf_value_copy(iter->value);
     asdf_find_iter_destroy(iter);
     return result;
 }

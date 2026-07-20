@@ -203,20 +203,20 @@ ASDF_EXPORT void asdf_value_destroy(asdf_value_t *value);
 
 
 /**
- * Clone an `asdf_value_t`
+ * Copy an `asdf_value_t`
  *
  * This performs a deep-copy of a value and may be used in certain cases
  * (such as container iteration) when the user needs an owned copy of the
  * value.
  *
- * The new cloned value is not initially attached to the YAML tree, so
+ * The new copied value is not initially attached to the YAML tree, so
  * modification to its underlying value is not reflected in the YAML; it
  * may be inserted elsewhere in the tree later.
  *
- * :param value: The `asdf_value_t *` to clone
+ * :param value: The `asdf_value_t *` to copy
  * :return: A new deep-copied `asdf_value_t *`, or ``NULL`` on failure
  */
-ASDF_EXPORT asdf_value_t *asdf_value_clone(asdf_value_t *value);
+ASDF_EXPORT asdf_value_t *asdf_value_copy(asdf_value_t *value);
 
 /**
  * Get the specific `asdf_value_type_t` of a generic `asdf_value_t`
@@ -346,10 +346,10 @@ ASDF_EXPORT void asdf_mapping_set_style(asdf_mapping_t *mapping, asdf_yaml_node_
  * The returned mapping is not attached to the tree; it may be inserted
  * elsewhere later or released with `asdf_mapping_destroy`.
  *
- * :param mapping: The `asdf_mapping_t *` to clone
+ * :param mapping: The `asdf_mapping_t *` to copy
  * :return: A new `asdf_mapping_t *`, or ``NULL`` on failure
  */
-ASDF_EXPORT asdf_mapping_t *asdf_mapping_clone(asdf_mapping_t *mapping);
+ASDF_EXPORT asdf_mapping_t *asdf_mapping_copy(asdf_mapping_t *mapping);
 
 /**
  * Free a mapping and all values it contains
@@ -381,7 +381,7 @@ ASDF_EXPORT asdf_value_t *asdf_mapping_get(asdf_mapping_t *mapping, const char *
  * `asdf_mapping_iter_next`, the ``key`` and ``value`` fields hold the current
  * mapping entry and are valid until the next call to `asdf_mapping_iter_next`
  * or `asdf_mapping_iter_destroy`.  If the value must outlive the current
- * iteration step, clone it with `asdf_value_clone`.
+ * iteration step, copy it with `asdf_value_copy`.
  *
  * .. warning::
  *
@@ -1143,7 +1143,7 @@ typedef bool (*asdf_value_pred_t)(asdf_value_t *value);
  * After each successful call to `asdf_value_find_iter_next`, the ``value``
  * field holds the matching value and is valid until the next call to
  * `asdf_value_find_iter_next` or `asdf_find_iter_destroy`.  If the value must
- * persist further, clone it with `asdf_value_clone`.
+ * persist further, copy it with `asdf_value_copy`.
  */
 typedef struct {
     /** Current matching value */
@@ -1279,7 +1279,7 @@ ASDF_EXPORT asdf_find_iter_t *asdf_find_iter_init_ex(
  *
  *   asdf_find_iter_t *iter = asdf_find_iter_init(root, pred);
  *   while (asdf_value_find_iter_next(&iter)) {
- *       // iter->value is valid here; use asdf_value_clone if it must persist
+ *       // iter->value is valid here; use asdf_value_copy if it must persist
  *   }
  *
  * :param iter: Pointer to the iterator handle; set to ``NULL`` on exhaustion

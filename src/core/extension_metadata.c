@@ -67,7 +67,7 @@ static asdf_value_t *asdf_extension_metadata_serialize(
 
             // Make a deep copy of the metadata mapping's value since inserting
             // it into a new mapping steals ownership of the value
-            asdf_value_t *val = asdf_value_clone_deep(iter->value);
+            asdf_value_t *val = asdf_value_copy_deep(iter->value);
 
             if (iter->value && !val) {
                 err = ASDF_VALUE_ERR_OOM;
@@ -137,7 +137,7 @@ static asdf_value_err_t asdf_extension_metadata_deserialize(
     metadata->package = package;
     // Clone the mapping value into the metadata so that additional properties can be looked up on
     // it
-    metadata->metadata = (asdf_mapping_t *)asdf_value_clone(value);
+    metadata->metadata = (asdf_mapping_t *)asdf_value_copy(value);
     *out = metadata;
     return ASDF_VALUE_OK;
 failure:
@@ -178,7 +178,7 @@ static bool asdf_extension_metadata_copy_impl(asdf_file_t *file, const void *src
     }
 
     if (metadata->metadata) {
-        copy->metadata = asdf_mapping_clone(metadata->metadata);
+        copy->metadata = asdf_mapping_copy(metadata->metadata);
 
         if (!copy->metadata)
             return false;

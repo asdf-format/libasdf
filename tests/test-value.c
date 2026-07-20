@@ -1582,19 +1582,19 @@ MU_TEST(test_value_copy_with_parent_path) {
 
     // The test: Cloned values should still retain their original path, as should any
     // child values retrieved from them.
-    asdf_value_t *value_clone = asdf_value_clone(value);
-    assert_string_equal(asdf_value_path(value_clone), "/history/extensions/0");
-    asdf_mapping_t *value_clone_map = NULL;
-    asdf_value_as_mapping(value_clone, &value_clone_map);
-    assert_not_null(value_clone_map);
-    asdf_value_t *ext_uri_clone = asdf_mapping_get(value_clone_map, "extension_uri");
-    assert_string_equal(asdf_value_path(ext_uri_clone), "/history/extensions/0/extension_uri");
+    asdf_value_t *value_copy = asdf_value_copy(value);
+    assert_string_equal(asdf_value_path(value_copy), "/history/extensions/0");
+    asdf_mapping_t *value_copy_map = NULL;
+    asdf_value_as_mapping(value_copy, &value_copy_map);
+    assert_not_null(value_copy_map);
+    asdf_value_t *ext_uri_copy = asdf_mapping_get(value_copy_map, "extension_uri");
+    assert_string_equal(asdf_value_path(ext_uri_copy), "/history/extensions/0/extension_uri");
 
     // Crucially, it has the full path; this is just the control case
     assert_string_equal(asdf_value_path(ext_uri), "/history/extensions/0/extension_uri");
 
-    asdf_value_destroy(ext_uri_clone);
-    asdf_value_destroy(value_clone);
+    asdf_value_destroy(ext_uri_copy);
+    asdf_value_destroy(value_copy);
     asdf_value_destroy(ext_uri);
     asdf_value_destroy(value);
     asdf_close(file);
@@ -1878,7 +1878,7 @@ MU_TEST(test_asdf_value_path) {
     asdf_value_t *value = asdf_get_value(file, "/d/0");
     assert_not_null(value);
     assert_string_equal(asdf_value_path(value), "/d/0");
-    asdf_value_t *clone = asdf_value_clone(value);
+    asdf_value_t *clone = asdf_value_copy(value);
     assert_string_equal(asdf_value_path(clone), "/d/0");
     asdf_value_destroy(value);
     asdf_value_destroy(clone);
@@ -1996,14 +1996,14 @@ MU_TEST(anchors) {
 
 
 /** Regression test for double-free bug on cloned extension values */
-MU_TEST(regression_clone_extension_value) {
+MU_TEST(regression_copy_extension_value) {
     const char *path = get_reference_file_path("1.6.0/basic.asdf");
     asdf_file_t *file = asdf_open(path, "r");
     assert_not_null(file);
     asdf_value_t *value = asdf_get_value(file, "data");
     assert_not_null(value);
     assert_true(asdf_value_is_ndarray(value));
-    asdf_value_t *cloned = asdf_value_clone(value);
+    asdf_value_t *cloned = asdf_value_copy(value);
     assert_true(asdf_value_is_ndarray(cloned));
     assert_string_equal(asdf_value_path(value), asdf_value_path(cloned));
     asdf_value_destroy(value);
@@ -2038,11 +2038,11 @@ MU_TEST(regression_read_flt_max) {
 }
 
 
-// asdf_value_clone on an attached node should use a shallow reference rather
+// asdf_value_copy on an attached node should use a shallow reference rather
 // than a full deep copy.  This is important for deeply nested structures (e.g.
 // GWCS pipeline transform trees) which would otherwise exceed libfyaml's
 // hard-coded recursive copy depth limit.
-MU_TEST(test_asdf_value_clone_attached_shallow) {
+MU_TEST(test_asdf_value_copy_attached_shallow) {
     asdf_file_t *file = asdf_open(NULL);
     assert_not_null(file);
 
@@ -2061,7 +2061,7 @@ MU_TEST(test_asdf_value_clone_attached_shallow) {
 
     // Clone should succeed even though the subtree exceeds the libfyaml deep-copy
     // depth limit; for attached nodes we take a shallow reference instead.
-    asdf_value_t *clone = asdf_value_clone(root);
+    asdf_value_t *clone = asdf_value_copy(root);
     assert_not_null(clone);
     assert_true(asdf_value_is_mapping(clone));
 
@@ -2139,10 +2139,10 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_raw_value_type_preserved_after_type_resolution),
     MU_RUN_TEST(anchors),
     // TODO: Maybe set up a separate test suite for regression tests
-    MU_RUN_TEST(regression_clone_extension_value),
+    MU_RUN_TEST(regression_copy_extension_value),
     MU_RUN_TEST(regression_read_min_int),
     MU_RUN_TEST(regression_read_flt_max),
-    MU_RUN_TEST(test_asdf_value_clone_attached_shallow)
+    MU_RUN_TEST(test_asdf_value_copy_attached_shallow)
 );
 
 
