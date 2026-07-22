@@ -31,4 +31,7 @@ t_iso_time_tai: !time/time-1.4.0 {format: iso, scale: tai, value: '2025-10-14T13
 t_iso_base_format: !time/time-1.4.0 {base_format: datetime, format: iso, value: '2025-10-14T13:26:41.0000'}
 t_iso_time_1_1_0: !time/time-1.1.0 {format: iso, value: '2025-10-14T13:26:41.0000'}
 t_iso_time_1_0_0: !time/time-1.0.0 {format: iso, value: '2025-10-14T13:26:41.0000'}
+t_jyear_str: !time/time-1.4.0 {format: jyear_str, value: 'J2025.78707178'}
+t_byear_str: !time/time-1.4.0 {format: byear_str, value: 'B2025.78707178'}
+t_jyear_str_bad: !time/time-1.4.0 {format: jyear_str, value: 2025.78707178}
 ...

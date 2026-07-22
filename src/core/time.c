@@ -431,9 +431,11 @@ int asdf_time_parse(asdf_time_t *time) {
         status = asdf_time_parse_jd(time);
         break;
     case ASDF_TIME_FORMAT_BYEAR:
+    case ASDF_TIME_FORMAT_BYEAR_STR:
         status = asdf_time_parse_byear(time);
         break;
     case ASDF_TIME_FORMAT_JYEAR:
+    case ASDF_TIME_FORMAT_JYEAR_STR:
         status = asdf_time_parse_jyear(time);
         break;
     case ASDF_TIME_FORMAT_DECIMALYEAR:
@@ -660,7 +662,30 @@ static asdf_value_t *asdf_time_serialize(
     if (err != ASDF_VALUE_OK)
         goto cleanup;
 
-    err = asdf_mapping_set_string0(map, "format", asdf_time_format_names[t->format]);
+    /* Astropy compatibility: a J-prefixed (Julian year) or B-prefixed
+     * (Besselian year) string value must currently be written with the
+     * jyear_str / byear_str format respectively, even if it was stored as
+     * plain jyear / byear.  Astropy only accepts the prefixed string forms
+     * under those *_str formats.
+     *
+     * I still hold that whatever happens with this in Astropy we should be more
+     * flexible in what asdf-astropy supports here; see
+     * https://github.com/astropy/asdf-astropy/pull/326
+     *
+     * But until that is changed we should try to remain compatible with what
+     * existing software is known to accept...
+     */
+    const char *format_name = asdf_time_format_names[t->format];
+    const char first = t->value[0];
+    if ((first == 'J' || first == 'j') &&
+        (t->format == ASDF_TIME_FORMAT_JYEAR || t->format == ASDF_TIME_FORMAT_JYEAR_STR))
+        format_name = asdf_time_format_names[ASDF_TIME_FORMAT_JYEAR_STR];
+    else if (
+        (first == 'B' || first == 'b') &&
+        (t->format == ASDF_TIME_FORMAT_BYEAR || t->format == ASDF_TIME_FORMAT_BYEAR_STR))
+        format_name = asdf_time_format_names[ASDF_TIME_FORMAT_BYEAR_STR];
+
+    err = asdf_mapping_set_string0(map, "format", format_name);
     if (err != ASDF_VALUE_OK)
         goto cleanup;
 
@@ -774,6 +799,24 @@ static int validate_or_guess_time_format(
     if (!asdf_time_format_parse(format_s, &format)) {
         ASDF_LOG(value->file, ASDF_LOG_WARN, "unrecognized time format '%s'", format_s);
         return -1;
+    }
+
+    /* jyear_str / byear_str are only accepted for a string value beginning with
+     * the corresponding 'J' / 'B' prefix, never a bare number.  (An unadorned
+     * jyear / byear may itself carry a J/B-prefixed string, which parses the
+     * same; these _str formats simply make that prefix mandatory.) */
+    if (format == ASDF_TIME_FORMAT_JYEAR_STR || format == ASDF_TIME_FORMAT_BYEAR_STR) {
+        const char prefix = (format == ASDF_TIME_FORMAT_JYEAR_STR) ? 'J' : 'B';
+        const char lower = (char)(prefix + ('a' - 'A'));
+        if (time_type != ASDF_VALUE_STRING || (time_s[0] != prefix && time_s[0] != lower)) {
+            ASDF_LOG(
+                value->file,
+                ASDF_LOG_WARN,
+                "time format '%s' requires a string value beginning with '%c'",
+                format_s,
+                prefix);
+            return -1;
+        }
     }
 
     /* Validate a string value against the format's auto-detect pattern, if one

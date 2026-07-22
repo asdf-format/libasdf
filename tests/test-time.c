@@ -537,6 +537,112 @@ MU_TEST(test_asdf_time_versions) {
 }
 
 
+/**
+ * Check the jyear_str / byear_str formats: they parse identically to jyear /
+ * byear (from a J- / B-prefixed string), and are rejected for a numeric value.
+ */
+MU_TEST(test_asdf_time_jyear_byear_str) {
+    const char *path = get_fixture_file_path("time.asdf");
+    assert_not_null(path);
+
+    asdf_file_t *file = asdf_open(path, "r");
+    assert_not_null(file);
+
+    static const struct {
+        const char *key;
+        asdf_time_format_t expected_format;
+        int expected_year;
+    } cases[] = {
+        {"t_jyear_str", ASDF_TIME_FORMAT_JYEAR_STR, 2025},
+        {"t_byear_str", ASDF_TIME_FORMAT_BYEAR_STR, 2025},
+    };
+
+    for (size_t idx = 0; idx < sizeof(cases) / sizeof(cases[0]); idx++) {
+        const char *key = cases[idx].key;
+
+        asdf_value_t *value = asdf_get_value(file, key);
+        if (!value) {
+            munit_logf(MUNIT_LOG_ERROR, "failed to get value at '%s'", key);
+            asdf_close(file);
+            return MUNIT_FAIL;
+        }
+
+        asdf_time_t *tm = NULL;
+        asdf_value_err_t err = asdf_value_as_time(value, &tm);
+
+        if (err != ASDF_VALUE_OK) {
+            munit_logf(MUNIT_LOG_ERROR, "asdf_value_as_time failed for '%s'", key);
+            asdf_value_destroy(value);
+            asdf_close(file);
+            return MUNIT_FAIL;
+        }
+
+        assert_not_null(tm);
+        assert_int(tm->format, ==, cases[idx].expected_format);
+        assert_int(tm->info.tm.tm_year + 1900, ==, cases[idx].expected_year);
+
+        asdf_time_destroy(tm);
+        asdf_value_destroy(value);
+    }
+
+    /* A numeric value for jyear_str must be rejected. */
+    asdf_value_t *bad = asdf_get_value(file, "t_jyear_str_bad");
+    assert_not_null(bad);
+    asdf_time_t *tm_bad = NULL;
+    assert_int(asdf_value_as_time(bad, &tm_bad), !=, ASDF_VALUE_OK);
+    asdf_value_destroy(bad);
+
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+/**
+ * Astropy-compatibility: a J-prefixed (Julian year) or B-prefixed (Besselian
+ * year) string value is serialized with the jyear_str / byear_str format even
+ * when stored as plain jyear / byear.
+ */
+MU_TEST(test_asdf_time_jyear_byear_str_serialize) {
+    const char *path = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    assert_not_null(path);
+
+    asdf_file_t *file = asdf_open(NULL);
+    assert_not_null(file);
+
+    char jvalue[] = "J2000.0";
+    asdf_time_t jtime = {.value = jvalue, .format = ASDF_TIME_FORMAT_JYEAR};
+    assert_int(asdf_set_time(file, "t_jy", &jtime), ==, ASDF_VALUE_OK);
+
+    char bvalue[] = "B1950.0";
+    asdf_time_t btime = {.value = bvalue, .format = ASDF_TIME_FORMAT_BYEAR};
+    assert_int(asdf_set_time(file, "t_by", &btime), ==, ASDF_VALUE_OK);
+
+    assert_int(asdf_write_to(file, path), ==, 0);
+    asdf_close(file);
+
+    file = asdf_open(path, "r");
+    assert_not_null(file);
+
+    asdf_time_t *t_out = NULL;
+    assert_int(asdf_get_time(file, "t_jy", &t_out), ==, ASDF_VALUE_OK);
+    assert_not_null(t_out);
+    /* jyear + "J..." was written as jyear_str, so it reads back as jyear_str */
+    assert_int(t_out->format, ==, ASDF_TIME_FORMAT_JYEAR_STR);
+    assert_string_equal(t_out->value, jvalue);
+    asdf_time_destroy(t_out);
+
+    t_out = NULL;
+    assert_int(asdf_get_time(file, "t_by", &t_out), ==, ASDF_VALUE_OK);
+    assert_not_null(t_out);
+    assert_int(t_out->format, ==, ASDF_TIME_FORMAT_BYEAR_STR);
+    assert_string_equal(t_out->value, bvalue);
+    asdf_time_destroy(t_out);
+
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
 MU_TEST_SUITE(
     test_asdf_time_extension,
     MU_RUN_TEST(test_asdf_time),
@@ -548,7 +654,9 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_time_scale_roundtrip),
     MU_RUN_TEST(test_asdf_time_base_format),
     MU_RUN_TEST(test_asdf_time_base_format_roundtrip),
-    MU_RUN_TEST(test_asdf_time_versions)
+    MU_RUN_TEST(test_asdf_time_versions),
+    MU_RUN_TEST(test_asdf_time_jyear_byear_str),
+    MU_RUN_TEST(test_asdf_time_jyear_byear_str_serialize)
 );
 
 
