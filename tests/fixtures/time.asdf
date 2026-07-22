@@ -14,7 +14,7 @@ history:
     software: !core/software-1.0.0 {name: asdf, version: 5.0.0}
 t_byear: !time/time-1.4.0 {format: byear, value: '2025.78707178'}
 t_datetime: !time/time-1.4.0 {format: datetime, value: '2025-10-14 13:26:41.0000+00:00'}
-t_iso_time: !time/time-1.4.0 {format: iso_time, value: '2025-10-14T13:26:41.0000'}
+t_iso_time: !time/time-1.4.0 {format: iso, value: '2025-10-14T13:26:41.0000'}
 t_jd: !time/time-1.4.0 {format: jd, value: '2460963.060197'}
 t_mjd: !time/time-1.4.0 {format: mjd, value: '60962.560196'}
 t_unix: !time/time-1.4.0 {format: unix, value: '1760462801.00'}
@@ -27,5 +27,8 @@ t_yday_map_no_format: !time/time-1.4.0 {value: '2025:287:13:26:41.0000'}
 t_jyear: !time/time-1.4.0 {format: jyear, value: 'J2025.78707178'}
 t_jyear_num: !time/time-1.4.0 {format: jyear, value: 1948.78707178}
 t_decimalyear: !time/time-1.4.0 {format: decimalyear, value: 2025.5}
-t_iso_time_tai: !time/time-1.4.0 {format: iso_time, scale: tai, value: '2025-10-14T13:26:41.0000'}
+t_iso_time_tai: !time/time-1.4.0 {format: iso, scale: tai, value: '2025-10-14T13:26:41.0000'}
+t_iso_base_format: !time/time-1.4.0 {base_format: datetime, format: iso, value: '2025-10-14T13:26:41.0000'}
+t_iso_time_1_1_0: !time/time-1.1.0 {format: iso, value: '2025-10-14T13:26:41.0000'}
+t_iso_time_1_0_0: !time/time-1.0.0 {format: iso, value: '2025-10-14T13:26:41.0000'}
 ...

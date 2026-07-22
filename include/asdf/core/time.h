@@ -10,11 +10,17 @@
 
 ASDF_BEGIN_DECLS
 
-#define ASDF_CORE_TIME_TAG "tag:stsci.edu:asdf/time/time-1.4.0"
+/* The default tag written for a time object; also the newest version read.
+ * Older versions (ASDF_CORE_TIME_TAG_BASE "1.x.0") are recognized when reading;
+ * see the ASDF_REGISTER_EXTENSION call in time.c. */
+#define ASDF_CORE_TIME_TAG_BASE "tag:stsci.edu:asdf/time/time-"
+#define ASDF_CORE_TIME_TAG ASDF_CORE_TIME_TAG_BASE "1.4.0"
 #define ASDF_TIME_TIMESTR_MAXLEN 255
 
 typedef enum {
-    ASDF_TIME_FORMAT_ISO_TIME = 0,
+    /** Unset/unspecified format; and the zero value */
+    ASDF_TIME_FORMAT_NONE = 0,
+    ASDF_TIME_FORMAT_ISO,
     ASDF_TIME_FORMAT_YDAY,
     ASDF_TIME_FORMAT_BYEAR,
     ASDF_TIME_FORMAT_JYEAR,
@@ -66,6 +72,15 @@ typedef struct {
     char *value;
     asdf_time_info_t info;
     asdf_time_format_t format;
+    /**
+     * The original format of the time object (the optional ``base_format``
+     * field, added in time-1.2.0)
+     *
+     * Left as ASDF_TIME_FORMAT_NONE (the zero value) when unset, in which case
+     * it is omitted on serialization; deserialization sets it only when the
+     * ``base_format`` key is present.
+     */
+    asdf_time_format_t base_format;
     asdf_time_scale_t scale;
     asdf_time_location_t location;
 } asdf_time_t;

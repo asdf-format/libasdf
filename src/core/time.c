@@ -53,7 +53,7 @@ static const struct {
 } time_auto_patterns[TIME_AUTO_COUNT] = {
     [TIME_AUTO_IDX_ISO_TIME] =
         {
-            ASDF_TIME_FORMAT_ISO_TIME,
+            ASDF_TIME_FORMAT_ISO,
             "^(\\d\\d\\d\\d)-(\\d\\d)-(\\d\\d)([T ](\\d\\d):(\\d\\d):(\\d\\d)(.\\d+)?)?",
         },
     [TIME_AUTO_IDX_BYEAR] =
@@ -225,7 +225,7 @@ static int asdf_time_parse_std(asdf_time_t *time) {
 
     switch (time->format) {
     case ASDF_TIME_FORMAT_DATETIME:
-    case ASDF_TIME_FORMAT_ISO_TIME:
+    case ASDF_TIME_FORMAT_ISO:
         check_format_strptime(ASDF_TIME_SFMT_ISO_TIME, buf, &tm, has_time, rest);
         break;
     case ASDF_TIME_FORMAT_YDAY:
@@ -410,9 +410,16 @@ static int asdf_time_parse_std(asdf_time_t *time) {
 
 int asdf_time_parse(asdf_time_t *time) {
     int status = -1;
+
+    /* Refuse to parse an unset format.  The primary ``format`` is always
+     * guessed/validated to a concrete value, so NONE here indicates an
+     * invalid/unset time object rather than something we can interpret. */
+    if (time->format == ASDF_TIME_FORMAT_NONE)
+        return -1;
+
     switch (time->format) {
     case ASDF_TIME_FORMAT_YDAY:
-    case ASDF_TIME_FORMAT_ISO_TIME:
+    case ASDF_TIME_FORMAT_ISO:
     case ASDF_TIME_FORMAT_DATETIME:
     case ASDF_TIME_FORMAT_UNIX:
         status = asdf_time_parse_std(time);
@@ -443,7 +450,7 @@ int asdf_time_parse(asdf_time_t *time) {
  * Lookup table: asdf_time_format_t enum value -> YAML format name string
  */
 static const char *const asdf_time_format_names[] = {
-    [ASDF_TIME_FORMAT_ISO_TIME] = "iso_time",
+    [ASDF_TIME_FORMAT_ISO] = "iso",
     [ASDF_TIME_FORMAT_YDAY] = "yday",
     [ASDF_TIME_FORMAT_BYEAR] = "byear",
     [ASDF_TIME_FORMAT_JYEAR] = "jyear",
@@ -486,7 +493,9 @@ static const char *const asdf_time_scale_names[] = {
 const char *asdf_time_format_string(asdf_time_format_t format) {
     const size_t nformats = ARRAY_SIZE(asdf_time_format_names);
 
-    if (format < 0 || format > nformats)
+    /* Out-of-range (including a negative cast to a large size_t) yields NULL;
+     * ASDF_TIME_FORMAT_NONE (0) also maps to a NULL name entry. */
+    if ((size_t)format >= nformats)
         return NULL;
 
     return asdf_time_format_names[format];
@@ -655,6 +664,16 @@ static asdf_value_t *asdf_time_serialize(
     if (err != ASDF_VALUE_OK)
         goto cleanup;
 
+    /* Write base_format only when set (it is an optional field) */
+    if (t->base_format != ASDF_TIME_FORMAT_NONE) {
+        const char *base_format = asdf_time_format_string(t->base_format);
+        if (base_format) {
+            err = asdf_mapping_set_string0(map, "base_format", base_format);
+            if (err != ASDF_VALUE_OK)
+                goto cleanup;
+        }
+    }
+
     /* Write scale only if non-UTC */
     if (t->scale != ASDF_TIME_SCALE_UTC) {
         const size_t nscales = ARRAY_SIZE(asdf_time_scale_names);
@@ -797,6 +816,10 @@ static asdf_value_err_t asdf_time_deserialize(
     if (!time)
         return ASDF_VALUE_ERR_OOM;
 
+    /* base_format is optional; leave it unset unless a ``base_format`` key is
+     * present (NONE is the zero value, but be explicit about the intent). */
+    time->base_format = ASDF_TIME_FORMAT_NONE;
+
     if (asdf_value_is_mapping(value)) {
         if (asdf_value_as_mapping(value, &mapping) != ASDF_VALUE_OK)
             goto failure;
@@ -855,6 +878,25 @@ static asdf_value_err_t asdf_time_deserialize(
                     ASDF_LOG_WARN,
                     "unrecognized time scale '%s'; defaulting to utc",
                     scale_s);
+            asdf_value_destroy(prop);
+            prop = NULL;
+        }
+
+        /* base_format key is optional (added in time-1.2.0); it records the
+         * object's original format and may be any standard or "other" format
+         * name.  Left as ASDF_TIME_FORMAT_NONE when absent or unrecognized. */
+        prop = asdf_mapping_get(mapping, "base_format");
+        if (prop) {
+            const char *base_format_s = NULL;
+            if (ASDF_VALUE_OK != asdf_value_as_string0(prop, &base_format_s))
+                goto failure;
+
+            if (!asdf_time_format_parse(base_format_s, &time->base_format))
+                ASDF_LOG(
+                    value->file,
+                    ASDF_LOG_WARN,
+                    "unrecognized time base_format '%s'; ignoring",
+                    base_format_s);
             asdf_value_destroy(prop);
             prop = NULL;
         }
@@ -921,11 +963,17 @@ static const asdf_extension_vtab_t asdf_time_vtab = {
 
 
 // clang-format off
+/* tags[0] (1.4.0) is the version written; the older tags are recognized when
+ * reading files produced against earlier ASDF Standard versions. */
 ASDF_REGISTER_EXTENSION(
     time,
     asdf_time_t,
     &libasdf_software,
     &asdf_time_vtab,
     NULL,
-    ASDF_CORE_TIME_TAG);
+    ASDF_CORE_TIME_TAG,
+    ASDF_CORE_TIME_TAG_BASE "1.3.0",
+    ASDF_CORE_TIME_TAG_BASE "1.2.0",
+    ASDF_CORE_TIME_TAG_BASE "1.1.0",
+    ASDF_CORE_TIME_TAG_BASE "1.0.0");
 // clang-format on
