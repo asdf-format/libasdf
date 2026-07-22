@@ -7,6 +7,13 @@
 #include <string.h>
 #include <sys/types.h>
 
+// Some versions of libfyaml.h started exporting its own internal
+// ARRAY_SIZE macro, which it probably shouldn't do...
+#include <libfyaml.h>
+#ifdef ARRAY_SIZE
+#undef ARRAY_SIZE
+#endif
+
 #include "asdf/util.h" // IWYU pragma: export
 
 
