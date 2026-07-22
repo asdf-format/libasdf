@@ -578,7 +578,7 @@ static asdf_value_err_t asdf_ndarray_parse_inline_data(asdf_ndarray_t *ndarray, 
  * Helper routine for handling deserialization of ndarrays with inline data
  *
  * The inline data is not fully parsed at this stage--that occurs lazily when
- * the data is first accessed.  At this stage we store a clone of the inline
+ * the data is first accessed.  At this stage we store a copy of the inline
  * data sequence and perform basic validations (shape, datatype).
  *
  * ``ndarray_map`` may be NULL in case of a plain inline array, or it
@@ -693,7 +693,7 @@ static asdf_value_err_t asdf_ndarray_deserialize_inline(
     ndarray->byteorder = asdf_host_byteorder();
 
     /* Clone and stash the YAML sequence for lazy conversion in data_raw */
-    internal->inline_data = (asdf_sequence_t *)asdf_value_clone(&ndarray_seq->value);
+    internal->inline_data = (asdf_sequence_t *)asdf_value_copy(&ndarray_seq->value);
 
     if (UNLIKELY(!internal->inline_data)) {
         err = ASDF_VALUE_ERR_OOM;

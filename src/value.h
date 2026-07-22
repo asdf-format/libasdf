@@ -185,6 +185,6 @@ ASDF_LOCAL struct fy_node *asdf_value_normalize_node(asdf_value_t *value);
  * but I'm thinking it might want to take a more extended flag set for other options */
 ASDF_LOCAL asdf_value_err_t
 asdf_mapping_update_ex(asdf_mapping_t *mapping, asdf_mapping_t *update, bool prepend);
-ASDF_LOCAL asdf_value_t *asdf_value_clone_deep(asdf_value_t *value);
+ASDF_LOCAL asdf_value_t *asdf_value_copy_deep(asdf_value_t *value);
 ASDF_LOCAL asdf_value_err_t asdf_node_insert_at(
     struct fy_document *doc, const char *path, struct fy_node *node, bool materialize);
