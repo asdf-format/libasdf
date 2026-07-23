@@ -38,12 +38,16 @@
  *     [1]=integer-part [2]=optional fractional
  *   TIME_AUTO_IDX_YDAY:
  *     [1]=year [2]=day-of-year [3]=hour [4]=minute [5]=second [6]=optional frac
+ *   TIME_AUTO_IDX_FITS:
+ *     same layout as ISO, but [1]=year additionally permits the FITS "long"
+ *     form: an explicit sign followed by exactly five digits (e.g. +02025).
  */
 enum {
     TIME_AUTO_IDX_ISO = 0,
     TIME_AUTO_IDX_BYEAR,
     TIME_AUTO_IDX_JYEAR,
     TIME_AUTO_IDX_YDAY,
+    TIME_AUTO_IDX_FITS,
     TIME_AUTO_COUNT,
 };
 
@@ -70,6 +74,17 @@ static const struct {
         {
             ASDF_TIME_FORMAT_YDAY,
             "^(\\d\\d\\d\\d):(\\d\\d\\d):(\\d\\d):(\\d\\d):(\\d\\d)(.\\d+)?",
+        },
+    /* Like ISO, but the year alternately allows the FITS "long" form: an
+     * explicit sign plus exactly five digits, for years outside 0-9999.  The
+     * plain four-digit branch means an ordinary FITS value validates too;
+     * because ISO is matched first during auto-detection, a value is only
+     * guessed as FITS when the signed long-year form is present. */
+    [TIME_AUTO_IDX_FITS] =
+        {
+            ASDF_TIME_FORMAT_FITS,
+            "^([+-]\\d\\d\\d\\d\\d|\\d\\d\\d\\d)-(\\d\\d)-(\\d\\d)([T "
+            "](\\d\\d):(\\d\\d):(\\d\\d)(.\\d+)?)?",
         },
 };
 
@@ -118,6 +133,9 @@ static const char *ASDF_TIME_SFMT_UNIX[] = {"%s"};
 #define JD_MJD 2400000.5
 #define JD_J2000 2451545.0
 #define JD_UNIX_EPOCH 2440587.5
+/* matplotlib "plot_date" epoch: JD of 0001-01-01 00:00:00 UTC minus one day,
+ * i.e. a plot_date value is the number of days from 0001-01-01 UTC plus one. */
+#define JD_PLOT_DATE_EPOCH 1721424.5
 
 /* Calendar constants */
 static const double JD_GREGORIAN_START = 2299161.0;
@@ -279,6 +297,71 @@ cleanup:
 }
 
 
+static int asdf_time_parse_fits(asdf_time_t *time) {
+    if (UNLIKELY(!time))
+        return -1;
+
+    struct tm tm = {0};
+    long nsec = 0;
+    int year = 0;
+    int mon = 1;
+    int day = 1;
+    int hour = 0;
+    int min = 0;
+    int sec = 0;
+    int ret = -1;
+    char *buf = strdup(time->value);
+
+    if (!buf) {
+        ASDF_ERROR_OOM(NULL);
+        goto cleanup;
+    }
+
+    /* Normalize the date/time separator (FITS uses 'T') to a space */
+    for (char *c = buf; *c; ++c) {
+        if (*c == 'T' || *c == 't')
+            *c = ' ';
+    }
+
+    /* Scan the fields directly rather than via strptime: the FITS "long" year
+     * form carries an explicit sign and up to five digits, which strptime's
+     * %Y cannot parse portably.  A plain "%d" handles the sign, leading zeros,
+     * and both the four- and five-digit widths.  A date-only value matches the
+     * first three fields, leaving the time at midnight. */
+    int matched = sscanf(buf, "%d-%d-%d %d:%d:%d", &year, &mon, &day, &hour, &min, &sec);
+    if (matched < 3)
+        goto cleanup;
+
+    if (matched >= 6) {
+        const char *dot = strchr(buf, '.');
+        if (dot) {
+            double frac = 0;
+            sscanf(dot, "%lf", &frac);
+            nsec = (long)(frac * 1e9);
+        }
+    }
+
+    tm.tm_year = year - 1900;
+    tm.tm_mon = mon - 1;
+    tm.tm_mday = day;
+    tm.tm_hour = hour;
+    tm.tm_min = min;
+    tm.tm_sec = sec;
+
+    time_t t = timegm(&tm);
+    if (t == (time_t)-1)
+        goto cleanup;
+
+    time->info.tm = *gmtime(&t);
+    time->info.ts.tv_sec = t;
+    time->info.ts.tv_nsec = nsec;
+    ret = 0;
+cleanup:
+    free(buf);
+    return ret;
+}
+
+
 static int asdf_time_parse_jd(asdf_time_t *time) {
     if (UNLIKELY(!time))
         return -1;
@@ -291,6 +374,24 @@ static int asdf_time_parse_jd(asdf_time_t *time) {
     julian_to_tm(jd, &jd_tm, &t_nsec);
     t_sec = timegm(&jd_tm);
     time->info.tm = jd_tm;
+    time->info.ts.tv_sec = t_sec;
+    time->info.ts.tv_nsec = t_nsec;
+    return 0;
+}
+
+
+static int asdf_time_parse_plot_date(asdf_time_t *time) {
+    if (UNLIKELY(!time))
+        return -1;
+
+    const double jd = strtod(time->value, NULL) + JD_PLOT_DATE_EPOCH;
+    struct tm tm;
+    time_t t_nsec = 0;
+
+    julian_to_tm(jd, &tm, &t_nsec);
+    const time_t t_sec = timegm(&tm);
+
+    time->info.tm = tm;
     time->info.ts.tv_sec = t_sec;
     time->info.ts.tv_nsec = t_nsec;
     return 0;
@@ -428,6 +529,9 @@ int asdf_time_parse(asdf_time_t *time) {
         break;
     case ASDF_TIME_FORMAT_FITS:
         status = asdf_time_parse_fits(time);
+        break;
+    case ASDF_TIME_FORMAT_PLOT_DATE:
+        status = asdf_time_parse_plot_date(time);
         break;
     case ASDF_TIME_FORMAT_MJD:
         status = asdf_time_parse_mjd(time);
@@ -626,6 +730,9 @@ static void validate_yday_ranges(asdf_file_t *file, const char *cvs, csview *mat
 static void validate_datetime_ranges(asdf_file_t *file, int pat_idx, const char *vs, csview *m) {
     switch (pat_idx) {
     case TIME_AUTO_IDX_ISO:
+    case TIME_AUTO_IDX_FITS:
+        /* FITS shares the ISO capture-group layout (month/day/time in the same
+         * positions); the signed long-year in group [1] is not range-checked. */
         validate_iso_time_ranges(file, vs, m);
         break;
     case TIME_AUTO_IDX_YDAY:

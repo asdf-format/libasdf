@@ -141,7 +141,10 @@ MU_TEST(test_asdf_time_format_detection) {
         {"t_jyear_bare",    ASDF_TIME_FORMAT_JYEAR,     "J2025.78707178",           false},
         {"t_yday_bare",     ASDF_TIME_FORMAT_YDAY ,     "2025:287:13:26:41.0000",   true},
         /* mapping without explicit format key */
-        {"t_yday_map_no_format", ASDF_TIME_FORMAT_YDAY, "2025:287:13:26:41.0000",   true}
+        {"t_yday_map_no_format", ASDF_TIME_FORMAT_YDAY, "2025:287:13:26:41.0000",   true},
+        /* FITS long-year (signed, five-digit) is only auto-detected as fits;
+         * an ordinary four-digit value would be guessed as iso instead */
+        {"t_fits_long_bare", ASDF_TIME_FORMAT_FITS, "+12025-10-14T13:26:41.0000", true},
     };
 
     for (size_t idx = 0; idx < sizeof(cases) / sizeof(cases[0]); idx++) {
@@ -210,6 +213,8 @@ MU_TEST(test_asdf_time_explicit_format_types) {
         {"t_unix",     ASDF_TIME_FORMAT_UNIX},
         {"t_jd",       ASDF_TIME_FORMAT_JD},
         {"t_mjd",      ASDF_TIME_FORMAT_MJD},
+        {"t_fits",     ASDF_TIME_FORMAT_FITS},
+        {"t_fits_long", ASDF_TIME_FORMAT_FITS},
     };
 
     for (size_t idx = 0; idx < sizeof(cases) / sizeof(cases[0]); idx++) {
@@ -301,6 +306,42 @@ MU_TEST(test_asdf_time_jyear_decimalyear) {
         asdf_value_destroy(value);
     }
 
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+/**
+ * Check the ``plot_date`` format (matplotlib ordinal days from an 0001-01-01
+ * UTC epoch): the numeric value is captured verbatim and the epoch offset
+ * resolves to the expected calendar instant.  739538.560197 is the same instant
+ * as the ``t_jd`` fixture (JD 2460963.060197), i.e. 2025-10-14 13:26:41 UTC.
+ */
+MU_TEST(test_asdf_time_plot_date) {
+    const char *path = get_fixture_file_path("time.asdf");
+    assert_not_null(path);
+
+    asdf_file_t *file = asdf_open(path, "r");
+    assert_not_null(file);
+
+    asdf_value_t *value = asdf_get_value(file, "t_plot_date");
+    assert_not_null(value);
+
+    asdf_time_t *tm = NULL;
+    asdf_value_err_t err = asdf_value_as_time(value, &tm);
+    assert_int(err, ==, ASDF_VALUE_OK);
+    assert_not_null(tm);
+
+    assert_string_equal(tm->value, "739538.560197");
+    assert_int(tm->format, ==, ASDF_TIME_FORMAT_PLOT_DATE);
+    assert_int(tm->info.tm.tm_year + 1900, ==, 2025);
+    assert_int(tm->info.tm.tm_mon + 1, ==, 10);
+    assert_int(tm->info.tm.tm_mday, ==, 14);
+    assert_int(tm->info.tm.tm_hour, ==, 13);
+    assert_int(tm->info.tm.tm_min, ==, 26);
+
+    asdf_time_destroy(tm);
+    asdf_value_destroy(value);
     asdf_close(file);
     return MUNIT_OK;
 }
@@ -490,6 +531,47 @@ MU_TEST(test_asdf_time_base_format_roundtrip) {
 
 
 /**
+ * Round-trip a ``fits`` time with the FITS "long" year form (an explicit sign
+ * plus five digits) to confirm the value string and format are preserved.
+ */
+MU_TEST(test_asdf_time_fits_roundtrip) {
+    const char *path = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    assert_not_null(path);
+
+    asdf_file_t *file = asdf_open(NULL);
+    assert_not_null(file);
+
+    char time_value[] = "+12025-10-14T13:26:41.0000";
+    asdf_time_t time_obj = {
+        .value = time_value,
+        .format = ASDF_TIME_FORMAT_FITS,
+        .scale = ASDF_TIME_SCALE_UTC,
+    };
+
+    asdf_value_err_t err = asdf_set_time(file, "t_fits", &time_obj);
+    assert_int(err, ==, ASDF_VALUE_OK);
+
+    assert_int(asdf_write_to(file, path), ==, 0);
+    asdf_close(file);
+
+    file = asdf_open(path, "r");
+    assert_not_null(file);
+
+    asdf_time_t *t_out = NULL;
+    err = asdf_get_time(file, "t_fits", &t_out);
+    assert_int(err, ==, ASDF_VALUE_OK);
+    assert_not_null(t_out);
+    assert_int(t_out->format, ==, ASDF_TIME_FORMAT_FITS);
+    assert_string_equal(t_out->value, "+12025-10-14T13:26:41.0000");
+
+    asdf_time_destroy(t_out);
+    asdf_close(file);
+
+    return MUNIT_OK;
+}
+
+
+/**
  * Check that time values tagged with older schema versions (time-1.0.0,
  * time-1.1.0) are still recognized and deserialized.
  */
@@ -651,10 +733,12 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_time_format_detection),
     MU_RUN_TEST(test_asdf_time_explicit_format_types),
     MU_RUN_TEST(test_asdf_time_jyear_decimalyear),
+    MU_RUN_TEST(test_asdf_time_plot_date),
     MU_RUN_TEST(test_asdf_time_scale),
     MU_RUN_TEST(test_asdf_time_scale_roundtrip),
     MU_RUN_TEST(test_asdf_time_base_format),
     MU_RUN_TEST(test_asdf_time_base_format_roundtrip),
+    MU_RUN_TEST(test_asdf_time_fits_roundtrip),
     MU_RUN_TEST(test_asdf_time_versions),
     MU_RUN_TEST(test_asdf_time_jyear_byear_str),
     MU_RUN_TEST(test_asdf_time_jyear_byear_str_serialize)

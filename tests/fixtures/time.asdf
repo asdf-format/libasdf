@@ -35,4 +35,8 @@ t_isot: !time/time-1.4.0 {format: isot, value: '2025-10-14T13:26:41.0000'}
 t_jyear_str: !time/time-1.4.0 {format: jyear_str, value: 'J2025.78707178'}
 t_byear_str: !time/time-1.4.0 {format: byear_str, value: 'B2025.78707178'}
 t_jyear_str_bad: !time/time-1.4.0 {format: jyear_str, value: 2025.78707178}
+t_fits: !time/time-1.4.0 {format: fits, value: '2025-10-14T13:26:41.0000'}
+t_fits_long: !time/time-1.4.0 {format: fits, value: '+12025-10-14T13:26:41.0000'}
+t_fits_long_bare: !time/time-1.4.0 '+12025-10-14T13:26:41.0000'
+t_plot_date: !time/time-1.4.0 {format: plot_date, value: '739538.560197'}
 ...
