@@ -62,13 +62,44 @@ typedef struct {
     double height;
 } asdf_time_location_t;
 
+/**
+ * Best-effort calendar representation of a parsed time
+ *
+ * These fields are *computed* from ``value`` / ``format`` / ``scale`` purely
+ * for convenience.  The authoritative instant is always the ``value``,
+ * ``format`` and ``scale``, which libasdf preserves verbatim and round-trips
+ * losslessly; only this derived representation is approximate.
+ *
+ * .. warning::
+ *
+ *   For any time not on the UTC scale, i.e. ``scale`` other than
+ *   `ASDF_TIME_SCALE_UTC`, and the atomic-scale formats ``gps``, ``unix_tai``,
+ *   ``cxcsec`` and ``tai_seconds``, these fields ignore leap seconds.
+ *   libasdf has no leap-second table, so it does not apply the TAI/TT-to-UTC
+ *   offsets
+ *
+ *   The computed calendar reading is therefore the in the format's own
+ *   timescale, off from UTC by the relevant offset.  The ``tdb``, ``ut1``,
+ *   ``tcb`` and ``tcg`` scales need still more external data and are likewise
+ *   approximate.
+ *
+ * Consumers needing an exact UTC instant for a non-UTC-scale time should
+ * convert the raw ``value`` / ``format`` / ``scale`` themselves (e.g. via ERFA
+ * or astropy).
+ */
 typedef struct {
+    /** Seconds + nanoseconds from the Unix epoch (approximate; see above) */
     struct timespec ts;
+    /** Derived calendar fields (approximate; see above) */
     struct tm tm;
 } asdf_time_info_t;
 
 typedef struct {
     char *value;
+    /**
+     * Derived calendar representation; best-effort and, for non-UTC scales,
+     * approximate.  See asdf_time_info_t for the leap-second caveat.
+     */
     asdf_time_info_t info;
     /**
      * The effective (real) format of the time.
@@ -82,6 +113,10 @@ typedef struct {
      * from it.
      */
     asdf_time_format_t format;
+    /**
+     * The time scale.  A non-UTC scale means the derived ``info`` fields are
+     * approximate (leap seconds are not applied); see asdf_time_info_t.
+     */
     asdf_time_scale_t scale;
     asdf_time_location_t location;
 } asdf_time_t;

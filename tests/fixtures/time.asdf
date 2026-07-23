@@ -19,6 +19,13 @@ t_jd: !time/time-1.4.0 {format: jd, value: '2460963.060197'}
 t_mjd: !time/time-1.4.0 {format: mjd, value: '60962.560196'}
 t_unix: !time/time-1.4.0 {format: unix, value: '1760462801.00'}
 t_yday: !time/time-1.4.0 {format: yday, value: '2025:287:13:26:41.0000'}
+# seconds-from-epoch formats (values chosen to resolve to 2025-10-14 13:26:41)
+t_gps: !time/time-1.4.0 {format: gps, value: '1444483582.021'}
+t_unix_tai: !time/time-1.4.0 {format: unix_tai, value: '1760448401.021'}
+t_cxcsec: !time/time-1.4.0 {format: cxcsec, value: '876835601.021'}
+t_galexsec: !time/time-1.4.0 {format: galexsec, value: '1444483601.021'}
+t_tai_seconds: !time/time-1.4.0 {format: tai_seconds, value: '2139139601.021'}
+t_utime: !time/time-1.4.0 {format: utime, value: '1476451601.021'}
 t_byear_bare: !time/time-1.4.0 'B2025.78707178'
 t_iso_bare: !time/time-1.4.0 '2025-10-14T13:26:41.0000'
 t_jyear_bare: !time/time-1.4.0 'J2025.78707178'

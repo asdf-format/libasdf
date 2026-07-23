@@ -137,6 +137,28 @@ static const char *ASDF_TIME_SFMT_UNIX[] = {"%s"};
  * i.e. a plot_date value is the number of days from 0001-01-01 UTC plus one. */
 #define JD_PLOT_DATE_EPOCH 1721424.5
 
+/*
+ * Epochs (as Julian Dates) for the "seconds from epoch" formats.  Each JD below
+ * is the Julian Date of the epoch's calendar instant, anchored on
+ * JD_UNIX_EPOCH (JD of 1970-01-01 00:00:00).  unix_tai reuses JD_UNIX_EPOCH
+ * (same 1970-01-01 epoch, but the TAI scale).
+ *
+ * Epoch dates/scales are from astropy's TimeFromEpoch subclasses in
+ * ``astropy/time/formats.py``
+ *
+ * astropy runs gps/unix_tai/cxcsec/tai_seconds on the TAI or TT scale; libasdf
+ * has no leap-second table, so the computed calendar instant is really the
+ * reading in the format's own timescale (offset from UTC by the
+ * leap-second/scale difference), matching the best-effort treatment already
+ * applied to `unix`.  galexsec and utime are UTC (leap seconds ignored, like
+ * unix).
+ */
+#define JD_GPS_EPOCH (2444244.5 + 19.0 / 86400.0) /* 1980-01-06 00:00:19 TAI */
+#define JD_GALEXSEC_EPOCH 2444244.5               /* 1980-01-06 00:00:00 UTC */
+#define JD_CXCSEC_EPOCH 2450814.5                 /* 1998-01-01 00:00:00 TT */
+#define JD_TAI_SECONDS_EPOCH 2436204.5            /* 1958-01-01 00:00:00 TAI */
+#define JD_UTIME_EPOCH 2443874.5                  /* 1979-01-01 00:00:00 UTC */
+
 /* Calendar constants */
 static const double JD_GREGORIAN_START = 2299161.0;
 static const double JD_CORRECTION_REF = 1867216.25;
@@ -398,6 +420,27 @@ static int asdf_time_parse_plot_date(asdf_time_t *time) {
 }
 
 
+/* Seconds-from-epoch formats (gps, unix_tai, cxcsec, galexsec, tai_seconds,
+ * utime): the value is a count of SI seconds since a fixed epoch (given as a
+ * Julian Date).  See the epoch #defines for the leap-second/scale caveat. */
+static int asdf_time_parse_epoch_seconds(asdf_time_t *time, double epoch_jd) {
+    if (UNLIKELY(!time))
+        return -1;
+
+    const double jd = strtod(time->value, NULL) / SECONDS_PER_DAY + epoch_jd;
+    struct tm tm;
+    time_t t_nsec = 0;
+
+    julian_to_tm(jd, &tm, &t_nsec);
+    const time_t t_sec = timegm(&tm);
+
+    time->info.tm = tm;
+    time->info.ts.tv_sec = t_sec;
+    time->info.ts.tv_nsec = t_nsec;
+    return 0;
+}
+
+
 static int asdf_time_parse_mjd(asdf_time_t *time) {
     if (UNLIKELY(!time))
         return -1;
@@ -526,6 +569,24 @@ int asdf_time_parse(asdf_time_t *time) {
         break;
     case ASDF_TIME_FORMAT_PLOT_DATE:
         status = asdf_time_parse_plot_date(time);
+        break;
+    case ASDF_TIME_FORMAT_GPS:
+        status = asdf_time_parse_epoch_seconds(time, JD_GPS_EPOCH);
+        break;
+    case ASDF_TIME_FORMAT_UNIX_TAI:
+        status = asdf_time_parse_epoch_seconds(time, JD_UNIX_EPOCH);
+        break;
+    case ASDF_TIME_FORMAT_CXCSEC:
+        status = asdf_time_parse_epoch_seconds(time, JD_CXCSEC_EPOCH);
+        break;
+    case ASDF_TIME_FORMAT_GALEXSEC:
+        status = asdf_time_parse_epoch_seconds(time, JD_GALEXSEC_EPOCH);
+        break;
+    case ASDF_TIME_FORMAT_TAI_SECONDS:
+        status = asdf_time_parse_epoch_seconds(time, JD_TAI_SECONDS_EPOCH);
+        break;
+    case ASDF_TIME_FORMAT_UTIME:
+        status = asdf_time_parse_epoch_seconds(time, JD_UTIME_EPOCH);
         break;
     case ASDF_TIME_FORMAT_MJD:
         status = asdf_time_parse_mjd(time);

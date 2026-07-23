@@ -358,6 +358,57 @@ MU_TEST(test_asdf_time_plot_date) {
 
 
 /**
+ * Check the "seconds from epoch" formats (gps, unix_tai, cxcsec, galexsec,
+ * tai_seconds, utime).  Each fixture value is chosen to resolve to the same
+ * instant (2025-10-14 13:26:41), confirming the correct epoch is applied.  (The
+ * TAI/TT-scale formats ignore the leap-second offset, per the parser's
+ * best-effort treatment.)
+ */
+MU_TEST(test_asdf_time_epoch_seconds) {
+    const char *path = get_fixture_file_path("time.asdf");
+    assert_not_null(path);
+
+    asdf_file_t *file = asdf_open(path, "r");
+    assert_not_null(file);
+
+    static const struct {
+        const char *key;
+        asdf_time_format_t expected_format;
+    } cases[] = {
+        {"t_gps", ASDF_TIME_FORMAT_GPS},
+        {"t_unix_tai", ASDF_TIME_FORMAT_UNIX_TAI},
+        {"t_cxcsec", ASDF_TIME_FORMAT_CXCSEC},
+        {"t_galexsec", ASDF_TIME_FORMAT_GALEXSEC},
+        {"t_tai_seconds", ASDF_TIME_FORMAT_TAI_SECONDS},
+        {"t_utime", ASDF_TIME_FORMAT_UTIME},
+    };
+
+    for (size_t idx = 0; idx < sizeof(cases) / sizeof(cases[0]); idx++) {
+        asdf_value_t *value = asdf_get_value(file, cases[idx].key);
+        assert_not_null(value);
+
+        asdf_time_t *tm = NULL;
+        asdf_value_err_t err = asdf_value_as_time(value, &tm);
+        assert_int(err, ==, ASDF_VALUE_OK);
+        assert_not_null(tm);
+
+        assert_int(tm->format, ==, cases[idx].expected_format);
+        assert_int(tm->info.tm.tm_year + 1900, ==, 2025);
+        assert_int(tm->info.tm.tm_mon + 1, ==, 10);
+        assert_int(tm->info.tm.tm_mday, ==, 14);
+        assert_int(tm->info.tm.tm_hour, ==, 13);
+        assert_int(tm->info.tm.tm_min, ==, 26);
+
+        asdf_time_destroy(tm);
+        asdf_value_destroy(value);
+    }
+
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+/**
  * Check that the optional ``scale`` mapping key is parsed (and defaults to UTC
  * when absent).
  */
@@ -769,6 +820,7 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_time_explicit_format_types),
     MU_RUN_TEST(test_asdf_time_jyear_decimalyear),
     MU_RUN_TEST(test_asdf_time_plot_date),
+    MU_RUN_TEST(test_asdf_time_epoch_seconds),
     MU_RUN_TEST(test_asdf_time_scale),
     MU_RUN_TEST(test_asdf_time_scale_roundtrip),
     MU_RUN_TEST(test_asdf_time_base_format),
