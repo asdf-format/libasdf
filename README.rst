@@ -201,7 +201,7 @@ The next example shows how to read back in the same file:
        // read and print the numeric value stored under "foo"
        int64_t foo = 0;
        if (asdf_get_int64(file, "foo", &foo) == ASDF_VALUE_OK) {
-           printf("foo: %li\n", foo);
+           printf("foo: %lli\n", foo);
        }
    
        // read the "squares" array nested under the "powers" key
@@ -215,7 +215,7 @@ The next example shows how to read back in the same file:
                for (uint64_t idx = 0; idx < nelem; idx++) {
                    sum += squares_data[idx];
                }
-               printf("sum of squares values: %li\n", sum);
+               printf("sum of squares values: %llu\n", sum);
            }
        }
    
