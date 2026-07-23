@@ -131,7 +131,16 @@ if(ENABLE_TOOL)
         ${STC_DIR}/include
         ${CMAKE_BINARY_DIR}/include
         ${CMAKE_CURRENT_BINARY_DIR}
+    )
+    # Mark the third-party dependency include dirs as SYSTEM (as libasdf_objs
+    # does above) so warnings from their headers are suppressed.  On macOS the
+    # dependency include dirs can resolve to the SDK's usr/include, and adding
+    # that as a plain -I (ahead of the sysroot) makes argp.h's <stdio.h> get
+    # treated as a user header, flooding the build with annoying
+    # -Wnullability-completeness warnings.
+    target_include_directories(asdf-cli SYSTEM PRIVATE
         ${ARGP_INCLUDEDIR}
+        ${all_includedir}
     )
     set_target_properties(asdf-cli ${PROJECT_NAME} PROPERTIES OUTPUT_NAME "asdf")
     install(TARGETS asdf-cli
