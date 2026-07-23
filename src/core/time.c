@@ -513,12 +513,6 @@ static int asdf_time_parse_std(asdf_time_t *time) {
 int asdf_time_parse(asdf_time_t *time) {
     int status = -1;
 
-    /* Refuse to parse an unset format.  The primary ``format`` is always
-     * guessed/validated to a concrete value, so NONE here indicates an
-     * invalid/unset time object rather than something we can interpret. */
-    if (time->format == ASDF_TIME_FORMAT_NONE)
-        return -1;
-
     switch (time->format) {
     case ASDF_TIME_FORMAT_YDAY:
     case ASDF_TIME_FORMAT_ISO:
@@ -604,12 +598,65 @@ static const char *const asdf_time_scale_names[] = {
 const char *asdf_time_format_string(asdf_time_format_t format) {
     const size_t nformats = ARRAY_SIZE(asdf_time_format_names);
 
-    /* Out-of-range (including a negative cast to a large size_t) yields NULL;
-     * ASDF_TIME_FORMAT_NONE (0) also maps to a NULL name entry. */
+    /* Out-of-range (including a negative cast to a large size_t) yields
+     * NULL
+     */
     if ((size_t)format >= nformats)
         return NULL;
 
     return asdf_time_format_names[format];
+}
+
+
+/*
+ * The schema's ``format`` field only permits the "standard" formats; the
+ * "other" astropy formats (fits, isot, datetime, plot_date, ymdhms,
+ * datetime64, jyear_str, byear_str) may appear only in ``base_format``.  The
+ * following helpers implement that split: an "other" format is mapped to a
+ * standard wire format for the ``format`` field, and recorded verbatim in
+ * ``base_format``.
+ */
+
+/* Map an effective format to the standard format used in the wire ``format``
+ * field.  Standard formats map to themselves. */
+static asdf_time_format_t asdf_time_standard_format(asdf_time_format_t format) {
+    switch (format) {
+    case ASDF_TIME_FORMAT_ISOT:
+    case ASDF_TIME_FORMAT_FITS:
+    case ASDF_TIME_FORMAT_DATETIME:
+    case ASDF_TIME_FORMAT_PLOT_DATE:
+    case ASDF_TIME_FORMAT_YMDHMS:
+    case ASDF_TIME_FORMAT_DATETIME64:
+        return ASDF_TIME_FORMAT_ISO;
+    case ASDF_TIME_FORMAT_JYEAR_STR:
+        return ASDF_TIME_FORMAT_JYEAR;
+    case ASDF_TIME_FORMAT_BYEAR_STR:
+        return ASDF_TIME_FORMAT_BYEAR;
+    default:
+        return format;
+    }
+}
+
+
+/* True if ``format`` is one of the schema's ``other_format`` values (i.e. it is
+ * not valid in the wire ``format`` field and must go in ``base_format``). */
+static bool asdf_time_is_other_format(asdf_time_format_t format) {
+    return asdf_time_standard_format(format) != format;
+}
+
+
+/* True for "other" formats whose native value is numeric or structured rather
+ * than a datetime string, and so must be reformatted into a string to be
+ * serialized under the standard (iso) wire format. */
+static bool asdf_time_value_needs_reformat(asdf_time_format_t format) {
+    switch (format) {
+    case ASDF_TIME_FORMAT_PLOT_DATE:
+    case ASDF_TIME_FORMAT_YMDHMS:
+    case ASDF_TIME_FORMAT_DATETIME64:
+        return true;
+    default:
+        return false;
+    }
 }
 
 
@@ -744,6 +791,31 @@ static void validate_datetime_ranges(asdf_file_t *file, int pat_idx, const char 
 }
 
 
+/* Render a parsed instant as an ISO-8601 "isot" string (``T`` separator).
+ * Used to serialize the numeric "other" formats (e.g. plot_date) whose value
+ * cannot be written verbatim under any of standard ASDF formats.  Returns 0
+ * on success, -1 on failure. */
+static int asdf_time_format_isot(const asdf_time_info_t *info, char *buf, size_t buflen) {
+    struct tm tm = info->tm;
+    size_t n = strftime(buf, buflen, "%Y-%m-%dT%H:%M:%S", &tm);
+    if (n == 0)
+        return -1;
+
+    long nsec = info->ts.tv_nsec;
+    if (nsec > 0) {
+        char frac[16];
+        int fn = snprintf(frac, sizeof(frac), ".%09ld", nsec);
+        /* Trim trailing zeros from the fractional part for a compact value. */
+        while (fn > 1 && frac[fn - 1] == '0')
+            frac[--fn] = '\0';
+        if (n + (size_t)fn < buflen)
+            memcpy(buf + n, frac, (size_t)fn + 1);
+    }
+
+    return 0;
+}
+
+
 static asdf_value_t *asdf_time_serialize(
     asdf_file_t *file, const void *obj, UNUSED(const void *userdata)) {
 
@@ -770,45 +842,55 @@ static asdf_value_t *asdf_time_serialize(
     if (!map)
         goto cleanup;
 
-    err = asdf_mapping_set_string0(map, "value", t->value);
-    if (err != ASDF_VALUE_OK)
-        goto cleanup;
-
-    /* Astropy compatibility: a J-prefixed (Julian year) or B-prefixed
-     * (Besselian year) string value must currently be written with the
-     * jyear_str / byear_str format respectively, even if it was stored as
-     * plain jyear / byear.  Astropy only accepts the prefixed string forms
-     * under those *_str formats.
-     *
-     * I still hold that whatever happens with this in Astropy we should be more
-     * flexible in what asdf-astropy supports here; see
-     * https://github.com/astropy/asdf-astropy/pull/326
-     *
-     * But until that is changed we should try to remain compatible with what
-     * existing software is known to accept...
-     */
-    const char *format_name = asdf_time_format_names[t->format];
+    /* Determine the effective format to serialize.  A J-/B-prefixed string
+     * value stored under jyear/byear is really the jyear_str/byear_str "other"
+     * form (astropy only accepts the prefixed strings under those formats), so
+     * relabel it; it then flows through the "other" format handling below. */
+    asdf_time_format_t eff = t->format;
     const char first = t->value[0];
-    if ((first == 'J' || first == 'j') &&
-        (t->format == ASDF_TIME_FORMAT_JYEAR || t->format == ASDF_TIME_FORMAT_JYEAR_STR))
-        format_name = asdf_time_format_names[ASDF_TIME_FORMAT_JYEAR_STR];
-    else if (
-        (first == 'B' || first == 'b') &&
-        (t->format == ASDF_TIME_FORMAT_BYEAR || t->format == ASDF_TIME_FORMAT_BYEAR_STR))
-        format_name = asdf_time_format_names[ASDF_TIME_FORMAT_BYEAR_STR];
+    if ((first == 'J' || first == 'j') && eff == ASDF_TIME_FORMAT_JYEAR)
+        eff = ASDF_TIME_FORMAT_JYEAR_STR;
+    else if ((first == 'B' || first == 'b') && eff == ASDF_TIME_FORMAT_BYEAR)
+        eff = ASDF_TIME_FORMAT_BYEAR_STR;
 
-    err = asdf_mapping_set_string0(map, "format", format_name);
+    /* A numeric "other" format (e.g. plot_date) cannot be written verbatim
+     * under its string wire format, so reformat its value to an isot string
+     * from the parsed calendar fields. */
+    const char *value_out = t->value;
+    char value_buf[ASDF_TIME_TIMESTR_MAXLEN];
+    if (asdf_time_value_needs_reformat(eff)) {
+        asdf_time_t tmp = *t;
+        if (asdf_time_parse(&tmp) != 0 ||
+            asdf_time_format_isot(&tmp.info, value_buf, sizeof(value_buf)) != 0) {
+            ASDF_LOG(
+                file,
+                ASDF_LOG_WARN,
+                ASDF_CORE_TIME_TAG " could not reformat %s value '%s' for serialization",
+                asdf_time_format_names[eff],
+                t->value);
+            goto cleanup;
+        }
+        value_out = value_buf;
+    }
+
+    err = asdf_mapping_set_string0(map, "value", value_out);
     if (err != ASDF_VALUE_OK)
         goto cleanup;
 
-    /* Write base_format only when set (it is an optional field) */
-    if (t->base_format != ASDF_TIME_FORMAT_NONE) {
-        const char *base_format = asdf_time_format_string(t->base_format);
-        if (base_format) {
-            err = asdf_mapping_set_string0(map, "base_format", base_format);
-            if (err != ASDF_VALUE_OK)
-                goto cleanup;
-        }
+    /* The schema only permits standard formats in ``format``; an "other"
+     * effective format is recorded in ``base_format`` instead, with ``format``
+     * omitted (its guessable standard wire format is re-inferred from the
+     * value on read, matching asdf-astropy).  A standard format is written
+     * directly.
+     */
+    if (asdf_time_is_other_format(eff)) {
+        err = asdf_mapping_set_string0(map, "base_format", asdf_time_format_names[eff]);
+        if (err != ASDF_VALUE_OK)
+            goto cleanup;
+    } else {
+        err = asdf_mapping_set_string0(map, "format", asdf_time_format_names[eff]);
+        if (err != ASDF_VALUE_OK)
+            goto cleanup;
     }
 
     /* Write scale only if non-UTC */
@@ -960,6 +1042,7 @@ static asdf_value_err_t asdf_time_deserialize(
     const char *value_s = NULL;
     const char *format_s = NULL;
     const char *scale_s = NULL;
+    const char *base_format_s = NULL;
     asdf_time_scale_t scale = ASDF_TIME_SCALE_UTC;
 
     asdf_mapping_t *mapping = NULL;
@@ -970,10 +1053,6 @@ static asdf_value_err_t asdf_time_deserialize(
 
     if (!time)
         return ASDF_VALUE_ERR_OOM;
-
-    /* base_format is optional; leave it unset unless a ``base_format`` key is
-     * present (NONE is the zero value, but be explicit about the intent). */
-    time->base_format = ASDF_TIME_FORMAT_NONE;
 
     if (asdf_value_is_mapping(value)) {
         if (asdf_value_as_mapping(value, &mapping) != ASDF_VALUE_OK)
@@ -1038,20 +1117,14 @@ static asdf_value_err_t asdf_time_deserialize(
         }
 
         /* base_format key is optional (added in time-1.2.0); it records the
-         * object's original format and may be any standard or "other" format
-         * name.  Left as ASDF_TIME_FORMAT_NONE when absent or unrecognized. */
+         * object's real/original format and may be any standard or "other"
+         * format name.  It is captured here and applied after parsing (below)
+         * as the effective format, overriding the wire ``format``. */
         prop = asdf_mapping_get(mapping, "base_format");
         if (prop) {
-            const char *base_format_s = NULL;
             if (ASDF_VALUE_OK != asdf_value_as_string0(prop, &base_format_s))
                 goto failure;
 
-            if (!asdf_time_format_parse(base_format_s, &time->base_format))
-                ASDF_LOG(
-                    value->file,
-                    ASDF_LOG_WARN,
-                    "unrecognized time base_format '%s'; ignoring",
-                    base_format_s);
             asdf_value_destroy(prop);
             prop = NULL;
         }
@@ -1068,6 +1141,9 @@ static asdf_value_err_t asdf_time_deserialize(
     time->format = format;
     time->scale = scale;
 
+    /* Parse the instant using the wire (parse) format: the value is stored in
+     * that format's representation, even when base_format labels it as
+     * something else (e.g. an astropy plot_date is stored as an iso string). */
     if (asdf_time_parse(time))
         ASDF_LOG(
             value->file,
@@ -1076,6 +1152,20 @@ static asdf_value_err_t asdf_time_deserialize(
             "without a computed timestamp",
             asdf_time_format_names[format] ? asdf_time_format_names[format] : "(unknown)",
             time->value);
+
+    /* base_format, when present, is the real/effective format; it overrides the
+     * wire format as ``time->format`` (mirroring asdf-astropy). */
+    if (base_format_s) {
+        asdf_time_format_t base_format;
+        if (asdf_time_format_parse(base_format_s, &base_format))
+            time->format = base_format;
+        else
+            ASDF_LOG(
+                value->file,
+                ASDF_LOG_WARN,
+                "unrecognized time base_format '%s'; ignoring",
+                base_format_s);
+    }
 
     *out = time;
 

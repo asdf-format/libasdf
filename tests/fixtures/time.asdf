@@ -13,7 +13,7 @@ history:
     manifest_software: !core/software-1.0.0 {name: asdf_standard, version: 1.4.0}
     software: !core/software-1.0.0 {name: asdf, version: 5.0.0}
 t_byear: !time/time-1.4.0 {format: byear, value: '2025.78707178'}
-t_datetime: !time/time-1.4.0 {format: datetime, value: '2025-10-14 13:26:41.0000+00:00'}
+t_datetime: !time/time-1.4.0 {value: '2025-10-14 13:26:41.0000+00:00', base_format: datetime}
 t_iso: !time/time-1.4.0 {format: iso, value: '2025-10-14T13:26:41.0000'}
 t_jd: !time/time-1.4.0 {format: jd, value: '2460963.060197'}
 t_mjd: !time/time-1.4.0 {format: mjd, value: '60962.560196'}
@@ -31,12 +31,20 @@ t_iso_tai: !time/time-1.4.0 {format: iso, scale: tai, value: '2025-10-14T13:26:4
 t_iso_base_format: !time/time-1.4.0 {base_format: datetime, format: iso, value: '2025-10-14T13:26:41.0000'}
 t_iso_1_1_0: !time/time-1.1.0 {format: iso, value: '2025-10-14T13:26:41.0000'}
 t_iso_1_0_0: !time/time-1.0.0 {format: iso, value: '2025-10-14T13:26:41.0000'}
-t_isot: !time/time-1.4.0 {format: isot, value: '2025-10-14T13:26:41.0000'}
-t_jyear_str: !time/time-1.4.0 {format: jyear_str, value: 'J2025.78707178'}
-t_byear_str: !time/time-1.4.0 {format: byear_str, value: 'B2025.78707178'}
-t_jyear_str_bad: !time/time-1.4.0 {format: jyear_str, value: 2025.78707178}
-t_fits: !time/time-1.4.0 {format: fits, value: '2025-10-14T13:26:41.0000'}
-t_fits_long: !time/time-1.4.0 {format: fits, value: '+12025-10-14T13:26:41.0000'}
+# "other" formats: schema-valid form places the real format in base_format and
+# a standard (guessable) representation in value; format is omitted.
+t_isot: !time/time-1.4.0 {value: '2025-10-14T13:26:41.0000', base_format: isot}
+t_jyear_str: !time/time-1.4.0 {value: 'J2025.78707178', base_format: jyear_str}
+t_byear_str: !time/time-1.4.0 {value: 'B2025.78707178', base_format: byear_str}
+t_fits: !time/time-1.4.0 {value: '2025-10-14T13:26:41.0000', base_format: fits}
+t_plot_date: !time/time-1.4.0 {value: '2025-10-14T13:26:41.0000', base_format: plot_date}
+# Bare FITS "long" year: only auto-detected as fits via the signed 5-digit year.
 t_fits_long_bare: !time/time-1.4.0 '+12025-10-14T13:26:41.0000'
-t_plot_date: !time/time-1.4.0 {format: plot_date, value: '739538.560197'}
+# Liberal-read cases: technically schema-invalid (an "other" format in the
+# format field, or a numeric value under a string-only format), but still
+# accepted on read.
+t_isot_liberal: !time/time-1.4.0 {format: isot, value: '2025-10-14T13:26:41.0000'}
+t_fits_long: !time/time-1.4.0 {format: fits, value: '+12025-10-14T13:26:41.0000'}
+t_plot_date_num: !time/time-1.4.0 {format: plot_date, value: 739538.560197}
+t_jyear_str_bad: !time/time-1.4.0 {format: jyear_str, value: 2025.78707178}
 ...

@@ -18,9 +18,8 @@ ASDF_BEGIN_DECLS
 #define ASDF_TIME_TIMESTR_MAXLEN 255
 
 typedef enum {
-    /** Unset/unspecified format; and the zero value */
-    ASDF_TIME_FORMAT_NONE = 0,
-    ASDF_TIME_FORMAT_ISO,
+    /** The default format is ISO */
+    ASDF_TIME_FORMAT_ISO = 0,
     ASDF_TIME_FORMAT_YDAY,
     ASDF_TIME_FORMAT_BYEAR,
     ASDF_TIME_FORMAT_JYEAR,
@@ -71,16 +70,18 @@ typedef struct {
 typedef struct {
     char *value;
     asdf_time_info_t info;
-    asdf_time_format_t format;
     /**
-     * The original format of the time object (the optional ``base_format``
-     * field, added in time-1.2.0)
+     * The effective (real) format of the time.
      *
-     * Left as ASDF_TIME_FORMAT_NONE (the zero value) when unset, in which case
-     * it is omitted on serialization; deserialization sets it only when the
-     * ``base_format`` key is present.
+     * This may be any format, including one of the schema's ``other_format``
+     * values (e.g. ``fits``, ``isot``, ``plot_date``) which the schema only
+     * permits in the ``base_format`` field on the wire.  On deserialization the
+     * ``format`` and ``base_format`` keys are collapsed into this single
+     * effective format (``base_format`` overrides ``format`` when present); on
+     * serialization the wire ``format`` / ``base_format`` split is derived back
+     * from it.
      */
-    asdf_time_format_t base_format;
+    asdf_time_format_t format;
     asdf_time_scale_t scale;
     asdf_time_location_t location;
 } asdf_time_t;
