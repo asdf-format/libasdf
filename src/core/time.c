@@ -29,7 +29,7 @@
  * per compiled pattern.  Range validation is done manually after the match.
  *
  * Capture group layout per pattern index:
- *   TIME_AUTO_IDX_ISO_TIME:
+ *   TIME_AUTO_IDX_ISO:
  *     [1]=year [2]=month [3]=day
  *     [4]=optional "T/space + time" [5]=hour [6]=minute [7]=second [8]=frac
  *   TIME_AUTO_IDX_BYEAR:
@@ -40,7 +40,7 @@
  *     [1]=year [2]=day-of-year [3]=hour [4]=minute [5]=second [6]=optional frac
  */
 enum {
-    TIME_AUTO_IDX_ISO_TIME = 0,
+    TIME_AUTO_IDX_ISO = 0,
     TIME_AUTO_IDX_BYEAR,
     TIME_AUTO_IDX_JYEAR,
     TIME_AUTO_IDX_YDAY,
@@ -51,7 +51,7 @@ static const struct {
     asdf_time_format_t type;
     const char *pattern;
 } time_auto_patterns[TIME_AUTO_COUNT] = {
-    [TIME_AUTO_IDX_ISO_TIME] =
+    [TIME_AUTO_IDX_ISO] =
         {
             ASDF_TIME_FORMAT_ISO,
             "^(\\d\\d\\d\\d)-(\\d\\d)-(\\d\\d)([T ](\\d\\d):(\\d\\d):(\\d\\d)(.\\d+)?)?",
@@ -98,7 +98,7 @@ ASDF_DESTRUCTOR static void drop_time_auto_regexes(void) {
 }
 
 #ifdef HAVE_STRPTIME
-static const char *ASDF_TIME_SFMT_ISO_TIME[] = {"%Y-%m-%d %H:%M:%S", "%Y-%m-%d"};
+static const char *ASDF_TIME_SFMT_ISO[] = {"%Y-%m-%d %H:%M:%S", "%Y-%m-%d"};
 static const char *ASDF_TIME_SFMT_YDAY[] = {"%Y:%j:%H:%M:%S", "%Y:%j"};
 static const char *ASDF_TIME_SFMT_UNIX[] = {"%s"};
 
@@ -226,7 +226,8 @@ static int asdf_time_parse_std(asdf_time_t *time) {
     switch (time->format) {
     case ASDF_TIME_FORMAT_DATETIME:
     case ASDF_TIME_FORMAT_ISO:
-        check_format_strptime(ASDF_TIME_SFMT_ISO_TIME, buf, &tm, has_time, rest);
+    case ASDF_TIME_FORMAT_ISOT:
+        check_format_strptime(ASDF_TIME_SFMT_ISO, buf, &tm, has_time, rest);
         break;
     case ASDF_TIME_FORMAT_YDAY:
         check_format_strptime(ASDF_TIME_SFMT_YDAY, buf, &tm, has_time, rest);
@@ -420,9 +421,13 @@ int asdf_time_parse(asdf_time_t *time) {
     switch (time->format) {
     case ASDF_TIME_FORMAT_YDAY:
     case ASDF_TIME_FORMAT_ISO:
+    case ASDF_TIME_FORMAT_ISOT:
     case ASDF_TIME_FORMAT_DATETIME:
     case ASDF_TIME_FORMAT_UNIX:
         status = asdf_time_parse_std(time);
+        break;
+    case ASDF_TIME_FORMAT_FITS:
+        status = asdf_time_parse_fits(time);
         break;
     case ASDF_TIME_FORMAT_MJD:
         status = asdf_time_parse_mjd(time);
@@ -620,7 +625,7 @@ static void validate_yday_ranges(asdf_file_t *file, const char *cvs, csview *mat
 /* Run capture-group range checks for patterns that support them. */
 static void validate_datetime_ranges(asdf_file_t *file, int pat_idx, const char *vs, csview *m) {
     switch (pat_idx) {
-    case TIME_AUTO_IDX_ISO_TIME:
+    case TIME_AUTO_IDX_ISO:
         validate_iso_time_ranges(file, vs, m);
         break;
     case TIME_AUTO_IDX_YDAY:

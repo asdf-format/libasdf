@@ -23,7 +23,7 @@ MU_TEST(test_asdf_time) {
     char time_str[255] = {0};
 
     const char *fixture_keys[] = {
-        "t_iso_time",
+        "t_iso",
         "t_datetime",
         "t_yday",
         "t_unix",
@@ -136,7 +136,7 @@ MU_TEST(test_asdf_time_format_detection) {
         bool check_ts;
     } cases[] = {
         /* bare scalars: format must be inferred from value string */
-        {"t_iso_time_bare", ASDF_TIME_FORMAT_ISO,  "2025-10-14T13:26:41.0000", true},
+        {"t_iso_bare", ASDF_TIME_FORMAT_ISO,  "2025-10-14T13:26:41.0000", true},
         {"t_byear_bare",    ASDF_TIME_FORMAT_BYEAR,     "B2025.78707178",           true},
         {"t_jyear_bare",    ASDF_TIME_FORMAT_JYEAR,     "J2025.78707178",           false},
         {"t_yday_bare",     ASDF_TIME_FORMAT_YDAY ,     "2025:287:13:26:41.0000",   true},
@@ -202,7 +202,8 @@ MU_TEST(test_asdf_time_explicit_format_types) {
         const char *key;
         asdf_time_format_t expected_format;
     } cases[] = {
-        {"t_iso_time", ASDF_TIME_FORMAT_ISO},
+        {"t_iso", ASDF_TIME_FORMAT_ISO},
+        {"t_isot",     ASDF_TIME_FORMAT_ISOT},
         {"t_datetime", ASDF_TIME_FORMAT_DATETIME},
         {"t_yday",     ASDF_TIME_FORMAT_YDAY},
         {"t_byear",    ASDF_TIME_FORMAT_BYEAR},
@@ -320,8 +321,8 @@ MU_TEST(test_asdf_time_scale) {
         const char *key;
         asdf_time_scale_t expected_scale;
     } cases[] = {
-        {"t_iso_time_tai", ASDF_TIME_SCALE_TAI},
-        {"t_iso_time",     ASDF_TIME_SCALE_UTC},
+        {"t_iso_tai", ASDF_TIME_SCALE_TAI},
+        {"t_iso",     ASDF_TIME_SCALE_UTC},
     };
 
     for (size_t idx = 0; idx < sizeof(cases) / sizeof(cases[0]); idx++) {
@@ -412,7 +413,7 @@ MU_TEST(test_asdf_time_base_format) {
         asdf_time_format_t expected_base_format;
     } cases[] = {
         {"t_iso_base_format", ASDF_TIME_FORMAT_DATETIME},
-        {"t_iso_time", ASDF_TIME_FORMAT_NONE},
+        {"t_iso", ASDF_TIME_FORMAT_NONE},
     };
 
     for (size_t idx = 0; idx < sizeof(cases) / sizeof(cases[0]); idx++) {
@@ -500,8 +501,8 @@ MU_TEST(test_asdf_time_versions) {
     assert_not_null(file);
 
     static const char *const keys[] = {
-        "t_iso_time_1_1_0",
-        "t_iso_time_1_0_0",
+        "t_iso_1_1_0",
+        "t_iso_1_0_0",
     };
 
     for (size_t idx = 0; idx < sizeof(keys) / sizeof(keys[0]); idx++) {
