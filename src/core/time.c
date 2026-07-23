@@ -267,6 +267,10 @@ static int asdf_time_parse_std(asdf_time_t *time) {
     case ASDF_TIME_FORMAT_DATETIME:
     case ASDF_TIME_FORMAT_ISO:
     case ASDF_TIME_FORMAT_ISOT:
+    case ASDF_TIME_FORMAT_YMDHMS:
+    case ASDF_TIME_FORMAT_DATETIME64:
+        /* ymdhms and datetime64 have no scalar ASDF representation of their own;
+         * astropy stores them (like isot) as an ISO-8601 string. */
         check_format_strptime(ASDF_TIME_SFMT_ISO, buf, &tm, has_time, rest);
         break;
     case ASDF_TIME_FORMAT_YDAY:
@@ -561,6 +565,8 @@ int asdf_time_parse(asdf_time_t *time) {
     case ASDF_TIME_FORMAT_ISO:
     case ASDF_TIME_FORMAT_ISOT:
     case ASDF_TIME_FORMAT_DATETIME:
+    case ASDF_TIME_FORMAT_YMDHMS:
+    case ASDF_TIME_FORMAT_DATETIME64:
     case ASDF_TIME_FORMAT_UNIX:
         status = asdf_time_parse_std(time);
         break;
@@ -706,18 +712,30 @@ static bool asdf_time_is_other_format(asdf_time_format_t format) {
 }
 
 
-/* True for "other" formats whose native value is numeric or structured rather
- * than a datetime string, and so must be reformatted into a string to be
- * serialized under the standard (iso) wire format. */
+/* True for "other" formats that may carry a numeric value which must be
+ * reformatted into a datetime string to be serialized under the standard (iso)
+ * wire format.  Only plot_date has a well-defined numeric scalar form; ymdhms
+ * and datetime64 are always stored as ISO strings (astropy converts them), and
+ * a bare-integer datetime64 is unit-ambiguous, so neither is reformatted. */
 static bool asdf_time_value_needs_reformat(asdf_time_format_t format) {
-    switch (format) {
-    case ASDF_TIME_FORMAT_PLOT_DATE:
-    case ASDF_TIME_FORMAT_YMDHMS:
-    case ASDF_TIME_FORMAT_DATETIME64:
-        return true;
-    default:
-        return false;
+    return format == ASDF_TIME_FORMAT_PLOT_DATE;
+}
+
+
+/* True if the value is already one of the guessable datetime string forms
+ * (iso/yday/byear/jyear/fits), and so can be written verbatim rather than
+ * reformatted from a numeric value.  This distinguishes, e.g., a plot_date
+ * stored as a raw float from one already read back as an ISO string. */
+static bool asdf_time_value_is_datetime_string(const char *value) {
+    compile_time_auto_regexes();
+    for (size_t idx = 0; idx < TIME_AUTO_COUNT; idx++) {
+        if (time_auto_regexes[idx].error != CREG_OK)
+            continue;
+        csview match[CREG_MAX_CAPTURES] = {0};
+        if (cregex_match(&time_auto_regexes[idx], value, match) == CREG_OK)
+            return true;
     }
+    return false;
 }
 
 
@@ -916,10 +934,12 @@ static asdf_value_t *asdf_time_serialize(
 
     /* A numeric "other" format (e.g. plot_date) cannot be written verbatim
      * under its string wire format, so reformat its value to an isot string
-     * from the parsed calendar fields. */
+     * from the parsed calendar fields.  Skip this when the value is already a
+     * datetime string (e.g. a plot_date just read back from the base_format
+     * form, whose value is an ISO string), which is written verbatim. */
     const char *value_out = t->value;
     char value_buf[ASDF_TIME_TIMESTR_MAXLEN];
-    if (asdf_time_value_needs_reformat(eff)) {
+    if (asdf_time_value_needs_reformat(eff) && !asdf_time_value_is_datetime_string(t->value)) {
         asdf_time_t tmp = *t;
         if (asdf_time_parse(&tmp) != 0 ||
             asdf_time_format_isot(&tmp.info, value_buf, sizeof(value_buf)) != 0) {

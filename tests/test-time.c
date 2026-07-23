@@ -212,6 +212,9 @@ MU_TEST(test_asdf_time_explicit_format_types) {
         {"t_mjd",      ASDF_TIME_FORMAT_MJD},
         {"t_fits",     ASDF_TIME_FORMAT_FITS},
         {"t_fits_long", ASDF_TIME_FORMAT_FITS},
+        {"t_ymdhms",   ASDF_TIME_FORMAT_YMDHMS},
+        {"t_ymdhms_liberal", ASDF_TIME_FORMAT_YMDHMS},
+        {"t_datetime64", ASDF_TIME_FORMAT_DATETIME64},
     };
 
     for (size_t idx = 0; idx < sizeof(cases) / sizeof(cases[0]); idx++) {
@@ -404,6 +407,125 @@ MU_TEST(test_asdf_time_epoch_seconds) {
     }
 
     asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+/**
+ * Check ymdhms and datetime64: neither has a scalar ASDF representation of its
+ * own, so both are stored (like isot) as an ISO string with the real format in
+ * base_format.  Verify the effective format and that the instant parses, from
+ * the base_format form and the liberal explicit-format form.
+ */
+MU_TEST(test_asdf_time_ymdhms_datetime64) {
+    const char *path = get_fixture_file_path("time.asdf");
+    assert_not_null(path);
+
+    asdf_file_t *file = asdf_open(path, "r");
+    assert_not_null(file);
+
+    static const struct {
+        const char *key;
+        asdf_time_format_t expected_format;
+    } cases[] = {
+        {"t_ymdhms", ASDF_TIME_FORMAT_YMDHMS},
+        {"t_ymdhms_liberal", ASDF_TIME_FORMAT_YMDHMS},
+        {"t_datetime64", ASDF_TIME_FORMAT_DATETIME64},
+    };
+
+    for (size_t idx = 0; idx < sizeof(cases) / sizeof(cases[0]); idx++) {
+        asdf_value_t *value = asdf_get_value(file, cases[idx].key);
+        assert_not_null(value);
+
+        asdf_time_t *tm = NULL;
+        asdf_value_err_t err = asdf_value_as_time(value, &tm);
+        assert_int(err, ==, ASDF_VALUE_OK);
+        assert_not_null(tm);
+
+        assert_int(tm->format, ==, cases[idx].expected_format);
+        assert_int(tm->info.tm.tm_year + 1900, ==, 2025);
+        assert_int(tm->info.tm.tm_mon + 1, ==, 10);
+        assert_int(tm->info.tm.tm_mday, ==, 14);
+        assert_int(tm->info.tm.tm_hour, ==, 13);
+        assert_int(tm->info.tm.tm_min, ==, 26);
+
+        asdf_time_destroy(tm);
+        asdf_value_destroy(value);
+    }
+
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+/**
+ * Round-trip plot_date in both value representations:
+ *
+ *   1. a raw numeric value is reformatted to an ISO string on write (and the
+ *      written mapping is schema-valid: no format key, base_format: plot_date);
+ *   2. a value already in ISO-string form (as read back from the base_format
+ *      form) is written verbatim; regression test against re-parsing the
+ *      ISO string as a plot_date float.
+ *
+ * Both resolve to 2025-10-14 13:26:41.
+ */
+MU_TEST(test_asdf_time_plot_date_roundtrip) {
+    static const char *const values[] = {
+        "739538.560197", /* numeric -> reformatted */
+        "2025-10-14T13:26:41.0000" /* already ISO -> verbatim */
+    };
+
+    for (size_t idx = 0; idx < sizeof(values) / sizeof(values[0]); idx++) {
+        const char *path = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+        assert_not_null(path);
+
+        asdf_file_t *file = asdf_open(NULL);
+        assert_not_null(file);
+
+        char value_buf[64];
+        strncpy(value_buf, values[idx], sizeof(value_buf) - 1);
+        value_buf[sizeof(value_buf) - 1] = '\0';
+        asdf_time_t time_obj = {
+            .value = value_buf,
+            .format = ASDF_TIME_FORMAT_PLOT_DATE,
+            .scale = ASDF_TIME_SCALE_UTC,
+        };
+        assert_int(asdf_set_time(file, "t_plot_date", &time_obj), ==, ASDF_VALUE_OK);
+        assert_int(asdf_write_to(file, path), ==, 0);
+        asdf_close(file);
+
+        file = asdf_open(path, "r");
+        assert_not_null(file);
+
+        /* Written mapping is schema-valid: no format key, base_format plot_date. */
+        asdf_value_t *raw = asdf_get_value(file, "t_plot_date");
+        assert_not_null(raw);
+        asdf_mapping_t *map = NULL;
+        assert_int(asdf_value_as_mapping(raw, &map), ==, ASDF_VALUE_OK);
+        assert_null(asdf_mapping_get(map, "format"));
+        asdf_value_t *bf = asdf_mapping_get(map, "base_format");
+        assert_not_null(bf);
+        const char *bf_s = NULL;
+        assert_int(asdf_value_as_string0(bf, &bf_s), ==, ASDF_VALUE_OK);
+        assert_string_equal(bf_s, "plot_date");
+        asdf_value_destroy(bf);
+        asdf_value_destroy(raw);
+
+        /* Reads back as plot_date at the expected instant. */
+        asdf_time_t *t_out = NULL;
+        assert_int(asdf_get_time(file, "t_plot_date", &t_out), ==, ASDF_VALUE_OK);
+        assert_not_null(t_out);
+        assert_int(t_out->format, ==, ASDF_TIME_FORMAT_PLOT_DATE);
+        assert_int(t_out->info.tm.tm_year + 1900, ==, 2025);
+        assert_int(t_out->info.tm.tm_mon + 1, ==, 10);
+        assert_int(t_out->info.tm.tm_mday, ==, 14);
+        assert_int(t_out->info.tm.tm_hour, ==, 13);
+        assert_int(t_out->info.tm.tm_min, ==, 26);
+
+        asdf_time_destroy(t_out);
+        asdf_close(file);
+    }
+
     return MUNIT_OK;
 }
 
@@ -820,7 +942,9 @@ MU_TEST_SUITE(
     MU_RUN_TEST(test_asdf_time_explicit_format_types),
     MU_RUN_TEST(test_asdf_time_jyear_decimalyear),
     MU_RUN_TEST(test_asdf_time_plot_date),
+    MU_RUN_TEST(test_asdf_time_plot_date_roundtrip),
     MU_RUN_TEST(test_asdf_time_epoch_seconds),
+    MU_RUN_TEST(test_asdf_time_ymdhms_datetime64),
     MU_RUN_TEST(test_asdf_time_scale),
     MU_RUN_TEST(test_asdf_time_scale_roundtrip),
     MU_RUN_TEST(test_asdf_time_base_format),
