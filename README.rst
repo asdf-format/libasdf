@@ -311,9 +311,10 @@ Clone the repository and build the project as follows::
     make
     sudo make install   # Optional, installs the binary system-wide
 
-If doing a system install, as usual it's recommended to install to ``/usr/local``
-by providing ``-DCMAKE_INSTALL_PREFIX=/usr/local`` when running ``cmake``.  Or, if you
-have a ``${HOME}/.local`` you can set the prefix there, etc.
+If doing a system install, as usual it's recommended to install to
+``/usr/local`` by providing ``-DCMAKE_INSTALL_PREFIX=/usr/local`` when running
+``cmake``.  Or, if you have a ``${HOME}/.local`` you can set the prefix there,
+etc.
 
 Logging
 ^^^^^^^

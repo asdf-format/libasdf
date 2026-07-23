@@ -1,3 +1,49 @@
+# asdf_check_homebrew_pkg(<PREFIX> <package>)
+#
+# Detect a Homebrew-installed package on macOS (or Linux if you for some
+# reason use Homebrew on Linux) and populate cache-style variables analogous
+# to pkg_check_modules:
+#
+#   <PREFIX>_FOUND       -- TRUE if the package was found via Homebrew
+#   <PREFIX>_PREFIX      -- Homebrew prefix for the package
+#   <PREFIX>_INCLUDEDIR  -- <prefix>/include
+#   <PREFIX>_LIBDIR      -- <prefix>/lib
+#
+# This is a fallback for packages that ship without a pkg-config (.pc) file,
+# such as the Homebrew argp-standalone formula.  It is a no-op (aside from a
+# status message) if the brew program cannot be found.
+function(asdf_check_homebrew_pkg prefix package)
+    message(STATUS "Checking for Homebrew package '${package}'")
+
+    find_program(BREW_PROGRAM brew)
+    if(NOT BREW_PROGRAM)
+        message(STATUS "  Homebrew (brew) not found; cannot check for package '${package}'")
+        set(${prefix}_FOUND FALSE PARENT_SCOPE)
+        return()
+    endif()
+
+    execute_process(
+        COMMAND ${BREW_PROGRAM} --prefix --installed ${package}
+        OUTPUT_VARIABLE brew_prefix
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        RESULT_VARIABLE brew_result
+        ERROR_QUIET
+    )
+
+    if(NOT brew_result EQUAL 0 OR brew_prefix STREQUAL "")
+        message(STATUS "  Package '${package}' not found. Try: brew install ${package}")
+        set(${prefix}_FOUND FALSE PARENT_SCOPE)
+        return()
+    endif()
+
+    message(STATUS "  Found Homebrew package '${package}' at ${brew_prefix}")
+    set(${prefix}_FOUND TRUE PARENT_SCOPE)
+    set(${prefix}_PREFIX "${brew_prefix}" PARENT_SCOPE)
+    set(${prefix}_INCLUDEDIR "${brew_prefix}/include" PARENT_SCOPE)
+    set(${prefix}_LIBDIR "${brew_prefix}/lib" PARENT_SCOPE)
+endfunction()
+
+
 option(BZIP2_NO_PKGCONFIG NO)
 # Ubuntu decided not to provide a bzip2 pkg-config file
 # Uses the find_package function instead.
@@ -84,9 +130,28 @@ if(ENABLE_TOOL AND APPLE)
         set(ARGP_LDFLAGS "" CACHE STRING "Linker options for libargp")
     else()
         if(PKG_CONFIG_FOUND)
-            pkg_check_modules(ARGP libargp REQUIRED)
+            pkg_check_modules(ARGP libargp)
         else()
             message("pkg-config not found. Install pkg-config, or use ARGP_NO_PKGCONFIG=YES.")
+        endif()
+
+        # The Homebrew argp-standalone formula currently ships without a
+        # pkg-config (.pc) file, so fall back on locating it via Homebrew
+        # directly.  This can be dropped once argp-standalone provides a .pc
+        # file upstream; see https://github.com/asdf-format/libasdf/issues/176
+        # for the ongoing saga.
+        if(NOT ARGP_FOUND)
+            asdf_check_homebrew_pkg(ARGP argp-standalone)
+            if(ARGP_FOUND)
+                set(ARGP_LIBRARIES "argp")
+            endif()
+        endif()
+
+        if(NOT ARGP_FOUND)
+            message(FATAL_ERROR
+                "argp is required for the command-line tool but was not found. "
+                "Install argp-standalone (e.g. 'brew install argp-standalone'), "
+                "or disable the tool with -DENABLE_TOOL=OFF.")
         endif()
     endif()
 endif()
