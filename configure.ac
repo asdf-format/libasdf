@@ -176,20 +176,12 @@ AC_ARG_ENABLE([logging],
   [enable_logging=yes]
 )
 
-AS_IF([test "x$enable_logging" = "xyes"],
-  [AC_DEFINE([ASDF_LOG_ENABLED], [1], [Enable logging])]
-)
-
 AC_ARG_ENABLE([log-color],
   [AS_HELP_STRING([--enable-log-color],
                   [Enable color output in logs (default: yes)])],
   [enable_log_color=$enableval],
   [enable_log_color=yes]
 )
-
-if test "x$enable_log_color" = "xyes"; then
-  AC_DEFINE([ASDF_LOG_COLOR], [1], [Enable color output in logs])
-fi
 
 AC_ARG_WITH([log-default],
   [AS_HELP_STRING([--with-log-default=LEVEL], [Set default runtime log level])],
@@ -199,9 +191,6 @@ AC_ARG_WITH([log-default],
   [with_log_default=WARN]
 )
 
-AC_DEFINE_UNQUOTED([ASDF_LOG_DEFAULT_LEVEL], [ASDF_LOG_$with_log_default],
-                   [Default runtime log level])
-
 AC_ARG_WITH([log-min],
   [AS_HELP_STRING([--with-log-min=LEVEL], [Set compile-time minimum log level])],
   [AS_CASE([$with_log_min],
@@ -209,9 +198,6 @@ AC_ARG_WITH([log-min],
     [AC_MSG_ERROR([Invalid min log level: $with_log_min])])],
   [with_log_min=TRACE]
 )
-
-AC_DEFINE_UNQUOTED([ASDF_LOG_MIN_LEVEL], [ASDF_LOG_$with_log_min],
-                   [Compile-time minimum log level])
 
 
 # Substitutions for the installed include/asdf/config.h.  Unlike the internal
@@ -361,6 +347,11 @@ AC_SUBST([PYTHON3])
 AC_SUBST([ASDF_CFLAGS])
 AC_SUBST([ASDF_LDFLAGS])
 AC_CONFIG_HEADERS([config.h]) # use config.h instead of passing -D in the command line
+
+# The ASDF_LOG_* and ASDF_HAVE_FLOAT16 macros are part of the installed public
+# configuration (include/asdf/config.h); pull them in here rather than
+# duplicating the definitions in the internal config.h.
+AH_BOTTOM([#include "asdf/config.h"])
 AC_CONFIG_FILES([Makefile include/Makefile tests/Makefile third_party/Makefile docs/Makefile libasdf.pc include/asdf/config.h])
 
 AC_OUTPUT

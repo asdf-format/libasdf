@@ -86,7 +86,8 @@ unit_test_ldadd = $(munit_ldflags) $(top_builddir)/libasdf.la $(ASDF_LIBS)
 # Unit tests
 check_LIBRARIES = libmunit.a
 libmunit_a_SOURCES = util.c $(munit_dir)/munit.c
-libmunit_a_CPPFLAGS = $(unit_test_base_cppflags)
+# util.c includes config.h, which pulls in the public asdf/config.h
+libmunit_a_CPPFLAGS = -I$(top_srcdir)/include -I$(top_builddir)/include $(unit_test_base_cppflags)
 libmunit_a_CFLAGS = $(unit_test_cflags) -w
 
 # test-block.unit
