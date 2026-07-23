@@ -201,7 +201,7 @@ The next example shows how to read back in the same file:
        // read and print the numeric value stored under "foo"
        int64_t foo = 0;
        if (asdf_get_int64(file, "foo", &foo) == ASDF_VALUE_OK) {
-           printf("foo: %li\n", foo);
+           printf("foo: %lli\n", foo);
        }
    
        // read the "squares" array nested under the "powers" key
@@ -215,7 +215,7 @@ The next example shows how to read back in the same file:
                for (uint64_t idx = 0; idx < nelem; idx++) {
                    sum += squares_data[idx];
                }
-               printf("sum of squares values: %li\n", sum);
+               printf("sum of squares values: %llu\n", sum);
            }
        }
    
@@ -311,9 +311,10 @@ Clone the repository and build the project as follows::
     make
     sudo make install   # Optional, installs the binary system-wide
 
-If doing a system install, as usual it's recommended to install to ``/usr/local``
-by providing ``-DCMAKE_INSTALL_PREFIX=/usr/local`` when running ``cmake``.  Or, if you
-have a ``${HOME}/.local`` you can set the prefix there, etc.
+If doing a system install, as usual it's recommended to install to
+``/usr/local`` by providing ``-DCMAKE_INSTALL_PREFIX=/usr/local`` when running
+``cmake``.  Or, if you have a ``${HOME}/.local`` you can set the prefix there,
+etc.
 
 Logging
 ^^^^^^^

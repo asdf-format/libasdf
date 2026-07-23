@@ -1,17 +1,14 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-/* Enable color output in logs */
-#cmakedefine ASDF_LOG_COLOR
-
-/* Default runtime log level */
-#define ASDF_LOG_DEFAULT_LEVEL ASDF_LOG_@LOG_DEFAULT@
-
-/* Enable logging */
-#cmakedefine ASDF_LOG_ENABLED
-
-/* Compile-time minimum log level */
-#define ASDF_LOG_MIN_LEVEL ASDF_LOG_@LOG_MIN@
+/*
+ * The ASDF_LOG_* and ASDF_HAVE_FLOAT16 macros are part of the installed
+ * public configuration and are defined in asdf/config.h.  Include it here
+ * rather than duplicating those definitions, which otherwise leads to
+ * -Wmacro-redefined warnings in any translation unit that also pulls in the
+ * public header.
+ */
+#include "asdf/config.h"
 
 /* Name of package */
 #define PACKAGE "@PACKAGE_NAME@"
