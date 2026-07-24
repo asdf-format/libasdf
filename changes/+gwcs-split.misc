@@ -1,5 +1,0 @@
-The experimental GWCS (Generalized World Coordinate System) extension has been moved to its
-own standalone plugin library, `libasdf-gwcs
-<https://github.com/asdf-format/libasdf-gwcs>`__.
-
-This release also adds new public APIs for extension authors, including ``ASDF_LOG()`` (via ``#include <asdf/log.h>``) for logging from extension code, and several other new APIs needed by libasdf-gwcs.
