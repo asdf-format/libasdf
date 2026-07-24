@@ -6,7 +6,7 @@ EXTRA_DIST = \
     conf.py \
     api/asdf/core/datatype.h.rst \
     api/asdf/core/ndarray.h.rst \
-    api/asdf/error.h.rst \
+    api/asdf/core/time.h.rst \
     api/asdf/emitter.h.rst \
     api/asdf/error.h.rst \
     api/asdf/extension.h.rst \
@@ -14,6 +14,8 @@ EXTRA_DIST = \
     api/asdf/log.h.rst \
     api/asdf/value.h.rst \
     api/asdf/yaml.h.rst \
+    changes.rst \
+    development.rst \
     environment.yml \
     index.rst \
     links.rst \
