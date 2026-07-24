@@ -129,7 +129,7 @@ to a new file:
 With libasdf installed on your system (see :ref:`development`) you can compile
 and run this test like:
 
-.. code:: sh
+.. code:: console
 
    $ gcc asdf-write.c -o asdf-write -lasdf
    $ ./asdf-write
@@ -228,7 +228,7 @@ The next example shows how to read back in the same file:
 
 Likewise compile and run the example with the output from the previous program:
 
-.. code:: sh
+.. code:: console
 
    $ gcc asdf-read.c -o asdf-read -lasdf
    $ ./asdf-read

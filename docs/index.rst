@@ -83,6 +83,7 @@ Resources
   :maxdepth: 2
 
   changes
+  development
 
 
 See also

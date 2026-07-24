@@ -1,1 +1,1 @@
-Fixed --help output of the asdf CLI tool to show available sub-commands.
+Fixed ``--help`` output of the asdf CLI tool to show available sub-commands.

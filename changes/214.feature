@@ -1,3 +1,5 @@
+ndarray read improvements:
+
 - Added support for the float16 ndarray datatype when reading arrays and
   converting datatypes
 

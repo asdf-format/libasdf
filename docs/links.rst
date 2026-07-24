@@ -5,5 +5,6 @@
 .. _ASDF Numeric Literals: https://www.asdf-format.org/projects/asdf-standard/en/latest/tree.html#numeric-literals
 .. _JSON Pointer: https://www.rfc-editor.org/rfc/rfc6901
 .. _NumPy: https://numpy.org/
+.. _Telling Git about your signing key: https://docs.github.com/en/authentication/managing-commit-signature-verification/telling-git-about-your-signing-key
 .. _YAML Core Schema: https://yaml.org/spec/1.2.2/#103-core-schema
 .. _libfyaml: https://github.com/pantoniou/libfyaml

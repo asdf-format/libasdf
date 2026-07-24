@@ -1,0 +1,226 @@
+name: Release
+
+# Creates a draft GitHub release for a tag, but only once the Build workflow
+# has fully succeeded on that tag.  Build is used as the gate because it is the
+# most comprehensive: `make check` on the full matrix, then `make dist` and
+# `make distcheck` (which in turn runs distcheck-docs and distcheck-cmake).
+on:
+  workflow_run:
+    workflows: [Build]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag from which to create the release
+        required: true
+      draft:
+        description: Create the release as a draft
+        type: boolean
+        default: true
+
+permissions:
+  contents: write  # needed to create the release and upload assets
+  actions: read    # needed to download artifacts from the Build run
+
+# Aim to prevent accidental concurrent runs of the same release build
+concurrency:
+  group: release-${{ github.event.workflow_run.head_branch || inputs.tag }}
+
+jobs:
+  release:
+    name: Create GitHub release
+    runs-on: ubuntu-latest
+    # build.yml only runs on `push` for main and for tags, so a successful
+    # push-triggered run whose head_branch is not main was a tag build.  This
+    # just keeps the workflow from appearing at all for ordinary main pushes;
+    # "Resolve release target" below verifies the tag properly via the API.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch != 'main')
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Resolve release target
+        id: target
+        # Values that originate outside the workflow (tag names, the dispatch
+        # input) go through the environment rather than being interpolated
+        # into the script body
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          RUN_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = workflow_dispatch ]; then
+            tag="$INPUT_TAG"
+            # Extract the run ID and head SHA from any workflows run on the
+            # input tag, if any.
+            run=$(gh run list --workflow build.yml --branch "$tag" \
+                    --event push --status success --limit 1 \
+                    --json databaseId,headSha \
+                    --jq '.[] | "\(.databaseId) \(.headSha)"')
+            if [ -z "$run" ]; then
+              echo "::error::no successful Build run found for tag $tag"
+              exit 1
+            fi
+            run_id=${run% *}
+            head_sha=${run#* }
+          else
+            tag="$RUN_BRANCH"
+            run_id="$RUN_ID"
+            head_sha="$RUN_SHA"
+          fi
+
+          # Guard: the ref must really be a tag (this 404s otherwise) and must
+          # point at the commit Build actually tested.  The /commits/<ref>
+          # endpoint dereferences annotated tags for us.
+          gh api "repos/$GH_REPO/git/ref/tags/$tag" > /dev/null
+          tag_sha=$(gh api "repos/$GH_REPO/commits/$tag" --jq .sha)
+          if [ "$tag_sha" != "$head_sha" ]; then
+            echo "::error::tag $tag ($tag_sha) does not point at the commit" \
+                 "Build ran on ($head_sha)"
+            exit 1
+          fi
+
+          {
+            echo "tag=$tag"
+            echo "run_id=$run_id"
+            echo "sha=$head_sha"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Checkout the tag
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ steps.target.outputs.tag }}
+
+      - name: Check the tag matches the project version
+        id: version
+        env:
+          TAG: ${{ steps.target.outputs.tag }}
+        run: |
+          set -euo pipefail
+          tag="$TAG"
+          version=$(sed -n 's/^current_version = "\(.*\)"$/\1/p' .bumpver.toml)
+          ac_version=$(sed -n 's/.*\[libasdf\], \[\([^]]*\)\].*/\1/p' configure.ac)
+          for got in "$version" "$ac_version"; do
+            if [ "$got" != "${tag#v}" ]; then
+              echo "::error::tag $tag does not match project version $got"
+              exit 1
+            fi
+          done
+
+          # The bumpver version pattern is MAJOR.MINOR.PATCH[PYTAGNUM], so
+          # anything carrying a release tag suffix (a2, b1, rc1, dev0, post1)
+          # is a pre-release.
+          prerelease=true
+          case "$version" in
+            *[!0-9.]*) ;;
+            *) prerelease=false ;;
+          esac
+
+          {
+            echo "version=$version"
+            echo "prerelease=$prerelease"
+          } >> "$GITHUB_OUTPUT"
+
+      # Need Python for the release notes extraction script
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Generate release notes from CHANGES.rst
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          # pypandoc_binary bundles the pandoc executable itself
+          python -m pip install --upgrade docutils pypandoc_binary
+          python scripts/extract_changelog_md.py CHANGES.rst > changelog.md
+          version="$VERSION"
+          if ! head -n 1 changelog.md | grep -qF "$version"; then
+            echo "::error::top section of CHANGES.rst is not for $version"
+            head -n 1 changelog.md
+            exit 1
+          fi
+          # Drop the top-level heading; the release title already says it
+          tail -n +2 changelog.md | sed '/./,$!d' > release-notes.md
+          cat release-notes.md
+
+      - name: Download the source tarball
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-tarball
+          path: dist
+          run-id: ${{ steps.target.outputs.run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Check the tarball
+        working-directory: dist
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -eu
+          test -f "libasdf-$VERSION.tar.gz" || ls -l
+
+      - name: Create the release
+        env:
+          TAG: ${{ steps.target.outputs.tag }}
+          SHA: ${{ steps.target.outputs.sha }}
+          VERSION: ${{ steps.version.outputs.version }}
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_DRAFT: ${{ inputs.draft }}
+        run: |
+          set -euo pipefail
+          args=(--title "libasdf v$VERSION"
+                --notes-file release-notes.md
+                --target "$SHA")
+          state=release
+          if [ "$PRERELEASE" = true ]; then
+            args+=(--prerelease)
+            state="pre-release"
+          fi
+          # Automatic (workflow_run) releases are always drafts; only an
+          # explicit dispatch with draft=false publishes straight away
+          draft=false
+          if [ "$EVENT_NAME" != workflow_dispatch ] || [ "$INPUT_DRAFT" = true ]; then
+            args+=(--draft)
+            draft=true
+            state="draft $state"
+          fi
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "::notice::release $TAG already exists; updating it"
+            gh release edit "$TAG" "${args[@]}"
+            gh release upload "$TAG" dist/* --clobber
+          else
+            gh release create "$TAG" "${args[@]}" dist/*
+          fi
+
+          # Best-effort summary: never fail the job over it, the release is
+          # already made by this point
+          {
+            echo "## libasdf $VERSION ($state)"
+            echo
+            echo "- Tag \`$TAG\` at \`$SHA\`"
+            url=$(gh release view "$TAG" --json url --jq .url) || url=
+            if [ "$draft" = true ]; then
+              # A draft has no published tag association yet, so the API hands
+              # back a placeholder ".../releases/tag/untagged-<hash>" URL; it
+              # becomes the real tag URL below once the draft is published
+              echo "- [Review and publish the draft]($url)"
+              echo "- Once published: https://github.com/$GH_REPO/releases/tag/$TAG"
+            else
+              echo "- Published at $url"
+            fi
+            echo
+            echo "### Assets"
+            for asset in dist/*; do
+              echo "- \`$(basename "$asset")\`"
+            done
+          } >> "$GITHUB_STEP_SUMMARY" || true
