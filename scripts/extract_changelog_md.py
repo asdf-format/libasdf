@@ -46,9 +46,12 @@ def extract_first_section(rst_text: str) -> str:
 
 
 def rst_to_md(rst_text: str) -> str:
+    # 'gfm' (GitHub-Flavored Markdown): the output is destined for a
+    # GitHub release body, and gfm avoids gratuitous backslash-escaping of
+    # quotes
     return pypandoc.convert_text(
         rst_text,
-        'md',
+        'gfm',
         format='rst',
         extra_args=['--wrap=none']
     )

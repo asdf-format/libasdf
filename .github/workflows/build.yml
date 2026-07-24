@@ -27,6 +27,9 @@ jobs:
           - os: ubuntu-latest
             cc: gcc
             asan: no
+            # The one job whose `make dist` tarball is kept as an artifact
+            # (for release.yml to attach to the GitHub release)
+            dist_artifact: true
           - os: ubuntu-latest
             cc: gcc
             asan: yes
@@ -108,6 +111,17 @@ jobs:
       - name: Dist check
         run: |
           make distcheck ${{ github.event.inputs.make_flags }}
+
+      # Only on tags, and only from one job in the matrix: release.yml picks
+      # this up and attaches it to the GitHub release for the tag.
+      - name: Upload source tarball
+        if: github.ref_type == 'tag' && matrix.dist_artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-tarball
+          path: libasdf-*.tar.gz
+          if-no-files-found: error
+          retention-days: 14
 
   # Test the documentation build if the build passes
   docs:
