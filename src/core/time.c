@@ -29,7 +29,7 @@
  * per compiled pattern.  Range validation is done manually after the match.
  *
  * Capture group layout per pattern index:
- *   TIME_AUTO_IDX_ISO_TIME:
+ *   TIME_AUTO_IDX_ISO:
  *     [1]=year [2]=month [3]=day
  *     [4]=optional "T/space + time" [5]=hour [6]=minute [7]=second [8]=frac
  *   TIME_AUTO_IDX_BYEAR:
@@ -38,12 +38,16 @@
  *     [1]=integer-part [2]=optional fractional
  *   TIME_AUTO_IDX_YDAY:
  *     [1]=year [2]=day-of-year [3]=hour [4]=minute [5]=second [6]=optional frac
+ *   TIME_AUTO_IDX_FITS:
+ *     same layout as ISO, but [1]=year additionally permits the FITS "long"
+ *     form: an explicit sign followed by exactly five digits (e.g. +02025).
  */
 enum {
-    TIME_AUTO_IDX_ISO_TIME = 0,
+    TIME_AUTO_IDX_ISO = 0,
     TIME_AUTO_IDX_BYEAR,
     TIME_AUTO_IDX_JYEAR,
     TIME_AUTO_IDX_YDAY,
+    TIME_AUTO_IDX_FITS,
     TIME_AUTO_COUNT,
 };
 
@@ -51,9 +55,9 @@ static const struct {
     asdf_time_format_t type;
     const char *pattern;
 } time_auto_patterns[TIME_AUTO_COUNT] = {
-    [TIME_AUTO_IDX_ISO_TIME] =
+    [TIME_AUTO_IDX_ISO] =
         {
-            ASDF_TIME_FORMAT_ISO_TIME,
+            ASDF_TIME_FORMAT_ISO,
             "^(\\d\\d\\d\\d)-(\\d\\d)-(\\d\\d)([T ](\\d\\d):(\\d\\d):(\\d\\d)(.\\d+)?)?",
         },
     [TIME_AUTO_IDX_BYEAR] =
@@ -70,6 +74,17 @@ static const struct {
         {
             ASDF_TIME_FORMAT_YDAY,
             "^(\\d\\d\\d\\d):(\\d\\d\\d):(\\d\\d):(\\d\\d):(\\d\\d)(.\\d+)?",
+        },
+    /* Like ISO, but the year alternately allows the FITS "long" form: an
+     * explicit sign plus exactly five digits, for years outside 0-9999.  The
+     * plain four-digit branch means an ordinary FITS value validates too;
+     * because ISO is matched first during auto-detection, a value is only
+     * guessed as FITS when the signed long-year form is present. */
+    [TIME_AUTO_IDX_FITS] =
+        {
+            ASDF_TIME_FORMAT_FITS,
+            "^([+-]\\d\\d\\d\\d\\d|\\d\\d\\d\\d)-(\\d\\d)-(\\d\\d)([T "
+            "](\\d\\d):(\\d\\d):(\\d\\d)(.\\d+)?)?",
         },
 };
 
@@ -98,7 +113,7 @@ ASDF_DESTRUCTOR static void drop_time_auto_regexes(void) {
 }
 
 #ifdef HAVE_STRPTIME
-static const char *ASDF_TIME_SFMT_ISO_TIME[] = {"%Y-%m-%d %H:%M:%S", "%Y-%m-%d"};
+static const char *ASDF_TIME_SFMT_ISO[] = {"%Y-%m-%d %H:%M:%S", "%Y-%m-%d"};
 static const char *ASDF_TIME_SFMT_YDAY[] = {"%Y:%j:%H:%M:%S", "%Y:%j"};
 static const char *ASDF_TIME_SFMT_UNIX[] = {"%s"};
 
@@ -118,6 +133,31 @@ static const char *ASDF_TIME_SFMT_UNIX[] = {"%s"};
 #define JD_MJD 2400000.5
 #define JD_J2000 2451545.0
 #define JD_UNIX_EPOCH 2440587.5
+/* matplotlib "plot_date" epoch: JD of 0001-01-01 00:00:00 UTC minus one day,
+ * i.e. a plot_date value is the number of days from 0001-01-01 UTC plus one. */
+#define JD_PLOT_DATE_EPOCH 1721424.5
+
+/*
+ * Epochs (as Julian Dates) for the "seconds from epoch" formats.  Each JD below
+ * is the Julian Date of the epoch's calendar instant, anchored on
+ * JD_UNIX_EPOCH (JD of 1970-01-01 00:00:00).  unix_tai reuses JD_UNIX_EPOCH
+ * (same 1970-01-01 epoch, but the TAI scale).
+ *
+ * Epoch dates/scales are from astropy's TimeFromEpoch subclasses in
+ * ``astropy/time/formats.py``
+ *
+ * astropy runs gps/unix_tai/cxcsec/tai_seconds on the TAI or TT scale; libasdf
+ * has no leap-second table, so the computed calendar instant is really the
+ * reading in the format's own timescale (offset from UTC by the
+ * leap-second/scale difference), matching the best-effort treatment already
+ * applied to `unix`.  galexsec and utime are UTC (leap seconds ignored, like
+ * unix).
+ */
+#define JD_GPS_EPOCH (2444244.5 + 19.0 / 86400.0) /* 1980-01-06 00:00:19 TAI */
+#define JD_GALEXSEC_EPOCH 2444244.5               /* 1980-01-06 00:00:00 UTC */
+#define JD_CXCSEC_EPOCH 2450814.5                 /* 1998-01-01 00:00:00 TT */
+#define JD_TAI_SECONDS_EPOCH 2436204.5            /* 1958-01-01 00:00:00 TAI */
+#define JD_UTIME_EPOCH 2443874.5                  /* 1979-01-01 00:00:00 UTC */
 
 /* Calendar constants */
 static const double JD_GREGORIAN_START = 2299161.0;
@@ -225,8 +265,13 @@ static int asdf_time_parse_std(asdf_time_t *time) {
 
     switch (time->format) {
     case ASDF_TIME_FORMAT_DATETIME:
-    case ASDF_TIME_FORMAT_ISO_TIME:
-        check_format_strptime(ASDF_TIME_SFMT_ISO_TIME, buf, &tm, has_time, rest);
+    case ASDF_TIME_FORMAT_ISO:
+    case ASDF_TIME_FORMAT_ISOT:
+    case ASDF_TIME_FORMAT_YMDHMS:
+    case ASDF_TIME_FORMAT_DATETIME64:
+        /* ymdhms and datetime64 have no scalar ASDF representation of their own;
+         * astropy stores them (like isot) as an ISO-8601 string. */
+        check_format_strptime(ASDF_TIME_SFMT_ISO, buf, &tm, has_time, rest);
         break;
     case ASDF_TIME_FORMAT_YDAY:
         check_format_strptime(ASDF_TIME_SFMT_YDAY, buf, &tm, has_time, rest);
@@ -278,6 +323,71 @@ cleanup:
 }
 
 
+static int asdf_time_parse_fits(asdf_time_t *time) {
+    if (UNLIKELY(!time))
+        return -1;
+
+    struct tm tm = {0};
+    long nsec = 0;
+    int year = 0;
+    int mon = 1;
+    int day = 1;
+    int hour = 0;
+    int min = 0;
+    int sec = 0;
+    int ret = -1;
+    char *buf = strdup(time->value);
+
+    if (!buf) {
+        ASDF_ERROR_OOM(NULL);
+        goto cleanup;
+    }
+
+    /* Normalize the date/time separator (FITS uses 'T') to a space */
+    for (char *c = buf; *c; ++c) {
+        if (*c == 'T' || *c == 't')
+            *c = ' ';
+    }
+
+    /* Scan the fields directly rather than via strptime: the FITS "long" year
+     * form carries an explicit sign and up to five digits, which strptime's
+     * %Y cannot parse portably.  A plain "%d" handles the sign, leading zeros,
+     * and both the four- and five-digit widths.  A date-only value matches the
+     * first three fields, leaving the time at midnight. */
+    int matched = sscanf(buf, "%d-%d-%d %d:%d:%d", &year, &mon, &day, &hour, &min, &sec);
+    if (matched < 3)
+        goto cleanup;
+
+    if (matched >= 6) {
+        const char *dot = strchr(buf, '.');
+        if (dot) {
+            double frac = 0;
+            sscanf(dot, "%lf", &frac);
+            nsec = (long)(frac * 1e9);
+        }
+    }
+
+    tm.tm_year = year - 1900;
+    tm.tm_mon = mon - 1;
+    tm.tm_mday = day;
+    tm.tm_hour = hour;
+    tm.tm_min = min;
+    tm.tm_sec = sec;
+
+    time_t t = timegm(&tm);
+    if (t == (time_t)-1)
+        goto cleanup;
+
+    time->info.tm = *gmtime(&t);
+    time->info.ts.tv_sec = t;
+    time->info.ts.tv_nsec = nsec;
+    ret = 0;
+cleanup:
+    free(buf);
+    return ret;
+}
+
+
 static int asdf_time_parse_jd(asdf_time_t *time) {
     if (UNLIKELY(!time))
         return -1;
@@ -290,6 +400,45 @@ static int asdf_time_parse_jd(asdf_time_t *time) {
     julian_to_tm(jd, &jd_tm, &t_nsec);
     t_sec = timegm(&jd_tm);
     time->info.tm = jd_tm;
+    time->info.ts.tv_sec = t_sec;
+    time->info.ts.tv_nsec = t_nsec;
+    return 0;
+}
+
+
+static int asdf_time_parse_plot_date(asdf_time_t *time) {
+    if (UNLIKELY(!time))
+        return -1;
+
+    const double jd = strtod(time->value, NULL) + JD_PLOT_DATE_EPOCH;
+    struct tm tm;
+    time_t t_nsec = 0;
+
+    julian_to_tm(jd, &tm, &t_nsec);
+    const time_t t_sec = timegm(&tm);
+
+    time->info.tm = tm;
+    time->info.ts.tv_sec = t_sec;
+    time->info.ts.tv_nsec = t_nsec;
+    return 0;
+}
+
+
+/* Seconds-from-epoch formats (gps, unix_tai, cxcsec, galexsec, tai_seconds,
+ * utime): the value is a count of SI seconds since a fixed epoch (given as a
+ * Julian Date).  See the epoch #defines for the leap-second/scale caveat. */
+static int asdf_time_parse_epoch_seconds(asdf_time_t *time, double epoch_jd) {
+    if (UNLIKELY(!time))
+        return -1;
+
+    const double jd = strtod(time->value, NULL) / SECONDS_PER_DAY + epoch_jd;
+    struct tm tm;
+    time_t t_nsec = 0;
+
+    julian_to_tm(jd, &tm, &t_nsec);
+    const time_t t_sec = timegm(&tm);
+
+    time->info.tm = tm;
     time->info.ts.tv_sec = t_sec;
     time->info.ts.tv_nsec = t_nsec;
     return 0;
@@ -410,12 +559,40 @@ static int asdf_time_parse_std(asdf_time_t *time) {
 
 int asdf_time_parse(asdf_time_t *time) {
     int status = -1;
+
     switch (time->format) {
     case ASDF_TIME_FORMAT_YDAY:
-    case ASDF_TIME_FORMAT_ISO_TIME:
+    case ASDF_TIME_FORMAT_ISO:
+    case ASDF_TIME_FORMAT_ISOT:
     case ASDF_TIME_FORMAT_DATETIME:
+    case ASDF_TIME_FORMAT_YMDHMS:
+    case ASDF_TIME_FORMAT_DATETIME64:
     case ASDF_TIME_FORMAT_UNIX:
         status = asdf_time_parse_std(time);
+        break;
+    case ASDF_TIME_FORMAT_FITS:
+        status = asdf_time_parse_fits(time);
+        break;
+    case ASDF_TIME_FORMAT_PLOT_DATE:
+        status = asdf_time_parse_plot_date(time);
+        break;
+    case ASDF_TIME_FORMAT_GPS:
+        status = asdf_time_parse_epoch_seconds(time, JD_GPS_EPOCH);
+        break;
+    case ASDF_TIME_FORMAT_UNIX_TAI:
+        status = asdf_time_parse_epoch_seconds(time, JD_UNIX_EPOCH);
+        break;
+    case ASDF_TIME_FORMAT_CXCSEC:
+        status = asdf_time_parse_epoch_seconds(time, JD_CXCSEC_EPOCH);
+        break;
+    case ASDF_TIME_FORMAT_GALEXSEC:
+        status = asdf_time_parse_epoch_seconds(time, JD_GALEXSEC_EPOCH);
+        break;
+    case ASDF_TIME_FORMAT_TAI_SECONDS:
+        status = asdf_time_parse_epoch_seconds(time, JD_TAI_SECONDS_EPOCH);
+        break;
+    case ASDF_TIME_FORMAT_UTIME:
+        status = asdf_time_parse_epoch_seconds(time, JD_UTIME_EPOCH);
         break;
     case ASDF_TIME_FORMAT_MJD:
         status = asdf_time_parse_mjd(time);
@@ -424,9 +601,11 @@ int asdf_time_parse(asdf_time_t *time) {
         status = asdf_time_parse_jd(time);
         break;
     case ASDF_TIME_FORMAT_BYEAR:
+    case ASDF_TIME_FORMAT_BYEAR_STR:
         status = asdf_time_parse_byear(time);
         break;
     case ASDF_TIME_FORMAT_JYEAR:
+    case ASDF_TIME_FORMAT_JYEAR_STR:
         status = asdf_time_parse_jyear(time);
         break;
     case ASDF_TIME_FORMAT_DECIMALYEAR:
@@ -443,7 +622,7 @@ int asdf_time_parse(asdf_time_t *time) {
  * Lookup table: asdf_time_format_t enum value -> YAML format name string
  */
 static const char *const asdf_time_format_names[] = {
-    [ASDF_TIME_FORMAT_ISO_TIME] = "iso_time",
+    [ASDF_TIME_FORMAT_ISO] = "iso",
     [ASDF_TIME_FORMAT_YDAY] = "yday",
     [ASDF_TIME_FORMAT_BYEAR] = "byear",
     [ASDF_TIME_FORMAT_JYEAR] = "jyear",
@@ -486,10 +665,77 @@ static const char *const asdf_time_scale_names[] = {
 const char *asdf_time_format_string(asdf_time_format_t format) {
     const size_t nformats = ARRAY_SIZE(asdf_time_format_names);
 
-    if (format < 0 || format > nformats)
+    /* Out-of-range (including a negative cast to a large size_t) yields
+     * NULL
+     */
+    if ((size_t)format >= nformats)
         return NULL;
 
     return asdf_time_format_names[format];
+}
+
+
+/*
+ * The schema's ``format`` field only permits the "standard" formats; the
+ * "other" astropy formats (fits, isot, datetime, plot_date, ymdhms,
+ * datetime64, jyear_str, byear_str) may appear only in ``base_format``.  The
+ * following helpers implement that split: an "other" format is mapped to a
+ * standard wire format for the ``format`` field, and recorded verbatim in
+ * ``base_format``.
+ */
+
+/* Map an effective format to the standard format used in the wire ``format``
+ * field.  Standard formats map to themselves. */
+static asdf_time_format_t asdf_time_standard_format(asdf_time_format_t format) {
+    switch (format) {
+    case ASDF_TIME_FORMAT_ISOT:
+    case ASDF_TIME_FORMAT_FITS:
+    case ASDF_TIME_FORMAT_DATETIME:
+    case ASDF_TIME_FORMAT_PLOT_DATE:
+    case ASDF_TIME_FORMAT_YMDHMS:
+    case ASDF_TIME_FORMAT_DATETIME64:
+        return ASDF_TIME_FORMAT_ISO;
+    case ASDF_TIME_FORMAT_JYEAR_STR:
+        return ASDF_TIME_FORMAT_JYEAR;
+    case ASDF_TIME_FORMAT_BYEAR_STR:
+        return ASDF_TIME_FORMAT_BYEAR;
+    default:
+        return format;
+    }
+}
+
+
+/* True if ``format`` is one of the schema's ``other_format`` values (i.e. it is
+ * not valid in the wire ``format`` field and must go in ``base_format``). */
+static bool asdf_time_is_other_format(asdf_time_format_t format) {
+    return asdf_time_standard_format(format) != format;
+}
+
+
+/* True for "other" formats that may carry a numeric value which must be
+ * reformatted into a datetime string to be serialized under the standard (iso)
+ * wire format.  Only plot_date has a well-defined numeric scalar form; ymdhms
+ * and datetime64 are always stored as ISO strings (astropy converts them), and
+ * a bare-integer datetime64 is unit-ambiguous, so neither is reformatted. */
+static bool asdf_time_value_needs_reformat(asdf_time_format_t format) {
+    return format == ASDF_TIME_FORMAT_PLOT_DATE;
+}
+
+
+/* True if the value is already one of the guessable datetime string forms
+ * (iso/yday/byear/jyear/fits), and so can be written verbatim rather than
+ * reformatted from a numeric value.  This distinguishes, e.g., a plot_date
+ * stored as a raw float from one already read back as an ISO string. */
+static bool asdf_time_value_is_datetime_string(const char *value) {
+    compile_time_auto_regexes();
+    for (size_t idx = 0; idx < TIME_AUTO_COUNT; idx++) {
+        if (time_auto_regexes[idx].error != CREG_OK)
+            continue;
+        csview match[CREG_MAX_CAPTURES] = {0};
+        if (cregex_match(&time_auto_regexes[idx], value, match) == CREG_OK)
+            return true;
+    }
+    return false;
 }
 
 
@@ -609,7 +855,10 @@ static void validate_yday_ranges(asdf_file_t *file, const char *cvs, csview *mat
 /* Run capture-group range checks for patterns that support them. */
 static void validate_datetime_ranges(asdf_file_t *file, int pat_idx, const char *vs, csview *m) {
     switch (pat_idx) {
-    case TIME_AUTO_IDX_ISO_TIME:
+    case TIME_AUTO_IDX_ISO:
+    case TIME_AUTO_IDX_FITS:
+        /* FITS shares the ISO capture-group layout (month/day/time in the same
+         * positions); the signed long-year in group [1] is not range-checked. */
         validate_iso_time_ranges(file, vs, m);
         break;
     case TIME_AUTO_IDX_YDAY:
@@ -618,6 +867,31 @@ static void validate_datetime_ranges(asdf_file_t *file, int pat_idx, const char 
     default:
         break;
     }
+}
+
+
+/* Render a parsed instant as an ISO-8601 "isot" string (``T`` separator).
+ * Used to serialize the numeric "other" formats (e.g. plot_date) whose value
+ * cannot be written verbatim under any of standard ASDF formats.  Returns 0
+ * on success, -1 on failure. */
+static int asdf_time_format_isot(const asdf_time_info_t *info, char *buf, size_t buflen) {
+    struct tm tm = info->tm;
+    size_t n = strftime(buf, buflen, "%Y-%m-%dT%H:%M:%S", &tm);
+    if (n == 0)
+        return -1;
+
+    long nsec = info->ts.tv_nsec;
+    if (nsec > 0) {
+        char frac[16];
+        int fn = snprintf(frac, sizeof(frac), ".%09ld", nsec);
+        /* Trim trailing zeros from the fractional part for a compact value. */
+        while (fn > 1 && frac[fn - 1] == '0')
+            frac[--fn] = '\0';
+        if (n + (size_t)fn < buflen)
+            memcpy(buf + n, frac, (size_t)fn + 1);
+    }
+
+    return 0;
 }
 
 
@@ -647,13 +921,58 @@ static asdf_value_t *asdf_time_serialize(
     if (!map)
         goto cleanup;
 
-    err = asdf_mapping_set_string0(map, "value", t->value);
+    /* Determine the effective format to serialize.  A J-/B-prefixed string
+     * value stored under jyear/byear is really the jyear_str/byear_str "other"
+     * form (astropy only accepts the prefixed strings under those formats), so
+     * relabel it; it then flows through the "other" format handling below. */
+    asdf_time_format_t eff = t->format;
+    const char first = t->value[0];
+    if ((first == 'J' || first == 'j') && eff == ASDF_TIME_FORMAT_JYEAR)
+        eff = ASDF_TIME_FORMAT_JYEAR_STR;
+    else if ((first == 'B' || first == 'b') && eff == ASDF_TIME_FORMAT_BYEAR)
+        eff = ASDF_TIME_FORMAT_BYEAR_STR;
+
+    /* A numeric "other" format (e.g. plot_date) cannot be written verbatim
+     * under its string wire format, so reformat its value to an isot string
+     * from the parsed calendar fields.  Skip this when the value is already a
+     * datetime string (e.g. a plot_date just read back from the base_format
+     * form, whose value is an ISO string), which is written verbatim. */
+    const char *value_out = t->value;
+    char value_buf[ASDF_TIME_TIMESTR_MAXLEN];
+    if (asdf_time_value_needs_reformat(eff) && !asdf_time_value_is_datetime_string(t->value)) {
+        asdf_time_t tmp = *t;
+        if (asdf_time_parse(&tmp) != 0 ||
+            asdf_time_format_isot(&tmp.info, value_buf, sizeof(value_buf)) != 0) {
+            ASDF_LOG(
+                file,
+                ASDF_LOG_WARN,
+                ASDF_CORE_TIME_TAG " could not reformat %s value '%s' for serialization",
+                asdf_time_format_names[eff],
+                t->value);
+            goto cleanup;
+        }
+        value_out = value_buf;
+    }
+
+    err = asdf_mapping_set_string0(map, "value", value_out);
     if (err != ASDF_VALUE_OK)
         goto cleanup;
 
-    err = asdf_mapping_set_string0(map, "format", asdf_time_format_names[t->format]);
-    if (err != ASDF_VALUE_OK)
-        goto cleanup;
+    /* The schema only permits standard formats in ``format``; an "other"
+     * effective format is recorded in ``base_format`` instead, with ``format``
+     * omitted (its guessable standard wire format is re-inferred from the
+     * value on read, matching asdf-astropy).  A standard format is written
+     * directly.
+     */
+    if (asdf_time_is_other_format(eff)) {
+        err = asdf_mapping_set_string0(map, "base_format", asdf_time_format_names[eff]);
+        if (err != ASDF_VALUE_OK)
+            goto cleanup;
+    } else {
+        err = asdf_mapping_set_string0(map, "format", asdf_time_format_names[eff]);
+        if (err != ASDF_VALUE_OK)
+            goto cleanup;
+    }
 
     /* Write scale only if non-UTC */
     if (t->scale != ASDF_TIME_SCALE_UTC) {
@@ -757,6 +1076,24 @@ static int validate_or_guess_time_format(
         return -1;
     }
 
+    /* jyear_str / byear_str are only accepted for a string value beginning with
+     * the corresponding 'J' / 'B' prefix, never a bare number.  (An unadorned
+     * jyear / byear may itself carry a J/B-prefixed string, which parses the
+     * same; these _str formats simply make that prefix mandatory.) */
+    if (format == ASDF_TIME_FORMAT_JYEAR_STR || format == ASDF_TIME_FORMAT_BYEAR_STR) {
+        const char prefix = (format == ASDF_TIME_FORMAT_JYEAR_STR) ? 'J' : 'B';
+        const char lower = (char)(prefix + ('a' - 'A'));
+        if (time_type != ASDF_VALUE_STRING || (time_s[0] != prefix && time_s[0] != lower)) {
+            ASDF_LOG(
+                value->file,
+                ASDF_LOG_WARN,
+                "time format '%s' requires a string value beginning with '%c'",
+                format_s,
+                prefix);
+            return -1;
+        }
+    }
+
     /* Validate a string value against the format's auto-detect pattern, if one
      * exists.  This is informational only -- a mismatch is a warning, not an
      * error.  Numeric values have no such pattern and are left to the format
@@ -786,6 +1123,7 @@ static asdf_value_err_t asdf_time_deserialize(
     const char *value_s = NULL;
     const char *format_s = NULL;
     const char *scale_s = NULL;
+    const char *base_format_s = NULL;
     asdf_time_scale_t scale = ASDF_TIME_SCALE_UTC;
 
     asdf_mapping_t *mapping = NULL;
@@ -858,6 +1196,19 @@ static asdf_value_err_t asdf_time_deserialize(
             asdf_value_destroy(prop);
             prop = NULL;
         }
+
+        /* base_format key is optional (added in time-1.2.0); it records the
+         * object's real/original format and may be any standard or "other"
+         * format name.  It is captured here and applied after parsing (below)
+         * as the effective format, overriding the wire ``format``. */
+        prop = asdf_mapping_get(mapping, "base_format");
+        if (prop) {
+            if (ASDF_VALUE_OK != asdf_value_as_string0(prop, &base_format_s))
+                goto failure;
+
+            asdf_value_destroy(prop);
+            prop = NULL;
+        }
     }
 
     int detected = validate_or_guess_time_format(value, time->value, value_type, format_s);
@@ -871,6 +1222,9 @@ static asdf_value_err_t asdf_time_deserialize(
     time->format = format;
     time->scale = scale;
 
+    /* Parse the instant using the wire (parse) format: the value is stored in
+     * that format's representation, even when base_format labels it as
+     * something else (e.g. an astropy plot_date is stored as an iso string). */
     if (asdf_time_parse(time))
         ASDF_LOG(
             value->file,
@@ -879,6 +1233,20 @@ static asdf_value_err_t asdf_time_deserialize(
             "without a computed timestamp",
             asdf_time_format_names[format] ? asdf_time_format_names[format] : "(unknown)",
             time->value);
+
+    /* base_format, when present, is the real/effective format; it overrides the
+     * wire format as ``time->format`` (mirroring asdf-astropy). */
+    if (base_format_s) {
+        asdf_time_format_t base_format;
+        if (asdf_time_format_parse(base_format_s, &base_format))
+            time->format = base_format;
+        else
+            ASDF_LOG(
+                value->file,
+                ASDF_LOG_WARN,
+                "unrecognized time base_format '%s'; ignoring",
+                base_format_s);
+    }
 
     *out = time;
 
@@ -921,11 +1289,17 @@ static const asdf_extension_vtab_t asdf_time_vtab = {
 
 
 // clang-format off
+/* tags[0] (1.4.0) is the version written; the older tags are recognized when
+ * reading files produced against earlier ASDF Standard versions. */
 ASDF_REGISTER_EXTENSION(
     time,
     asdf_time_t,
     &libasdf_software,
     &asdf_time_vtab,
     NULL,
-    ASDF_CORE_TIME_TAG);
+    ASDF_CORE_TIME_TAG,
+    ASDF_CORE_TIME_TAG_BASE "1.3.0",
+    ASDF_CORE_TIME_TAG_BASE "1.2.0",
+    ASDF_CORE_TIME_TAG_BASE "1.1.0",
+    ASDF_CORE_TIME_TAG_BASE "1.0.0");
 // clang-format on

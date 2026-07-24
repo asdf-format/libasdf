@@ -41,6 +41,7 @@ including ``asdf.h``.  This in turn includes the following headers:
   api/asdf/error.h
   api/asdf/core/ndarray.h
   api/asdf/core/datatype.h
+  api/asdf/core/time.h
 
 Additional less commonly used APIs can be used by including the relevant
 headers.
