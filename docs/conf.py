@@ -111,6 +111,7 @@ nitpick_ignore = [
     ('c:identifier', 'size_t'),
     ('c:identifier', 'ssize_t'),
     ('c:identifier', 'strtod'),
+    ('c:identifier', 'timespec'),
     ('c:identifier', 'uint16_t'),
     ('c:identifier', 'uint32_t'),
     ('c:identifier', 'uint64_t'),

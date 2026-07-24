@@ -2,7 +2,7 @@
 
 .. _file.h:
 
-asdf/file.h
-===========
+asdf/file.h - File-level and tree operations
+============================================
 
 .. autodoc:: include/asdf/file.h
