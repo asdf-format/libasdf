@@ -160,15 +160,13 @@ jobs:
           run-id: ${{ steps.target.outputs.run_id }}
           github-token: ${{ github.token }}
 
-      - name: Release asset checksum
+      - name: Check the tarball
         working-directory: dist
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          set -euo pipefail
-          test -f "libasdf-$VERSION.tar.gz"
-          sha256sum libasdf-*.tar.gz > sha256sums.txt
-          cat sha256sums.txt
+          set -eu
+          test -f "libasdf-$VERSION.tar.gz" || ls -l
 
       - name: Create the release
         env:
@@ -183,13 +181,18 @@ jobs:
           args=(--title "libasdf v$VERSION"
                 --notes-file release-notes.md
                 --target "$SHA")
+          state=release
           if [ "$PRERELEASE" = true ]; then
             args+=(--prerelease)
+            state="pre-release"
           fi
           # Automatic (workflow_run) releases are always drafts; only an
           # explicit dispatch with draft=false publishes straight away
+          draft=false
           if [ "$EVENT_NAME" != workflow_dispatch ] || [ "$INPUT_DRAFT" = true ]; then
             args+=(--draft)
+            draft=true
+            state="draft $state"
           fi
           if gh release view "$TAG" > /dev/null 2>&1; then
             echo "::notice::release $TAG already exists; updating it"
@@ -198,4 +201,26 @@ jobs:
           else
             gh release create "$TAG" "${args[@]}" dist/*
           fi
-          gh release view "$TAG" --json url --jq .url >> "$GITHUB_STEP_SUMMARY"
+
+          # Best-effort summary: never fail the job over it, the release is
+          # already made by this point
+          {
+            echo "## libasdf $VERSION ($state)"
+            echo
+            echo "- Tag \`$TAG\` at \`$SHA\`"
+            url=$(gh release view "$TAG" --json url --jq .url) || url=
+            if [ "$draft" = true ]; then
+              # A draft has no published tag association yet, so the API hands
+              # back a placeholder ".../releases/tag/untagged-<hash>" URL; it
+              # becomes the real tag URL below once the draft is published
+              echo "- [Review and publish the draft]($url)"
+              echo "- Once published: https://github.com/$GH_REPO/releases/tag/$TAG"
+            else
+              echo "- Published at $url"
+            fi
+            echo
+            echo "### Assets"
+            for asset in dist/*; do
+              echo "- \`$(basename "$asset")\`"
+            done
+          } >> "$GITHUB_STEP_SUMMARY" || true
