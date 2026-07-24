@@ -265,6 +265,7 @@ on your system:
 - **Make** (e.g., ``GNU make``)
 - **pkg-config**
 - **libfyaml**
+  - Version >=0.8 is tested to work
 - **zlib**, **bzip2**, and **lz4** (for compression support)
 - **libbsd** (required for MD5 checksum support)
 - **libstatgrab** (optional, for system resource heuristics)
