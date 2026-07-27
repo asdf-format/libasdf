@@ -95,7 +95,18 @@ libasdf_la_LIBADD =  third_party/libstc.la $(ASDF_LIBS)
 if HAVE_LINKER_WRAP
 noinst_LTLIBRARIES = libasdf_static.la
 libasdf_static_la_SOURCES = $(src_files)
-libasdf_static_la_CFLAGS = $(libasdf_la_CFLAGS)
+# -D__NO_STRING_INLINES is needed for the --wrap interception to be reliable.
+# When optimizing, older glibc (<= 2.24, e.g. the CentOS 7 sysroot used by
+# conda-forge) pulls in <bits/string2.h>, which does
+#
+#     #define strdup(s) __strdup (s)
+#
+# and likewise for strndup.  The call then resolves to __strdup rather than
+# strdup, so -Wl,--wrap=strdup silently never fires and the OOM injection is
+# skipped.  Suppressing the string2.h inlines keeps the calls on their
+# public names.  Only affects this test-only archive, not the installed
+# library.
+libasdf_static_la_CFLAGS = $(libasdf_la_CFLAGS) -D__NO_STRING_INLINES
 libasdf_static_la_LIBADD = third_party/libstc.la $(ASDF_LIBS)
 endif # HAVE_LINKER_WRAP
 
