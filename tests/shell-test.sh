@@ -64,7 +64,9 @@ for input in $@; do
   if [ "x${WITH_CMAKE}" != "x" ]; then
       asdfprog="${top_builddir}/src/asdf"
   fi
-  ${asdfprog} ${SUBCOMMAND} ${EXTRA_ARGS} "$input" 2>&1 > "$actual" || true
+  # Capture stderr too; pin ASDF_LOG_LEVEL so the library's own (possibly
+  # colorized) log output doesn't leak into the reference files
+  ASDF_LOG_LEVEL=ERROR ${asdfprog} ${SUBCOMMAND} ${EXTRA_ARGS} "$input" > "$actual" 2>&1 || true
 
   if [ "$UPDATE" -eq 1 ]; then
     cp "$actual" "$expected"
