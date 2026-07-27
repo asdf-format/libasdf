@@ -174,4 +174,4 @@ block fails verification.
 .. note::
 
    Checksum verification requires that libasdf was built with MD5 support
-   (via ``libbsd``).  Without it, blocks are always reported as valid.
+   (via ``libmd``).  Without it, blocks are always reported as valid.

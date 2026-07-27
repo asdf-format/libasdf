@@ -268,7 +268,7 @@ on your system:
 - **libfyaml**
   - Version >=0.8 is tested to work
 - **zlib**, **bzip2**, and **lz4** (for compression support)
-- **libbsd** (required for MD5 checksum support)
+- **libmd** (required for MD5 checksum support)
 - **libstatgrab** (optional, for system resource heuristics)
 - **argp** (this is a feature of glibc, but if compiling with a different libc you need a
   standalone version of this; also it is only needed if building the command-line tool)
@@ -276,17 +276,17 @@ on your system:
 On **Debian/Ubuntu**::
 
     sudo apt install build-essential pkg-config libfyaml-dev \
-      zlib1g-dev libbz2-dev liblz4-dev libstatgrab-dev libbsd-dev
+      zlib1g-dev libbz2-dev liblz4-dev libstatgrab-dev libmd-dev
 
 On **Fedora**::
 
     sudo dnf install gcc make pkgconf libfyaml-devel \
-      zlib-devel bzip2-devel lz4-devel libstatgrab-devel libbsd-devel
+      zlib-devel bzip2-devel lz4-devel libstatgrab-devel libmd-devel
 
 On **macOS** (with Homebrew)::
 
     brew install pkg-config libfyaml argp-standalone \
-      zlib bzip2 lz4 libstatgrab libbsd
+      zlib bzip2 lz4 libstatgrab libmd
 
 Building
 ^^^^^^^^

@@ -294,7 +294,8 @@ PKG_CHECK_MODULES([LZ4], [liblz4], [], [
 ])
 
 
-# Detect support for md5.h from libmd (libbsd on older systems);
+# Detect support for md5.h from libmd (on older systems this came from libbsd,
+# which now depends on libmd for it);
 # should try other options as well e.g. openssl
 AC_CHECK_HEADERS([md5.h], [have_md5_h=yes], [have_md5_h=no])
 AS_IF([test "x$have_md5_h" = "xyes"], [
@@ -311,7 +312,7 @@ AS_IF([test "x$have_md5_h" = "xyes"], [
         ])
     ])
 ], [
-    AC_MSG_WARN([libbsd is required for MD5 support; compiling without checksum support])
+    AC_MSG_WARN([libmd is required for MD5 support; compiling without checksum support])
 ])
 
 AS_IF([test "x$have_md5" = "xyes"], [

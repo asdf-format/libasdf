@@ -240,7 +240,7 @@ int asdf_block_info_compression_set(
 
 #ifdef HAVE_MD5
 #ifdef HAVE_MD5_H
-/** libbsd md5.h implementation (only one currently available) */
+/** libmd md5.h implementation (only one currently available) */
 void asdf_md5_init(asdf_md5_ctx_t *ctx) {
     MD5Init(&ctx->ctx);
 }

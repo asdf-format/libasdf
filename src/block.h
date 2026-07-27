@@ -135,7 +135,7 @@ ASDF_LOCAL int asdf_block_info_compression_set(
 
 #ifdef HAVE_MD5
 #ifdef HAVE_MD5_H
-/** libbsd md5.h implementation (only one currently available) */
+/** libmd md5.h implementation (only one currently available) */
 typedef struct asdf_md5_ctx {
     MD5_CTX ctx;
 } asdf_md5_ctx_t;

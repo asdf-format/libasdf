@@ -97,12 +97,12 @@ check_c_source_compiles("
 " HAVE_DECL_SYS_USERFAULTFD)
 
 
-# Check for libbsd md5.h support
+# Check for libmd md5.h support
 check_include_file(md5.h HAVE_MD5_H)
 if(HAVE_MD5_H)
     check_function_exists(MD5Init HAVE_MD5INIT)
     if(NOT HAVE_MD5INIT)
-        # Try with libbsd explicitly linked
+        # Try with libmd explicitly linked
         message(STATUS "MD5Init may require linking with libmd, testing...")
         unset(HAVE_MD5INIT CACHE)
         set(CMAKE_REQUIRED_LIBRARIES md)
