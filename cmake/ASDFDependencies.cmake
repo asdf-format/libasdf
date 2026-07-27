@@ -1,3 +1,7 @@
+include(CheckIncludeFile)
+include(CheckFunctionExists)
+
+
 # asdf_check_homebrew_pkg(<PREFIX> <package>)
 #
 # Detect a Homebrew-installed package on macOS (or Linux if you for some
@@ -116,6 +120,52 @@ else()
     else()
         message("pkg-config not found. Install pkg-config, or use STATGRAB_NO_PKGCONFIG=YES.")
     endif()
+endif()
+
+
+# MD5 support is provided by libmd, which installs <md5.h> and MD5Init.  (On
+# older systems this header came from libbsd, which nowadays depends on libmd
+# for it.)  libmd ships no pkg-config file, so probe for the header directly.
+check_include_file(md5.h HAVE_MD5_H)
+
+if(NOT HAVE_MD5_H)
+    # On macOS check for libmd installed via Homebrew and retry the probe
+    asdf_check_homebrew_pkg(MD5 libmd)
+    if(MD5_FOUND)
+        unset(HAVE_MD5_H CACHE)
+        set(CMAKE_REQUIRED_INCLUDES "${MD5_INCLUDEDIR}")
+        check_include_file(md5.h HAVE_MD5_H)
+        unset(CMAKE_REQUIRED_INCLUDES)
+    endif()
+endif()
+
+if(HAVE_MD5_H)
+    # MD5_INCLUDEDIR/MD5_LIBDIR are empty unless libmd was located via
+    # Homebrew above, in which case the probes below need those paths too.
+    set(CMAKE_REQUIRED_INCLUDES "${MD5_INCLUDEDIR}")
+    if(MD5_LIBDIR)
+        set(CMAKE_REQUIRED_LINK_OPTIONS "-L${MD5_LIBDIR}")
+    endif()
+
+    check_function_exists(MD5Init HAVE_MD5INIT)
+
+    if(NOT HAVE_MD5INIT)
+        # Not in libc, so libmd has to be linked explicitly
+        message(STATUS "MD5Init not found, trying with -lmd")
+        unset(HAVE_MD5INIT CACHE)
+        set(CMAKE_REQUIRED_LIBRARIES md)
+        check_function_exists(MD5Init HAVE_MD5INIT)
+        unset(CMAKE_REQUIRED_LIBRARIES)
+        if(HAVE_MD5INIT)
+            set(MD5_LIBRARIES "md" CACHE INTERNAL "libraries for MD5 support")
+        endif()
+    endif()
+
+    unset(CMAKE_REQUIRED_INCLUDES)
+    unset(CMAKE_REQUIRED_LINK_OPTIONS)
+else()
+    message(WARNING
+        "libmd is required for MD5 support; compiling without checksum support")
 endif()
 
 

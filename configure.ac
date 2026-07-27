@@ -294,6 +294,11 @@ PKG_CHECK_MODULES([LZ4], [liblz4], [], [
 ])
 
 
+# On macOS libmd comes from Homebrew, whose include/lib directories are not on
+# the compiler's default search path.  This has to come *before*
+# the md5.h check below.
+ASDF_CHECK_HOMEBREW_PKG([libmd])
+
 # Detect support for md5.h from libmd (on older systems this came from libbsd,
 # which now depends on libmd for it);
 # should try other options as well e.g. openssl
