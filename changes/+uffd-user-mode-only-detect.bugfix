@@ -1,0 +1,11 @@
+Fix UFFD support (for lazy decompression) when UFFD_USER_MODE_ONLY flag is not
+defined in the kernel headers.
+
+This can be the case e.g. when building in Conda, where an older, more
+conservative set of headers is available.  But whether this flag actually works
+depends on the runtime kernel and has non-trivial behavior--if the flag exists
+in the kernel it must be passed in to allowed userspace fault handlers without
+extra kernel VM-level permissions set.
+
+Also refactored the runtime detection code a bit and handled TODO item of caching
+the result.

@@ -27,8 +27,25 @@
 #include <sys/syscall.h>
 
 #ifndef UFFD_USER_MODE_ONLY
-#pragma message "warning: UFFD_USER_MODE_ONLY missing"
-#define UFFD_USER_MODE_ONLY 0
+/* Added in Linux 5.11 per userfaultfd(2); older Linux headers (such as
+ * those used by conda-forge's default sysroot) lack it, but the value is
+ * stable ABI.
+ *
+ * Leaving it unset (defining it to 0 as in previous releases) is not
+ * neutral--on kernels that support it this can result in EPERM if trying
+ * to use UFFD without ``vm.unprivileged_userfaultfd=1``.  This flag is a
+ * safety measure that tells the kernel: the UFFD handler can *only* handle
+ * faults in user-space memory, so can be considered safe regardless of
+ * ``vm.unprivileged_userfaultfd``.
+ *
+ * The value of 1 for this flag has been stable since it was introduced and
+ * it makes sense--it's usually OR'd with standard fcntl flags which don't use
+ * bit 0 in the first place, so 1 is the obvious available value for this flag.
+ *
+ * If for some reason this still fails, lazy-decompression will be disabled
+ * via the runtime check in ``asdf_block_decomp_lazy_available``.
+ */
+#define UFFD_USER_MODE_ONLY 1
 #endif
 #endif
 
@@ -123,6 +140,44 @@ static bool asdf_block_decomp_lazy_available(
 static void asdf_block_decomp_lazy_shutdown(UNUSED(asdf_block_comp_state_t *cs)) {
 }
 #else
+
+
+/*
+ * Cached results of the process-global userfaultfd probe.
+ *
+ * Whether the kernel supports userfaultfd at all, and which flags the
+ * userfaultfd(2) syscall accepts, are properties of the running kernel, so
+ * they only need to be determined once per process.
+ *
+ * Note that whether *file-backed* lazy decompression works is a property of
+ * the filesystem backing the temp dir rather than of the kernel, so it is
+ * deliberately not cached here; see
+ * asdf_block_decomp_lazy_file_backing_available.
+ */
+static atomic_bool asdf_uffd_probed = false;
+static atomic_bool asdf_uffd_available = false;
+static atomic_int asdf_uffd_open_flags = 0;
+
+
+/**
+ * Open a new userfaultfd using the flags accepted by the running kernel.
+ *
+ * The initial probe in asdf_block_decomp_lazy_available() must have run
+ * first, as it determines which flags to pass.
+ *
+ * Returns the new fd, or -1 with errno set on failure.
+ */
+static int asdf_uffd_open(void) {
+    int flags = atomic_load(&asdf_uffd_open_flags);
+    assert(flags != 0);
+    long maybe_fd = syscall(SYS_userfaultfd, flags);
+
+    if (maybe_fd < 0)
+        return -1;
+
+    return (int)maybe_fd;
+}
+
 
 typedef enum {
     ASDF_BLOCK_COMP_UFFD_EVT_ERROR = -1,
@@ -306,18 +361,28 @@ static void *asdf_block_comp_userfaultfd_handler(void *arg) {
 #define FEATURE_IS_SET(bits, bit) (((bits) & (bit)) == (bit))
 
 /**
- * Test whether lazy decompression is actually possible.
+ * Probe the running kernel for basic userfaultfd support.
  *
- * In practice this probably wastes a lot of time since we repeat many of the
- * same operations then to set up lazy decompression.  We can probably do this
- * just once per library initialization.
+ * This determines both whether userfaultfd is usable at all and which flags
+ * the userfaultfd(2) syscall accepts, the latter being stored in
+ * asdf_uffd_open_flags for later use by asdf_uffd_open().
  */
-static bool asdf_block_decomp_lazy_available(
-    asdf_block_comp_state_t *state, bool use_file_backing) {
-    // Probe UFFD features
-    // TODO: I Think we only need to do this once, we need to make runtime checks for what's
-    // actually supported anyways before enabling this feature
-    long maybe_fd = syscall(SYS_userfaultfd, O_CLOEXEC | O_NONBLOCK | UFFD_USER_MODE_ONLY);
+static bool asdf_uffd_probe(asdf_block_comp_state_t *state) {
+    int flags = O_CLOEXEC | O_NONBLOCK | UFFD_USER_MODE_ONLY;
+    bool available = false;
+    int uffd = -1;
+    struct uffdio_api uffd_api = {.api = UFFD_API};
+    long maybe_fd = syscall(SYS_userfaultfd, flags);
+
+    // Pre-5.11 kernels reject the unknown flag; retry without it
+    if (maybe_fd < 0 && errno == EINVAL) {
+        flags &= ~UFFD_USER_MODE_ONLY;
+        maybe_fd = syscall(SYS_userfaultfd, flags);
+    }
+
+    // Publish the flags the kernel accepted (or, if it refused outright, the
+    // ones we tried last) before any early exit
+    atomic_store(&asdf_uffd_open_flags, flags);
 
     if (maybe_fd < 0) {
         ASDF_LOG(
@@ -326,11 +391,10 @@ static bool asdf_block_decomp_lazy_available(
             "userfaultfd syscall failed: %s; lazy decompression with userfaultfd not "
             "available",
             strerror(errno));
-        return false;
+        goto finish;
     }
 
-    int uffd = (int)maybe_fd;
-    struct uffdio_api uffd_api = {.api = UFFD_API};
+    uffd = (int)maybe_fd;
 
     if (ioctl(uffd, UFFDIO_API, &uffd_api) == -1) {
         ASDF_LOG(
@@ -339,8 +403,7 @@ static bool asdf_block_decomp_lazy_available(
             "UFFDIO_API ioctl failed: %s; lazy decompression with userfaultfd not "
             "available",
             strerror(errno));
-        close(uffd);
-        return false;
+        goto finish;
     }
 
     if (!FEATURE_IS_SET(uffd_api.ioctls, _UFFDIO_REGISTER)) {
@@ -349,48 +412,122 @@ static bool asdf_block_decomp_lazy_available(
             ASDF_LOG_DEBUG,
             "UFFDIO_REGISTER ioctl is not supported: lazy decompression with userfaultfd not "
             "available");
+        goto finish;
+    }
+
+    available = true;
+
+finish:
+    if (uffd >= 0)
         close(uffd);
-        return false;
+
+    return available;
+}
+
+
+/**
+ * Test whether lazy decompression is possible against a temp file.
+ *
+ * This is really only possible if
+ *
+ * - the kernel has UFFD_FEATURE_MISSING_SHMEM
+ * - the location on the filesystem we're writing to is actually shared
+ *   memory and not a real disk-backed file, an unfortunate limitation that
+ *   somewhat makes file-backing less useful, but the only way to test that
+ *   is to try to make a temp file, map it, and register it
+ *
+ * Unlike the basic userfaultfd probe this depends on the filesystem backing
+ * the configured temp dir rather than on the kernel, so it is not cached.
+ */
+static bool asdf_block_decomp_lazy_file_backing_available(asdf_block_comp_state_t *state) {
+    size_t page_size = sysconf(_SC_PAGESIZE);
+    asdf_config_t *config = state->file->config;
+    bool available = false;
+    int uffd = -1;
+    int fd = -1;
+    void *map = MAP_FAILED;
+    struct uffdio_api uffd_api = {.api = UFFD_API};
+    struct uffdio_register uffd_reg = {0};
+
+    uffd = asdf_uffd_open();
+
+    if (uffd < 0) {
+        ASDF_ERROR_SYSTEM(state->file, errno);
+        goto finish;
     }
 
-    if (use_file_backing) {
-        /* This is really only possible if
-         *
-         * - the kernel has UFFD_FEATURE_MISSING_SHMEM
-         * - the location on the filesystem we're writing to is actually
-         *   shared memory and not a real disk-backed file, an unfortunate
-         *   limitation that somewhat makes file-backing less useful, but the
-         *   only the only way to test that is to try to make a temp file, map
-         *   it, and register it
-         */
-        size_t page_size = sysconf(_SC_PAGESIZE);
-        asdf_config_t *config = state->file->config;
-        int fd = -1;
-        if (asdf_create_temp_file(page_size, config->decomp.tmp_dir, &fd) != 0) {
-            // Could not even create temp file so I guess false
-            ASDF_ERROR_SYSTEM(state->file, errno);
-            return false;
-        }
+    // A fresh userfaultfd needs the UFFDIO_API handshake before it will
+    // accept any other ioctl
+    if (ioctl(uffd, UFFDIO_API, &uffd_api) == -1) {
+        ASDF_ERROR_SYSTEM(state->file, errno);
+        goto finish;
+    }
 
-        void *map = mmap(NULL, page_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    if (asdf_create_temp_file(page_size, config->decomp.tmp_dir, &fd) != 0) {
+        // Could not even create temp file so I guess false
+        ASDF_ERROR_SYSTEM(state->file, errno);
+        goto finish;
+    }
 
-        // Test the range ioctl on the mapping
-        struct uffdio_register uffd_reg = {
-            .range = {.start = (uintptr_t)map, .len = page_size},
-            .mode = UFFDIO_REGISTER_MODE_MISSING};
-        if (ioctl(uffd, UFFDIO_REGISTER, &uffd_reg) == -1) {
-            ASDF_LOG(
-                state->file,
-                ASDF_LOG_WARN,
-                "failed registering memory range for userfaultfd handling; file-backed lazy "
-                "decompression not possible");
-            munmap(map, page_size);
-            return false;
-        }
+    map = mmap(NULL, page_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+
+    if (map == MAP_FAILED) {
+        ASDF_ERROR_SYSTEM(state->file, errno);
+        goto finish;
+    }
+
+    // Test the range ioctl on the mapping
+    uffd_reg.range.start = (uintptr_t)map;
+    uffd_reg.range.len = page_size;
+    uffd_reg.mode = UFFDIO_REGISTER_MODE_MISSING;
+
+    if (ioctl(uffd, UFFDIO_REGISTER, &uffd_reg) == -1) {
+        ASDF_LOG(
+            state->file,
+            ASDF_LOG_WARN,
+            "failed registering memory range for userfaultfd handling; file-backed lazy "
+            "decompression not possible");
+        goto finish;
+    }
+
+    available = true;
+
+finish:
+    if (map != MAP_FAILED)
         munmap(map, page_size);
+
+    if (fd >= 0)
+        close(fd);
+
+    if (uffd >= 0)
+        close(uffd);
+
+    return available;
+}
+
+
+/**
+ * Test whether lazy decompression is actually possible.
+ *
+ * The kernel-level part of this check is performed only once per process;
+ * the file-backing check depends on the configured temp dir and so is
+ * repeated on each call that needs it.
+ */
+static bool asdf_block_decomp_lazy_available(
+    asdf_block_comp_state_t *state, bool use_file_backing) {
+    if (!atomic_load(&asdf_uffd_probed)) {
+        // Racing threads may both run the probe; it is idempotent and both
+        // store the same results, so no locking is needed
+        atomic_store(&asdf_uffd_available, asdf_uffd_probe(state));
+        atomic_store(&asdf_uffd_probed, true);
     }
 
-    close(uffd);
+    if (!atomic_load(&asdf_uffd_available))
+        return false;
+
+    if (use_file_backing)
+        return asdf_block_decomp_lazy_file_backing_available(state);
+
     return true;
 }
 
@@ -441,15 +578,14 @@ static int asdf_block_decomp_lazy(asdf_block_comp_state_t *state) {
     state->work_buf = uffd->work_buf;
     state->work_buf_size = uffd->work_buf_size;
 
-    // Create userfaultfd
-    long maybe_fd = syscall(SYS_userfaultfd, O_CLOEXEC | O_NONBLOCK | UFFD_USER_MODE_ONLY);
+    // Create userfaultfd--this assumes asdf_block_decomp_lazy_available()
+    // has already been called, as it determines the flags to open it with
+    uffd->uffd = asdf_uffd_open();
 
-    if (maybe_fd < 0) {
+    if (uffd->uffd < 0) {
         ASDF_ERROR_SYSTEM(state->file, errno);
         return -1;
     }
-
-    uffd->uffd = (int)maybe_fd;
 
     struct uffdio_api uffd_api = {
         .api = UFFD_API,
