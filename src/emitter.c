@@ -201,12 +201,11 @@ typedef struct {
  * Custom outputter for the fy_emitter that just writes to our stream
  */
 static int fy_emitter_stream_output(
-    struct fy_emitter *fy_emit,
+    UNUSED(struct fy_emitter *fy_emit),
     UNUSED(enum fy_emitter_write_type type),
     const char *str,
     int len,
     void *userdata) {
-    assert(fy_emit);
     assert(userdata);
     asdf_fy_emitter_userdata_t *asdf_userdata = userdata;
 
