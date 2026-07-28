@@ -80,7 +80,7 @@ unit_test_cflags += -DMUNIT_NO_FORK
 unit_test_ldflags += -rdynamic
 endif
 
-unit_test_ldflags += $(LDFLAGS) $(CODE_COVERAGE_LDFLAGS)
+unit_test_ldflags += $(CODE_COVERAGE_LDFLAGS)
 unit_test_ldadd = $(munit_ldflags) $(top_builddir)/libasdf.la $(ASDF_LIBS)
 
 # Unit tests
@@ -304,7 +304,8 @@ $(cpp_header_test): $(asdf_public_headers) $(srcdir)/scripts/generate_test_cpp_h
 test-cpp-headers$(EXEEXT): $(cpp_header_test) $(top_builddir)/libasdf.la
 	$(AM_V_at)$(LIBTOOL) --mode=link $(CXX) -std=c++17 -I$(top_srcdir)/include \
 	    -I$(top_builddir)/include \
-	    $(ASDF_LDFLAGS) $(unit_test_ldflags) $(cpp_header_test) $(top_builddir)/libasdf.la $(ASDF_LIBS) \
+	    $(ASDF_LDFLAGS) $(unit_test_ldflags) $(LDFLAGS) \
+	    $(cpp_header_test) $(top_builddir)/libasdf.la $(ASDF_LIBS) \
 	    -o $@ $(QUIET_OUT)
 
 TESTS += test-cpp-headers
@@ -337,7 +338,8 @@ $(DOC_EXAMPLES_DIR)/test-doc-examples.sh: $(DOC_EXAMPLE_DEPS)
 	    exe=$${f%.c}; \
 	    $(LIBTOOL) --mode=link $(CC) $(ASDF_CFLAGS) -I$(top_srcdir)/include \
 	      -I$(top_builddir)/include \
-	      $(ASDF_LDFLAGS) $(unit_test_ldflags) $$f $(top_builddir)/libasdf.la $(ASDF_LIBS) \
+	      $(ASDF_LDFLAGS) $(unit_test_ldflags) $(LDFLAGS) \
+	      $$f $(top_builddir)/libasdf.la $(ASDF_LIBS) \
 	      -o $$exe $(QUIET_OUT); \
 	done
 
