@@ -87,17 +87,28 @@ libasdf_la_CFLAGS = $(AM_CFLAGS) $(FYAML_CFLAGS) $(STATGRAB_CFLAGS) $(LZ4_CFLAGS
 libasdf_la_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
 libasdf_la_LIBADD =  third_party/libstc.la $(ASDF_LIBS)
 
-# Static convenience library for malloc-wrap tests; built only when the
-# linker supports --wrap.  Linking test-malloc-fail.unit against this archive
+# Static convenience library for malloc-wrap tests and tests of
+# libasdf internals.
+#
+# Required for test-malloc-fail.unit--against this archive
 # (rather than against the shared libasdf) lets --wrap intercept allocations
 # made anywhere inside the library without having to compile individual
 # translation units directly into the test binary.
-if HAVE_LINKER_WRAP
 noinst_LTLIBRARIES = libasdf_static.la
 libasdf_static_la_SOURCES = $(src_files)
-libasdf_static_la_CFLAGS = $(libasdf_la_CFLAGS)
+# -D__NO_STRING_INLINES is needed for the --wrap interception to be reliable.
+# When optimizing, older glibc (<= 2.24, e.g. the CentOS 7 sysroot used by
+# conda-forge) pulls in <bits/string2.h>, which does
+#
+#     #define strdup(s) __strdup (s)
+#
+# and likewise for strndup.  The call then resolves to __strdup rather than
+# strdup, so -Wl,--wrap=strdup silently never fires and the OOM injection is
+# skipped.  Suppressing the string2.h inlines keeps the calls on their
+# public names.  Only affects this test-only archive, not the installed
+# library.
+libasdf_static_la_CFLAGS = $(libasdf_la_CFLAGS) -D__NO_STRING_INLINES
 libasdf_static_la_LIBADD = third_party/libstc.la $(ASDF_LIBS)
-endif # HAVE_LINKER_WRAP
 
 # The asdf command line tool
 if ASDF_BUILD_TOOL

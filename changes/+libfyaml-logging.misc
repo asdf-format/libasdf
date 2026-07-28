@@ -1,0 +1,5 @@
+libfyaml parser log messages are now routed through the libasdf logging system.
+
+This allows formatting and filtering libfyaml's log messages through the same
+mechanisms--it also allows us to capture and filter certain spurious libfyaml
+log messages that occur in some cases.

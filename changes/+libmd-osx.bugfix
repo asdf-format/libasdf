@@ -1,0 +1,3 @@
+Detection of MD5 support on macOS (via Homebrew) is fixed, and
+included workaround for symbol clashes with macOS's libSystem built-in MD5
+functions.

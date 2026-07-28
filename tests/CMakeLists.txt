@@ -98,6 +98,7 @@ foreach(source_file ${source_files})
         ${BZIP2_INCLUDEDIR}
         ${FYAML_INCLUDEDIR}
         ${LZ4_INCLUDEDIR}
+        ${MD5_INCLUDEDIR}
         ${STATGRAB_INCLUDEDIR}
         ${ZLIB_INCLUDEDIR}
     )
@@ -122,6 +123,7 @@ foreach(source_file ${source_files})
         ${BZIP2_LIBDIR}
         ${FYAML_LIBDIR}
         ${LZ4_LIBDIR}
+        ${MD5_LIBDIR}
         ${STATGRAB_LIBDIR}
         ${ZLIB_LIBDIR}
     )

@@ -1,3 +1,8 @@
+include(CheckIncludeFile)
+include(CheckFunctionExists)
+include(CheckCSourceCompiles)
+
+
 # asdf_check_homebrew_pkg(<PREFIX> <package>)
 #
 # Detect a Homebrew-installed package on macOS (or Linux if you for some
@@ -116,6 +121,82 @@ else()
     else()
         message("pkg-config not found. Install pkg-config, or use STATGRAB_NO_PKGCONFIG=YES.")
     endif()
+endif()
+
+
+# MD5 support is provided by libmd, which installs <md5.h> and MD5Init.  (On
+# older systems this header came from libbsd, which nowadays depends on libmd
+# for it.)  libmd ships no pkg-config file, so probe for the header directly.
+check_include_file(md5.h HAVE_MD5_H)
+
+if(NOT HAVE_MD5_H)
+    # On macOS check for libmd installed via Homebrew and retry the probe
+    asdf_check_homebrew_pkg(MD5 libmd)
+    if(MD5_FOUND)
+        unset(HAVE_MD5_H CACHE)
+        set(CMAKE_REQUIRED_INCLUDES "${MD5_INCLUDEDIR}")
+        check_include_file(md5.h HAVE_MD5_H)
+        unset(CMAKE_REQUIRED_INCLUDES)
+    endif()
+endif()
+
+if(HAVE_MD5_H)
+    # MD5_INCLUDEDIR/MD5_LIBDIR are empty unless libmd was located via
+    # Homebrew above, in which case the probes below need those paths too.
+    set(CMAKE_REQUIRED_INCLUDES "${MD5_INCLUDEDIR}")
+    if(MD5_LIBDIR)
+        set(CMAKE_REQUIRED_LINK_OPTIONS "-L${MD5_LIBDIR}")
+    endif()
+
+    check_function_exists(MD5Init HAVE_MD5INIT)
+
+    if(NOT HAVE_MD5INIT)
+        # Not in libc, so libmd has to be linked explicitly
+        message(STATUS "MD5Init not found, trying with -lmd")
+        unset(HAVE_MD5INIT CACHE)
+        set(CMAKE_REQUIRED_LIBRARIES md)
+        check_function_exists(MD5Init HAVE_MD5INIT)
+        unset(CMAKE_REQUIRED_LIBRARIES)
+        if(HAVE_MD5INIT)
+            set(MD5_LIBRARIES "md" CACHE INTERNAL "libraries for MD5 support")
+        endif()
+    endif()
+
+    # Detect an MD5Final reachable *without* libmd.
+    # See also configure.ac, which does the same.
+    check_c_source_compiles("
+        #include <md5.h>
+        int main(void) {
+            MD5_CTX ctx;
+            unsigned char digest[16];
+            MD5Final(digest, &ctx);
+            return 0;
+        }
+    " ASDF_MD5_FINAL_SHADOWED)
+
+    if(ASDF_MD5_FINAL_SHADOWED)
+        # The workaround needs MD5Pad, part of the same md5.h API
+        set(CMAKE_REQUIRED_LIBRARIES ${MD5_LIBRARIES})
+        check_c_source_compiles("
+            #include <md5.h>
+            int main(void) { MD5_CTX ctx; MD5Pad(&ctx); return 0; }
+        " HAVE_MD5PAD)
+        unset(CMAKE_REQUIRED_LIBRARIES)
+
+        if(HAVE_MD5PAD)
+            set(ASDF_MD5_FINAL_WORKAROUND 1)
+        else()
+            message(WARNING
+                "a conflicting MD5Final was found but MD5Pad is not available "
+                "to work around it; block checksums may be wrong or crash")
+        endif()
+    endif()
+
+    unset(CMAKE_REQUIRED_INCLUDES)
+    unset(CMAKE_REQUIRED_LINK_OPTIONS)
+else()
+    message(WARNING
+        "libmd is required for MD5 support; compiling without checksum support")
 endif()
 
 
