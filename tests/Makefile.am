@@ -402,6 +402,7 @@ EXTRA_DIST += \
     fixtures/parse-minimal.asdf \
     fixtures/parse-minimal-empty-tree.asdf \
     fixtures/parse-minimal-extra-comment.asdf \
+    fixtures/parse-unsupported-directive.asdf \
     fixtures/roman_l2_wcs.asdf \
     fixtures/roman_wcs.asdf \
     fixtures/scalars.asdf \

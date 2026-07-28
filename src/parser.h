@@ -93,6 +93,8 @@ typedef struct asdf_parser {
     asdf_version_t *asdf_version;
     asdf_version_t *standard_version;
     struct fy_parser *yaml_parser;
+    /** Number of libfyaml diagnostics already forwarded to the log */
+    size_t yaml_diag_seen;
     asdf_parser_tree_info_t tree;
     asdf_parser_block_info_t block;
     bool done;

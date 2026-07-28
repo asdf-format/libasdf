@@ -356,6 +356,82 @@ static const struct fy_parse_cfg default_fy_parse_cfg = {.flags = FYPCF_QUIET | 
 
 
 /**
+ * Map a libfyaml diagnostic severity onto the closest libasdf log level
+ *
+ * libfyaml has a NOTICE level which libasdf does not; it is folded into INFO.
+ */
+static asdf_log_level_t fy_error_type_to_log_level(enum fy_error_type type) {
+    switch (type) {
+    case FYET_DEBUG:
+        return ASDF_LOG_DEBUG;
+    case FYET_INFO:
+    case FYET_NOTICE:
+        return ASDF_LOG_INFO;
+    case FYET_WARNING:
+        return ASDF_LOG_WARN;
+    case FYET_ERROR:
+    default:
+        return ASDF_LOG_ERROR;
+    }
+}
+
+
+/**
+ * Forward diagnostics collected by libfyaml to the libasdf log
+ *
+ * libfyaml is put in "collect errors" mode (see initialize_yaml_parser) so
+ * that it never writes directly to stderr; instead diagnostics are
+ * accumulated on its diag object and replayed here through libasdf's logging.
+ *
+ * Anything below error level is forwarded as soon as it is seen, since it is
+ * only useful for debugging and is never a reason to fail.  Errors are held
+ * back until ``include_errors``, which is only set on the path where parsing
+ * actually failed; this lets us drop errors that libfyaml raises but which we
+ * detect and handle ourselves, without reporting them as spurious noise.
+ *
+ * libfyaml has no API to clear the collected list, so ``yaml_diag_seen``
+ * tracks how far we have already got to avoid repeating messages.
+ */
+static void asdf_parser_fy_diag_flush(asdf_parser_t *parser, bool include_errors) {
+    if (!parser->yaml_parser)
+        return;
+
+    struct fy_diag *diag = fy_parser_get_diag(parser->yaml_parser);
+
+    if (!diag)
+        return;
+
+    struct fy_diag_error *err = NULL;
+    void *prev = NULL;
+    size_t idx = 0;
+
+    while ((err = fy_diag_errors_iterate(diag, &prev))) {
+        bool is_error = err->type >= FYET_ERROR;
+        bool seen = idx < parser->yaml_diag_seen;
+
+        idx++;
+
+        // Errors are gated on include_errors rather than on having been seen,
+        // so that ones passed over by an earlier call are still reported here
+        if (is_error ? !include_errors : seen)
+            continue;
+
+        ASDF_LOG(
+            parser,
+            fy_error_type_to_log_level(err->type),
+            "libfyaml: %s:%d:%d: %s",
+            err->file ? err->file : "<input>",
+            err->line,
+            err->column,
+            err->msg ? err->msg : "(no message)");
+    }
+
+    parser->yaml_diag_seen = idx;
+    fy_diag_unref(diag);
+}
+
+
+/**
  * Before transitioning to generating YAML events we need to set up libfyaml
  *
  * There are two possible cases:
@@ -376,6 +452,18 @@ static int initialize_yaml_parser(asdf_parser_t *parser) {
     }
 
     parser->yaml_parser = yaml_parser;
+
+    /* Route libfyaml's diagnostics through our own log rather than letting it
+     * write to stderr.  FYPCF_QUIET only covers informational messages, so
+     * errors are otherwise emitted directly; collect mode defers them until
+     * asdf_parser_fy_diag_flush() decides whether they are worth reporting. */
+    struct fy_diag *diag = fy_parser_get_diag(yaml_parser);
+
+    if (diag) {
+        fy_diag_set_collect_errors(diag, true);
+        // fy_parser_get_diag() returns a ref'ed object
+        fy_diag_unref(diag);
+    }
 
     if (buffer_tree) {
         ret = fy_parser_set_string(yaml_parser, (const char *)parser->tree.buf, parser->tree.size);
@@ -501,10 +589,14 @@ static parse_result_t parse_yaml(asdf_parser_t *parser, asdf_event_t *event) {
         }
 
         if (!yaml) {
+            // A genuine parse failure, so report what libfyaml had to say
+            asdf_parser_fy_diag_flush(parser, true);
             ASDF_ERROR_COMMON(parser, ASDF_ERR_YAML_PARSE_FAILED);
             return ASDF_PARSE_ERROR;
         }
     }
+
+    asdf_parser_fy_diag_flush(parser, false);
 
     event->type = ASDF_YAML_EVENT;
     event->payload.yaml = yaml;
@@ -1196,6 +1288,17 @@ int asdf_parser_error_errno(const asdf_parser_t *parser) {
 void asdf_parser_destroy(asdf_parser_t *parser) {
     if (!parser)
         return;
+
+    if (parser->yaml_parser) {
+        /* Turn collect mode back off so libfyaml releases any diagnostics it
+         * accumulated (there is no explicit API to clear the list) */
+        struct fy_diag *diag = fy_parser_get_diag(parser->yaml_parser);
+
+        if (diag) {
+            fy_diag_set_collect_errors(diag, false);
+            fy_diag_unref(diag);
+        }
+    }
 
     fy_parser_destroy(parser->yaml_parser);
 
