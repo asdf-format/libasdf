@@ -322,6 +322,59 @@ AS_IF([test "x$have_md5_h" = "xyes"], [
 
 AS_IF([test "x$have_md5" = "xyes"], [
     AC_DEFINE([HAVE_MD5], [1], [Define if MD5 support is available])
+
+    # Detect an MD5Final that is reachable *without* libmd.
+    #
+    # So, what is this BS?
+    #
+    # macOS's libcommonCrypto, which comes along with libSystem, exports a
+    # real MD5Final function (its MD5Init/MD5Update are only #defines onto
+    # CC_MD5_Init/CC_MD5_Update, so those do not collide).  Its context type
+    # is not md5.h's MD5_CTX, so if the linker resolves MD5Final there the
+    # caller's context gets scribbled over. We cannot do anything at link
+    # time to force macOS's linker to resolve the symbol from the correct
+    # library.
+    #
+    # What's worse, the libcommonCrypto version is marked by Apple as
+    # *deprecated* and warns loudly about this if you compile against it. Yes,
+    # Apple, we are all adults who understand MD5 is not cryptographically
+    # secure, but it's still a commonly used checksum!
+    #
+    # So where a competing MD5Final exists at all we avoid naming the symbol;
+    # see asdf_md5_final in src/block.c.
+    #
+    # Deliberately checked by linking *without* $md5_libs: if this succeeds
+    # then something other than libmd is providing MD5Final.  Should Apple
+    # ever drop it, this check stops firing on its own.
+    AC_CACHE_CHECK([whether MD5Final is provided outside libmd],
+      [asdf_cv_md5final_shadowed],
+      [AC_LINK_IFELSE(
+        [AC_LANG_PROGRAM([[#include <md5.h>]],
+                         [[MD5_CTX ctx; unsigned char digest[16]; MD5Final(digest, &ctx);]])],
+        [asdf_cv_md5final_shadowed=yes],
+        [asdf_cv_md5final_shadowed=no])])
+
+    AS_IF([test "x$asdf_cv_md5final_shadowed" = "xyes"], [
+        # The workaround needs MD5Pad, which is part of the same md5.h API
+        save_LIBS="$LIBS"
+        LIBS="$md5_libs $LIBS"
+        AC_CACHE_CHECK([for MD5Pad in libmd], [asdf_cv_func_md5pad],
+          [AC_LINK_IFELSE(
+            [AC_LANG_PROGRAM([[#include <md5.h>]], [[MD5_CTX ctx; MD5Pad(&ctx);]])],
+            [asdf_cv_func_md5pad=yes],
+            [asdf_cv_func_md5pad=no])])
+        LIBS="$save_LIBS"
+
+        AS_IF([test "x$asdf_cv_func_md5pad" = "xyes"], [
+            AC_DEFINE([ASDF_MD5_FINAL_WORKAROUND], [1],
+                      [Define if MD5Final must be open-coded because a
+                       conflicting MD5Final is provided outside libmd])
+        ], [
+            AC_MSG_WARN([a conflicting MD5Final was found but MD5Pad is not
+                         available to work around it; block checksums may be
+                         wrong or crash])
+        ])
+    ])
 ])
 AM_CONDITIONAL([HAVE_MD5], [test "x$have_md5" = "xyes"])
 

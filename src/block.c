@@ -251,8 +251,33 @@ void asdf_md5_update(asdf_md5_ctx_t *ctx, const void *data, size_t len) {
 }
 
 
+#ifndef ASDF_MD5_FINAL_WORKAROUND
 void asdf_md5_final(asdf_md5_ctx_t *ctx, unsigned char digest[16]) {
     MD5Final(digest, &ctx->ctx);
 }
+#else
+/*
+ * Open-coded MD5Final, used where configure found a competing MD5Final
+ * outside libmd (see the check in configure.ac).  Not naming the symbol is
+ * the only reliable way to avoid binding to the wrong one.
+ *
+ * This does exactly what libmd's MD5Final does: pad, write the four state
+ * words out little-endian, then clear the context.  MD5Init, MD5Update and
+ * MD5Pad are unaffected, so they are still used as-is.
+ */
+void asdf_md5_final(asdf_md5_ctx_t *ctx, unsigned char digest[16]) {
+    MD5Pad(&ctx->ctx);
+
+    for (size_t idx = 0; idx < 4; idx++) {
+        uint32_t word = ctx->ctx.state[idx];
+        digest[idx * 4] = (unsigned char)word;
+        digest[idx * 4 + 1] = (unsigned char)(word >> 8);
+        digest[idx * 4 + 2] = (unsigned char)(word >> 16);
+        digest[idx * 4 + 3] = (unsigned char)(word >> 24);
+    }
+
+    ZERO_MEMORY(&ctx->ctx, sizeof(ctx->ctx));
+}
+#endif
 #endif
 #endif

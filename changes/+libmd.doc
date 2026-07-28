@@ -4,4 +4,6 @@ Most platforms seem to package libmd independently with libbsd, with libbsd,
 if it has a package at all, listing it as a dependency.  Targeting libmd
 specifically should make the documentation clearer across supported platforms.
 
-Detection of MD5 support on macOS (via Homebrew) is also improved).
+Detection of MD5 support on macOS (via Homebrew) is also improved, and
+included workaround for symbol clashes with macOS's libSystem built-in MD5
+functions.
