@@ -1,0 +1,21 @@
+# AddressSanitizer suppressions for the libfyaml YAML backend.
+#
+# libfyaml 0.9.6 has a heap-buffer-overflow in its node-path bookkeeping: while
+# building a node's path string it reads a few bytes past a heap allocation.
+# ASan reports it as a "READ of size N" inside the intercepted strdup(), called
+# from fy_token_get_scalar_path_key() <- fy_node_get_parent_address() <-
+# fy_node_get_path(). In libasdf it is reached whenever a value is copied out
+# of the tree (asdf_value_copy_impl() in src/value.c, e.g. via
+# asdf_get_ndarray()).
+#
+# ASan can only suppress errors raised from *inside* interceptors, which this
+# one is (strdup), so interceptor_via_fun matching an exported frame on the
+# stack works.  fy_node_get_path is the deepest reliably-exported libfyaml
+# symbol here (the internal frames are stripped in the system library).
+#
+# CAVEAT: this suppresses *any* heap-buffer-overflow reported from an
+# interceptor with fy_node_get_path on the stack, so it could in principle mask
+# a genuine libasdf bug that handed a corrupt node to fy_node_get_path.  libasdf
+# does not itself read out of bounds here; the overflow lives entirely in
+# libfyaml's path bookkeeping.  Remove this once linked against a fixed libfyaml.
+interceptor_via_fun:fy_node_get_path
