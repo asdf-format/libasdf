@@ -36,10 +36,10 @@
  * comparison meaningful.
  */
 MU_TEST(test_emitter_stream_switch) {
-    const size_t n = 1024;
+    uint8_t ref_data[1024];
+    const size_t n = sizeof(ref_data) / sizeof(ref_data[0]);
     const uint64_t shape[] = {n};
 
-    uint8_t ref_data[n];
     for (size_t idx = 0; idx < n; idx++)
         ref_data[idx] = (uint8_t)(idx % 256);
 
