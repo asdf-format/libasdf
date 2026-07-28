@@ -797,10 +797,22 @@ asdf_value_t *asdf_mapping_pop(asdf_mapping_t *mapping, const char *key) {
         return NULL;
     }
 
-    // key_node is only used to look up the pair to remove; libfyaml does not
-    // take ownership of it (unlike an insert), so it must be freed afterward
-    struct fy_node *node = fy_node_mapping_remove_by_key(value->node, key_node);
+    // fy_node_mapping_remove_by_key() changed its key-ownership contract
+    // between libfyaml versions: older ones free the passed lookup key (unless
+    // it is the pair's own stored key), newer ones leave it caller-owned (see
+    // libfyaml issue #261).  Freeing our own throwaway key is therefore a
+    // double free on old libfyaml and a leak if omitted on new.  To stay
+    // correct on both, look the pair up first: lookup never takes ownership
+    // of the key, so we can (and must) free our throwaway key node here. Then
+    // remove using the pair's *own* stored key, which both versions leave to
+    // the pair's normal teardown (no double free, no leak), but ugly...
+    struct fy_node_pair *pair = fy_node_mapping_lookup_pair(value->node, key_node);
     fy_node_free(key_node);
+
+    if (!pair)
+        return NULL;
+
+    struct fy_node *node = fy_node_mapping_remove_by_key(value->node, fy_node_pair_key(pair));
 
     if (!node)
         return NULL;
