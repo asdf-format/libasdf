@@ -1,3 +1,48 @@
+libasdf 0.1.0rc1 (2026-07-28)
+=============================
+
+Bugfix
+------
+
+- Detection of MD5 support on macOS (via Homebrew) is fixed, and included
+  workaround for symbol clashes with macOS's libSystem built-in MD5 functions.
+- Fix UFFD support (for lazy decompression) when UFFD_USER_MODE_ONLY flag is
+  not defined in the kernel headers.
+
+  This can be the case e.g. when building in Conda, where an older, more
+  conservative set of headers is available.  But whether this flag actually
+  works depends on the runtime kernel and has non-trivial behavior--if the flag
+  exists in the kernel it must be passed in to allowed userspace fault handlers
+  without extra kernel VM-level permissions set.
+
+  Also refactored the runtime detection code a bit and handled TODO item of
+  caching the result.
+
+
+Documentation
+-------------
+
+- Document dependency of libmd specifically instead of libbsd more broadly.
+
+  Most platforms seem to package libmd independently with libbsd, with libbsd,
+  if it has a package at all, listing it as a dependency.  Targeting libmd
+  specifically should make the documentation clearer across supported
+  platforms.
+- Fix the example code in ``README.rst`` just use the portable ``PRI<T>``
+  macros.
+
+
+Misc
+----
+
+- libfyaml parser log messages are now routed through the libasdf logging
+  system.
+
+  This allows formatting and filtering libfyaml's log messages through the same
+  mechanisms--it also allows us to capture and filter certain spurious libfyaml
+  log messages that occur in some cases.
+
+
 libasdf 0.1.0rc0 (2026-07-24)
 =============================
 
