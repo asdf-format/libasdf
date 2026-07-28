@@ -87,12 +87,13 @@ libasdf_la_CFLAGS = $(AM_CFLAGS) $(FYAML_CFLAGS) $(STATGRAB_CFLAGS) $(LZ4_CFLAGS
 libasdf_la_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
 libasdf_la_LIBADD =  third_party/libstc.la $(ASDF_LIBS)
 
-# Static convenience library for malloc-wrap tests; built only when the
-# linker supports --wrap.  Linking test-malloc-fail.unit against this archive
+# Static convenience library for malloc-wrap tests and tests of
+# libasdf internals.
+#
+# Required for test-malloc-fail.unit--against this archive
 # (rather than against the shared libasdf) lets --wrap intercept allocations
 # made anywhere inside the library without having to compile individual
 # translation units directly into the test binary.
-if HAVE_LINKER_WRAP
 noinst_LTLIBRARIES = libasdf_static.la
 libasdf_static_la_SOURCES = $(src_files)
 # -D__NO_STRING_INLINES is needed for the --wrap interception to be reliable.
@@ -108,7 +109,6 @@ libasdf_static_la_SOURCES = $(src_files)
 # library.
 libasdf_static_la_CFLAGS = $(libasdf_la_CFLAGS) -D__NO_STRING_INLINES
 libasdf_static_la_LIBADD = third_party/libstc.la $(ASDF_LIBS)
-endif # HAVE_LINKER_WRAP
 
 # The asdf command line tool
 if ASDF_BUILD_TOOL
