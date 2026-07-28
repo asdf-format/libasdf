@@ -184,6 +184,7 @@ test_malloc_fail_unit_LDFLAGS = \
     $(unit_test_ldflags) \
     -Wl,--wrap=malloc,--wrap=calloc,--wrap=strdup,--wrap=strndup
 test_malloc_fail_unit_LDADD = libmunit.a $(top_builddir)/libasdf_static.la
+endif
 
 # test-emitter.unit
 # Also links against libasdf_static.la so that ASDF_LOCAL (hidden-visibility)
@@ -194,7 +195,6 @@ test_emitter_unit_CPPFLAGS = $(unit_test_cppflags)
 test_emitter_unit_CFLAGS = $(unit_test_cflags)
 test_emitter_unit_LDFLAGS = $(unit_test_ldflags)
 test_emitter_unit_LDADD = libmunit.a $(top_builddir)/libasdf_static.la
-endif
 
 # test-reference-files.unit
 test_reference_files_unit_SOURCES = test-reference-files.c
