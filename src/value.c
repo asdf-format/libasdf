@@ -792,12 +792,15 @@ asdf_value_t *asdf_mapping_pop(asdf_mapping_t *mapping, const char *key) {
 
     struct fy_node *key_node = asdf_node_of_string0(tree, key);
 
-    if (UNLIKELY(!key)) {
+    if (UNLIKELY(!key_node)) {
         ASDF_ERROR_OOM(value->file);
         return NULL;
     }
 
+    // key_node is only used to look up the pair to remove; libfyaml does not
+    // take ownership of it (unlike an insert), so it must be freed afterward
     struct fy_node *node = fy_node_mapping_remove_by_key(value->node, key_node);
+    fy_node_free(key_node);
 
     if (!node)
         return NULL;

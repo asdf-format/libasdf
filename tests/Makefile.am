@@ -58,6 +58,19 @@ if UBSAN
 TESTS_ENVIRONMENT += UBSAN_OPTIONS="$${UBSAN_OPTIONS:-print_stacktrace=1:halt_on_error=1}"
 endif
 
+if ASAN
+if HOST_LINUX
+# Suppress two distinct known upstream libfyaml bugs so genuine issues still
+# surface (each sanitizer uses its own suppression-file syntax and env var):
+#   - libfyaml.asan.supp: a heap-buffer-overflow in fy_node_get_path() (0.9.6)
+#   - libfyaml.lsan.supp: a leak of a tag-token buffer on emit (<0.9)
+# LeakSanitizer only runs on Linux, so this is gated on HOST_LINUX.
+TESTS_ENVIRONMENT += \
+    ASAN_OPTIONS="$${ASAN_OPTIONS:-detect_leaks=1:suppressions=$(abs_srcdir)/libfyaml.asan.supp}" \
+    LSAN_OPTIONS="$${LSAN_OPTIONS:-suppressions=$(abs_srcdir)/libfyaml.lsan.supp}"
+endif
+endif
+
 TESTS = $(check_PROGRAMS)
 
 unit_test_base_cppflags = \
@@ -349,6 +362,8 @@ AUTOMAKE_OPTIONS = parallel-tests
 CMAKE_DIST = CMakeLists.txt
 EXTRA_DIST = $(TOOL_TESTS) $(CMAKE_DIST)
 EXTRA_DIST += \
+    libfyaml.asan.supp \
+    libfyaml.lsan.supp \
     munit.h \
     shell-test.sh \
     util.h \

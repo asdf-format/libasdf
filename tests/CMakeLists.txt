@@ -49,6 +49,8 @@ add_compile_definitions(TEMP_DIR=\"${TEMP_DIR}\")
 
 set(runtime "WITH_CMAKE=set:YES;OBJC_DISABLE_INITIALIZE_FORK_SAFETY=set:YES;srcdir=set:${CMAKE_CURRENT_SOURCE_DIR};top_srcdir=set:${CMAKE_SOURCE_DIR};top_builddir=set:${CMAKE_BINARY_DIR};LD_LIBRARY_PATH=path_list_prepend:${CMAKE_BINARY_DIR}/src")
 
+set(sanitizer_options "ASAN_OPTIONS=detect_leaks=1:suppressions=${CMAKE_CURRENT_SOURCE_DIR}/libfyaml.asan.supp;LSAN_OPTIONS=suppressions=${CMAKE_CURRENT_SOURCE_DIR}/libfyaml.lsan.supp")
+
 # UBSan reports go to stderr, which munit captures and discards unless the test
 # fails; halt_on_error turns a report into an abort so the report is surfaced
 if (ENABLE_UBSAN)
@@ -134,6 +136,18 @@ foreach(source_file ${source_files})
     set_tests_properties(${test_executable}
         PROPERTIES
         SKIP_RETURN_CODE 127)
+
+    # The libfyaml backend has two known upstream bugs surfaced by the
+    # sanitizers: a heap-buffer-overflow in fy_node_get_path() (0.9.6) and a
+    # leak of a tag-token buffer on emit (<0.9).  libfyaml.asan.supp and
+    # libfyaml.lsan.supp suppress just those, so genuine issues still surface.
+    # LeakSanitizer only works on Linux.
+    if(ENABLE_ASAN AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        set_tests_properties(${test_executable}
+            PROPERTIES
+            ENVIRONMENT
+            "${sanitizer_options}")
+    endif()
 
     set(ENV{OBJC_DISABLE_INITIALIZE_FORK_SAFETY} "YES")
     set_property(TEST ${test_executable}

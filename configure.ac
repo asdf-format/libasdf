@@ -6,6 +6,7 @@ AC_INIT(
   [https://github.com/asdf-format/libasdf],
 )
 AC_CONFIG_AUX_DIR([build-aux])
+AC_CANONICAL_HOST
 AM_INIT_AUTOMAKE([foreign subdir-objects])
 
 # needed for strptime, at the very least...
@@ -153,6 +154,10 @@ AS_IF([test "x$with_asan" = "xyes"], [
   AC_DEFINE([WITH_ASAN], [1], [Defined if building with AddressSanitizer])
   ASDF_BUILD_MODE="${ASDF_BUILD_MODE}asan "
 ])
+
+AM_CONDITIONAL([ASAN], [test "x$with_asan" = "xyes"])
+
+AM_CONDITIONAL([HOST_LINUX], [case "$host_os" in linux*) true;; *) false;; esac])
 
 # --with-ubsan
 AC_ARG_WITH([ubsan],
