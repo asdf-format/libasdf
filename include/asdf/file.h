@@ -257,7 +257,7 @@ static inline asdf_file_t *asdf_open_mem(const void *buf, size_t size) {
         (dest), \
         const char *: asdf_write_to_file, \
         char *: asdf_write_to_file, \
-        FILE *: asdf_write_to_fp)(file, dest)
+        FILE *: asdf_write_to_fp)(source, dest)
 
 
 #define ASDF__WRITE_TO_2(source, dest, ...) asdf_write_to_mem(source, dest, __VA_ARGS__)
