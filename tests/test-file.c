@@ -435,13 +435,33 @@ MU_TEST(test_asdf_block_checksum_verify) {
 }
 
 
+/* Append an uncompressed data block via the create/set/append API, returning
+ * the new block's index (or -1 on failure) -- a thin stand-in for the old
+ * append_data_block(file, data, size) used by these tests. */
+static ssize_t append_data_block(asdf_file_t *file, const void *data, size_t size) {
+    asdf_block_t *block = asdf_block_create(file);
+
+    if (!block)
+        return -1;
+
+    if (asdf_block_data_set(block, data, size) != 0 || !asdf_block_append(file, block)) {
+        asdf_block_destroy(block);
+        return -1;
+    }
+
+    ssize_t idx = (ssize_t)block->info.index;
+    asdf_block_close(block);
+    return idx;
+}
+
+
 MU_TEST(test_asdf_block_append) {
     const char *filename = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
     asdf_file_t *file = asdf_open(filename, "w");
     assert_not_null(file);
     const char *data = "this is my data and it is my friend";
     size_t len = strlen(data);
-    assert_int(asdf_block_append(file, data, len), ==, 0);
+    assert_int(append_data_block(file, data, len), ==, 0);
     assert_int(asdf_block_count(file), ==, 1);
     asdf_block_t *block = asdf_block_open(file, 0);
     assert_not_null(block);
@@ -460,7 +480,7 @@ MU_TEST(test_asdf_block_append_read_only) {
     const char *filename = get_fixture_file_path("multi-block.asdf");
     asdf_file_t *file = asdf_open(filename, "r");
     assert_not_null(file);
-    assert_int(asdf_block_append(file, NULL, 0), ==, -1);
+    assert_int(append_data_block(file, NULL, 0), ==, -1);
     const char *error = asdf_error(file);
     assert_string_equal(error, "cannot write to a read-only stream or file");
     assert_int(asdf_error_code(file), ==, ASDF_ERR_STREAM_READ_ONLY);
@@ -492,7 +512,7 @@ MU_TEST(write_block_no_index) {
     for (int idx = 0; idx <= UINT8_MAX; idx++)
         data[idx] = idx;
 
-    assert_int(asdf_block_append(file, data, size), ==, 0);
+    assert_int(append_data_block(file, data, size), ==, 0);
     assert_int(asdf_write_to(file, filename), ==, 0);
     asdf_close(file);
 
@@ -520,7 +540,7 @@ MU_TEST(write_block_no_checksum) {
     for (int idx = 0; idx <= UINT8_MAX; idx++)
         data[idx] = idx;
 
-    assert_int(asdf_block_append(file, data, size), ==, 0);
+    assert_int(append_data_block(file, data, size), ==, 0);
     assert_int(asdf_write_to(file, filename), ==, 0);
     asdf_close(file);
     free(data);
@@ -555,8 +575,8 @@ MU_TEST(write_blocks_and_index) {
     for (int idx = 0; idx <= UINT8_MAX; idx++)
         data[idx] = idx;
 
-    assert_int(asdf_block_append(file, data, size), ==, 0);
-    assert_int(asdf_block_append(file, data, size), ==, 1);
+    assert_int(append_data_block(file, data, size), ==, 0);
+    assert_int(append_data_block(file, data, size), ==, 1);
     assert_int(asdf_write_to(file, filename), ==, 0);
     asdf_close(file);
 

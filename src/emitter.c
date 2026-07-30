@@ -464,17 +464,20 @@ static asdf_emitter_state_t emit_tree(asdf_emitter_t *emitter) {
 
 
 /**
- * Prepare write_data for blocks that were parsed from a file and have no in-memory
- * data buffer (data == NULL, data_pos >= 0).
+ * Materialize in-memory `data` for blocks that were parsed from a file and have
+ * no in-memory data buffer yet (data == NULL, data_pos >= 0).
  *
  * Two cases:
  *  - Verbatim re-emit (write_compressor == NULL): copy the compressed bytes
- *    from the input stream into a malloc'd buffer and set write_data_size to
- *    used_size (i.e. the on-disk compressed size).
+ *    from the input stream into a malloc'd buffer and mark it as
+ *    already-compressed (``data_is_compressed``) so it is emitted as-is.
  *  - Recompress (write_compressor != NULL): decompress using asdf_block_comp_open,
- *    copy the result into a malloc'd buffer, then close the decompressor.
+ *    copy the result into a malloc'd buffer (uncompressed), then close the
+ *    decompressor; the write compressor re-compresses it at emit time.
  *
- * Blocks that already have data or write_data are skipped.
+ * Blocks that already have in-memory data are skipped.  The materialized buffer
+ * is owned (freed on file teardown via asdf_block_info_deinit), so re-emitting
+ * the same file does not re-read it.
  */
 static bool emit_blocks_prepare(asdf_emitter_t *emitter) {
     asdf_file_t *file = emitter->file;
@@ -492,8 +495,8 @@ static bool emit_blocks_prepare(asdf_emitter_t *emitter) {
          asdf_block_info_vec_next(&it)) {
         asdf_block_info_t *block_info = it.ref;
 
-        if (block_info->data != NULL || block_info->write_data != NULL)
-            continue; /* already has data */
+        if (block_info->data != NULL)
+            continue; /* already has in-memory data */
 
         if (block_info->data_pos < 0 || !in_stream)
             continue; /* new block or no input stream */
@@ -519,9 +522,10 @@ static bool emit_blocks_prepare(asdf_emitter_t *emitter) {
 
             memcpy(buf, compressed, avail);
             in_stream->close_mem(in_stream, compressed);
-            block_info->write_data = buf;
-            block_info->write_data_size = avail;
-            block_info->owns_write_data = true;
+            block_info->data = buf;
+            block_info->data_size = avail;
+            block_info->data_owned = true;
+            block_info->data_is_compressed = true;
         } else {
             /* Recompress: decompress with a temporary asdf_block_t, then copy */
             asdf_block_t block = {0};
@@ -556,9 +560,10 @@ static bool emit_blocks_prepare(asdf_emitter_t *emitter) {
             memcpy(buf, block.comp_state->dest, decomp_size);
             asdf_block_comp_close(&block);
             free((void *)block.compression);
-            block_info->write_data = buf;
-            block_info->write_data_size = decomp_size;
-            block_info->owns_write_data = true;
+            block_info->data = buf;
+            block_info->data_size = decomp_size;
+            block_info->data_owned = true;
+            block_info->data_is_compressed = false;
         }
     }
 

@@ -362,7 +362,12 @@ static size_t asdf_file_estimate_blocks_size(asdf_file_t *file) {
         const asdf_block_info_t *block_info = asdf_block_info_vec_at(&file->blocks, idx);
         if (block_info->write_compressor != NULL)
             continue; /* compressed size unknown upfront; stream handles reallocs */
-        n_bytes += block_info->header.allocated_size + ASDF_BLOCK_MAGIC_SIZE + 2;
+        /* allocated_size is 0 unless the caller reserved extra space; fall back
+         * to the (uncompressed) data_size for the estimate in that case */
+        uint64_t block_size = block_info->header.allocated_size;
+        if (block_size == 0)
+            block_size = block_info->header.data_size;
+        n_bytes += block_size + ASDF_BLOCK_MAGIC_SIZE + 2;
     }
 
     return n_bytes;
@@ -489,6 +494,10 @@ void asdf_close(asdf_file_t *file) {
     fy_document_destroy(file->tree);
     asdf_emitter_destroy(file->emitter);
     asdf_parser_destroy(file->parser);
+    /* Free any heap-owned in-memory block data before dropping the vector */
+    for (asdf_block_info_vec_iter_t it = asdf_block_info_vec_begin(&file->blocks); it.ref;
+         asdf_block_info_vec_next(&it))
+        asdf_block_info_deinit(it.ref);
     asdf_block_info_vec_drop(&file->blocks);
     asdf_str_map_drop(&file->tag_map);
     asdf_stream_close(file->stream);
@@ -1067,8 +1076,50 @@ asdf_block_t *asdf_block_open(asdf_file_t *file, size_t index) {
     block->data = NULL;
     block->should_close = false;
     block->info = *info;
+    /* A view never owns the file's block data; ownership stays with file->blocks */
+    block->info.data_owned = false;
+    block->detached = false;
     block->comp_state = NULL;
     return block;
+}
+
+
+asdf_block_t *asdf_block_create(asdf_file_t *file) {
+    if (!file)
+        return NULL;
+
+    if (file->mode == ASDF_FILE_MODE_READ_ONLY) {
+        ASDF_ERROR_COMMON(file, ASDF_ERR_STREAM_READ_ONLY);
+        return NULL;
+    }
+
+    asdf_block_t *block = calloc(1, sizeof(asdf_block_t));
+
+    if (!block) {
+        ASDF_ERROR_OOM(file);
+        return NULL;
+    }
+
+    block->file = file;
+    block->detached = true;
+    block->info.index = SIZE_MAX; /* not yet appended */
+    block->info.header.header_size = ASDF_BLOCK_HEADER_SIZE;
+    block->info.header_pos = -1;
+    block->info.data_pos = -1;
+    return block;
+}
+
+
+void asdf_block_destroy(asdf_block_t *block) {
+    if (!block)
+        return;
+
+    /* A created-but-not-appended block owns its in-memory data; once appended,
+     * ownership has transferred to the file and detached is cleared. */
+    if (block->detached)
+        asdf_block_info_deinit(&block->info);
+
+    asdf_block_close(block);
 }
 
 
@@ -1093,26 +1144,138 @@ void asdf_block_close(asdf_block_t *block) {
 }
 
 
-ssize_t asdf_block_append(asdf_file_t *file, const void *data, size_t size) {
+void *asdf_block_data_alloc(asdf_block_t *block, size_t size) {
+    if (!block)
+        return NULL;
+
+    /* Drop any previously-set owned data */
+    asdf_block_info_deinit(&block->info);
+
+    void *buf = malloc(size ? size : 1);
+
+    if (!buf) {
+        ASDF_ERROR_OOM(block->file);
+        return NULL;
+    }
+
+    block->info.data = buf;
+    block->info.data_size = size;
+    block->info.data_owned = true;
+    block->info.data_is_compressed = false;
+    block->info.header.data_size = size;
+    block->info.header.used_size = size;
+    return buf;
+}
+
+
+int asdf_block_data_set(asdf_block_t *block, const void *data, size_t size) {
+    if (!block)
+        return -1;
+
+    /* Drop any previously-set owned data; the new data is borrowed and must
+     * outlive the block (until the file is written). */
+    asdf_block_info_deinit(&block->info);
+
+    block->info.data = data;
+    block->info.data_size = size;
+    block->info.data_owned = false;
+    block->info.data_is_compressed = false;
+    block->info.header.data_size = size;
+    block->info.header.used_size = size;
+    return 0;
+}
+
+
+int asdf_block_data_set_compressed(
+    asdf_block_t *block,
+    const void *data,
+    size_t size,
+    uint64_t data_size,
+    const char *compression) {
+    if (!block)
+        return -1;
+
+    asdf_block_info_deinit(&block->info);
+
+    /* Private owned copy of the already-compressed bytes, emitted verbatim */
+    void *buf = malloc(size ? size : 1);
+
+    if (!buf) {
+        ASDF_ERROR_OOM(block->file);
+        return -1;
+    }
+
+    memcpy(buf, data, size);
+
+    block->info.data = buf;
+    block->info.data_size = size;
+    block->info.data_owned = true;
+    block->info.data_is_compressed = true;
+    block->info.write_compressor = NULL;
+    block->info.header.data_size = data_size; /* uncompressed size */
+    block->info.header.used_size = size;      /* compressed size */
+
+    memset(block->info.header.compression, 0, ASDF_BLOCK_COMPRESSION_FIELD_SIZE);
+    if (compression && *compression)
+        strncpy(block->info.header.compression, compression, ASDF_BLOCK_COMPRESSION_FIELD_SIZE);
+
+    return 0;
+}
+
+
+int asdf_block_allocated_size_set(asdf_block_t *block, uint64_t allocated_size) {
+    if (!block)
+        return -1;
+
+    block->info.header.allocated_size = allocated_size;
+
+    /* Propagate to the file's block_info if already appended */
+    if (!block->detached && block->info.index != SIZE_MAX) {
+        asdf_block_info_t *file_block = asdf_block_info_vec_at_mut(
+            &block->file->blocks, (isize)block->info.index);
+
+        if (file_block)
+            file_block->header.allocated_size = allocated_size;
+    }
+
+    return 0;
+}
+
+
+asdf_block_t *asdf_block_append(asdf_file_t *file, asdf_block_t *block) {
+    if (UNLIKELY(!file || !block))
+        return NULL;
+
     if (file->mode == ASDF_FILE_MODE_READ_ONLY) {
         ASDF_ERROR_COMMON(file, ASDF_ERR_STREAM_READ_ONLY);
-        return -1;
+        return NULL;
+    }
+
+    if (!block->detached) {
+        ASDF_LOG(file, ASDF_LOG_ERROR, "asdf_block_append: block is already appended to a file");
+        return NULL;
     }
 
     size_t n_blocks = asdf_block_count(file);
 
     if (n_blocks >= SSIZE_MAX) {
         ASDF_ERROR_COMMON(file, ASDF_ERR_OVER_LIMIT, "block count exceeds maximum");
-        return -1;
+        return NULL;
     }
 
-    // Create a new block_info for the new block
-    asdf_block_info_t block_info = {0};
-    asdf_block_info_init(n_blocks, data, size, &block_info);
-    if (!asdf_block_info_vec_push(&file->blocks, block_info))
-        return -1;
+    block->file = file;
+    block->info.index = n_blocks;
 
-    return (ssize_t)n_blocks;
+    if (!asdf_block_info_vec_push(&file->blocks, block->info)) {
+        ASDF_ERROR_OOM(file);
+        return NULL;
+    }
+
+    /* Ownership of any owned data transfers to the file's block_info copy; the
+     * handle is now a non-owning view onto the appended block. */
+    block->info.data_owned = false;
+    block->detached = false;
+    return block;
 }
 
 
@@ -1125,19 +1288,40 @@ const void *asdf_block_data_impl(asdf_block_t *block, size_t *size, bool decompr
     if (!block)
         return NULL;
 
-    if (block->data) {
+    /* Cached data from a previous stream open */
+    if (block->data && block->should_close) {
         if (size)
             *size = block->avail_size;
 
         return block->data;
     }
 
+    /* In-memory block content: created/appended, or materialized by the emitter */
     if (block->info.data) {
-        if (size)
-            *size = block->info.header.data_size;
+        if (decompress && block->info.data_is_compressed) {
+            if (!block->comp_state) {
+                block->data = (void *)block->info.data;
+                block->avail_size = block->info.data_size;
+                block->should_close = false;
 
-        block->data = (void *)block->info.data;
-        return block->data;
+                if (asdf_block_comp_open(block) != 0) {
+                    ASDF_LOG(block->file, ASDF_LOG_ERROR, "failed to open compressed block data");
+                    return NULL;
+                }
+            }
+
+            if (block->comp_state) {
+                if (size)
+                    *size = block->comp_state->dest_size;
+
+                return block->comp_state->dest;
+            }
+        }
+
+        if (size)
+            *size = block->info.data_size;
+
+        return block->info.data;
     }
 
     asdf_parser_t *parser = block->file->parser;
@@ -1222,12 +1406,15 @@ int asdf_block_compression_set(asdf_block_t *block, const char *compression) {
     if (ret != 0)
         return ret;
 
-    /* Propagate to file->blocks so the emitter sees the change */
-    asdf_block_info_t *file_block = asdf_block_info_vec_at_mut(
-        &block->file->blocks, (isize)block->info.index);
+    /* Propagate to file->blocks so the emitter sees the change (a detached
+     * block carries write_compressor in its own info until appended) */
+    if (!block->detached && block->info.index != SIZE_MAX) {
+        asdf_block_info_t *file_block = asdf_block_info_vec_at_mut(
+            &block->file->blocks, (isize)block->info.index);
 
-    if (file_block)
-        file_block->write_compressor = block->info.write_compressor;
+        if (file_block)
+            file_block->write_compressor = block->info.write_compressor;
+    }
 
     return 0;
 }

@@ -39,6 +39,21 @@ void asdf_block_info_init(
     out_block->header_pos = -1;
     out_block->data_pos = -1;
     out_block->data = data;
+    out_block->data_size = size;
+}
+
+
+void asdf_block_info_deinit(asdf_block_info_t *block_info) {
+    if (!block_info)
+        return;
+
+    if (block_info->data_owned) {
+        free((void *)block_info->data);
+        block_info->data = NULL;
+        block_info->data_owned = false;
+    }
+
+    block_info->data_size = 0;
 }
 
 
@@ -146,12 +161,13 @@ bool asdf_block_info_write(asdf_stream_t *stream, asdf_block_info_t *block, bool
 
     bool ret = true;
     uint8_t *comp_buf = NULL;
-    const void *write_data = block->write_data ? block->write_data : block->data;
-    size_t write_size = block->write_data ? block->write_data_size : block->header.data_size;
+    const void *write_data = block->data;
+    size_t write_size = block->data_size;
     const asdf_compressor_t *compressor = block->write_compressor;
 
-    /* Compress if a write compressor is set and there is data to compress */
-    if (compressor != NULL && write_data != NULL) {
+    /* Compress uncompressed in-memory data if a write compressor is set;
+     * already-compressed data (data_is_compressed) is emitted verbatim. */
+    if (compressor != NULL && write_data != NULL && !block->data_is_compressed) {
         if (compressor->comp(write_data, write_size, &comp_buf, &write_size) != 0) {
             ret = false;
             goto cleanup;
@@ -171,21 +187,27 @@ bool asdf_block_info_write(asdf_stream_t *stream, asdf_block_info_t *block, bool
     /* Use compressor name for the compression field when compressing, else preserve
      * whatever was in the block header (e.g. when passing through already-compressed data) */
     char comp_field[ASDF_BLOCK_COMPRESSION_FIELD_SIZE] = {0};
-    if (compressor != NULL)
+    if (compressor != NULL && !block->data_is_compressed)
         memcpy(comp_field, compressor->compression, ASDF_BLOCK_COMPRESSION_FIELD_SIZE);
     else
         memcpy(comp_field, block->header.compression, ASDF_BLOCK_COMPRESSION_FIELD_SIZE);
     WRITE_CHECK(stream, comp_field, ASDF_BLOCK_COMPRESSION_FIELD_SIZE);
 
-    // allocated_size -- generally same as used_size, but could be useful to add
-    // an option to reserve more size for a block to grow
-    uint64_t alloc_size = htobe64(write_size);
-    WRITE_CHECK(stream, &alloc_size, sizeof(uint64_t));
-    // used_size -- compressed size when compressed, otherwise same as data_size
-    WRITE_CHECK(stream, &alloc_size, sizeof(uint64_t));
-    // data_size -- always the uncompressed size
-    uint64_t data_size = htobe64(block->header.data_size);
-    WRITE_CHECK(stream, &data_size, sizeof(uint64_t));
+    /* used_size is the stored (post-compression) size; allocated_size may be
+     * larger to reserve room for the block to grow in place. 0 (or any value
+     * smaller than used_size) means "same as used_size". */
+    uint64_t used = write_size;
+    uint64_t allocated = block->header.allocated_size;
+    if (allocated < used)
+        allocated = used;
+
+    uint64_t allocated_be = htobe64(allocated);
+    WRITE_CHECK(stream, &allocated_be, sizeof(uint64_t));
+    uint64_t used_be = htobe64(used);
+    WRITE_CHECK(stream, &used_be, sizeof(uint64_t));
+    /* data_size--always the uncompressed size */
+    uint64_t data_size_be = htobe64(block->header.data_size);
+    WRITE_CHECK(stream, &data_size_be, sizeof(uint64_t));
 
 #ifdef HAVE_MD5
     if (checksum) {
@@ -209,14 +231,22 @@ bool asdf_block_info_write(asdf_stream_t *stream, asdf_block_info_t *block, bool
     block->data_pos = asdf_stream_tell(stream);
     WRITE_CHECK(stream, write_data, write_size);
 
-cleanup:
-    free(comp_buf);
-    if (block->owns_write_data) {
-        free((void *)block->write_data);
-        block->write_data = NULL;
-        block->write_data_size = 0;
-        block->owns_write_data = false;
+    /* Pad with zeros up to allocated_size when the block reserves extra space */
+    if (allocated > used) {
+        static const uint8_t zeros[512] = {0};
+        uint64_t remaining = allocated - used;
+
+        while (remaining > 0) {
+            size_t chunk = remaining > sizeof(zeros) ? sizeof(zeros) : (size_t)remaining;
+            WRITE_CHECK(stream, zeros, chunk);
+            remaining -= chunk;
+        }
     }
+
+cleanup:
+    /* comp_buf is transient; block->data (if owned) persists and is freed on
+     * file teardown via asdf_block_info_deinit */
+    free(comp_buf);
     return ret;
 }
 

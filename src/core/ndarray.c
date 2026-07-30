@@ -1213,23 +1213,38 @@ static asdf_value_err_t asdf_ndarray_serialize_block(
 
     asdf_value_err_t err = ASDF_VALUE_OK;
     uint64_t nbytes = asdf_ndarray_nbytes(ndarray);
-    ssize_t block_idx = asdf_block_append(file, ndarray->internal->data, nbytes);
 
-    if (block_idx < 0) {
-        ASDF_ERROR_OOM(file);
+    asdf_block_t *block = asdf_block_create(file);
+
+    if (!block) {
         err = ASDF_VALUE_ERR_OOM;
         goto cleanup;
     }
 
-    if (ndarray->internal && ndarray->internal->write_compression) {
-        asdf_block_info_t *info = asdf_block_info_vec_at_mut(&file->blocks, (isize)block_idx);
-        const char *compression = ndarray->internal->write_compression;
+    /* The ndarray owns its data buffer for its lifetime; the block borrows it */
+    if (asdf_block_data_set(block, ndarray->internal->data, nbytes) != 0) {
+        err = ASDF_VALUE_ERR_EMIT_FAILURE;
+        asdf_block_destroy(block);
+        goto cleanup;
+    }
 
-        if (asdf_block_info_compression_set(file, info, compression) != 0) {
+    if (ndarray->internal && ndarray->internal->write_compression) {
+        if (asdf_block_compression_set(block, ndarray->internal->write_compression) != 0) {
             err = ASDF_VALUE_ERR_EMIT_FAILURE;
+            asdf_block_destroy(block);
             goto cleanup;
         }
     }
+
+    if (!asdf_block_append(file, block)) {
+        err = ASDF_VALUE_ERR_OOM;
+        asdf_block_destroy(block);
+        goto cleanup;
+    }
+
+    size_t block_idx = block->info.index;
+    /* The file now owns the appended block; release the (view) handle */
+    asdf_block_close(block);
 
     err = asdf_mapping_set_int64(ndarray_map, "source", (int64_t)block_idx);
 cleanup:

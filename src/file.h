@@ -122,6 +122,15 @@ typedef struct asdf_block {
 
     const char *compression;
     asdf_block_comp_state_t *comp_state;
+    /**
+     * True for a handle created by `asdf_block_create` that has not yet been
+     * appended to a file: such a handle owns its `info` (including `info.data`
+     * when `info.data_owned`) and is torn down by `asdf_block_destroy`.  A
+     * handle from `asdf_block_open` (a view onto a block the file owns) or one
+     * that has been appended has this cleared and is torn down by
+     * `asdf_block_close`.
+     */
+    bool detached;
 } asdf_block_t;
 
 

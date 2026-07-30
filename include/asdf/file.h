@@ -996,21 +996,117 @@ ASDF_EXPORT void asdf_block_close(asdf_block_t *block);
 
 
 /**
- * Append a new block to the file, given the data and size of the block
+ * Create a new, empty binary block not yet attached to any file
  *
- * Currently requires the file to be open in write mode.
+ * The returned handle is *detached*: it owns its own state (including any data
+ * buffer set on it) and is not part of ``file``'s block list until passed to
+ * `asdf_block_append`.  Configure it with `asdf_block_data_alloc` /
+ * `asdf_block_data_set` / `asdf_block_data_set_compressed`,
+ * `asdf_block_compression_set` and `asdf_block_allocated_size_set`, then either
+ * `asdf_block_append` it (ownership transfers to the file) or discard it with
+ * `asdf_block_destroy`.  Requires the file to be open for writing.
  *
- * The same data can be duplicated to multiple blocks simply by repeated calls
- * to this function; there is not currently any tracking as to whether the same
- * data array already has an associated block in the file.
- *
- * :param file: The `asdf_file_t *` handle
- * :param data: The data array to write to the block (uncompressed)
- * :param size: The uncompressed size of the block data
- * :return: The index of the appended block, or a negative value if appending
- *   the block failed
+ * :param file: The `asdf_file_t *` the block will eventually be written to.
+ * :return: A new `asdf_block_t *` handle, or ``NULL`` on failure.
  */
-ASDF_EXPORT ssize_t asdf_block_append(asdf_file_t *file, const void *data, size_t size);
+ASDF_EXPORT asdf_block_t *asdf_block_create(asdf_file_t *file);
+
+/**
+ * Destroy a block created by `asdf_block_create` that was never appended.
+ *
+ * Frees the handle and any data buffer it owns.  Do not use this on a handle
+ * returned by `asdf_block_open`, or one that has already been appended to a
+ * file -- use `asdf_block_close` for those (the file owns an appended block's
+ * data).
+ *
+ * :param block: The detached `asdf_block_t *` handle.
+ */
+ASDF_EXPORT void asdf_block_destroy(asdf_block_t *block);
+
+/**
+ * Allocate a writable data buffer of ``size`` bytes owned by the block.
+ *
+ * The caller fills the returned buffer with the block's uncompressed data.
+ * The block owns the buffer; it is freed when the file is closed (for an
+ * appended block) or by `asdf_block_destroy` (for a detached one).  If a
+ * compressor has been set with `asdf_block_compression_set`, the data is
+ * compressed when the file is written.
+ *
+ * :param block: The `asdf_block_t *` handle.
+ * :param size: The uncompressed size in bytes to allocate.
+ * :return: A writable pointer to the buffer, or ``NULL`` on failure.
+ */
+ASDF_EXPORT void *asdf_block_data_alloc(asdf_block_t *block, size_t size);
+
+/**
+ * Set the block's uncompressed data to a caller-owned buffer.
+ *
+ * The buffer is *borrowed*: it is not copied and must remain valid until the
+ * file is written.  If a compressor has been set with
+ * `asdf_block_compression_set`, the data is compressed when the file is
+ * written.
+ *
+ * :param block: The `asdf_block_t *` handle.
+ * :param data: The uncompressed data buffer (borrowed).
+ * :param size: The size of ``data`` in bytes.
+ * :return: ``0`` on success, non-zero on failure.
+ */
+ASDF_EXPORT int asdf_block_data_set(asdf_block_t *block, const void *data, size_t size);
+
+/**
+ * Set the block's data to already-compressed bytes, emitted verbatim.
+ *
+ * Unlike `asdf_block_data_set` (which stores uncompressed data that may be
+ * compressed on write), this stores a private copy of already-compressed bytes
+ * and writes them as-is with the given ``compression`` field, so a compressed
+ * block can be reproduced byte-for-byte without decompressing.  This is a
+ * corner case (e.g. copying a compressed block); most callers want
+ * `asdf_block_data_set` or `asdf_block_data_alloc`.
+ *
+ * :param block: The `asdf_block_t *` handle.
+ * :param data: The already-compressed bytes (copied).
+ * :param size: The number of compressed bytes in ``data``.
+ * :param data_size: The uncompressed size recorded in the block header.
+ * :param compression: The (up to 4-character) compression name, or
+ *   ``NULL``/``""`` for uncompressed.
+ * :return: ``0`` on success, non-zero on failure.
+ */
+ASDF_EXPORT int asdf_block_data_set_compressed(
+    asdf_block_t *block,
+    const void *data,
+    size_t size,
+    uint64_t data_size,
+    const char *compression);
+
+/**
+ * Set the allocated (reserved) size of the block in the file.
+ *
+ * ``allocated_size`` may be larger than the block's used size to reserve room
+ * for the data to grow in place without moving later parts of the file.  A
+ * value of ``0`` (the default) means "same as the used size".
+ *
+ * :param block: The `asdf_block_t *` handle.
+ * :param allocated_size: The number of bytes to reserve, or ``0`` for auto.
+ * :return: ``0`` on success, non-zero on failure.
+ */
+ASDF_EXPORT int asdf_block_allocated_size_set(asdf_block_t *block, uint64_t allocated_size);
+
+/**
+ * Append a block to the file's list of binary blocks.
+ *
+ * ``block`` must be a detached handle from `asdf_block_create`.  Ownership of
+ * the block (and any data buffer it owns) transfers to ``file``; the handle
+ * becomes a view onto the appended block and should subsequently be released
+ * with `asdf_block_close`.  Requires the file to be open for writing.
+ *
+ * The same data can be written to multiple blocks by creating and appending
+ * multiple blocks; there is no deduplication.
+ *
+ * :param file: The `asdf_file_t *` handle.
+ * :param block: A detached `asdf_block_t *` from `asdf_block_create`.
+ * :return: The now-appended ``block`` handle, or ``NULL`` on failure.
+ */
+ASDF_EXPORT asdf_block_t *asdf_block_append(asdf_file_t *file, asdf_block_t *block);
 
 
 /**
