@@ -343,7 +343,9 @@ cleanup:
 
 int asdf_block_info_compression_set(
     asdf_file_t *file, asdf_block_info_t *block_info, const char *compression) {
-    if (UNLIKELY(!file || !block_info))
+    /* file may be NULL for a not-yet-appended (detatched) block; the compressor
+     * registry is global and asdf_compressor_get only uses file for logging */
+    if (UNLIKELY(!block_info))
         return -1;
 
     const asdf_compressor_t *comp = asdf_compressor_get(file, compression);
@@ -465,15 +467,7 @@ asdf_block_t *asdf_block_open(asdf_file_t *file, size_t index) {
 }
 
 
-asdf_block_t *asdf_block_create(asdf_file_t *file, const void *data, size_t size) {
-    if (!file)
-        return NULL;
-
-    if (file->mode == ASDF_FILE_MODE_READ_ONLY) {
-        ASDF_ERROR_COMMON(file, ASDF_ERR_STREAM_READ_ONLY);
-        return NULL;
-    }
-
+asdf_block_t *asdf_file_block_create(asdf_file_t *file, const void *data, size_t size) {
     asdf_block_t *block = calloc(1, sizeof(asdf_block_t));
 
     if (!block) {
@@ -481,6 +475,10 @@ asdf_block_t *asdf_block_create(asdf_file_t *file, const void *data, size_t size
         return NULL;
     }
 
+    /* A freshly created block is detached (not part of any file's block list)
+     * until asdf_block_append, which is also where write mode is enforced.
+     * ``file`` is optional: it only provides an error/log context here, so the
+     * public asdf_block_create passes NULL. */
     block->file = file;
     block->detached = true;
     block->info.index = SIZE_MAX; /* not yet appended */
@@ -501,6 +499,11 @@ asdf_block_t *asdf_block_create(asdf_file_t *file, const void *data, size_t size
     }
 
     return block;
+}
+
+
+asdf_block_t *asdf_block_create(const void *data, size_t size) {
+    return asdf_file_block_create(NULL, data, size);
 }
 
 
@@ -719,8 +722,9 @@ const void *asdf_block_data_impl(asdf_block_t *block, size_t *size, bool decompr
         return block->info.data;
     }
 
-    /* No in-memory data and no backing file region: the block has no data */
-    asdf_parser_t *parser = block->file->parser;
+    /* No in-memory data and no backing file region (e.g. a detatched block, or
+     * one created empty): the block has no data */
+    asdf_parser_t *parser = block->file ? block->file->parser : NULL;
 
     if (block->info.data_pos < 0 || !parser || !parser->stream) {
         if (size)

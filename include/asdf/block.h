@@ -67,11 +67,12 @@ ASDF_EXPORT void asdf_block_close(asdf_block_t *block);
 
 
 /**
- * Create a new binary block not yet attached to any file
+ * Create a new binary block not attached to any file
  *
- * The returned handle is *detached*: it owns its own state (including any data
- * buffer) and is not part of ``file``'s block list until passed to
- * `asdf_block_append`.  Requires the file to be open for writing.
+ * The returned handle is *detached* and not associated with any file: it owns
+ * its own state (including any data buffer) and only becomes part of a file's
+ * block list, and bound to that file, when passed to `asdf_block_append` (which
+ * also enforces that the file is open for writing).
  *
  * ``data``/``size`` set the block's initial (uncompressed) data:
  *
@@ -87,13 +88,12 @@ ASDF_EXPORT void asdf_block_close(asdf_block_t *block);
  * `asdf_block_allocated_size_set`, then either `asdf_block_append` it (ownership
  * transfers to the file) or discard it with `asdf_block_destroy`.
  *
- * :param file: The `asdf_file_t *` the block will eventually be written to.
  * :param data: Initial (uncompressed) data to borrow, or ``NULL``.
  * :param size: Size in bytes of ``data``, or the buffer size to allocate when
  *   ``data`` is ``NULL``.
  * :return: A new `asdf_block_t *` handle, or ``NULL`` on failure.
  */
-ASDF_EXPORT asdf_block_t *asdf_block_create(asdf_file_t *file, const void *data, size_t size);
+ASDF_EXPORT asdf_block_t *asdf_block_create(const void *data, size_t size);
 
 /**
  * Destroy a block created by `asdf_block_create` that was never appended

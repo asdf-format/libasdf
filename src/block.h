@@ -84,6 +84,7 @@ typedef struct asdf_block_header {
 // Forward-declarations
 typedef struct asdf_compressor asdf_compressor_t;
 typedef struct asdf_file asdf_file_t;
+typedef struct asdf_block asdf_block_t;
 
 
 typedef struct asdf_block_info {
@@ -138,6 +139,14 @@ ASDF_LOCAL bool asdf_block_info_write(
     asdf_file_t *file, asdf_block_info_t *block, asdf_stream_t *out, bool checksum);
 ASDF_LOCAL int asdf_block_info_compression_set(
     asdf_file_t *file, asdf_block_info_t *block_info, const char *compression);
+
+/**
+ * Internal form of `asdf_block_create` that binds the block to ``file`` (for an
+ * error/log context) up front.  ``file`` may be ``NULL`` (the public
+ * `asdf_block_create` passes ``NULL``).  The block is still detached and only
+ * added to the file's block list by `asdf_block_append`.
+ */
+ASDF_LOCAL asdf_block_t *asdf_file_block_create(asdf_file_t *file, const void *data, size_t size);
 
 
 #ifdef HAVE_MD5

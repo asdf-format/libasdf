@@ -1215,7 +1215,7 @@ static asdf_value_err_t asdf_ndarray_serialize_block(
     uint64_t nbytes = asdf_ndarray_nbytes(ndarray);
 
     /* The ndarray owns its data buffer for its lifetime; the block borrows it */
-    asdf_block_t *block = asdf_block_create(file, ndarray->internal->data, nbytes);
+    asdf_block_t *block = asdf_block_create(ndarray->internal->data, nbytes);
 
     if (!block) {
         err = ASDF_VALUE_ERR_OOM;
