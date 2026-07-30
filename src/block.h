@@ -108,8 +108,10 @@ typedef struct asdf_block_info {
      * equals ``header.data_size``).
      */
     size_t data_size;
-    /** ``data`` is heap-owned and freed on file teardown when ``true`` */
+    /** ``data`` is owned and freed on file teardown when ``true`` */
     bool data_owned;
+    /** owned ``data`` was allocated with ``mmap`` (munmap it) vs ``malloc`` */
+    bool data_mmapped;
     /** ``data`` holds already-compressed bytes to emit verbatim when ``true`` */
     bool data_is_compressed;
     /** Optional output compressor applied to uncompressed ``data`` on write */
@@ -133,7 +135,7 @@ ASDF_LOCAL void asdf_block_info_init(
 ASDF_LOCAL void asdf_block_info_deinit(asdf_block_info_t *block_info);
 ASDF_LOCAL bool asdf_block_info_read(asdf_stream_t *stream, asdf_block_info_t *out_block);
 ASDF_LOCAL bool asdf_block_info_write(
-    asdf_stream_t *stream, asdf_block_info_t *block, bool checksum);
+    asdf_file_t *file, asdf_block_info_t *block, asdf_stream_t *out, bool checksum);
 ASDF_LOCAL int asdf_block_info_compression_set(
     asdf_file_t *file, asdf_block_info_t *block_info, const char *compression);
 

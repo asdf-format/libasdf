@@ -1214,17 +1214,11 @@ static asdf_value_err_t asdf_ndarray_serialize_block(
     asdf_value_err_t err = ASDF_VALUE_OK;
     uint64_t nbytes = asdf_ndarray_nbytes(ndarray);
 
-    asdf_block_t *block = asdf_block_create(file);
+    /* The ndarray owns its data buffer for its lifetime; the block borrows it */
+    asdf_block_t *block = asdf_block_create(file, ndarray->internal->data, nbytes);
 
     if (!block) {
         err = ASDF_VALUE_ERR_OOM;
-        goto cleanup;
-    }
-
-    /* The ndarray owns its data buffer for its lifetime; the block borrows it */
-    if (asdf_block_data_set(block, ndarray->internal->data, nbytes) != 0) {
-        err = ASDF_VALUE_ERR_EMIT_FAILURE;
-        asdf_block_destroy(block);
         goto cleanup;
     }
 

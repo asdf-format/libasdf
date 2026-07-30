@@ -439,12 +439,12 @@ MU_TEST(test_asdf_block_checksum_verify) {
  * the new block's index (or -1 on failure) -- a thin stand-in for the old
  * append_data_block(file, data, size) used by these tests. */
 static ssize_t append_data_block(asdf_file_t *file, const void *data, size_t size) {
-    asdf_block_t *block = asdf_block_create(file);
+    asdf_block_t *block = asdf_block_create(file, data, size);
 
     if (!block)
         return -1;
 
-    if (asdf_block_data_set(block, data, size) != 0 || !asdf_block_append(file, block)) {
+    if (!asdf_block_append(file, block)) {
         asdf_block_destroy(block);
         return -1;
     }

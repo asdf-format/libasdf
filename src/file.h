@@ -95,6 +95,9 @@ typedef struct asdf_file {
 /** Internal helper to get the `struct fy_document` for the tree, if any */
 ASDF_LOCAL struct fy_document *asdf_file_tree_document(asdf_file_t *file);
 
+/** Internal helper to lazily create/return the file's parser (NULL if none) */
+ASDF_LOCAL asdf_parser_t *asdf_file_parser(asdf_file_t *file);
+
 /** Internal helper to register a cleanup callback to run after each write */
 ASDF_LOCAL void asdf_file_write_cleanup_add(
     asdf_file_t *file, void (*callback)(void *), void *data);

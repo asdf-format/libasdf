@@ -45,9 +45,8 @@ MU_TEST(block_create_set_append) {
     const char *data = "block content assigned with asdf_block_data_set";
     size_t len = strlen(data);
 
-    asdf_block_t *block = asdf_block_create(file);
+    asdf_block_t *block = asdf_block_create(file, data, len);
     assert_not_null(block);
-    assert_int(asdf_block_data_set(block, data, len), ==, 0);
     assert_not_null(asdf_block_append(file, block));
     assert_int(asdf_block_count(file), ==, 1);
     asdf_block_close(block);
@@ -79,7 +78,7 @@ MU_TEST(block_data_alloc_roundtrip) {
     assert_not_null(file);
 
     size_t n = 256;
-    asdf_block_t *block = asdf_block_create(file);
+    asdf_block_t *block = asdf_block_create(file, NULL, n);
     assert_not_null(block);
     uint8_t *data = asdf_block_data_alloc(block, n);
     assert_not_null(data);
@@ -118,7 +117,7 @@ MU_TEST(block_create_destroy) {
     asdf_file_t *file = asdf_open_ex(NULL, 0, NULL);
     assert_not_null(file);
 
-    asdf_block_t *block = asdf_block_create(file);
+    asdf_block_t *block = asdf_block_create(file, NULL, 128);
     assert_not_null(block);
     uint8_t *data = asdf_block_data_alloc(block, 128);
     assert_not_null(data);
@@ -126,9 +125,12 @@ MU_TEST(block_create_destroy) {
     asdf_block_destroy(block); /* never appended */
     assert_int(asdf_block_count(file), ==, 0);
 
-    /* a bare create/destroy with no data */
-    asdf_block_t *empty = asdf_block_create(file);
+    /* a bare create/destroy with no data; asdf_block_data returns NULL */
+    asdf_block_t *empty = asdf_block_create(file, NULL, 0);
     assert_not_null(empty);
+    size_t esize = 123;
+    assert_null(asdf_block_data(empty, &esize));
+    assert_int(esize, ==, 0);
     asdf_block_destroy(empty);
 
     asdf_close(file);
@@ -142,7 +144,7 @@ MU_TEST(block_compress_on_write) {
     assert_not_null(file);
 
     size_t n = 4096;
-    asdf_block_t *block = asdf_block_create(file);
+    asdf_block_t *block = asdf_block_create(file, NULL, n);
     assert_not_null(block);
     uint8_t *data = asdf_block_data_alloc(block, n);
     assert_not_null(data);
@@ -184,7 +186,7 @@ MU_TEST(block_data_set_compressed) {
     /* First produce a compressed block and capture its raw (compressed) bytes */
     asdf_file_t *file = asdf_open_ex(NULL, 0, (asdf_config_t *)&block_only_config);
     assert_not_null(file);
-    asdf_block_t *block = asdf_block_create(file);
+    asdf_block_t *block = asdf_block_create(file, NULL, n);
     assert_not_null(block);
     uint8_t *data = asdf_block_data_alloc(block, n);
     assert_not_null(data);
@@ -219,7 +221,7 @@ MU_TEST(block_data_set_compressed) {
     /* Build a new file with a verbatim compressed block from those raw bytes */
     asdf_file_t *file2 = asdf_open_ex(NULL, 0, (asdf_config_t *)&block_only_config);
     assert_not_null(file2);
-    asdf_block_t *block2 = asdf_block_create(file2);
+    asdf_block_t *block2 = asdf_block_create(file2, NULL, 0);
     assert_not_null(block2);
     assert_int(asdf_block_data_set_compressed(block2, rawcopy, craw, n, "zlib"), ==, 0);
     assert_not_null(asdf_block_append(file2, block2));
