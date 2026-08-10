@@ -981,10 +981,11 @@ MU_TEST(ndarray_array_storage_override) {
 }
 
 
-/* Regression test for the bug where asdf_ndarray_data_alloc_temp leaked the
+/* Regression test for the bug where allocating a buffer leaked the
  * asdf_ndarray_internal_t created by a prior asdf_ndarray_storage_set call
- * (and silently dropped the array_storage setting). */
-MU_TEST(ndarray_data_alloc_temp_storage_set_ordering) {
+ * (and silently dropped the array_storage setting): the natural authoring
+ * order of storage_set() before data_alloc() must preserve both. */
+MU_TEST(ndarray_data_alloc_storage_set_ordering) {
     uint64_t shape[1] = {4};
     asdf_ndarray_t nd = {
         .datatype = {.type = ASDF_DATATYPE_UINT8, .size = 1},
@@ -996,11 +997,11 @@ MU_TEST(ndarray_data_alloc_temp_storage_set_ordering) {
     asdf_file_t *file = asdf_open(NULL);
     assert_not_null(file);
 
-    /* Call storage_set BEFORE data_alloc_temp -- the natural authoring order.
-     * Prior to the fix, data_alloc_temp would leak the internal created here
-     * and discard the array_storage setting. */
+    /* Call storage_set BEFORE data_alloc -- the natural authoring order.  The
+     * allocation must reuse the internal created here rather than leaking it
+     * and discarding the array_storage setting. */
     asdf_ndarray_storage_set(&nd, ASDF_ARRAY_STORAGE_INLINE);
-    uint8_t *data = asdf_ndarray_data_alloc_temp(file, &nd);
+    uint8_t *data = asdf_ndarray_data_alloc(&nd);
     assert_not_null(data);
     for (int idx = 0; idx < 4; idx++)
         data[idx] = (uint8_t)(idx + 1);
@@ -1013,6 +1014,7 @@ MU_TEST(ndarray_data_alloc_temp_storage_set_ordering) {
     assert_int(asdf_set_value(file, "arr", val), ==, ASDF_VALUE_OK);
     assert_int(asdf_write_to(file, out_path), ==, 0);
     asdf_close(file);
+    asdf_ndarray_data_dealloc(&nd);
 
     file = asdf_open(out_path, "r");
     assert_not_null(file);
@@ -1113,7 +1115,7 @@ MU_TEST_SUITE(
     MU_RUN_TEST(ndarray_inline_warning_thresh),
     MU_RUN_TEST(ndarray_array_storage_override, ndarray_array_storage_params),
     MU_RUN_TEST(heap_use_after_free_issue_63),
-    MU_RUN_TEST(ndarray_data_alloc_temp_storage_set_ordering),
+    MU_RUN_TEST(ndarray_data_alloc_storage_set_ordering),
     MU_RUN_TEST(ndarray_read_at)
 );
 

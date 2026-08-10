@@ -328,12 +328,6 @@ with `asdf_ndarray_data_dealloc` (safe to call after `asdf_close`):
    asdf_close(file);
    asdf_ndarray_data_dealloc(&nd);
 
-.. note::
-
-   When building an ndarray *inside* an extension's serialize callback, use
-   `asdf_ndarray_data_alloc_temp` instead, its buffer is freed automatically
-   once the write completes.
-
 See :ref:`writing` for the surrounding file-writing workflow.
 
 

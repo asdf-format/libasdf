@@ -93,13 +93,6 @@ After the file has been written you should release the buffer:
 
    asdf_ndarray_data_dealloc(&nd);
 
-.. note::
-
-   `asdf_ndarray_data_alloc` is appropriate when you build the ndarray *before*
-   the write call.  If you are writing an ndarray inside a serialization
-   callback you should use `asdf_ndarray_data_alloc_temp` instead: the
-   allocated memory is freed automatically once the write finishes.
-
 
 Writing the file
 ----------------

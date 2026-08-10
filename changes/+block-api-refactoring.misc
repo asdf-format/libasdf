@@ -7,3 +7,8 @@ Blocks, after all, are the basic primitive for binary data (with no structure im
 ndarray just builds on top of them (except in the case of ndarrays with inline data).
 The block-level API is not yet fully documented for end-users, but is worth knowing
 it exists.
+
+The managment of data associated with ndarrays is rebuilt on top of the
+new block-management primitives; even ndarrays with inline data manage this
+as a "logical block" with the final serialization format determined at write
+time.

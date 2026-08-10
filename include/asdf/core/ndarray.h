@@ -297,22 +297,6 @@ ASDF_EXPORT void *asdf_ndarray_data_alloc(asdf_ndarray_t *ndarray);
 
 
 /**
- * Allocate a temporary data buffer for an ndarray to be written to a file,
- * with automatic cleanup after the write completes.
- *
- * Like `asdf_ndarray_data_alloc` but the allocated memory is freed
- * automatically after `asdf_write_to` (or `asdf_close`) is called.
- * Extension authors should use this instead of `asdf_ndarray_data_alloc`
- * when building ndarrays inside a serialize callback.
- *
- * :param file: The `asdf_file_t *` to register the cleanup with
- * :param ndarray: An `asdf_ndarray_t *` whose shape and datatype are already set
- * :return: A `void *` to the zero-initialized buffer, or NULL on OOM
- */
-ASDF_EXPORT void *asdf_ndarray_data_alloc_temp(asdf_file_t *file, asdf_ndarray_t *ndarray);
-
-
-/**
  * Free ndarray data allocated with `asdf_ndarray_data_alloc`
  *
  * If the ndarray never had data allocated this is a no-op but does produce
