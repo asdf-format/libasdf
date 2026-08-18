@@ -1506,6 +1506,22 @@ void *asdf_ndarray_data_alloc(asdf_ndarray_t *ndarray) {
 }
 
 
+asdf_ndarray_err_t asdf_ndarray_data_set(asdf_ndarray_t *ndarray, const void *src) {
+    if (UNLIKELY(!ndarray || !src))
+        return ASDF_NDARRAY_ERR_INVAL;
+
+    uint64_t nbytes = asdf_ndarray_nbytes(ndarray);
+    void *dst = asdf_ndarray_data_alloc(ndarray);
+
+    if (!dst)
+        /* A zero-size array legitimately allocates no buffer; nothing to copy */
+        return nbytes == 0 ? ASDF_NDARRAY_OK : ASDF_NDARRAY_ERR_OOM;
+
+    memcpy(dst, src, (size_t)nbytes);
+    return ASDF_NDARRAY_OK;
+}
+
+
 void asdf_ndarray_data_dealloc(asdf_ndarray_t *ndarray) {
     if (UNLIKELY(!ndarray))
         return;

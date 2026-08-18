@@ -308,6 +308,26 @@ ASDF_EXPORT void asdf_ndarray_data_dealloc(asdf_ndarray_t *ndarray);
 
 
 /**
+ * Allocate the ndarray's data buffer and copy its contents from a source buffer
+ *
+ * A convenience over `asdf_ndarray_data_alloc` for the common case of building
+ * an ndarray whose data you already have: it allocates a buffer sized for the
+ * array's shape and datatype (exactly as `asdf_ndarray_data_alloc`) and copies
+ * `asdf_ndarray_nbytes` bytes into it from ``src``.  This computes the byte
+ * count for you, avoiding error-prone manual size arithmetic.
+ *
+ * The caller is responsible for ensuring ``src`` points to at least
+ * `asdf_ndarray_nbytes` bytes; a smaller source buffer results in an over-read.
+ *
+ * :param ndarray: An `asdf_ndarray_t *` whose shape and datatype are set
+ * :param src: The source buffer to copy the array data from
+ * :return: `ASDF_NDARRAY_OK` on success, `ASDF_NDARRAY_ERR_INVAL` if an argument
+ *   is ``NULL``, or `ASDF_NDARRAY_ERR_OOM` if the buffer could not be allocated
+ */
+ASDF_EXPORT asdf_ndarray_err_t asdf_ndarray_data_set(asdf_ndarray_t *ndarray, const void *src);
+
+
+/**
  * .. _ndarray-storage:
  *
  * Storage and compression
