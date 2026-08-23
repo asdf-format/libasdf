@@ -1506,7 +1506,7 @@ void *asdf_ndarray_data_alloc(asdf_ndarray_t *ndarray) {
 }
 
 
-asdf_ndarray_err_t asdf_ndarray_data_set(asdf_ndarray_t *ndarray, const void *src) {
+asdf_ndarray_err_t asdf_ndarray_data_copy(asdf_ndarray_t *ndarray, const void *src) {
     if (UNLIKELY(!ndarray || !src))
         return ASDF_NDARRAY_ERR_INVAL;
 

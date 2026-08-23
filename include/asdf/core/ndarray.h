@@ -324,7 +324,7 @@ ASDF_EXPORT void asdf_ndarray_data_dealloc(asdf_ndarray_t *ndarray);
  * :return: `ASDF_NDARRAY_OK` on success, `ASDF_NDARRAY_ERR_INVAL` if an argument
  *   is ``NULL``, or `ASDF_NDARRAY_ERR_OOM` if the buffer could not be allocated
  */
-ASDF_EXPORT asdf_ndarray_err_t asdf_ndarray_data_set(asdf_ndarray_t *ndarray, const void *src);
+ASDF_EXPORT asdf_ndarray_err_t asdf_ndarray_data_copy(asdf_ndarray_t *ndarray, const void *src);
 
 
 /**
