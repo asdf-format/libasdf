@@ -1503,13 +1503,16 @@ static asdf_value_t *asdf_ndarray_serialize(
             "no extension registered for the datatype tag: %s; the ndarray cannot be "
             "written",
             ASDF_CORE_DATATYPE_TAG);
+        err = ASDF_VALUE_ERR_EMIT_FAILURE;
         goto cleanup;
     }
 
     datatype_val = asdf_value_of_extension_type(file, &ndarray->datatype, datatype_ext);
 
-    if (UNLIKELY(!datatype_val))
+    if (UNLIKELY(!datatype_val)) {
+        err = ASDF_VALUE_ERR_EMIT_FAILURE;
         goto cleanup;
+    }
 
     // Hack to remove the tag from the output; should have a utility in the
     // public API for setting a value's tag as implict, but for now only used
