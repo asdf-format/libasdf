@@ -1,3 +1,62 @@
+libasdf 0.1.0rc2 (2026-08-24)
+=============================
+
+Feature
+-------
+
+- Added ``asdf_ndarray_data_copy`` for copying data into an ndarray's buffer.
+
+  This is a convenience over ``asdf_ndarray_data_alloc`` that both allocates
+  the ndarray's data buffer (sized from its shape and datatype) and copies
+  ``asdf_ndarray_nbytes`` bytes into it from a source buffer.
+- Implemented ``asdf_ndarray_copy``, which makes an independent deep copy of an
+  ndarray.
+
+  The copy duplicates the array's metadata (shape, strides, datatype) and its
+  data: an inline array clones its YAML data, while a block-backed array copies
+  its block into a new block managed for the destination file (preserving
+  compression).  Because the copy is fully independent it may be assigned to a
+  different file than the source and written like any other ndarray.
+
+
+Bugfix
+------
+
+- Fixed call of ``asdf_write_to`` in the case where it is passed as ``FILE *``
+  as the write destination.
+- Fixed small memory leak in `asdf_mapping_pop`.
+
+
+Removal
+-------
+
+- Removed the ``asdf_ndarray_data_alloc_temp`` function.
+
+  This was a workaround intended for use in cases where extension serialization
+  needed to allocate a data buffer for an ndarray; since refactoring the block
+  storage model this is no longer needed.
+
+
+Misc
+----
+
+- Fix some spurious warnings that could occur when compiling/linking the tests.
+- Refactored some of the lower-level block APIs to more directly mirror the
+  ndarray APIs.
+
+  This refactoring also allowed improving previously kludgy block writing code
+  that made needless in-memory copies of the block data in many cases.
+
+  Blocks, after all, are the basic primitive for binary data (with no structure
+  imposed); ndarray just builds on top of them (except in the case of ndarrays
+  with inline data). The block-level API is not yet fully documented for
+  end-users, but is worth knowing it exists.
+
+  The managment of data associated with ndarrays is rebuilt on top of the new
+  block-management primitives; even ndarrays with inline data manage this as a
+  "logical block" with the final serialization format determined at write time.
+
+
 libasdf 0.1.0rc1 (2026-07-28)
 =============================
 

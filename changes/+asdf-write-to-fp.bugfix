@@ -1,2 +1,0 @@
-Fixed call of ``asdf_write_to`` in the case where it is passed as ``FILE *``
-as the write destination.

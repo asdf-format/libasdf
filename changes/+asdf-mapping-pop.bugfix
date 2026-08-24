@@ -1,1 +1,0 @@
-Fixed small memory leak in `asdf_mapping_pop`.
