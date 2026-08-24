@@ -196,6 +196,24 @@ typedef struct asdf_ndarray asdf_ndarray_t;
 
 
 /**
+ * .. c:function:: asdf_value_t *asdf_value_of_ndarray(asdf_file_t *file, const asdf_ndarray_t *ndarray)
+ *
+ *   Create a generic `asdf_value_t *` from an ndarray
+ *
+ *   This serializes ``ndarray`` into a value belonging to ``file`` (as
+ *   `asdf_set_ndarray` does before placing it in the tree), which can then be
+ *   assigned into the tree with `asdf_set_value` or nested inside another value.
+ *   As with `asdf_set_ndarray`, assigning the ndarray this way transfers
+ *   ownership of its data to ``file``.
+ *
+ *   :param file: The `asdf_file_t *` for the file
+ *   :param ndarray: The `asdf_ndarray_t *` to serialize
+ *
+ *   :return: A new `asdf_value_t *`, or ``NULL`` on failure
+ */
+
+
+/**
  * .. c:function:: void asdf_ndarray_destroy(asdf_ndarray_t *ndarray)
  *
  *   Release datastructures and memory allocated for an `asdf_ndarray_t`
