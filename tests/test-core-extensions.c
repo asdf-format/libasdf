@@ -671,6 +671,84 @@ MU_TEST(ndarray_serialize) {
 }
 
 
+/*
+ * Copy a block-backed ndarray into a new file and verify it round-trips.  The
+ * default behavior copies the source binary block into a new block in the
+ * destination file.
+ */
+MU_TEST(ndarray_copy) {
+    const char *src_path = get_reference_file_path("1.6.0/basic.asdf");
+    asdf_file_t *src_file = asdf_open(src_path, "r");
+    assert_not_null(src_file);
+    asdf_ndarray_t *src = NULL;
+    assert_int(asdf_get_ndarray(src_file, "data", &src), ==, ASDF_VALUE_OK);
+    assert_not_null(src);
+
+    const char *dst_path = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
+    asdf_file_t *dst_file = asdf_open(NULL);
+    assert_not_null(dst_file);
+    asdf_ndarray_t *copy = asdf_ndarray_copy(dst_file, src);
+    assert_not_null(copy);
+    assert_ndarray_equal(copy, src);
+    // The copy owns independent shape storage
+    assert_ptr_not_equal(copy->shape, src->shape);
+
+    assert_int(asdf_set_ndarray(dst_file, "data", copy), ==, ASDF_VALUE_OK);
+    assert_int(asdf_write_to(dst_file, dst_path), ==, 0);
+    asdf_ndarray_destroy(copy);
+    asdf_close(dst_file);
+    asdf_ndarray_destroy(src);
+    asdf_close(src_file);
+
+    dst_file = asdf_open(dst_path, "r");
+    assert_not_null(dst_file);
+    asdf_ndarray_t *dst = NULL;
+    assert_int(asdf_get_ndarray(dst_file, "data", &dst), ==, ASDF_VALUE_OK);
+    assert_not_null(dst);
+    assert_int(dst->ndim, ==, 1);
+    assert_int(dst->shape[0], ==, 8);
+    assert_int(dst->datatype.type, ==, ASDF_DATATYPE_INT64);
+    for (uint64_t idx = 0; idx < 8; idx++)
+        assert_int(asdf_ndarray_at(dst, int64_t, idx), ==, (int64_t)idx);
+    asdf_ndarray_destroy(dst);
+    asdf_close(dst_file);
+    return MUNIT_OK;
+}
+
+
+/*
+ * Copy an inline ndarray (whose data has not been materialized into a C array).
+ * The stashed YAML data is cloned so the copy reads the same values.
+ */
+MU_TEST(ndarray_copy_inline) {
+    const char *path = get_fixture_file_path("ndarray-inline.asdf");
+    asdf_file_t *file = asdf_open(path, "r");
+    assert_not_null(file);
+    asdf_ndarray_t *src = NULL;
+    assert_int(asdf_get_ndarray(file, "explicit", &src), ==, ASDF_VALUE_OK);
+    assert_not_null(src);
+
+    asdf_ndarray_t *copy = asdf_ndarray_copy(file, src);
+    assert_not_null(copy);
+    assert_ndarray_equal(copy, src);
+
+    // Both should read the same 3x3 data (0..8 as float64)
+    size_t src_size = 0;
+    size_t copy_size = 0;
+    const void *src_data = asdf_ndarray_data(src, &src_size);
+    const void *copy_data = asdf_ndarray_data(copy, &copy_size);
+    assert_not_null(src_data);
+    assert_not_null(copy_data);
+    assert_size(copy_size, ==, src_size);
+    assert_memory_equal(src_size, copy_data, src_data);
+
+    asdf_ndarray_destroy(copy);
+    asdf_ndarray_destroy(src);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
 MU_TEST(software) {
     const char *path = get_reference_file_path("1.6.0/basic.asdf");
     asdf_file_t *file = asdf_open(path, "r");
@@ -761,6 +839,8 @@ MU_TEST_SUITE(
     MU_RUN_TEST(datatype_copy),
     MU_RUN_TEST(ndarray),
     MU_RUN_TEST(ndarray_serialize),
+    MU_RUN_TEST(ndarray_copy),
+    MU_RUN_TEST(ndarray_copy_inline),
     MU_RUN_TEST(software),
     MU_RUN_TEST(software_serialize),
     MU_RUN_TEST(test_asdf_history_entry_add)

@@ -866,6 +866,142 @@ static void asdf_ndarray_deinit_impl(void *value) {
 }
 
 
+/*
+ * Copy the source ndarray's block data into a fresh detached block owned by the
+ * copy's ``dst_internal``.  The (decompressed) bytes are duplicated so the copy
+ * is fully independent of the source and its file; if the source block was
+ * compressed the copy is re-compressed with the same compressor when written.
+ * The source is not mutated: an already-materialized block is read in place,
+ * otherwise a fresh view is opened on the source file and closed again.
+ */
+static bool asdf_ndarray_copy_block_data(
+    asdf_file_t *file, const asdf_ndarray_t *src, asdf_ndarray_internal_t *dst_internal) {
+    asdf_block_t *src_block = src->internal ? src->internal->block : NULL;
+    bool close_src_block = false;
+
+    if (!src_block) {
+        if (!src->internal || !src->internal->file)
+            return true; /* a dataless ndarray: nothing to copy */
+
+        src_block = asdf_block_open(src->internal->file, src->source);
+
+        if (!src_block)
+            return false;
+
+        close_src_block = true;
+    }
+
+    bool res = false;
+    size_t size = 0;
+    const void *data = asdf_block_data(src_block, &size);
+
+    if (!data && size > 0)
+        goto cleanup;
+
+    asdf_block_t *dst_block = asdf_file_block_create(file, NULL, size);
+
+    if (!dst_block) {
+        ASDF_ERROR_OOM(file);
+        goto cleanup;
+    }
+
+    if (size > 0) {
+        void *buf = asdf_block_data_alloc(dst_block, size);
+
+        if (!buf) {
+            asdf_block_destroy(dst_block);
+            ASDF_ERROR_OOM(file);
+            goto cleanup;
+        }
+
+        memcpy(buf, data, size);
+    }
+
+    /* Preserve compression by re-compressing with the same compressor on
+     * write. */
+    const char *comp = asdf_block_compression(src_block);
+
+    if (comp && *comp && asdf_block_compression_set(dst_block, comp) != 0) {
+        asdf_block_destroy(dst_block);
+        goto cleanup;
+    }
+
+    dst_internal->block = dst_block;
+    res = true;
+cleanup:
+    if (close_src_block)
+        asdf_block_close(src_block);
+
+    return res;
+}
+
+
+/*
+ * Deep-copy method for the ndarray extension (`asdf_ndarray_copy`).  Produces
+ * an independent ndarray owned by the caller: the metadata (shape, strides,
+ * datatype) is duplicated, and the data is copied verbatim: an inline source
+ * clones its YAML sequence, a block source duplicates its block bytes into a
+ * new block managed for ``file``.  The copy can then be assigned to ``file``
+ * (which may differ from the source's file) and written like any other ndarray.
+ */
+static bool asdf_ndarray_copy_impl(asdf_file_t *file, const void *src, void *dst) {
+    const asdf_ndarray_t *ndarray = src;
+    asdf_ndarray_t *copy = dst;
+
+    copy->source = ndarray->source;
+    copy->ndim = ndarray->ndim;
+    copy->byteorder = ndarray->byteorder;
+    copy->offset = ndarray->offset;
+
+    if (ndarray->shape && ndarray->ndim > 0) {
+        copy->shape = malloc(ndarray->ndim * sizeof(*copy->shape));
+
+        if (!copy->shape)
+            goto failure;
+
+        memcpy(copy->shape, ndarray->shape, ndarray->ndim * sizeof(*copy->shape));
+    }
+
+    if (ndarray->strides && ndarray->ndim > 0) {
+        copy->strides = malloc(ndarray->ndim * sizeof(*copy->strides));
+
+        if (!copy->strides)
+            goto failure;
+
+        memcpy(copy->strides, ndarray->strides, ndarray->ndim * sizeof(*copy->strides));
+    }
+
+    if (!asdf_datatype_copy_into(file, &ndarray->datatype, &copy->datatype))
+        goto failure;
+
+    asdf_ndarray_internal_t *internal = asdf_ndarray_internal(copy, true);
+
+    if (!internal)
+        goto failure;
+
+    internal->file = file;
+    internal->array_storage = ndarray->internal ? ndarray->internal->array_storage
+                                                : ASDF_ARRAY_STORAGE_DEFAULT;
+
+    if (ndarray->internal && ndarray->internal->inline_data) {
+        /* Inline source: clone the stashed YAML sequence verbatim */
+        internal->inline_data = (asdf_sequence_t *)asdf_value_copy(
+            &ndarray->internal->inline_data->value);
+
+        if (!internal->inline_data)
+            goto failure;
+    } else if (!asdf_ndarray_copy_block_data(file, ndarray, internal)) {
+        goto failure;
+    }
+
+    return true;
+failure:
+    /* The primary (only?) failure mode here is some form of OOM */
+    ASDF_ERROR_OOM(file);
+    return false;
+}
+
+
 asdf_array_storage_t asdf_ndarray_storage(asdf_ndarray_t *ndarray) {
     if (UNLIKELY(!ndarray))
         return ASDF_ARRAY_STORAGE_INTERNAL;
@@ -1412,7 +1548,7 @@ cleanup:
 static const asdf_extension_vtab_t asdf_ndarray_vtab = {
     .serialize = asdf_ndarray_serialize,
     .deserialize = asdf_ndarray_deserialize,
-    .copy = NULL, /* TODO: copy */
+    .copy = asdf_ndarray_copy_impl,
     .deinit = asdf_ndarray_deinit_impl,
 };
 
