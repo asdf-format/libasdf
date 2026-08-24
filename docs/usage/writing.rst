@@ -78,7 +78,9 @@ and fill it however your application requires:
        data[idx] = (float)idx;
 
 This will allocate a buffer on the heap of the correct size for your ndarray
-given the required datatype and shape specifications.
+given the required datatype and shape specifications.  (When you already have
+the contents in a buffer of your own, `asdf_ndarray_data_copy` allocates the
+buffer and copies your data into it in a single call.)
 
 Then place the ndarray in the file's YAML tree at the path of your choice
 with `asdf_set_ndarray`:
@@ -87,11 +89,9 @@ with `asdf_set_ndarray`:
 
    asdf_set_ndarray(file, "image", &nd);
 
-After the file has been written you should release the buffer:
-
-.. code:: c
-
-   asdf_ndarray_data_dealloc(&nd);
+Assigning the ndarray to the file this way hands ownership of its data to the
+file: the file frees the buffer when it is written and closed, so you do not
+free it yourself.
 
 
 Writing the file
@@ -148,9 +148,6 @@ would:
 .. code:: c
 
    asdf_close(file);
-
-It is safe (and recommended) to call `asdf_ndarray_data_dealloc` *after*
-`asdf_close`.
 
 
 Example
@@ -257,7 +254,6 @@ result to an in-memory buffer.
            fprintf(stderr, "write failed\n");
            free(src_data);
            asdf_ndarray_destroy(cube);
-           asdf_ndarray_data_dealloc(&out_cube);
            asdf_close(out);
            asdf_close(src);
            return 1;
@@ -265,9 +261,9 @@ result to an in-memory buffer.
 
        printf("wrote %zu-byte ASDF file to memory\n", len);
 
+       /* The file owns out_cube's data now; asdf_close frees it */
        free(buf);
        asdf_close(out);
-       asdf_ndarray_data_dealloc(&out_cube);
        free(src_data);
        asdf_ndarray_destroy(cube);
        asdf_close(src);

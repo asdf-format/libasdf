@@ -1254,6 +1254,33 @@ cleanup:
 }
 
 
+/*
+ * Consume an ndarray that was built for writing (it owns a detached data block)
+ * once it has been serialized: its data now lives with the file--appended as
+ * a binary block, or copied inline into the YAML tree--so free the ndarray's
+ * internal bookkeeping and detach it.  This makes the file responsible for the
+ * data's lifetime for as long as the file is open, mirroring how block storage
+ * already transfers the block via asdf_block_append.
+ *
+ * The caller must not use the ndarray afterward; a subsequent
+ * asdf_ndarray_data_dealloc becomes a harmless no-op (its internal is gone).
+ */
+static void asdf_ndarray_serialize_consume(asdf_ndarray_t *ndarray) {
+    asdf_ndarray_internal_t *internal = ndarray->internal;
+
+    if (!internal)
+        return;
+
+    /* If the block was appended it is now owned by the file and this only
+     * releases the handle; a still-detached (inline) block is freed along with
+     * its data buffer, which has already been copied into the YAML. */
+    asdf_block_destroy(internal->block);
+    asdf_sequence_destroy(internal->inline_data);
+    free(internal);
+    ndarray->internal = NULL;
+}
+
+
 static asdf_value_t *asdf_ndarray_serialize(
     asdf_file_t *file,
     // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
@@ -1270,6 +1297,15 @@ static asdf_value_t *asdf_ndarray_serialize(
     const asdf_extension_t *datatype_ext = NULL;
     bool is_inline = false;
     asdf_sequence_t *inline_data = NULL;
+
+    /* Whether to consume this ndarray once serialized: true iff it owns a
+     * detached data block, which only an ndarray built for writing (via
+     * asdf_ndarray_data_alloc) does at this point.  A read-back ndarray has not
+     * materialized its block yet, so its block is NULL here and it is left for
+     * the caller to destroy. */
+    bool consume = ndarray->internal && ndarray->internal->block &&
+                   ndarray->internal->block->detached;
+
     asdf_mapping_t *ndarray_map = asdf_mapping_create(file);
 
     if (UNLIKELY(!ndarray_map)) {
@@ -1355,10 +1391,16 @@ static asdf_value_t *asdf_ndarray_serialize(
         err = asdf_ndarray_serialize_block_data(file, ndarray, ndarray_map);
     }
 cleanup:
-    if (ASDF_IS_ERR(err))
+    if (ASDF_IS_ERR(err)) {
         asdf_mapping_destroy(ndarray_map);
-    else
+    } else {
         value = asdf_value_of_mapping(ndarray_map);
+
+        /* The ndarray was serialized successfully; if it owned its data,
+         * ownership has passed to the file, so consume it. */
+        if (value && consume)
+            asdf_ndarray_serialize_consume((asdf_ndarray_t *)ndarray);
+    }
 
     return value;
 }
@@ -1528,12 +1570,15 @@ void asdf_ndarray_data_dealloc(asdf_ndarray_t *ndarray) {
 
     asdf_ndarray_internal_t *internal = asdf_ndarray_internal(ndarray, false);
 
-    if (UNLIKELY(!internal || !internal->block)) {
+    if (!internal || !internal->block) {
+        /* Nothing to free: either data was never allocated, or the ndarray was
+         * already consumed by serializing it to a file (which takes over the
+         * data's lifetime).  A harmless no-op in either case. */
         asdf_context_t *ctx = asdf_context_get(internal ? internal->file : NULL);
         ASDF_LOG_CTX(
             ctx,
-            ASDF_LOG_WARN,
-            "asdf_ndarray_data_dealloc called without asdf_ndarray_data_alloc on "
+            ASDF_LOG_DEBUG,
+            "asdf_ndarray_data_dealloc: no allocated data to free on "
             "asdf_ndarray_t at 0x%px",
             ndarray);
         return;
