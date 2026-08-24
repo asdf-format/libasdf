@@ -203,6 +203,28 @@ typedef struct asdf_ndarray asdf_ndarray_t;
  *   :param ndarray: The `asdf_ndarray_t *`
  */
 
+
+/**
+ * .. c:function:: asdf_ndarray_t *asdf_ndarray_copy(asdf_file_t *file, const asdf_ndarray_t *src)
+ *
+ *   Make an independent deep copy of an ndarray
+ *
+ *   The copy duplicates ``src``'s metadata (shape, strides, and datatype) and
+ *   its data: an inline array clones its inline data, while a block-backed array
+ *   copies its block into a new block managed for ``file`` (preserving
+ *   compression).  Because the copy is fully independent of ``src`` and its
+ *   file, ``file`` may differ from the source's file, and the returned ndarray
+ *   can be assigned (`asdf_set_ndarray`) and written like any other.
+ *
+ *   The returned `asdf_ndarray_t *` is owned by the caller and must be released
+ *   with `asdf_ndarray_destroy` (unless assigned to a file, which then takes
+ *   ownership of its data).
+ *
+ *   :param file: The `asdf_file_t *` that will manage the copy's data
+ *   :param src: The `asdf_ndarray_t *` to copy
+ *   :return: A newly allocated `asdf_ndarray_t *`, or ``NULL`` on failure
+ */
+
 // clang-format on
 
 ASDF_DECLARE_EXTENSION(ndarray, asdf_ndarray_t);
