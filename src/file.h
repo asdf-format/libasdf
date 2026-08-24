@@ -95,6 +95,9 @@ typedef struct asdf_file {
 /** Internal helper to get the `struct fy_document` for the tree, if any */
 ASDF_LOCAL struct fy_document *asdf_file_tree_document(asdf_file_t *file);
 
+/** Internal helper to lazily create/return the file's parser (NULL if none) */
+ASDF_LOCAL asdf_parser_t *asdf_file_parser(asdf_file_t *file);
+
 /** Internal helper to register a cleanup callback to run after each write */
 ASDF_LOCAL void asdf_file_write_cleanup_add(
     asdf_file_t *file, void (*callback)(void *), void *data);
@@ -122,6 +125,15 @@ typedef struct asdf_block {
 
     const char *compression;
     asdf_block_comp_state_t *comp_state;
+    /**
+     * True for a handle created by `asdf_block_create` that has not yet been
+     * appended to a file: such a handle owns its `info` (including `info.data`
+     * when `info.data_owned`) and is torn down by `asdf_block_destroy`.  A
+     * handle from `asdf_block_open` (a view onto a block the file owns) or one
+     * that has been appended has this cleared and is torn down by
+     * `asdf_block_close`.
+     */
+    bool detached;
 } asdf_block_t;
 
 

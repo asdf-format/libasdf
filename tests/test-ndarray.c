@@ -7,12 +7,157 @@
 #include <string.h>
 
 #include "asdf/core/ndarray.h"
+#include "asdf/core/software.h"
+#include "asdf/extension.h"
+#include "asdf/extension_util.h"
 #include "asdf/file.h"
+#include "asdf/value.h"
 
 #include "compat/numeric.h"
 
 #include "munit.h"
 #include "util.h"
+
+
+/*
+ * A stripped-down "affine"-like transform extension with a single "matrix"
+ * ndarray property, modeled on the affine transform in libasdf-gwcs.  It
+ * exercises the pattern where an extension's serialize callback builds an
+ * ndarray on the stack, allocates its data, and embeds it, without any
+ * explicit data_dealloc, so that ndarray_extension_embedded_ndarray can
+ * verify writing such an extension does not leak the matrix data.
+ */
+typedef struct {
+    double *matrix; /* n x n, row-major */
+    uint32_t n;
+} test_affine_t;
+
+
+static asdf_version_t test_affine_version = {.version = "1.0.0", .minor = 1};
+
+
+static asdf_software_t test_affine_software = {
+    .name = "asdf-tests",
+    .author = "STScI",
+    .homepage = "https://stsci.edu",
+    .version = &test_affine_version};
+
+
+static asdf_value_t *test_affine_serialize(
+    asdf_file_t *file, const void *obj, UNUSED(const void *userdata)) {
+    const test_affine_t *affine = obj;
+
+    if (!affine->matrix || affine->n == 0)
+        return NULL;
+
+    asdf_mapping_t *map = asdf_mapping_create(file);
+
+    if (!map)
+        return NULL;
+
+    uint64_t shape[2] = {affine->n, affine->n};
+    asdf_ndarray_t mat = {
+        .ndim = 2,
+        .shape = shape,
+        .datatype = {.type = ASDF_DATATYPE_FLOAT64},
+        .byteorder = ASDF_BYTEORDER_LITTLE,
+    };
+    asdf_ndarray_storage_set(&mat, ASDF_ARRAY_STORAGE_INLINE);
+
+    if (asdf_ndarray_data_copy(&mat, affine->matrix) != ASDF_NDARRAY_OK)
+        goto err;
+
+    /* Assigning the ndarray transfers its data to the file; no data_dealloc */
+    asdf_value_t *mat_val = asdf_value_of_ndarray(file, &mat);
+
+    if (!mat_val)
+        goto err;
+
+    if (ASDF_IS_ERR(asdf_mapping_set(map, "matrix", mat_val))) {
+        asdf_value_destroy(mat_val);
+        goto err;
+    }
+
+    return asdf_value_of_mapping(map);
+err:
+    asdf_mapping_destroy(map);
+    return NULL;
+}
+
+
+static asdf_value_err_t test_affine_deserialize(
+    asdf_value_t *value, UNUSED(const void *userdata), void **out) {
+    asdf_mapping_t *map = NULL;
+    asdf_ndarray_t *mat_arr = NULL;
+    test_affine_t *affine = NULL;
+    asdf_value_err_t err = ASDF_VALUE_ERR_PARSE_FAILURE;
+
+    if (asdf_value_as_mapping(value, &map) != ASDF_VALUE_OK)
+        goto cleanup;
+
+    err = asdf_get_required_property(
+        map, "matrix", ASDF_VALUE_EXTENSION, ASDF_CORE_NDARRAY_TAG, (void *)&mat_arr);
+
+    if (ASDF_IS_ERR(err))
+        goto cleanup;
+
+    if (mat_arr->ndim != 2 || mat_arr->shape[0] != mat_arr->shape[1]) {
+        err = ASDF_VALUE_ERR_PARSE_FAILURE;
+        goto cleanup;
+    }
+
+    affine = calloc(1, sizeof(test_affine_t));
+
+    if (!affine) {
+        err = ASDF_VALUE_ERR_OOM;
+        goto cleanup;
+    }
+
+    affine->n = (uint32_t)mat_arr->shape[0];
+
+    if (asdf_ndarray_read_all(mat_arr, ASDF_DATATYPE_FLOAT64, (void **)&affine->matrix) !=
+        ASDF_NDARRAY_OK) {
+        free(affine);
+        affine = NULL;
+        err = ASDF_VALUE_ERR_PARSE_FAILURE;
+        goto cleanup;
+    }
+
+    *out = affine;
+    err = ASDF_VALUE_OK;
+cleanup:
+    /* map is a reinterpretation of `value`, owned by the caller; do not destroy */
+    asdf_ndarray_destroy(mat_arr);
+    return err;
+}
+
+
+static void test_affine_deinit_impl(void *value) {
+    test_affine_t *affine = value;
+
+    if (affine) {
+        free(affine->matrix);
+        affine->matrix = NULL;
+    }
+}
+
+
+static const asdf_extension_vtab_t test_affine_vtab = {
+    .serialize = test_affine_serialize,
+    .deserialize = test_affine_deserialize,
+    .deinit = test_affine_deinit_impl,
+};
+
+
+// clang-format off
+ASDF_REGISTER_EXTENSION(
+    test_affine,
+    test_affine_t,
+    &test_affine_software,
+    &test_affine_vtab,
+    NULL,
+    "stsci.edu:asdf/tests/affine-1.0.0")
+// clang-format on
 
 
 /* Read contiguous 1-D "tiles" from arrays of different shapes */
@@ -665,7 +810,7 @@ MU_TEST(ndarray_read_inline_data) {
     asdf_ndarray_destroy(ndarray);
     ndarray = NULL;
 
-    // Test the ndarray with explicit datatype -- this should convert the raw
+    // Test the ndarray with explicit datatype. This should convert the raw
     // values in the inline data that are formatted as ints to doubles
     err = asdf_get_ndarray(file, "explicit", &ndarray);
     assert_int(err, ==, ASDF_VALUE_OK);
@@ -981,10 +1126,11 @@ MU_TEST(ndarray_array_storage_override) {
 }
 
 
-/* Regression test for the bug where asdf_ndarray_data_alloc_temp leaked the
+/* Regression test for the bug where allocating a buffer leaked the
  * asdf_ndarray_internal_t created by a prior asdf_ndarray_storage_set call
- * (and silently dropped the array_storage setting). */
-MU_TEST(ndarray_data_alloc_temp_storage_set_ordering) {
+ * (and silently dropped the array_storage setting): the natural authoring
+ * order of storage_set() before data_alloc() must preserve both. */
+MU_TEST(ndarray_data_alloc_storage_set_ordering) {
     uint64_t shape[1] = {4};
     asdf_ndarray_t nd = {
         .datatype = {.type = ASDF_DATATYPE_UINT8, .size = 1},
@@ -996,11 +1142,11 @@ MU_TEST(ndarray_data_alloc_temp_storage_set_ordering) {
     asdf_file_t *file = asdf_open(NULL);
     assert_not_null(file);
 
-    /* Call storage_set BEFORE data_alloc_temp -- the natural authoring order.
-     * Prior to the fix, data_alloc_temp would leak the internal created here
-     * and discard the array_storage setting. */
+    /* Call storage_set BEFORE data_alloc -- the natural authoring order.  The
+     * allocation must reuse the internal created here rather than leaking it
+     * and discarding the array_storage setting. */
     asdf_ndarray_storage_set(&nd, ASDF_ARRAY_STORAGE_INLINE);
-    uint8_t *data = asdf_ndarray_data_alloc_temp(file, &nd);
+    uint8_t *data = asdf_ndarray_data_alloc(&nd);
     assert_not_null(data);
     for (int idx = 0; idx < 4; idx++)
         data[idx] = (uint8_t)(idx + 1);
@@ -1013,6 +1159,7 @@ MU_TEST(ndarray_data_alloc_temp_storage_set_ordering) {
     assert_int(asdf_set_value(file, "arr", val), ==, ASDF_VALUE_OK);
     assert_int(asdf_write_to(file, out_path), ==, 0);
     asdf_close(file);
+    asdf_ndarray_data_dealloc(&nd);
 
     file = asdf_open(out_path, "r");
     assert_not_null(file);
@@ -1099,6 +1246,53 @@ MU_TEST(ndarray_read_at) {
 }
 
 
+/*
+ * Write and read back an extension that embeds an ndarray as one of its
+ * properties (the test_affine extension above).  The extension's serialize
+ * callback builds the matrix ndarray on the stack and allocates its data but
+ * never calls asdf_ndarray_data_dealloc. Assigning the ndarray to the file
+ * transfers ownership of its data to the file, which frees it after the write.
+ *
+ * This demonstrates use cases exercised in libasdf-gwcs, and possibly other
+ * extensions as well.
+ *
+ * Run under ASan this verifies the embedded ndarray's data is not leaked.
+ */
+MU_TEST(ndarray_extension_embedded_ndarray) {
+    double matrix[4] = {1.0, 2.0, 3.0, 4.0};
+    test_affine_t affine = {.matrix = matrix, .n = 2};
+
+    asdf_file_t *file = asdf_open(NULL);
+    assert_not_null(file);
+
+    asdf_value_t *val = asdf_value_of_test_affine(file, &affine);
+    assert_not_null(val);
+    assert_int(asdf_set_value(file, "transform", val), ==, ASDF_VALUE_OK);
+
+    void *buf = NULL;
+    size_t size = 0;
+    assert_int(asdf_write_to(file, &buf, &size), ==, 0);
+    asdf_close(file);
+
+    /* Read the transform back and verify the matrix round-tripped */
+    file = asdf_open_mem(buf, size);
+    assert_not_null(file);
+
+    test_affine_t *affine_in = NULL;
+    assert_int(asdf_get_test_affine(file, "transform", &affine_in), ==, ASDF_VALUE_OK);
+    assert_not_null(affine_in);
+    assert_int(affine_in->n, ==, 2);
+    assert_not_null(affine_in->matrix);
+    for (int idx = 0; idx < 4; idx++)
+        assert_double(affine_in->matrix[idx], ==, matrix[idx]);
+
+    asdf_test_affine_destroy(affine_in);
+    asdf_close(file);
+    free(buf);
+    return MUNIT_OK;
+}
+
+
 MU_TEST_SUITE(
     ndarray,
     MU_RUN_TEST(ndarray_read_1d_tile_contiguous),
@@ -1113,8 +1307,9 @@ MU_TEST_SUITE(
     MU_RUN_TEST(ndarray_inline_warning_thresh),
     MU_RUN_TEST(ndarray_array_storage_override, ndarray_array_storage_params),
     MU_RUN_TEST(heap_use_after_free_issue_63),
-    MU_RUN_TEST(ndarray_data_alloc_temp_storage_set_ordering),
-    MU_RUN_TEST(ndarray_read_at)
+    MU_RUN_TEST(ndarray_data_alloc_storage_set_ordering),
+    MU_RUN_TEST(ndarray_read_at),
+    MU_RUN_TEST(ndarray_extension_embedded_ndarray)
 );
 
 

@@ -765,6 +765,15 @@ static asdf_value_err_t asdf_datatype_serialize_impl(
 
     if (asdf_datatype_is_simple_scalar(datatype)) {
         err = asdf_datatype_serialize_scalar(file, datatype, &value);
+    } else if (!is_field && asdf_datatype_is_scalar(datatype) && datatype->ndim == 0) {
+        // A top-level (non-field) scalar datatype serializes as just its
+        // type-name string even when its byteorder is non-default (e.g.
+        // big-endian): the byteorder is carried by the enclosing ndarray's
+        // "byteorder" property, not repeated in the datatype.  As a field
+        // it would instead be rendered as a map by
+        // asdf_datatype_serialize_field, which carries the per-field
+        // byteorder.
+        err = asdf_datatype_serialize_scalar(file, datatype, &value);
     } else if (is_field) {
         err = asdf_datatype_serialize_field(file, datatype, &value);
     } else if (asdf_datatype_is_structured(datatype)) {

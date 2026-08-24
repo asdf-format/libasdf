@@ -196,11 +196,51 @@ typedef struct asdf_ndarray asdf_ndarray_t;
 
 
 /**
+ * .. c:function:: asdf_value_t *asdf_value_of_ndarray(asdf_file_t *file, const asdf_ndarray_t *ndarray)
+ *
+ *   Create a generic `asdf_value_t *` from an ndarray
+ *
+ *   This serializes ``ndarray`` into a value belonging to ``file`` (as
+ *   `asdf_set_ndarray` does before placing it in the tree), which can then be
+ *   assigned into the tree with `asdf_set_value` or nested inside another value.
+ *   As with `asdf_set_ndarray`, assigning the ndarray this way transfers
+ *   ownership of its data to ``file``.
+ *
+ *   :param file: The `asdf_file_t *` for the file
+ *   :param ndarray: The `asdf_ndarray_t *` to serialize
+ *
+ *   :return: A new `asdf_value_t *`, or ``NULL`` on failure
+ */
+
+
+/**
  * .. c:function:: void asdf_ndarray_destroy(asdf_ndarray_t *ndarray)
  *
  *   Release datastructures and memory allocated for an `asdf_ndarray_t`
  *
  *   :param ndarray: The `asdf_ndarray_t *`
+ */
+
+
+/**
+ * .. c:function:: asdf_ndarray_t *asdf_ndarray_copy(asdf_file_t *file, const asdf_ndarray_t *src)
+ *
+ *   Make an independent deep copy of an ndarray
+ *
+ *   The copy duplicates ``src``'s metadata (shape, strides, and datatype) and
+ *   its data: an inline array clones its inline data, while a block-backed array
+ *   copies its block into a new block managed for ``file`` (preserving
+ *   compression).  Because the copy is fully independent of ``src`` and its
+ *   file, ``file`` may differ from the source's file, and the returned ndarray
+ *   can be assigned (`asdf_set_ndarray`) and written like any other.
+ *
+ *   The returned `asdf_ndarray_t *` is owned by the caller and must be released
+ *   with `asdf_ndarray_destroy` (unless assigned to a file, which then takes
+ *   ownership of its data).
+ *
+ *   :param file: The `asdf_file_t *` that will manage the copy's data
+ *   :param src: The `asdf_ndarray_t *` to copy
+ *   :return: A newly allocated `asdf_ndarray_t *`, or ``NULL`` on failure
  */
 
 // clang-format on
@@ -297,22 +337,6 @@ ASDF_EXPORT void *asdf_ndarray_data_alloc(asdf_ndarray_t *ndarray);
 
 
 /**
- * Allocate a temporary data buffer for an ndarray to be written to a file,
- * with automatic cleanup after the write completes.
- *
- * Like `asdf_ndarray_data_alloc` but the allocated memory is freed
- * automatically after `asdf_write_to` (or `asdf_close`) is called.
- * Extension authors should use this instead of `asdf_ndarray_data_alloc`
- * when building ndarrays inside a serialize callback.
- *
- * :param file: The `asdf_file_t *` to register the cleanup with
- * :param ndarray: An `asdf_ndarray_t *` whose shape and datatype are already set
- * :return: A `void *` to the zero-initialized buffer, or NULL on OOM
- */
-ASDF_EXPORT void *asdf_ndarray_data_alloc_temp(asdf_file_t *file, asdf_ndarray_t *ndarray);
-
-
-/**
  * Free ndarray data allocated with `asdf_ndarray_data_alloc`
  *
  * If the ndarray never had data allocated this is a no-op but does produce
@@ -321,6 +345,26 @@ ASDF_EXPORT void *asdf_ndarray_data_alloc_temp(asdf_file_t *file, asdf_ndarray_t
  * :param ndarray: An `asdf_ndarray_t *`
  */
 ASDF_EXPORT void asdf_ndarray_data_dealloc(asdf_ndarray_t *ndarray);
+
+
+/**
+ * Allocate the ndarray's data buffer and copy its contents from a source buffer
+ *
+ * A convenience over `asdf_ndarray_data_alloc` for the common case of building
+ * an ndarray whose data you already have: it allocates a buffer sized for the
+ * array's shape and datatype (exactly as `asdf_ndarray_data_alloc`) and copies
+ * `asdf_ndarray_nbytes` bytes into it from ``src``.  This computes the byte
+ * count for you, avoiding error-prone manual size arithmetic.
+ *
+ * The caller is responsible for ensuring ``src`` points to at least
+ * `asdf_ndarray_nbytes` bytes; a smaller source buffer results in an over-read.
+ *
+ * :param ndarray: An `asdf_ndarray_t *` whose shape and datatype are set
+ * :param src: The source buffer to copy the array data from
+ * :return: `ASDF_NDARRAY_OK` on success, `ASDF_NDARRAY_ERR_INVAL` if an argument
+ *   is ``NULL``, or `ASDF_NDARRAY_ERR_OOM` if the buffer could not be allocated
+ */
+ASDF_EXPORT asdf_ndarray_err_t asdf_ndarray_data_copy(asdf_ndarray_t *ndarray, const void *src);
 
 
 /**

@@ -852,10 +852,10 @@ static void asdf_ndarray_deinit_impl(void *value) {
     asdf_ndarray_t *ndarray = value;
 
     if (ndarray->internal) {
-        asdf_block_close(ndarray->internal->block);
+        /* Destroys a detached managed block (freeing its buffer) or releases a
+         * view/appended-block handle (the file owns that buffer). */
+        asdf_block_destroy(ndarray->internal->block);
         asdf_sequence_destroy(ndarray->internal->inline_data);
-        if (ndarray->internal->data_is_inline)
-            free(ndarray->internal->data);
     }
 
     free(ndarray->internal);
@@ -863,6 +863,142 @@ static void asdf_ndarray_deinit_impl(void *value) {
     free(ndarray->strides);
     asdf_datatype_deinit(&ndarray->datatype);
     ZERO_MEMORY(ndarray, sizeof(*ndarray));
+}
+
+
+/*
+ * Copy the source ndarray's block data into a fresh detached block owned by the
+ * copy's ``dst_internal``.  The (decompressed) bytes are duplicated so the copy
+ * is fully independent of the source and its file; if the source block was
+ * compressed the copy is re-compressed with the same compressor when written.
+ * The source is not mutated: an already-materialized block is read in place,
+ * otherwise a fresh view is opened on the source file and closed again.
+ */
+static bool asdf_ndarray_copy_block_data(
+    asdf_file_t *file, const asdf_ndarray_t *src, asdf_ndarray_internal_t *dst_internal) {
+    asdf_block_t *src_block = src->internal ? src->internal->block : NULL;
+    bool close_src_block = false;
+
+    if (!src_block) {
+        if (!src->internal || !src->internal->file)
+            return true; /* a dataless ndarray: nothing to copy */
+
+        src_block = asdf_block_open(src->internal->file, src->source);
+
+        if (!src_block)
+            return false;
+
+        close_src_block = true;
+    }
+
+    bool res = false;
+    size_t size = 0;
+    const void *data = asdf_block_data(src_block, &size);
+
+    if (!data && size > 0)
+        goto cleanup;
+
+    asdf_block_t *dst_block = asdf_file_block_create(file, NULL, size);
+
+    if (!dst_block) {
+        ASDF_ERROR_OOM(file);
+        goto cleanup;
+    }
+
+    if (size > 0) {
+        void *buf = asdf_block_data_alloc(dst_block, size);
+
+        if (!buf) {
+            asdf_block_destroy(dst_block);
+            ASDF_ERROR_OOM(file);
+            goto cleanup;
+        }
+
+        memcpy(buf, data, size);
+    }
+
+    /* Preserve compression by re-compressing with the same compressor on
+     * write. */
+    const char *comp = asdf_block_compression(src_block);
+
+    if (comp && *comp && asdf_block_compression_set(dst_block, comp) != 0) {
+        asdf_block_destroy(dst_block);
+        goto cleanup;
+    }
+
+    dst_internal->block = dst_block;
+    res = true;
+cleanup:
+    if (close_src_block)
+        asdf_block_close(src_block);
+
+    return res;
+}
+
+
+/*
+ * Deep-copy method for the ndarray extension (`asdf_ndarray_copy`).  Produces
+ * an independent ndarray owned by the caller: the metadata (shape, strides,
+ * datatype) is duplicated, and the data is copied verbatim: an inline source
+ * clones its YAML sequence, a block source duplicates its block bytes into a
+ * new block managed for ``file``.  The copy can then be assigned to ``file``
+ * (which may differ from the source's file) and written like any other ndarray.
+ */
+static bool asdf_ndarray_copy_impl(asdf_file_t *file, const void *src, void *dst) {
+    const asdf_ndarray_t *ndarray = src;
+    asdf_ndarray_t *copy = dst;
+
+    copy->source = ndarray->source;
+    copy->ndim = ndarray->ndim;
+    copy->byteorder = ndarray->byteorder;
+    copy->offset = ndarray->offset;
+
+    if (ndarray->shape && ndarray->ndim > 0) {
+        copy->shape = malloc(ndarray->ndim * sizeof(*copy->shape));
+
+        if (!copy->shape)
+            goto failure;
+
+        memcpy(copy->shape, ndarray->shape, ndarray->ndim * sizeof(*copy->shape));
+    }
+
+    if (ndarray->strides && ndarray->ndim > 0) {
+        copy->strides = malloc(ndarray->ndim * sizeof(*copy->strides));
+
+        if (!copy->strides)
+            goto failure;
+
+        memcpy(copy->strides, ndarray->strides, ndarray->ndim * sizeof(*copy->strides));
+    }
+
+    if (!asdf_datatype_copy_into(file, &ndarray->datatype, &copy->datatype))
+        goto failure;
+
+    asdf_ndarray_internal_t *internal = asdf_ndarray_internal(copy, true);
+
+    if (!internal)
+        goto failure;
+
+    internal->file = file;
+    internal->array_storage = ndarray->internal ? ndarray->internal->array_storage
+                                                : ASDF_ARRAY_STORAGE_DEFAULT;
+
+    if (ndarray->internal && ndarray->internal->inline_data) {
+        /* Inline source: clone the stashed YAML sequence verbatim */
+        internal->inline_data = (asdf_sequence_t *)asdf_value_copy(
+            &ndarray->internal->inline_data->value);
+
+        if (!internal->inline_data)
+            goto failure;
+    } else if (!asdf_ndarray_copy_block_data(file, ndarray, internal)) {
+        goto failure;
+    }
+
+    return true;
+failure:
+    /* The primary (only?) failure mode here is some form of OOM */
+    ASDF_ERROR_OOM(file);
+    return false;
 }
 
 
@@ -1020,9 +1156,13 @@ static asdf_sequence_t *asdf_ndarray_serialize_seq_level(
 static asdf_sequence_t *asdf_ndarray_serialize_inline_data(
     asdf_file_t *file, const asdf_ndarray_t *ndarray) {
     size_t elem_offset = 0;
+    size_t size = 0;
 
-    return asdf_ndarray_serialize_seq_level(
-        file, ndarray, ndarray->internal->data, 0, &elem_offset);
+    /* Materialize the ndarray's data (from its managed block, or by parsing
+     * inline YAML) and serialize it element-by-element into a YAML sequence. */
+    const void *data = asdf_ndarray_data((asdf_ndarray_t *)ndarray, &size);
+
+    return asdf_ndarray_serialize_seq_level(file, ndarray, data, 0, &elem_offset);
 }
 
 
@@ -1212,28 +1352,68 @@ static asdf_value_err_t asdf_ndarray_serialize_block(
     assert(ndarray_map);
 
     asdf_value_err_t err = ASDF_VALUE_OK;
-    uint64_t nbytes = asdf_ndarray_nbytes(ndarray);
-    ssize_t block_idx = asdf_block_append(file, ndarray->internal->data, nbytes);
+    asdf_ndarray_internal_t *internal = ndarray->internal;
 
-    if (block_idx < 0) {
-        ASDF_ERROR_OOM(file);
-        err = ASDF_VALUE_ERR_OOM;
-        goto cleanup;
-    }
+    /* Ensure the ndarray's data is materialized into its managed block (from a
+     * data_alloc'd buffer, an already-open block, or inline YAML). */
+    if (!internal->block) {
+        size_t size = 0;
+        (void)asdf_ndarray_data((asdf_ndarray_t *)ndarray, &size);
 
-    if (ndarray->internal && ndarray->internal->write_compression) {
-        asdf_block_info_t *info = asdf_block_info_vec_at_mut(&file->blocks, (isize)block_idx);
-        const char *compression = ndarray->internal->write_compression;
-
-        if (asdf_block_info_compression_set(file, info, compression) != 0) {
+        if (!internal->block) {
             err = ASDF_VALUE_ERR_EMIT_FAILURE;
             goto cleanup;
         }
     }
 
-    err = asdf_mapping_set_int64(ndarray_map, "source", (int64_t)block_idx);
+    /* Append the managed block to the file (transferring ownership of its data)
+     * unless it is already attached, e.g. a block-backed ndarray being
+     * re-serialized, or the same ndarray serialized more than once, in which
+     * case its existing source index is reused. */
+    if (internal->block->detached) {
+        if (internal->write_compression) {
+            if (asdf_block_compression_set(internal->block, internal->write_compression) != 0) {
+                err = ASDF_VALUE_ERR_EMIT_FAILURE;
+                goto cleanup;
+            }
+        }
+
+        if (!asdf_block_append(file, internal->block)) {
+            err = ASDF_VALUE_ERR_OOM;
+            goto cleanup;
+        }
+    }
+
+    err = asdf_mapping_set_int64(ndarray_map, "source", (int64_t)internal->block->info.index);
 cleanup:
     return err;
+}
+
+
+/*
+ * Consume an ndarray that was built for writing (it owns a detached data block)
+ * once it has been serialized: its data now lives with the file--appended as
+ * a binary block, or copied inline into the YAML tree--so free the ndarray's
+ * internal bookkeeping and detach it.  This makes the file responsible for the
+ * data's lifetime for as long as the file is open, mirroring how block storage
+ * already transfers the block via asdf_block_append.
+ *
+ * The caller must not use the ndarray afterward; a subsequent
+ * asdf_ndarray_data_dealloc becomes a harmless no-op (its internal is gone).
+ */
+static void asdf_ndarray_serialize_consume(asdf_ndarray_t *ndarray) {
+    asdf_ndarray_internal_t *internal = ndarray->internal;
+
+    if (!internal)
+        return;
+
+    /* If the block was appended it is now owned by the file and this only
+     * releases the handle; a still-detached (inline) block is freed along with
+     * its data buffer, which has already been copied into the YAML. */
+    asdf_block_destroy(internal->block);
+    asdf_sequence_destroy(internal->inline_data);
+    free(internal);
+    ndarray->internal = NULL;
 }
 
 
@@ -1253,6 +1433,15 @@ static asdf_value_t *asdf_ndarray_serialize(
     const asdf_extension_t *datatype_ext = NULL;
     bool is_inline = false;
     asdf_sequence_t *inline_data = NULL;
+
+    /* Whether to consume this ndarray once serialized: true iff it owns a
+     * detached data block, which only an ndarray built for writing (via
+     * asdf_ndarray_data_alloc) does at this point.  A read-back ndarray has not
+     * materialized its block yet, so its block is NULL here and it is left for
+     * the caller to destroy. */
+    bool consume = ndarray->internal && ndarray->internal->block &&
+                   ndarray->internal->block->detached;
+
     asdf_mapping_t *ndarray_map = asdf_mapping_create(file);
 
     if (UNLIKELY(!ndarray_map)) {
@@ -1260,7 +1449,8 @@ static asdf_value_t *asdf_ndarray_serialize(
         goto cleanup;
     }
 
-    bool has_data = ndarray->internal && ndarray->internal->data;
+    bool has_data = ndarray->internal &&
+                    (ndarray->internal->block || ndarray->internal->inline_data);
 
     asdf_array_storage_t per_array = ndarray->internal ? ndarray->internal->array_storage
                                                        : ASDF_ARRAY_STORAGE_DEFAULT;
@@ -1313,13 +1503,16 @@ static asdf_value_t *asdf_ndarray_serialize(
             "no extension registered for the datatype tag: %s; the ndarray cannot be "
             "written",
             ASDF_CORE_DATATYPE_TAG);
+        err = ASDF_VALUE_ERR_EMIT_FAILURE;
         goto cleanup;
     }
 
     datatype_val = asdf_value_of_extension_type(file, &ndarray->datatype, datatype_ext);
 
-    if (UNLIKELY(!datatype_val))
+    if (UNLIKELY(!datatype_val)) {
+        err = ASDF_VALUE_ERR_EMIT_FAILURE;
         goto cleanup;
+    }
 
     // Hack to remove the tag from the output; should have a utility in the
     // public API for setting a value's tag as implict, but for now only used
@@ -1337,10 +1530,16 @@ static asdf_value_t *asdf_ndarray_serialize(
         err = asdf_ndarray_serialize_block_data(file, ndarray, ndarray_map);
     }
 cleanup:
-    if (ASDF_IS_ERR(err))
+    if (ASDF_IS_ERR(err)) {
         asdf_mapping_destroy(ndarray_map);
-    else
+    } else {
         value = asdf_value_of_mapping(ndarray_map);
+
+        /* The ndarray was serialized successfully; if it owned its data,
+         * ownership has passed to the file, so consume it. */
+        if (value && consume)
+            asdf_ndarray_serialize_consume((asdf_ndarray_t *)ndarray);
+    }
 
     return value;
 }
@@ -1352,7 +1551,7 @@ cleanup:
 static const asdf_extension_vtab_t asdf_ndarray_vtab = {
     .serialize = asdf_ndarray_serialize,
     .deserialize = asdf_ndarray_deserialize,
-    .copy = NULL, /* TODO: copy */
+    .copy = asdf_ndarray_copy_impl,
     .deinit = asdf_ndarray_deinit_impl,
 };
 
@@ -1376,44 +1575,43 @@ const void *asdf_ndarray_data_impl(asdf_ndarray_t *ndarray, size_t *size, bool r
     if (!ndarray || !ndarray->internal)
         return NULL;
 
-    // Return the user-allocated data (or previously parsed inline data)
-    if (ndarray->internal->data) {
-        *size = asdf_ndarray_nbytes(ndarray);
-        return ndarray->internal->data;
-    }
+    asdf_ndarray_internal_t *internal = ndarray->internal;
 
-    // Lazily parse inline YAML data into a C array on first access
-    if (ndarray->internal->inline_data) {
-        size_t nbytes = (size_t)asdf_ndarray_nbytes(ndarray);
-        void *buf = malloc(nbytes);
-        if (UNLIKELY(!buf))
-            return NULL;
+    /* Materialize the ndarray's data into its managed block on first access */
+    if (!internal->block) {
+        if (internal->inline_data) {
+            /* Inline YAML data: parse it into a freshly allocated block buffer.
+             * The block is bound to the (possibly read-only) source file only
+             * for its error/log context; it is never appended for inline data. */
+            uint64_t nbytes = asdf_ndarray_nbytes(ndarray);
+            asdf_block_t *block = asdf_file_block_create(internal->file, NULL, (size_t)nbytes);
 
-        if (ASDF_IS_ERR(asdf_ndarray_parse_inline_data(ndarray, buf))) {
-            free(buf);
-            return NULL;
+            if (!block)
+                return NULL;
+
+            if (nbytes > 0) {
+                void *buf = asdf_block_data_alloc(block, (size_t)nbytes);
+
+                if (!buf || ASDF_IS_ERR(asdf_ndarray_parse_inline_data(ndarray, buf))) {
+                    asdf_block_destroy(block);
+                    return NULL;
+                }
+            }
+
+            internal->block = block;
+        } else {
+            /* Binary block data: open a view onto the file's block */
+            internal->block = asdf_block_open(internal->file, ndarray->source);
+
+            if (!internal->block)
+                return NULL;
         }
-
-        ndarray->internal->data = buf;
-        ndarray->internal->data_is_inline = true;
-        *size = nbytes;
-        return buf;
-    }
-
-    // Return block data read from the file
-    if (!ndarray->internal->block) {
-        asdf_block_t *block = asdf_block_open(ndarray->internal->file, ndarray->source);
-
-        if (!block)
-            return NULL;
-
-        ndarray->internal->block = block;
     }
 
     if (raw)
-        return asdf_block_data_raw(ndarray->internal->block, size);
+        return asdf_block_data_raw(internal->block, size);
 
-    return asdf_block_data(ndarray->internal->block, size);
+    return asdf_block_data(internal->block, size);
 }
 
 
@@ -1450,71 +1648,58 @@ uint64_t asdf_ndarray_nbytes(const asdf_ndarray_t *ndarray) {
 }
 
 
-void *asdf_ndarray_data_alloc(asdf_ndarray_t *ndarray) {
-    if (UNLIKELY(!ndarray))
-        return NULL;
-
+/*
+ * Get (creating if necessary) the ndarray's managed data block and return a
+ * writable pointer to its buffer.  ``file`` is bound to the block for its
+ * error/log context (NULL for a user-instantiated ndarray with no file yet).
+ * Returns NULL for a zero-size array (the block still exists but has no buffer).
+ */
+static void *asdf_file_ndarray_data_alloc(asdf_file_t *file, asdf_ndarray_t *ndarray) {
     asdf_ndarray_internal_t *internal = asdf_ndarray_internal(ndarray, true);
-
-    if (internal && internal->data)
-        return internal->data;
 
     if (!internal) {
-        ASDF_ERROR_OOM(NULL);
-        return NULL;
-    }
-
-    uint64_t size = asdf_ndarray_nbytes(ndarray);
-
-    if (UNLIKELY(size == 0)) {
-        /* Special case for empty array; just return NULL, but don't free
-         * internal structures */
-        internal->data_is_empty = true;
-        return NULL;
-    }
-
-    void *data = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-
-    if (data == MAP_FAILED || !data) {
-        free(internal);
-        ndarray->internal = NULL;
-        return NULL;
-    }
-
-    internal->data = data;
-    return data;
-}
-
-
-static void ndarray_write_data_cleanup(void *userdata) {
-    asdf_ndarray_internal_t *internal = userdata;
-    free(internal->data);
-    free(internal);
-}
-
-
-void *asdf_ndarray_data_alloc_temp(asdf_file_t *file, asdf_ndarray_t *ndarray) {
-    if (UNLIKELY(!file || !ndarray))
-        return NULL;
-
-    asdf_ndarray_internal_t *internal = asdf_ndarray_internal(ndarray, true);
-
-    if (UNLIKELY(!internal)) {
         ASDF_ERROR_OOM(file);
         return NULL;
     }
 
     uint64_t nbytes = asdf_ndarray_nbytes(ndarray);
-    void *data = calloc(1, (size_t)nbytes);
 
-    if (UNLIKELY(!data)) {
-        ASDF_ERROR_OOM(file);
-        return NULL;
+    if (!internal->block) {
+        internal->block = asdf_file_block_create(file, NULL, (size_t)nbytes);
+
+        if (!internal->block)
+            return NULL;
     }
 
-    internal->data = data;
-    asdf_file_write_cleanup_add(file, ndarray_write_data_cleanup, internal);
-    return data;
+    if (nbytes == 0)
+        return NULL; /* empty array: block exists but there is no buffer */
+
+    return asdf_block_data_alloc(internal->block, (size_t)nbytes);
+}
+
+
+void *asdf_ndarray_data_alloc(asdf_ndarray_t *ndarray) {
+    if (UNLIKELY(!ndarray))
+        return NULL;
+
+    return asdf_file_ndarray_data_alloc(
+        ndarray->internal ? ndarray->internal->file : NULL, ndarray);
+}
+
+
+asdf_ndarray_err_t asdf_ndarray_data_copy(asdf_ndarray_t *ndarray, const void *src) {
+    if (UNLIKELY(!ndarray || !src))
+        return ASDF_NDARRAY_ERR_INVAL;
+
+    uint64_t nbytes = asdf_ndarray_nbytes(ndarray);
+    void *dst = asdf_ndarray_data_alloc(ndarray);
+
+    if (!dst)
+        /* A zero-size array legitimately allocates no buffer; nothing to copy */
+        return nbytes == 0 ? ASDF_NDARRAY_OK : ASDF_NDARRAY_ERR_OOM;
+
+    memcpy(dst, src, (size_t)nbytes);
+    return ASDF_NDARRAY_OK;
 }
 
 
@@ -1524,30 +1709,25 @@ void asdf_ndarray_data_dealloc(asdf_ndarray_t *ndarray) {
 
     asdf_ndarray_internal_t *internal = asdf_ndarray_internal(ndarray, false);
 
-    /* Inline data is managed by asdf_ndarray_destroy; this function only
-     * handles mmap'd data allocated by asdf_ndarray_data_alloc */
-    if (internal && internal->data_is_inline)
-        return;
-
-    if (UNLIKELY(!internal || (!internal->data && !internal->data_is_empty))) {
-        asdf_context_t *ctx = NULL;
-        if (ndarray->internal)
-            ctx = asdf_context_get(ndarray->internal->file);
-        else
-            ctx = asdf_context_get(NULL);
-
+    if (!internal || !internal->block) {
+        /* Nothing to free: either data was never allocated, or the ndarray was
+         * already consumed by serializing it to a file (which takes over the
+         * data's lifetime).  A harmless no-op in either case. */
+        asdf_context_t *ctx = asdf_context_get(internal ? internal->file : NULL);
         ASDF_LOG_CTX(
             ctx,
-            ASDF_LOG_WARN,
-            "asdf_ndarray_data_dealloc called without asdf_ndarray_data_alloc on "
+            ASDF_LOG_DEBUG,
+            "asdf_ndarray_data_dealloc: no allocated data to free on "
             "asdf_ndarray_t at 0x%px",
             ndarray);
         return;
     }
 
-    uint64_t size = asdf_ndarray_nbytes(ndarray);
-    munmap(internal->data, size);
-    asdf_block_close(internal->block);
+    /* Destroy the managed block: frees its owned buffer if the block is still
+     * detached, or just releases the handle if it was appended to a file (in
+     * which case the file owns and frees the buffer). */
+    asdf_block_destroy(internal->block);
+    asdf_sequence_destroy(internal->inline_data);
     free(internal);
     ndarray->internal = NULL;
 }

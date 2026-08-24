@@ -162,7 +162,7 @@ static asdf_file_t *asdf_file_create(asdf_config_t *user_config, asdf_file_mode_
 }
 
 
-static asdf_parser_t *asdf_file_parser(asdf_file_t *file) {
+asdf_parser_t *asdf_file_parser(asdf_file_t *file) {
     if (UNLIKELY(!file))
         return NULL;
 
@@ -362,7 +362,12 @@ static size_t asdf_file_estimate_blocks_size(asdf_file_t *file) {
         const asdf_block_info_t *block_info = asdf_block_info_vec_at(&file->blocks, idx);
         if (block_info->write_compressor != NULL)
             continue; /* compressed size unknown upfront; stream handles reallocs */
-        n_bytes += block_info->header.allocated_size + ASDF_BLOCK_MAGIC_SIZE + 2;
+        /* allocated_size is 0 unless the caller reserved extra space; fall back
+         * to the (uncompressed) data_size for the estimate in that case */
+        uint64_t block_size = block_info->header.allocated_size;
+        if (block_size == 0)
+            block_size = block_info->header.data_size;
+        n_bytes += block_size + ASDF_BLOCK_MAGIC_SIZE + 2;
     }
 
     return n_bytes;
@@ -489,6 +494,10 @@ void asdf_close(asdf_file_t *file) {
     fy_document_destroy(file->tree);
     asdf_emitter_destroy(file->emitter);
     asdf_parser_destroy(file->parser);
+    /* Free any heap-owned in-memory block data before dropping the vector */
+    for (asdf_block_info_vec_iter_t it = asdf_block_info_vec_begin(&file->blocks); it.ref;
+         asdf_block_info_vec_next(&it))
+        asdf_block_info_deinit(it.ref);
     asdf_block_info_vec_drop(&file->blocks);
     asdf_str_map_drop(&file->tag_map);
     asdf_stream_close(file->stream);
@@ -1010,304 +1019,4 @@ cleanup:
     sequence->value.node = NULL;
     asdf_sequence_destroy(sequence);
     return err;
-}
-
-
-/* User-facing block-related methods */
-size_t asdf_block_count(asdf_file_t *file) {
-    if (!file)
-        return 0;
-
-    /* Because blocks are the last things we expect to find in a file (modulo the optional block
-     * index) we cannot return the block count accurately without parsing the full file.  Relying
-     * on the block index alone for the count is also not guaranteed to be accurate since it is
-     * only a hint (a hint that nonetheless allows the parser to complete much faster when
-     * possible).  So here we ensure the file is parsed to completion then return the block count.
-     */
-    asdf_parser_t *parser = asdf_file_parser(file);
-
-    if (parser && !parser->done) {
-        while (!parser->done) {
-            asdf_event_iterate(parser);
-        }
-
-        // Copy the parser's block info into the file's
-        asdf_block_info_vec_copy(&file->blocks, parser->block.infos);
-    }
-
-    return (size_t)asdf_block_info_vec_size(&file->blocks);
-}
-
-asdf_block_t *asdf_block_open(asdf_file_t *file, size_t index) {
-    if (!file)
-        return NULL;
-
-    size_t n_blocks = asdf_block_count(file);
-
-    if (index >= n_blocks) {
-        ASDF_LOG(
-            file,
-            ASDF_LOG_WARN,
-            "block index %zu does not exist (the file contains %zu blocks)",
-            index,
-            n_blocks);
-        return NULL;
-    }
-
-    asdf_block_t *block = calloc(1, sizeof(asdf_block_t));
-
-    if (!block) {
-        ASDF_ERROR_OOM(file);
-        return NULL;
-    }
-
-    asdf_block_info_vec_t *blocks = &file->blocks;
-    const asdf_block_info_t *info = asdf_block_info_vec_at(blocks, (isize)index);
-    block->file = file;
-    block->data = NULL;
-    block->should_close = false;
-    block->info = *info;
-    block->comp_state = NULL;
-    return block;
-}
-
-
-void asdf_block_close(asdf_block_t *block) {
-    if (!block)
-        return;
-
-    if (block->comp_state)
-        asdf_block_comp_close(block);
-
-    if (block->compression)
-        free((void *)block->compression);
-
-    // If the block has an open data handle, close it
-    if (block->should_close && block->data) {
-        asdf_stream_t *stream = block->file->parser->stream;
-        stream->close_mem(stream, block->data);
-    }
-
-    ZERO_MEMORY(block, sizeof(asdf_block_t));
-    free(block);
-}
-
-
-ssize_t asdf_block_append(asdf_file_t *file, const void *data, size_t size) {
-    if (file->mode == ASDF_FILE_MODE_READ_ONLY) {
-        ASDF_ERROR_COMMON(file, ASDF_ERR_STREAM_READ_ONLY);
-        return -1;
-    }
-
-    size_t n_blocks = asdf_block_count(file);
-
-    if (n_blocks >= SSIZE_MAX) {
-        ASDF_ERROR_COMMON(file, ASDF_ERR_OVER_LIMIT, "block count exceeds maximum");
-        return -1;
-    }
-
-    // Create a new block_info for the new block
-    asdf_block_info_t block_info = {0};
-    asdf_block_info_init(n_blocks, data, size, &block_info);
-    if (!asdf_block_info_vec_push(&file->blocks, block_info))
-        return -1;
-
-    return (ssize_t)n_blocks;
-}
-
-
-size_t asdf_block_data_size(asdf_block_t *block) {
-    return block->info.header.data_size;
-}
-
-
-const void *asdf_block_data_impl(asdf_block_t *block, size_t *size, bool decompress) {
-    if (!block)
-        return NULL;
-
-    if (block->data) {
-        if (size)
-            *size = block->avail_size;
-
-        return block->data;
-    }
-
-    if (block->info.data) {
-        if (size)
-            *size = block->info.header.data_size;
-
-        block->data = (void *)block->info.data;
-        return block->data;
-    }
-
-    asdf_parser_t *parser = block->file->parser;
-    asdf_stream_t *stream = parser->stream;
-    size_t avail = 0;
-    void *data = stream->open_mem(
-        stream, block->info.data_pos, block->info.header.used_size, &avail);
-    block->data = data;
-    block->should_close = true;
-    block->avail_size = avail;
-
-    // Open compressed data if applicable
-    if (decompress) {
-        if (asdf_block_comp_open(block) != 0) {
-            ASDF_LOG(block->file, ASDF_LOG_ERROR, "failed to open compressed block data");
-            return NULL;
-        }
-
-        if (block->comp_state) {
-            // Return the destination of the compressed data
-            if (size)
-                *size = block->comp_state->dest_size;
-
-            return block->comp_state->dest;
-        } // else was not compressed to begin with
-    }
-
-    if (size)
-        *size = avail;
-
-    // Just the raw data
-    return block->data;
-}
-
-
-const void *asdf_block_data(asdf_block_t *block, size_t *size) {
-    return asdf_block_data_impl(block, size, true);
-}
-
-
-const void *asdf_block_data_raw(asdf_block_t *block, size_t *size) {
-    return asdf_block_data_impl(block, size, false);
-}
-
-
-const char *asdf_block_compression_orig(asdf_block_t *block) {
-    if (!block)
-        return "";
-
-    if (!block->compression)
-        block->compression = strndup(
-            block->info.header.compression, ASDF_BLOCK_COMPRESSION_FIELD_SIZE);
-
-    if (!block->compression) {
-        ASDF_ERROR_OOM(block->file);
-        return "";
-    }
-
-    return block->compression;
-}
-
-
-const char *asdf_block_compression(asdf_block_t *block) {
-    if (!block)
-        return "";
-
-    // If the user set an output compression different from the original input
-    // compression
-    if (block->info.write_compressor)
-        return block->info.write_compressor->compression;
-
-    return asdf_block_compression_orig(block);
-}
-
-
-int asdf_block_compression_set(asdf_block_t *block, const char *compression) {
-    if (!block)
-        return -1;
-
-    int ret = asdf_block_info_compression_set(block->file, &block->info, compression);
-
-    if (ret != 0)
-        return ret;
-
-    /* Propagate to file->blocks so the emitter sees the change */
-    asdf_block_info_t *file_block = asdf_block_info_vec_at_mut(
-        &block->file->blocks, (isize)block->info.index);
-
-    if (file_block)
-        file_block->write_compressor = block->info.write_compressor;
-
-    return 0;
-}
-
-
-const unsigned char *asdf_block_checksum(asdf_block_t *block) {
-    if (!block)
-        return NULL;
-
-    const asdf_block_header_t *header = &block->info.header;
-    return header->checksum;
-}
-
-
-#define ASDF_PYTHON_CHECKSUM_BUG_MAJOR_VERSION 5
-
-
-static inline bool asdf_library_has_checksum_bug(asdf_software_t *software) {
-    return (
-        strcmp(software->name, "asdf") == 0 &&
-        software->version->major <= ASDF_PYTHON_CHECKSUM_BUG_MAJOR_VERSION);
-}
-
-
-bool asdf_block_checksum_verify(
-    asdf_block_t *block, unsigned char computed[ASDF_BLOCK_CHECKSUM_DIGEST_SIZE]) {
-    if (!block)
-        return false;
-
-#ifndef HAVE_MD5
-    (void)block;
-    (void)computed;
-    return true;
-#else
-    const asdf_block_header_t *header = &block->info.header;
-    size_t size = 0;
-    asdf_md5_ctx_t md5_ctx = {0};
-    unsigned char digest[ASDF_BLOCK_CHECKSUM_DIGEST_SIZE] = {0};
-    const void *data = NULL;
-    asdf_meta_t *meta = NULL;
-    asdf_file_t *file = block->file;
-
-    /* Python asdf has a bug that when it writes binary blocks it computes
-     * the checksum based on the uncompressed data, not the compressed data.
-     * In this case then we must use the decompresed data to compute the
-     * checksum.  This is slated to be fixed in a later version; for now
-     * the problem exists in all versions at least 5.x and below.
-     * See https://github.com/asdf-format/asdf/issues/2015 */
-    const char *comp = asdf_block_compression_orig(block);
-    if (comp && *comp != '\0') {
-        asdf_value_err_t err = asdf_get_meta(file, "", &meta);
-
-        if (ASDF_VALUE_OK == err && meta && asdf_library_has_checksum_bug(meta->asdf_library)) {
-            ASDF_LOG(
-                file,
-                ASDF_LOG_WARN,
-                "%s version %s has compressed data checksum bug; "
-                "the checksum will be verified against the uncompressed data",
-                meta->asdf_library->name,
-                meta->asdf_library->version->version);
-            data = asdf_block_data(block, &size);
-            asdf_meta_destroy(meta);
-        } else {
-            data = asdf_block_data_raw(block, &size);
-        }
-    } else {
-        data = asdf_block_data_raw(block, &size);
-    }
-
-    if (!data)
-        return false;
-
-    asdf_md5_init(&md5_ctx);
-    asdf_md5_update(&md5_ctx, data, size);
-    asdf_md5_final(&md5_ctx, digest);
-    bool valid = memcmp(header->checksum, digest, ASDF_BLOCK_CHECKSUM_DIGEST_SIZE) == 0;
-
-    if (computed)
-        memcpy(computed, digest, ASDF_BLOCK_CHECKSUM_DIGEST_SIZE);
-
-    return valid;
-#endif
 }

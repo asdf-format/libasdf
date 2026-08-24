@@ -30,6 +30,7 @@ check_PROGRAMS = \
     test-block.unit \
     test-compression.unit \
     test-core-extensions.unit \
+    test-emitter.unit \
     test-error.unit \
     test-event.unit \
     test-extension.unit \
@@ -124,6 +125,15 @@ test_core_extensions_unit_CFLAGS = $(unit_test_cflags)
 test_core_extensions_unit_LDFLAGS = $(unit_test_ldflags)
 test_core_extensions_unit_LDADD = $(unit_test_ldadd)
 
+# test-emitter.unit
+# Links against libasdf_static.la so that ASDF_LOCAL (hidden-visibility)
+# emitter internals are accessible from the test binary.
+test_emitter_unit_SOURCES = test-emitter.c
+test_emitter_unit_CPPFLAGS = $(unit_test_cppflags)
+test_emitter_unit_CFLAGS = $(unit_test_cflags)
+test_emitter_unit_LDFLAGS = $(unit_test_ldflags)
+test_emitter_unit_LDADD = libmunit.a $(top_builddir)/libasdf_static.la
+
 # test-error.unit
 test_error_unit_SOURCES = test-error.c
 test_error_unit_CPPFLAGS = $(unit_test_cppflags)
@@ -167,20 +177,11 @@ test_parser_unit_LDFLAGS = $(unit_test_ldflags)
 test_parser_unit_LDADD = $(unit_test_ldadd)
 
 # test-parse-util.unit
-test_parse_util_unit_SOURCES = \
-    test-parse-util.c \
-    $(top_srcdir)/src/block.c \
-    $(top_srcdir)/src/compression/compressor_registry.c \
-    $(top_srcdir)/src/context.c \
-    $(top_srcdir)/src/error.c \
-    $(top_srcdir)/src/log.c \
-    $(top_srcdir)/src/parse_util.c \
-    $(top_srcdir)/src/yaml.c \
-    $(top_srcdir)/third_party/STC/src/cstr_core.c
+test_parse_util_unit_SOURCES = test-parse-util.c
 test_parse_util_unit_CPPFLAGS = $(unit_test_cppflags)
 test_parse_util_unit_CFLAGS = $(unit_test_cflags)
 test_parse_util_unit_LDFLAGS = $(unit_test_ldflags)
-test_parse_util_unit_LDADD = libmunit.a $(FYAML_LIBS) $(STATGRAB_LIBS) $(MD5_LIBS)
+test_parse_util_unit_LDADD = libmunit.a $(top_builddir)/libasdf_static.la
 
 if HAVE_LINKER_WRAP
 # test-malloc-fail.unit
@@ -199,16 +200,6 @@ test_malloc_fail_unit_LDFLAGS = \
 test_malloc_fail_unit_LDADD = libmunit.a $(top_builddir)/libasdf_static.la
 endif
 
-# test-emitter.unit
-# Also links against libasdf_static.la so that ASDF_LOCAL (hidden-visibility)
-# emitter internals are accessible from the test binary.
-check_PROGRAMS += test-emitter.unit
-test_emitter_unit_SOURCES = test-emitter.c
-test_emitter_unit_CPPFLAGS = $(unit_test_cppflags)
-test_emitter_unit_CFLAGS = $(unit_test_cflags)
-test_emitter_unit_LDFLAGS = $(unit_test_ldflags)
-test_emitter_unit_LDADD = libmunit.a $(top_builddir)/libasdf_static.la
-
 # test-reference-files.unit
 test_reference_files_unit_SOURCES = test-reference-files.c
 test_reference_files_unit_CPPFLAGS = $(unit_test_cppflags)
@@ -217,17 +208,11 @@ test_reference_files_unit_LDFLAGS = $(unit_test_ldflags)
 test_reference_files_unit_LDADD = $(unit_test_ldadd)
 
 # test-stream.unit
-test_stream_unit_SOURCES = \
-    test-stream.c \
-    $(top_srcdir)/src/context.c \
-    $(top_srcdir)/src/error.c \
-    $(top_srcdir)/src/log.c \
-    $(top_srcdir)/src/stream.c \
-    $(top_srcdir)/third_party/STC/src/cstr_core.c
+test_stream_unit_SOURCES = test-stream.c
 test_stream_unit_CPPFLAGS = $(unit_test_cppflags)
 test_stream_unit_CFLAGS = $(unit_test_cflags)
 test_stream_unit_LDFLAGS = $(unit_test_ldflags)
-test_stream_unit_LDADD = $(FYAML_LIBS) libmunit.a $(STATGRAB_LIBS)
+test_stream_unit_LDADD = libmunit.a $(top_builddir)/libasdf_static.la
 
 # test-tag.unit
 test_tag_unit_SOURCES = test-tag.c

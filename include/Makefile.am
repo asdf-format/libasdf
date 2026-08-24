@@ -1,5 +1,6 @@
 nobase_include_HEADERS = \
     asdf.h \
+    asdf/block.h \
     asdf/core/asdf.h \
     asdf/core/datatype.h \
     asdf/core/extension_metadata.h \

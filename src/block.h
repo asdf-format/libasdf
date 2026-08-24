@@ -84,6 +84,7 @@ typedef struct asdf_block_header {
 // Forward-declarations
 typedef struct asdf_compressor asdf_compressor_t;
 typedef struct asdf_file asdf_file_t;
+typedef struct asdf_block asdf_block_t;
 
 
 typedef struct asdf_block_info {
@@ -92,24 +93,30 @@ typedef struct asdf_block_info {
     off_t data_pos;
     asdf_block_header_t header;
     /**
-     * Optional pointer to existing block data
+     * In-memory payload for a new/appended block, or ``NULL`` for a block still
+     * backed only by the input file at ``data_pos``.
      *
-     * When parsing an existing file this is not set, but when adding a new
-     * block to the file this is set to the user's provided data buffer.
+     * Normally holds the block's uncompressed data.  If ``data_is_compressed``
+     * it instead holds already-compressed bytes to be emitted verbatim
+     * (preserving ``header.compression``).  For a block read from an input file
+     * this is filled in lazily by ``emit_blocks_prepare`` when the file is
+     * re-emitted.
      */
     const void *data;
-    /** Optional output compressor */
-    const asdf_compressor_t *write_compressor;
     /**
-     * Pre-processed write data (set by emit_blocks_prepare for existing blocks)
-     *
-     * For blocks read from a file (data == NULL), this holds either the
-     * raw compressed bytes (verbatim re-emit) or the decompressed bytes
-     * (for recompression). Freed after writing if owns_write_data is set.
+     * Length of ``data`` as stored: the compressed length when
+     * ``data_is_compressed``, otherwise the uncompressed size (which also
+     * equals ``header.data_size``).
      */
-    const void *write_data;
-    size_t write_data_size;
-    bool owns_write_data;
+    size_t data_size;
+    /** ``data`` is owned and freed on file teardown when ``true`` */
+    bool data_owned;
+    /** owned ``data`` was allocated with ``mmap`` (munmap it) vs ``malloc`` */
+    bool data_mmapped;
+    /** ``data`` holds already-compressed bytes to emit verbatim when ``true`` */
+    bool data_is_compressed;
+    /** Optional output compressor applied to uncompressed ``data`` on write */
+    const asdf_compressor_t *write_compressor;
 } asdf_block_info_t;
 
 
@@ -126,11 +133,20 @@ static inline bool is_block_magic(const uint8_t *buf, size_t len) {
 
 ASDF_LOCAL void asdf_block_info_init(
     size_t index, const void *data, size_t size, asdf_block_info_t *out_block);
+ASDF_LOCAL void asdf_block_info_deinit(asdf_block_info_t *block_info);
 ASDF_LOCAL bool asdf_block_info_read(asdf_stream_t *stream, asdf_block_info_t *out_block);
 ASDF_LOCAL bool asdf_block_info_write(
-    asdf_stream_t *stream, asdf_block_info_t *block, bool checksum);
+    asdf_file_t *file, asdf_block_info_t *block, asdf_stream_t *out, bool checksum);
 ASDF_LOCAL int asdf_block_info_compression_set(
     asdf_file_t *file, asdf_block_info_t *block_info, const char *compression);
+
+/**
+ * Internal form of `asdf_block_create` that binds the block to ``file`` (for an
+ * error/log context) up front.  ``file`` may be ``NULL`` (the public
+ * `asdf_block_create` passes ``NULL``).  The block is still detached and only
+ * added to the file's block list by `asdf_block_append`.
+ */
+ASDF_LOCAL asdf_block_t *asdf_file_block_create(asdf_file_t *file, const void *data, size_t size);
 
 
 #ifdef HAVE_MD5

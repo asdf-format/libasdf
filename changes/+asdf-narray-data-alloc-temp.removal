@@ -1,0 +1,5 @@
+Removed the ``asdf_ndarray_data_alloc_temp`` function.
+
+This was a workaround intended for use in cases where extension
+serialization needed to allocate a data buffer for an ndarray; since
+refactoring the block storage model this is no longer needed.

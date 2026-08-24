@@ -63,6 +63,11 @@ building the whole tree in memory.  It is built around the parser in
 writing.  These are intended for advanced use cases and are not yet fully
 documented; most applications should prefer the high-level API described above.
 
+Similarly, :ref:`asdf/block.h <block.h>` exposes a lower-level API for reading
+and writing ASDF binary blocks directly, rather than through the
+``core/ndarray`` interface.  It too is aimed at advanced use and is only
+partially documented.
+
 
 Command-line tool
 =================

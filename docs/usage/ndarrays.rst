@@ -319,20 +319,23 @@ describe the array, then allocate a data buffer for its contents with
    asdf_set_ndarray(file, "image", &nd);
 
 `asdf_ndarray_data_alloc` allocates a correctly sized buffer on the heap based
-on the array's shape and datatype.  After the file has been written, release it
-with `asdf_ndarray_data_dealloc` (safe to call after `asdf_close`):
+on the array's shape and datatype.  If you already have the array's contents in
+a buffer of your own, `asdf_ndarray_data_copy` allocates the buffer *and* copies
+that many bytes into it in one step, so you need not compute the size yourself.
+
+Assigning the ndarray to the file with `asdf_set_ndarray` (or
+`asdf_value_of_ndarray`) hands ownership of its data to the file, which frees it
+when the file is written and closed--that is, it becomes bound to the lifetime
+of the `asdf_file_t`--you do not free it yourself:
 
 .. code:: c
 
    asdf_write_to(file, "out.asdf");
    asdf_close(file);
-   asdf_ndarray_data_dealloc(&nd);
 
-.. note::
-
-   When building an ndarray *inside* an extension's serialize callback, use
-   `asdf_ndarray_data_alloc_temp` instead, its buffer is freed automatically
-   once the write completes.
+`asdf_ndarray_data_dealloc` is only needed to release a buffer you allocated but
+never assigned to a file; calling it after the ndarray has been assigned is a
+harmless no-op.
 
 See :ref:`writing` for the surrounding file-writing workflow.
 

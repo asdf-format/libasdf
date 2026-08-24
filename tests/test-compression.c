@@ -709,6 +709,90 @@ MU_TEST(recompress_block) {
 
 
 /**
+ * Copy a compressed block-backed ndarray into another file
+ *
+ * asdf_ndarray_copy makes an independent copy of the source ndarray's block,
+ * left compressed with the same compressor, into a new block in the destination
+ * file:
+ *  1. Write a compressed ndarray to a temp file.
+ *  2. Re-open it, copy the ndarray into a fresh destination file, and write it.
+ *  3. Verify the destination round-trips and the block stayed compressed with
+ *     the same compressor.
+ */
+MU_TEST(copy_compressed_block) {
+    const char *comp = munit_parameters_get(params, "comp");
+    const size_t n = 4096;
+
+    uint8_t *data = malloc(n);
+
+    if (!data)
+        return MUNIT_ERROR;
+
+    for (size_t idx = 0; idx < n; idx++)
+        data[idx] = (uint8_t)(idx % 4);
+
+    const char *src_path = write_compressed_ndarray_to_file(
+        comp, fixture->tempfile_prefix, data, n);
+
+    if (!src_path) {
+        free(data);
+        return MUNIT_ERROR;
+    }
+
+    const char *dst_path = strdup(get_temp_file_path(fixture->tempfile_prefix, "copy.asdf"));
+
+    if (!dst_path) {
+        free(data);
+        free((void *)src_path);
+        return MUNIT_ERROR;
+    }
+
+    asdf_file_t *src_file = asdf_open_file(src_path, "r");
+    assert_not_null(src_file);
+    asdf_ndarray_t *src = NULL;
+    assert_int(asdf_get_ndarray(src_file, "data", &src), ==, ASDF_VALUE_OK);
+    assert_not_null(src);
+
+    asdf_file_t *dst_file = asdf_open(NULL);
+    assert_not_null(dst_file);
+    asdf_ndarray_t *copy = asdf_ndarray_copy(dst_file, src);
+    assert_not_null(copy);
+
+    assert_int(asdf_set_ndarray(dst_file, "data", copy), ==, ASDF_VALUE_OK);
+    assert_int(asdf_write_to(dst_file, dst_path), ==, 0);
+    asdf_ndarray_destroy(copy);
+    asdf_close(dst_file);
+    asdf_ndarray_destroy(src);
+    asdf_close(src_file);
+
+    /* Verify the destination round-trips and stayed compressed with the same compressor */
+    dst_file = asdf_open_file(dst_path, "r");
+    assert_not_null(dst_file);
+    asdf_ndarray_t *dst = NULL;
+    assert_int(asdf_get_ndarray(dst_file, "data", &dst), ==, ASDF_VALUE_OK);
+    assert_not_null(dst);
+    size_t read_size = 0;
+    const uint8_t *read_data = asdf_ndarray_data(dst, &read_size);
+    assert_not_null(read_data);
+    assert_size(read_size, ==, n);
+    assert_memory_equal(n, read_data, data);
+
+    asdf_block_t *block = asdf_block_open(dst_file, dst->source);
+    assert_not_null(block);
+    assert_string_equal(asdf_block_compression(block), comp);
+    asdf_block_close(block);
+
+    asdf_ndarray_destroy(dst);
+    asdf_close(dst_file);
+
+    free(data);
+    free((void *)src_path);
+    free((void *)dst_path);
+    return MUNIT_OK;
+}
+
+
+/**
  * Access a compressed block's data, then re-write the file
  *
  * Regression test for the write path with opened blocks:
@@ -999,6 +1083,7 @@ MU_TEST_SUITE(
     MU_RUN_TEST(compressed_block_no_hang_on_segfault, comp_mode_test_params),
     MU_RUN_TEST(reemit_compressed_verbatim, comp_test_params),
     MU_RUN_TEST(recompress_block),
+    MU_RUN_TEST(copy_compressed_block, comp_test_params),
     MU_RUN_TEST(access_then_write, comp_test_params),
     MU_RUN_TEST(write_compressed_to_mem, comp_test_params),
     MU_RUN_TEST(write_to_mem_large_tree_realloc)

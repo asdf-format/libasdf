@@ -5,6 +5,15 @@
 
 
 typedef struct {
+    /*
+     * The logical block that manages this ndarray's binary data.  It holds the
+     * data whether it originated from `asdf_ndarray_data_alloc` (a detached,
+     * file-less block owning an mmap'd buffer), from a binary block read out of
+     * a file (a view opened with `asdf_block_open`), or from inline YAML data
+     * materialized on first access.  When written with binary-block storage
+     * this same block is appended to the file; with inline storage its data is
+     * serialized into the YAML and it is never appended.  Created lazily.
+     */
     asdf_block_t *block;
     asdf_file_t *file;
     /**
@@ -12,14 +21,10 @@ typedef struct {
      * writing a new ndarray
      */
     const char *write_compression;
-    /* User-provided data array for new ndarrays not written to a file */
-    void *data;
-    bool data_is_empty;
     /* Cloned YAML sequence for inline ndarrays; non-NULL iff this is an
-     * inline ndarray whose data has not yet been parsed into a C array */
+     * inline ndarray whose data has not yet been parsed into the block.  This
+     * is an ndarray-level property: the block itself is storage-agnostic. */
     asdf_sequence_t *inline_data;
-    /* True iff data was malloc'd during lazy inline parsing (not mmap'd) */
-    bool data_is_inline;
     /* Storage mode to use when writing this ndarray */
     asdf_array_storage_t array_storage;
 } asdf_ndarray_internal_t;

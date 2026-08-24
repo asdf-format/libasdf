@@ -4,6 +4,7 @@ CMAKE_DIST = CMakeLists.txt
 EXTRA_DIST = \
     $(CMAKE_DIST) \
     conf.py \
+    api/asdf/block.h.rst \
     api/asdf/core/datatype.h.rst \
     api/asdf/core/ndarray.h.rst \
     api/asdf/core/time.h.rst \

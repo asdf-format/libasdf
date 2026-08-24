@@ -19,6 +19,7 @@
 #include <stddef.h>
 #include <stdio.h>
 
+#include <asdf/block.h>
 #include <asdf/emitter.h>
 #include <asdf/error.h>
 #include <asdf/log.h>
@@ -257,7 +258,7 @@ static inline asdf_file_t *asdf_open_mem(const void *buf, size_t size) {
         (dest), \
         const char *: asdf_write_to_file, \
         char *: asdf_write_to_file, \
-        FILE *: asdf_write_to_fp)(file, dest)
+        FILE *: asdf_write_to_fp)(source, dest)
 
 
 #define ASDF__WRITE_TO_2(source, dest, ...) asdf_write_to_mem(source, dest, __VA_ARGS__)
@@ -945,169 +946,6 @@ asdf_set_mapping(asdf_file_t *file, const char *path, asdf_mapping_t *mapping);
 /** See :ref:`file-value-setters` */
 ASDF_EXPORT asdf_value_err_t
 asdf_set_sequence(asdf_file_t *file, const char *path, asdf_sequence_t *sequence);
-
-
-/**
- * Block-related APIs
- * ------------------
- *
- * More commonly you will use the ``core/ndarray`` suite of APIs for
- * accessing block data associated with a ``core/ndarray``.  However, these
- * provide "low-level" access to blocks directly.
- */
-
-/**
- * Opaque struct type representing information about an ASDF binary block
- *
- * Many of the block-related APIs work on `asdf_block_t *` arguments.
- */
-typedef struct asdf_block asdf_block_t;
-
-
-/**
- * Return the total number of binary blocks in the ASDF file
- *
- * :param file: The `asdf_file_t *` for the file
- * :return: Number of blocks in the file as a `size_t`
- */
-ASDF_EXPORT size_t asdf_block_count(asdf_file_t *file);
-
-/**
- * Open a block for reading the raw bytes from it
- *
- * This needs to be called before using `asdf_block_data` and should have a
- * complementary `asdf_block_close` when done.  When the file is read from
- * disk this sets up a memory map to the block.
- *
- * :param file: The `asdf_file_t *` for the file
- * :param index: The index of the block starting from 0
- * :return: An `asdf_block_t *` handle representing the block
- */
-ASDF_EXPORT asdf_block_t *asdf_block_open(asdf_file_t *file, size_t index);
-
-/**
- * Close an open `asdf_block_t *` handle
- *
- * After calling this any previous pointers to the block data are invalid.
- *
- * :param block: The `asdf_block_t *` handle
- */
-ASDF_EXPORT void asdf_block_close(asdf_block_t *block);
-
-
-/**
- * Append a new block to the file, given the data and size of the block
- *
- * Currently requires the file to be open in write mode.
- *
- * The same data can be duplicated to multiple blocks simply by repeated calls
- * to this function; there is not currently any tracking as to whether the same
- * data array already has an associated block in the file.
- *
- * :param file: The `asdf_file_t *` handle
- * :param data: The data array to write to the block (uncompressed)
- * :param size: The uncompressed size of the block data
- * :return: The index of the appended block, or a negative value if appending
- *   the block failed
- */
-ASDF_EXPORT ssize_t asdf_block_append(asdf_file_t *file, const void *data, size_t size);
-
-
-/**
- * Get the (uncompressed) size of the block data
- *
- * :param block: The `asdf_block_t *` handle
- * :return: The size of the block data as a `size_t`
- */
-ASDF_EXPORT size_t asdf_block_data_size(asdf_block_t *block);
-
-
-/**
- * Get the compression type, if any, of a block
- *
- * :param block: The `asdf_block_t *` handle
- * :return: A NULL-terminated string containing the compression type, if any
- */
-ASDF_EXPORT const char *asdf_block_compression(asdf_block_t *block);
-
-
-/**
- * Set the output compression type, if any, of a block
- *
- * :param block: The `asdf_block_t *` handle
- * :param compression: String representing the compressor to use (e.g. "bzp2")
- *   if any, or NULL or the empty string to set no compression
- * :return: Non-zero if the compression could not be set (e.g. invalid/unknown
- *   compressor); use `asdf_error` to check the error code
- */
-ASDF_EXPORT int asdf_block_compression_set(asdf_block_t *block, const char *compression);
-
-
-/**
- * Return the checksum from the block header
- *
- * :param block: The `asdf_block_t *` handle
- * :return: Pointer to the MD5 checksum digest array of 16 bytes
- */
-ASDF_EXPORT const unsigned char *asdf_block_checksum(asdf_block_t *block);
-
-
-/**
- * Size in bytes of the MD5 digest for block checksums
- */
-#define ASDF_BLOCK_CHECKSUM_DIGEST_SIZE 16
-
-
-/**
- * Verify the MD5 checksum of the block
- *
- * By default this is not done automatically when reading the block.
- *
- * If libasdf was built without MD5 support this always returns true.
- *
- * .. todo::
- *
- *   Maybe disable entirely if MD5 support was not available at build time.
- *
- * .. todo::
- *
- *   Add and document option to automatically verify checksums.
- *
- * :param block: The `asdf_block_t *` handle
- * :param expected: Optional pointer to a `uint8_t` buffer to receive the
- *   computed MD5 digest on return
- * :return: True if the checksum is valid
- */
-ASDF_EXPORT bool asdf_block_checksum_verify(
-    asdf_block_t *block, uint8_t expected[ASDF_BLOCK_CHECKSUM_DIGEST_SIZE]);
-
-
-/**
- * Returns a `void *` to the beginning of the block data, and optionally its size
- *
- * :param block: The `asdf_block_t *` handle
- * :param size: Optional `size_t *` into which the size of the block data is
- *   returned
- * :return: A `void *` to the block data
- */
-ASDF_EXPORT const void *asdf_block_data(asdf_block_t *block, size_t *size);
-
-
-/**
- * Returns a `void *` to the beginning of the block data, and optionally its size
- *
- * For uncompressed block data this is equivalent to `asdf_block_data`; for
- * compressed blocks, however, this returns the raw compressed data without
- * decompression, and the size returned is the size of the compressed data.
- *
- * Use `asdf_block_data` for access to the uncompressed data.
- *
- * :param block: The `asdf_block_t *` handle
- * :param size: Optional `size_t *` into which the size of the block data is
- *   returned
- * :return: A `void *` to the block data
- */
-ASDF_EXPORT const void *asdf_block_data_raw(asdf_block_t *block, size_t *size);
 
 ASDF_END_DECLS
 

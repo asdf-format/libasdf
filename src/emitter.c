@@ -464,132 +464,36 @@ static asdf_emitter_state_t emit_tree(asdf_emitter_t *emitter) {
 
 
 /**
- * Prepare write_data for blocks that were parsed from a file and have no in-memory
- * data buffer (data == NULL, data_pos >= 0).
- *
- * Two cases:
- *  - Verbatim re-emit (write_compressor == NULL): copy the compressed bytes
- *    from the input stream into a malloc'd buffer and set write_data_size to
- *    used_size (i.e. the on-disk compressed size).
- *  - Recompress (write_compressor != NULL): decompress using asdf_block_comp_open,
- *    copy the result into a malloc'd buffer, then close the decompressor.
- *
- * Blocks that already have data or write_data are skipped.
- */
-static bool emit_blocks_prepare(asdf_emitter_t *emitter) {
-    asdf_file_t *file = emitter->file;
-    /* Ensure file->blocks is populated if we have a parser with unparsed blocks.
-     * This handles the case where a read-mode file is re-written without the
-     * caller explicitly calling asdf_block_count() or asdf_block_open(). */
-    if (file->parser && !file->parser->done && asdf_block_info_vec_size(&file->blocks) == 0) {
-        (void)asdf_block_count(file);
-    }
-
-    asdf_stream_t *in_stream = file->parser ? file->parser->stream : NULL;
-    asdf_block_info_vec_t *blocks = &file->blocks;
-
-    for (asdf_block_info_vec_iter_t it = asdf_block_info_vec_begin(blocks); it.ref;
-         asdf_block_info_vec_next(&it)) {
-        asdf_block_info_t *block_info = it.ref;
-
-        if (block_info->data != NULL || block_info->write_data != NULL)
-            continue; /* already has data */
-
-        if (block_info->data_pos < 0 || !in_stream)
-            continue; /* new block or no input stream */
-
-        size_t avail = 0;
-        void *compressed = in_stream->open_mem(
-            in_stream, block_info->data_pos, (size_t)block_info->header.used_size, &avail);
-
-        if (!compressed) {
-            ASDF_ERROR_OOM(emitter);
-            return false;
-        }
-
-        if (block_info->write_compressor == NULL) {
-            /* Verbatim re-emit: copy the compressed bytes as-is */
-            uint8_t *buf = malloc(avail);
-
-            if (!buf) {
-                in_stream->close_mem(in_stream, compressed);
-                ASDF_ERROR_OOM(emitter);
-                return false;
-            }
-
-            memcpy(buf, compressed, avail);
-            in_stream->close_mem(in_stream, compressed);
-            block_info->write_data = buf;
-            block_info->write_data_size = avail;
-            block_info->owns_write_data = true;
-        } else {
-            /* Recompress: decompress with a temporary asdf_block_t, then copy */
-            asdf_block_t block = {0};
-            block.file = file;
-            block.info = *block_info;
-            block.data = compressed;
-            block.avail_size = avail;
-            block.should_close = false;
-
-            int ret = asdf_block_comp_open(&block);
-            in_stream->close_mem(in_stream, compressed);
-
-            if (ret != 0) {
-                free((void *)block.compression);
-                ASDF_ERROR_COMMON(
-                    emitter,
-                    ASDF_ERR_COMPRESSION_FAILED,
-                    "failed to decompress block for recompression");
-                return false;
-            }
-
-            size_t decomp_size = block.comp_state->dest_size;
-            uint8_t *buf = malloc(decomp_size);
-
-            if (!buf) {
-                asdf_block_comp_close(&block);
-                free((void *)block.compression);
-                ASDF_ERROR_OOM(emitter);
-                return false;
-            }
-
-            memcpy(buf, block.comp_state->dest, decomp_size);
-            asdf_block_comp_close(&block);
-            free((void *)block.compression);
-            block_info->write_data = buf;
-            block_info->write_data_size = decomp_size;
-            block_info->owns_write_data = true;
-        }
-    }
-
-    return true;
-}
-
-
-/**
  * Emit blocks to the file
  *
- * Very basic version that just emits the blocks serially; no compression is
- * supported yet or checksums, and the block header/data positions are assumed
- * unknown as yet.  Later this will need to be able to do things like backtrack
- * to write the header (or possibly compress to a temp file first to get
- * compression size--this might be useful for streaming), compute the the
- * checksum, etc)
+ * Each block is written by `asdf_block_info_write`, which sources its bytes
+ * directly from the block's in-memory data, or (for a block still backed by
+ * the input file) straight from the input stream.
+ *
+ * Very basic version that just emits the blocks serially; the block header/data
+ * positions are assumed unknown as yet.  Later this will need to be able to do
+ * things like backtrack to write the header (or possibly compress to a temp
+ * file first to get compression size--this might be useful for streaming), etc.
  */
 static asdf_emitter_state_t emit_blocks(asdf_emitter_t *emitter) {
     assert(emitter);
     assert(emitter->file);
     assert(emitter->stream);
 
-    if (!emit_blocks_prepare(emitter))
-        return ASDF_EMITTER_STATE_ERROR;
+    asdf_file_t *file = emitter->file;
 
-    asdf_block_info_vec_t *blocks = &emitter->file->blocks;
+    /* Ensure file->blocks is populated if we have a parser with unparsed blocks.
+     * This handles the case where a read-mode file is re-written without the
+     * caller explicitly calling asdf_block_count() or asdf_block_open(). */
+    if (file->parser && !file->parser->done && asdf_block_info_vec_size(&file->blocks) == 0)
+        (void)asdf_block_count(file);
+
+    asdf_block_info_vec_t *blocks = &file->blocks;
     bool checksum = !(emitter->config.flags & ASDF_EMITTER_OPT_NO_BLOCK_CHECKSUM);
 
     for (asdf_block_info_vec_iter_t it = asdf_block_info_vec_begin(blocks); it.ref;
          asdf_block_info_vec_next(&it)) {
-        if (!asdf_block_info_write(emitter->stream, it.ref, checksum))
+        if (!asdf_block_info_write(file, it.ref, emitter->stream, checksum))
             return ASDF_EMITTER_STATE_ERROR;
 
         asdf_stream_flush(emitter->stream);
