@@ -64,7 +64,11 @@ noinst_HEADERS = $(stc_headers)
 noinst_LTLIBRARIES = libstc.la
 
 libstc_la_SOURCES = $(stc_src)
-libstc_la_CFLAGS = $(AM_CFLAGS)
+# -fvisibility=hidden is essential, not cosmetic: libasdf vendors its own copy
+# of STC, and this Makefile.am does not inherit the top-level AM_CFLAGS.
+# Thus we also need to add it here to prevent the libstc statically linked into
+# libasdf from leaking symbols externally.
+libstc_la_CFLAGS = $(AM_CFLAGS) -fvisibility=hidden
 libstc_la_LDFLAGS = $(AM_LDFLAGS) -lm
 
 # CMake-related files to include in the distribution

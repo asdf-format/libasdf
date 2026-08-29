@@ -15,6 +15,12 @@ if (NOT HAVE_MD5)
     list(REMOVE_ITEM shell_files "${CMAKE_CURRENT_SOURCE_DIR}/test-verify-checksums.sh")
 endif()
 
+# test-symbol-leakage.sh inspects libasdf's dynamic symbol table; unlike the
+# other shell tests it does not need the `asdf` command-line tool, so it is
+# registered separately below rather than being gated on ENABLE_TESTING_SHELL.
+set(symbol_leakage_test "${CMAKE_CURRENT_SOURCE_DIR}/test-symbol-leakage.sh")
+list(REMOVE_ITEM shell_files "${symbol_leakage_test}")
+
 # test-malloc-fail requires --wrap linker support (GNU/LLVM ld).
 # Apple ld does not support it, so exclude the test on those platforms.
 check_linker_flag(C "-Wl,--wrap=malloc" HAVE_LINKER_WRAP)
@@ -66,6 +72,16 @@ if (BASH_PROGRAM AND ENABLE_TESTING_SHELL)
         set_property(TEST ${shell_name}
             PROPERTY ENVIRONMENT_MODIFICATION "${runtime}")
     endforeach()
+endif()
+
+# -------- Check that libasdf does not leak third-party symbols --------------
+if (BASH_PROGRAM)
+    add_test(test-symbol-leakage ${BASH_PROGRAM} ${symbol_leakage_test})
+    set_property(TEST test-symbol-leakage
+        PROPERTY ENVIRONMENT_MODIFICATION "${runtime}")
+    # The script exits 77 (automake's SKIP code) when there is no shared
+    # library to inspect, e.g. a static-only build
+    set_property(TEST test-symbol-leakage PROPERTY SKIP_RETURN_CODE 77)
 endif()
 
 # -------- Build and run C unit tests ----------------------------------------

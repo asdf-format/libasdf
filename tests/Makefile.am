@@ -95,7 +95,12 @@ unit_test_ldflags += -rdynamic
 endif
 
 unit_test_ldflags += $(CODE_COVERAGE_LDFLAGS)
-unit_test_ldadd = $(munit_ldflags) $(top_builddir)/libasdf.la $(ASDF_LIBS)
+# STC is built with -fvisibility=hidden so that libasdf.so does not export its
+# symbols (see third_party/Makefile.am), which means tests using STC types
+# directly must link the convenience library themselves.  Tests linking
+# libasdf_static.la instead already pick it up via its LIBADD.
+unit_test_ldadd = $(munit_ldflags) $(top_builddir)/libasdf.la \
+    $(top_builddir)/third_party/libstc.la $(ASDF_LIBS)
 
 # Unit tests
 check_LIBRARIES = libmunit.a
@@ -291,6 +296,12 @@ endif
 QUIET_OUT = $(if $(filter 1,$(V)),, > /dev/null)
 
 
+# Regression test that the vendored STC (and anything else statically linked
+# into libasdf) does not leak its symbols into libasdf's dynamic symbol table.
+# Unlike the tests above it does not need the `asdf` command-line tool.
+TESTS += test-symbol-leakage.sh
+
+
 # Test headers on C++
 cpp_header_test = $(builddir)/test-cpp-headers.cpp
 # Generate the C++ header test file
@@ -349,11 +360,6 @@ AUTOMAKE_OPTIONS = parallel-tests
 CMAKE_DIST = CMakeLists.txt
 EXTRA_DIST = $(TOOL_TESTS) $(CMAKE_DIST)
 EXTRA_DIST += \
-    libfyaml.asan.supp \
-    libfyaml.lsan.supp \
-    munit.h \
-    shell-test.sh \
-    util.h \
     fixtures/255.asdf \
     fixtures/255-2-blocks.asdf \
     fixtures/255-block-no-index.asdf \
@@ -418,11 +424,17 @@ EXTRA_DIST += \
     fixtures/verify-checksums/255-2-blocks.verify-checksums.txt \
     fixtures/verify-checksums/255-invalid-checksum.verify-checksums.txt \
     fixtures/verify-checksums/compressed.verify-checksums.txt \
+    libfyaml.asan.supp \
+    libfyaml.lsan.supp \
     munit/COPYING \
     munit/munit.c \
     munit/munit.h \
+    munit.h \
     scripts/extract_doc_examples.py \
     scripts/generate_test_cpp_headers.sh \
+    shell-test.sh \
+    test-symbol-leakage.sh \
+    util.h \
     $(top_srcdir)/docs/usage/writing.rst
 
 
