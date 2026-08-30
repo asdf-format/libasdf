@@ -53,13 +53,13 @@ if [ -z "${symbols}" ]; then
   exit 77
 fi
 
-# Normalize away decorations that are not part of the symbol name itself:
-# - Mach-O prefixes every C symbol with an underscore
+# Ignore decorations that are not part of the symbol name itself:
 # - ASan emits __odr_asan.<name> aliases for globals
+# - Mach-O prefixes every C symbol with an underscore, hence the optional
+#   leading _ in the pattern below
 leaked=$(echo "${symbols}" \
   | sed -e 's/^__odr_asan\.//' \
-  | sed -e 's/^_\(asdf_\|ASDF_\|libasdf_\)/\1/' \
-  | grep -vE '^(asdf_|ASDF_|libasdf_)' \
+  | grep -vE '^_?(asdf_|ASDF_|libasdf_)' \
   | sort -u)
 
 if [ -n "${leaked}" ]; then
