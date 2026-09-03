@@ -126,7 +126,7 @@ to a new file:
        return 0;
    }
 
-With libasdf installed on your system (see :ref:`development`) you can compile
+With libasdf installed on your system (see `Development`_) you can compile
 and run this test like:
 
 .. code:: console

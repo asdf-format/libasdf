@@ -53,12 +53,23 @@ fi
 
 fixtures_dir="${srcdir}/fixtures/${SUBCOMMAND}"
 
+# Write output to the same per-run directory the unit tests use.  The helper
+# joins the current run by process group; fall back to tmp/ if it is missing
+# (e.g. running this script by hand from an unbuilt tree).
+run_dir_prog="${top_builddir}/tests/run-dir"
+
+if [ -x "${run_dir_prog}" ]; then
+  run_dir=$("${run_dir_prog}")
+else
+  run_dir="$(pwd)/tmp"
+fi
+
+mkdir -p "${run_dir}"
+
 for input in $@; do
   base=$(basename "$input" .asdf)
   expected="${fixtures_dir}/${base}.${SUBCOMMAND}.txt"
-  actual="$(pwd)/tmp/${base}.${SUBCOMMAND}.out.txt"
-
-  mkdir -p tmp
+  actual="${run_dir}/${base}.${SUBCOMMAND}.out.txt"
 
   asdfprog="${top_builddir}/asdf"
   if [ "x${WITH_CMAKE}" != "x" ]; then
@@ -77,6 +88,11 @@ for input in $@; do
       fail=1
     else
       echo "✅ Test passed: $base"
+      # Keep the output of failing tests for inspection; discard it otherwise,
+      # matching the unit tests' teardown.
+      if [ -z "${ASDF_TEST_KEEP_TEMP}" ]; then
+        rm -f "$actual"
+      fi
     fi
   fi
 done

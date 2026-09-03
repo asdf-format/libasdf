@@ -5,7 +5,8 @@ Development resources
 
 This page covers building libasdf from a git checkout, the conventions the
 project follows, and how releases are made.  If you only want to *use* the
-library, the build instructions in the README *should* be sufficient.
+library, the build instructions in the :ref:`README <development>` *should*
+be sufficient.
 
 
 .. _build-systems:
@@ -38,19 +39,27 @@ distribution tarball* (the ``distcheck-cmake`` target in the top-level
 a file CMake needs, fails the autotools release check.  Both are also built and
 tested in CI, by the ``Build`` and ``CMake Build`` workflows respectively.
 
-The practical consequence: **when you add a source file, add it to both build
-systems.**
+The practical consequences:
 
-CMake is generally more permissive and picks up most new source files
-automatically, whereas automake tends to require anything you want built to be
-listed explicitly.
+* **When you add a source file, add it to both build systems.**  Both list
+  their sources explicitly--``src_files`` in the top-level ``Makefile.am`` and
+  ``libasdf_sources`` in ``src/CMakeLists.txt``.
+
+* **When you add a public header, add it to both install lists**--
+  ``include/Makefile.am`` and ``include/CMakeLists.txt``.  Drift between these
+  two breaks the *installed* library without breaking the build tree, so it
+  tends to be noticed late.
+
+* **When you add a documentation page, add it to EXTRA_DIST in
+  docs/Makefile.am**, or it will be missing from the release tarball and
+  the documentation build inside ``make distcheck`` will fail.
 
 
 Building with autotools
 =======================
 
 A git checkout has no ``configure`` script; generate it first with
-``autogen.sh`` (a one-line wrapper around ``autoreconf --install``).  This is
+``autogen.sh`` (a wrapper script around ``autoreconf --install``).  This is
 normally only needed once, or again after editing ``configure.ac`` or any
 ``Makefile.am``, though the generated makefiles normally re-run the necessary
 steps by themselves:
@@ -127,6 +136,10 @@ convenience:
 
 Other options of note:
 
+``-D ENABLE_TESTING_DOCS=YES``
+    Additionally build and run the example programs embedded in the
+    documentation (see `Documentation examples`_).
+
 ``-D ENABLE_TESTING_ALL=YES``
     Enable every test target, including the shell-based integration tests.
     This is what CI uses.
@@ -161,9 +174,11 @@ with some custom wrappers around it (helper macros) defined in
 ``tests/munit.h``.
 
 Test binaries are named ``test-<name>.unit`` and live in the ``tests/``
-directory of the build tree.  Some of them compile a subset of the sources
-directly, rather than linking against the library, so that internal components
-can be tested in isolation.
+directory of the build tree.  Tests that need to reach internals link against
+``libasdf_static.la``, a static convenience archive of the whole library, which
+makes ``ASDF_LOCAL`` (hidden-visibility) symbols reachable from the test binary.
+A couple of the narrower ones instead compile the single source under test
+directly, so that it can be exercised in isolation.
 
 From a build directory:
 
@@ -198,6 +213,50 @@ Two more targets, both requiring the corresponding ``configure`` option:
 
 - ``make check-valgrind`` (``--enable-valgrind``)
 - ``make check-code-coverage`` (``--enable-code-coverage``)
+
+
+.. _documentation examples:
+
+Documentation examples
+======================
+
+The example programs in ``README.rst`` and under ``docs/usage/`` are compiled
+and executed as part of the test suite, so they cannot drift away from the API.
+
+A code block opts in with the ``:test:`` option, naming the test, and may
+declare an input file with ``:fixture:``:
+
+.. code:: rst
+
+    .. code:: c
+       :test: test-open-close-file
+       :fixture: cube.asdf
+
+       #include <asdf.h>
+       ...
+
+``tests/scripts/extract_doc_examples.py`` pulls each marked block out into a
+``.c`` file under ``tests/doc_examples/``, compiles it against the freshly
+built library, and runs it with the resolved fixture path as its first
+argument.  A block with no ``:fixture:`` is run with no arguments; a fixture of
+``temp`` or ``temp:<name>`` resolves to a throwaway output path instead of an
+input file.
+
+The set of files scanned is listed explicitly, as ``DOC_EXAMPLE_FILES`` in
+``tests/Makefile.am`` and ``DOC_FILES`` in ``tests/CMakeLists.txt``; **a new
+documentation page containing examples must be added to both.**
+
+The examples are run for their exit status, not compared against the output
+quoted in the documentation.  When you change one, re-run it and paste its real
+output back into the surrounding prose:
+
+.. code:: console
+
+    $ make check
+    $ ./tests/doc_examples/test-open-close-file tests/fixtures/cube.asdf
+
+Under autotools this needs Python 3, and is skipped if none is found; under
+CMake it is gated on ``-D ENABLE_TESTING_DOCS=YES``.
 
 
 Code style
@@ -260,6 +319,29 @@ CI builds the docs with ``-W``, so warnings are errors; if you add a page,
 make sure it is referenced from a ``toctree`` and that every cross-reference
 resolves.
 
+Two things about hawkmoth are worth knowing before writing header comments:
+
+* **An undocumented declaration is dropped entirely, and takes its members with
+  it.**  A struct whose fields all carry ``/** ... */`` comments will still be
+  absent from the rendered API unless the struct *itself* has one.  If a type
+  you expect is missing from the output, this is almost always why.
+
+* **A header that clang cannot parse loses its declarations silently.**  The
+  parse needs the same include path the compiler gets; when a declaration
+  vanishes from the output for no apparent reason, check that first.
+
+Because ``conf.py`` sets ``nitpicky = True`` and uses ``c:expr`` as the default
+role, *any* bare identifier written in single backticks is looked up in the C
+domain.  Standard C names have no inventory to resolve against and are listed
+in ``nitpick_ignore``; for anything else that is not a real API symbol--a file
+name, a schema name, a field mentioned in passing--use
+
+.. code:: rst
+
+    ``double backticks``
+
+instead.
+
 The ``asdf(1)`` man page is generated from ``docs/usage/cli.rst`` but is
 **committed to the repository** (as ``docs/man/asdf.1``), so that building or
 installing from a release tarball does not require Sphinx.  After changing
@@ -268,10 +350,6 @@ installing from a release tarball does not require Sphinx.  After changing
 .. code:: console
 
     $ make man-page
-
-Adding a new documentation page also means adding it to ``EXTRA_DIST`` in
-``docs/Makefile.am``, or it will be missing from the release tarball and the
-documentation build inside ``make distcheck`` will fail.
 
 
 Changelog entries

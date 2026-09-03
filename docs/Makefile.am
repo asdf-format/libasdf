@@ -1,8 +1,13 @@
 # CMake-related files to include in the distribution
 CMAKE_DIST = CMakeLists.txt
 
+# Local Sphinx extensions; see docs/_ext/
+SPHINX_EXT_DIST = \
+    _ext/index_grouping.py
+
 EXTRA_DIST = \
     $(CMAKE_DIST) \
+    $(SPHINX_EXT_DIST) \
     conf.py \
     api/asdf/block.h.rst \
     api/asdf/core/datatype.h.rst \

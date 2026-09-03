@@ -53,6 +53,17 @@ add_compile_definitions(REFERENCE_FILES_DIR=\"${REFERENCE_FILES_DIR}\")
 add_compile_definitions(FIXTURES_DIR=\"${FIXTURES_DIR}\")
 add_compile_definitions(TEMP_DIR=\"${TEMP_DIR}\")
 
+# Helper used by the shell tests to discover the run directory chosen by
+# util.c's constructor
+add_executable(run-dir run-dir.c)
+target_include_directories(run-dir PRIVATE
+    ${CMAKE_BINARY_DIR}/include
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_include_directories(run-dir SYSTEM PRIVATE ${STATGRAB_INCLUDEDIR})
+target_link_directories(run-dir PRIVATE ${STATGRAB_LIBDIR})
+target_link_libraries(run-dir PRIVATE util ${STATGRAB_LIBRARIES})
+
 set(runtime "WITH_CMAKE=set:YES;OBJC_DISABLE_INITIALIZE_FORK_SAFETY=set:YES;srcdir=set:${CMAKE_CURRENT_SOURCE_DIR};top_srcdir=set:${CMAKE_SOURCE_DIR};top_builddir=set:${CMAKE_BINARY_DIR};LD_LIBRARY_PATH=path_list_prepend:${CMAKE_BINARY_DIR}/src")
 
 set(sanitizer_options "ASAN_OPTIONS=detect_leaks=1:suppressions=${CMAKE_CURRENT_SOURCE_DIR}/libfyaml.asan.supp;LSAN_OPTIONS=suppressions=${CMAKE_CURRENT_SOURCE_DIR}/libfyaml.lsan.supp")
