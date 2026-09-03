@@ -26,7 +26,7 @@ $(asdf_standard_submodule) $(munit_submodule):
 
 @VALGRIND_CHECK_RULES@
 
-check_PROGRAMS = \
+unit_tests = \
     test-block.unit \
     test-compression.unit \
     test-core-extensions.unit \
@@ -47,6 +47,10 @@ check_PROGRAMS = \
     test-value-util.unit \
     test-version.unit \
     test-yaml.unit
+
+# run-dir is a helper for the shell tests, not a test itself, so it goes in
+# check_PROGRAMS (built by `make check`) but not in TESTS.
+check_PROGRAMS = $(unit_tests) run-dir
 
 TESTS_ENVIRONMENT = top_builddir=$(top_builddir) top_srcdir=$(top_srcdir)
 
@@ -72,7 +76,7 @@ TESTS_ENVIRONMENT += \
 endif
 endif
 
-TESTS = $(check_PROGRAMS)
+TESTS = $(unit_tests)
 
 unit_test_base_cppflags = \
     -DREFERENCE_FILES_DIR=\"$(asdf_standard_dir)/reference_files\" \
@@ -108,6 +112,12 @@ libmunit_a_SOURCES = util.c $(munit_dir)/munit.c
 # util.c includes config.h, which pulls in the public asdf/config.h
 libmunit_a_CPPFLAGS = -I$(top_srcdir)/include -I$(top_builddir)/include $(unit_test_base_cppflags)
 libmunit_a_CFLAGS = $(unit_test_cflags) -w
+
+# run-dir (shell test helper, not a test)
+run_dir_SOURCES = run-dir.c
+run_dir_CPPFLAGS = $(unit_test_cppflags)
+run_dir_CFLAGS = $(unit_test_cflags)
+run_dir_LDADD = $(munit_ldflags) $(ASDF_LIBS)
 
 # test-block.unit
 test_block_unit_SOURCES = test-block.c
@@ -195,6 +205,7 @@ if HAVE_LINKER_WRAP
 # static archive (rather than the shared libasdf) lets the --wrap flags
 # intercept malloc/calloc/strdup/strndup calls anywhere in the library, not
 # just in a hand-maintained subset of translation units.
+unit_tests += test-malloc-fail.unit
 check_PROGRAMS += test-malloc-fail.unit
 test_malloc_fail_unit_SOURCES = test-malloc-fail.c
 test_malloc_fail_unit_CPPFLAGS = $(unit_test_cppflags)

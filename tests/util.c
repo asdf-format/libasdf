@@ -89,6 +89,12 @@ static void ensure_tmp_dir(void) {
  * At startup each binary also lazily removes coordination files whose process
  * groups are no longer alive (kill(-pgid, 0) == ESRCH).
  *
+ * The run directory is never removed while the run is in progress.  It is
+ * shared by every binary in the run (and, because munit forks a child per
+ * test, by every one of those children).
+ *
+ * `make distclean` removes tmp/ entirely.
+ *
  * Note: in non-interactive shells without job control, `make` inherits the
  * invoking shell's PGID rather than creating its own, so two sequential
  * `make check` calls in the same shell session may share a PGID.  The stale
@@ -142,7 +148,9 @@ static int join_existing_run(const char *pgid_file) {
     ssize_t n = read(fd, serial_str, sizeof(serial_str) - 1);
     close(fd);
 
-    if (n <= 0)
+    /* A short read means the pioneer has created the coordination file but
+     * has not yet finished writing to it; treat it as "not ready". */
+    if (n != TEST_SERIAL_LEN)
         return 0;
 
     snprintf(run_dir_storage, sizeof(run_dir_storage), TEMP_DIR "/%s", serial_str);
@@ -150,22 +158,33 @@ static int join_existing_run(const char *pgid_file) {
 }
 
 
-#define WAIT_FOR_PIONEER_ATTEMPTS 200
+#define WAIT_FOR_PIONEER_ATTEMPTS 1000
 #define WAIT_FOR_PIONEER_DELAY 5000 // usec
+
+#define PIONEER_JOINED 1
+#define PIONEER_GONE 0
+#define PIONEER_TIMEOUT (-1)
 
 
 /*
  * Retry joining a run after losing the O_EXCL race to the pioneer.
  * Polls the coordination file with a short backoff until the pioneer
  * writes the serial.
+ *
+ * Returns PIONEER_JOINED if the serial was read, PIONEER_GONE if the
+ * coordination file vanished (the pioneer failed, so the caller should try
+ * to claim it), or PIONEER_TIMEOUT if the pioneer never published one.
  */
-static void wait_for_pioneer(const char *pgid_file) {
+static int wait_for_pioneer(const char *pgid_file) {
     for (int attempt = 0; attempt < WAIT_FOR_PIONEER_ATTEMPTS; attempt++) {
         usleep(WAIT_FOR_PIONEER_DELAY);
         if (join_existing_run(pgid_file))
-            return;
+            return PIONEER_JOINED;
+        if (access(pgid_file, F_OK) == -1 && errno == ENOENT)
+            return PIONEER_GONE;
     }
     /* Timed out; get_run_dir() falls back to TEMP_DIR. */
+    return PIONEER_TIMEOUT;
 }
 
 
@@ -278,6 +297,9 @@ failure:
 }
 
 
+#define CLAIM_RUN_ATTEMPTS 3
+
+
 __attribute__((constructor))
 static void init_run_dir(void) {
     ensure_tmp_dir();
@@ -287,30 +309,26 @@ static void init_run_dir(void) {
     char pgid_file[PATH_MAX];
     snprintf(pgid_file, sizeof(pgid_file), TEMP_DIR "/" PGID_FILE_TEMPLATE, (int)pgid);
 
-    /* Follower: join an existing run for this PGID. */
-    if (join_existing_run(pgid_file))
-        return;
+    for (int attempt = 0; attempt < CLAIM_RUN_ATTEMPTS; attempt++) {
+        /* Follower: join an existing run for this PGID. */
+        if (join_existing_run(pgid_file))
+            return;
 
-    /* Pioneer: atomically claim the coordination file. */
-    int fd_create = open(pgid_file, O_WRONLY | O_CREAT | O_EXCL, 0600);
-    if (fd_create < 0) {
-        if (errno == EEXIST)
-            wait_for_pioneer(pgid_file);  /* lost the race; become a follower */
-        return;
+        /* Pioneer: atomically claim the coordination file. */
+        int fd_create = open(pgid_file, O_WRONLY | O_CREAT | O_EXCL, 0600);
+        if (fd_create >= 0) {
+            pioneer_setup(fd_create, pgid_file);
+            return;
+        }
+        if (errno != EEXIST)
+            return;
+
+        /* Lost the race; wait for the pioneer to publish the serial.  If the
+         * pioneer failed it removes the coordination file, in which case we
+         * loop around and try to claim it ourselves. */
+        if (wait_for_pioneer(pgid_file) != PIONEER_GONE)
+            return;
     }
-
-    pioneer_setup(fd_create, pgid_file);
-}
-
-
-/* On exit, attempt to remove the run directory if it is empty.  This is
- * best-effort: rmdir silently fails on a non-empty directory, and with
- * parallel test execution (make -jN) multiple binaries share the directory,
- * so only the last binary to exit will succeed if no files were left. */
-__attribute__((destructor))
-static void cleanup_run_dir(void) {
-    if (run_dir_storage[0])
-        rmdir(run_dir_storage);  /* no-op if non-empty */
 }
 
 
@@ -336,12 +354,14 @@ const char *get_temp_file_path(const char *prefix, const char *suffix) {
     if (n < 0 || n >= (int)sizeof(fullpath))
         return NULL;
 
-    /* Ensure the run directory exists: the destructor may have removed it if
-     * it was empty between the last test binary's exit and this call. */
-    mkdir(get_run_dir(), 0777);  /* no-op if it already exists */
-
-    /* Create the file so it exists (matching the old mkstemp-based behaviour). */
+    /* Create the file so it exists (matching the old mkstemp-based behaviour).
+     * The run directory should already exist, but recreate it and retry once
+     * if something outside the test run removed it. */
     int fd = open(fullpath, O_CREAT | O_WRONLY, 0600);
+    if (fd < 0 && errno == ENOENT) {
+        mkdir(get_run_dir(), 0777);
+        fd = open(fullpath, O_CREAT | O_WRONLY, 0600);
+    }
     if (fd >= 0)
         close(fd);
 
