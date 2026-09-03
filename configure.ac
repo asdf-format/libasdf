@@ -119,7 +119,7 @@ AM_CONDITIONAL([HAVE_LINKER_WRAP], [test "x$have_linker_wrap" = "xyes"])
 # --enable-debug
 AC_ARG_ENABLE([debug],
   [AS_HELP_STRING([--enable-debug], [Enable debug build (-g -O0)])],
-  [enable_debug=yes],
+  [],
   [enable_debug=no]
 )
 
@@ -145,7 +145,7 @@ AM_CONDITIONAL([ASDF_BUILD_TOOL], [test "x$asdf_build_tool" = xyes])
 # --with-asan
 AC_ARG_WITH([asan],
   [AS_HELP_STRING([--with-asan], [Build with AddressSanitizer support])],
-  [with_asan=yes],
+  [],
   [with_asan=no])
 
 AS_IF([test "x$with_asan" = "xyes"], [
@@ -162,7 +162,7 @@ AM_CONDITIONAL([HOST_LINUX], [case "$host_os" in linux*) true;; *) false;; esac]
 # --with-ubsan
 AC_ARG_WITH([ubsan],
   [AS_HELP_STRING([--with-ubsan], [Build with UndefinedBehaviorSanitizer support])],
-  [with_ubsan=yes],
+  [],
   [with_ubsan=no])
 
 AS_IF([test "x$with_ubsan" = "xyes"], [
