@@ -3,8 +3,12 @@ import re
 from datetime import datetime
 from pathlib import Path
 
+import sys
+
 from docutils.parsers.rst import directives
 from sphinx.directives.patches import Code
+
+sys.path.insert(0, str(Path(__file__).parent / '_ext'))
 
 
 # -- Project information ------------------------------------------------------
@@ -139,7 +143,13 @@ intersphinx_mapping = {
     'numpy': ('https://numpy.org/doc/stable/', None)
 }
 
-extensions = ['sphinx.ext.intersphinx', 'sphinx.ext.todo', 'hawkmoth']
+extensions = [
+    'sphinx.ext.intersphinx',
+    'sphinx.ext.todo',
+    'hawkmoth',
+    # Local; see docs/_ext/
+    'index_grouping',
+]
 
 # -- Options for hawkmoth extension --------------------------------------------
 
@@ -227,6 +237,11 @@ pygments_dark_style = "monokai"
 latex_documents = [("index", project + ".tex", project + " Documentation", author, "manual")]
 
 latex_logo = "_static/images/logo-light-mode.png"
+
+
+# -- Local extensions ----------------------------------------------------------
+# See docs/_ext/index_grouping.py
+index_strip_prefixes = ['asdf_', 'ASDF_']
 
 
 # -- Doc-example test directive options ----------------------------------------
