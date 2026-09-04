@@ -1,3 +1,31 @@
+libasdf 0.1.0 (2026-09-04)
+==========================
+
+Bugfix
+------
+
+- Fixed incorrect handling of ``--disable-debug``, ``--disable-asan`` and
+  ``--disable-ubsan`` flags to ``configure``.
+
+
+Documentation
+-------------
+
+- Fixed broken link in the README to the "development" section.
+- Improved the documentation index such that entries are grouped ignoring the
+  ``asdf_`` prefix.
+
+  For example, ``asdf_block_open()`` is grouped under "B", not "A" (previously
+  almost all documented symbols are just grouped under "A" which is not as
+  useful for a C library).
+
+
+Misc
+----
+
+- Fixed the vendored copy of STC leaking its symbols out of ``libasdf.so``.
+
+
 libasdf 0.1.0rc2 (2026-08-24)
 =============================
 

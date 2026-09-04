@@ -1,2 +1,0 @@
-Fixed incorrect handling of ``--disable-debug``, ``--disable-asan`` and
-``--disable-ubsan`` flags to ``configure``.

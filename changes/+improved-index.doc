@@ -1,6 +1,0 @@
-Improved the documentation index such that entries are grouped ignoring the
-``asdf_`` prefix.
-
-For example, ``asdf_block_open()`` is grouped under "B", not "A" (previously
-almost all documented symbols are just grouped under "A" which is not as useful
-for a C library).

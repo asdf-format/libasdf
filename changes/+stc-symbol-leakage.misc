@@ -1,1 +1,0 @@
-Fixed the vendored copy of STC leaking its symbols out of ``libasdf.so``.

@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent / '_ext'))
 def read_config_h() -> tuple[str, str, str]:
     """Read package data out of config.h if possible"""
     project = 'libasdf'
-    release = '0.1.0rc2'
+    release = '0.1.0'
 
     config_h_path = Path(__file__).parent.parent / 'config.h'
 
