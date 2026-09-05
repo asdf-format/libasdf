@@ -313,9 +313,9 @@ ASDF_EXPORT int asdf_write_to_fp(asdf_file_t *file, FILE *fp);
  * read from ``*size``.  If the buffer is not large enough to hold the file,
  * the output is truncated and a non-zero value is returned.
  *
- * If ``*buf`` is NULL, a buffer is allocated with `malloc()` and a pointer to
+ * If ``*buf`` is NULL, a buffer is allocated for the caller and a pointer to
  * it is stored in ``*buf``; the allocated size is written to ``*size``.  The
- * caller is responsible for freeing the buffer with `free()`.
+ * caller is responsible for releasing the buffer with `asdf_free`.
  *
  * :param file: The `asdf_file_t *` to write
  * :param buf: Address of a ``void *`` buffer pointer (in/out)

@@ -461,7 +461,7 @@ ASDF_EXPORT asdf_block_t *asdf_ndarray_block(asdf_ndarray_t *ndarray);
  * :param dst: Pointer to a destination `void *` already allocated to receive
  *   the exact number of bytes in the source ndarray, or `NULL` to indicate
  *   that a buffer should be allocated.  In the latter case the caller is
- *   responsible for freeing the allocated buffer.
+ *   responsible for releasing the allocated buffer with `asdf_free`.
  * :return: An `asdf_ndarray_err_t`; either `ASDF_NDARRAY_OK` if the data read
  *   successfully; otherwise the relevant error code.
  */
@@ -490,7 +490,8 @@ asdf_ndarray_read_all(asdf_ndarray_t *ndarray, asdf_scalar_datatype_t dst_t, voi
  * :param dst: Pointer to a destination `void *` already allocated to receive
  *   the exact number of bytes in the output tile based on shape and datatype,
  *   or `NULL` to indicate that a buffer should be allocated.  In the latter
- *   case the caller is responsible for freeing the allocated buffer.
+ *   case the caller is responsible for releasing the allocated buffer with
+ *   `asdf_free`.
  * :return: An `asdf_ndarray_err_t`; either `ASDF_NDARRAY_OK` if the data read
  *   successfully; otherwise the relevant error code.
  */
@@ -523,7 +524,8 @@ ASDF_EXPORT asdf_ndarray_err_t asdf_ndarray_read_tile_ndim(
  * :param dst: Pointer to a destination `void *` already allocated to receive
  *   the exact number of bytes in the output tile based on shape and datatype,
  *   or `NULL` to indicate that a buffer should be allocated.  In the latter
- *   case the caller is responsible for freeing the allocated buffer.
+ *   case the caller is responsible for releasing the allocated buffer with
+ *   `asdf_free`.
  * :return: An `asdf_ndarray_err_t`; either `ASDF_NDARRAY_OK` if the data read
  *   successfully; otherwise the relevant error code.
  */
