@@ -126,7 +126,7 @@ MU_TEST(test_emitter_stream_switch) {
 
     free(buf_yaml);
     free(buf_blocks);
-    free(single_buf);
+    asdf_free(single_buf);
     return MUNIT_OK;
 }
 

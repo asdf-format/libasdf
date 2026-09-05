@@ -18,6 +18,7 @@ EXTRA_DIST = \
     api/asdf/extension.h.rst \
     api/asdf/file.h.rst \
     api/asdf/log.h.rst \
+    api/asdf/util.h.rst \
     api/asdf/value.h.rst \
     api/asdf/yaml.h.rst \
     changes.rst \

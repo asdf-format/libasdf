@@ -112,8 +112,8 @@ the ASDF tree, as well as extract block data.  Inline comments provide further e
    
        // The asdf_ndarray_read_tile_ functions copy a rectangular cutout of
        // the array into a buffer, converting datatype and endianness as needed.
-       // If you don't pass your own buffer one is allocated for you; either way
-       // you are responsible for freeing it.
+       // If you don't pass your own buffer one is allocated for you; in that
+       // case you are responsible for releasing it with asdf_free().
    
        // origin and shape must have one entry per array dimension, so we size
        // them to the array we found.  Here we take a cutout of up to 5 elements
@@ -152,7 +152,7 @@ the ASDF tree, as well as extract block data.  Inline comments provide further e
    
        printf("Value at center of cutout: %g\n", tile[tile_nelem / 2]);
    
-       free(tile);
+       asdf_free(tile);
        asdf_ndarray_destroy(ndarray);
        asdf_close(file);
        return 0;

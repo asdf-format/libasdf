@@ -849,6 +849,26 @@ MU_TEST(test_asdf_set_value_double_free) {
 }
 
 
+/** `asdf_free` releases a buffer allocated by `asdf_write_to_mem`, and ignores NULL */
+MU_TEST(test_asdf_free) {
+    asdf_free(NULL);
+
+    asdf_file_t *file = asdf_open(NULL);
+    assert_not_null(file);
+    assert_int(asdf_set_string0(file, "key", "value"), ==, ASDF_VALUE_OK);
+
+    void *buf = NULL;
+    size_t size = 0;
+    assert_int(asdf_write_to_mem(file, &buf, &size), ==, 0);
+    assert_not_null(buf);
+    assert_size(size, >, 0);
+    asdf_close(file);
+
+    asdf_free(buf);
+    return MUNIT_OK;
+}
+
+
 MU_TEST_SUITE(
     file,
     MU_RUN_TEST(test_asdf_open_file),
@@ -881,7 +901,8 @@ MU_TEST_SUITE(
     MU_RUN_TEST(write_minimal_empty_tree),
     MU_RUN_TEST(write_custom_tag_handle),
     MU_RUN_TEST(write_to_nonexistent_file),
-    MU_RUN_TEST(test_asdf_set_value_double_free)
+    MU_RUN_TEST(test_asdf_set_value_double_free),
+    MU_RUN_TEST(test_asdf_free)
 );
 
 

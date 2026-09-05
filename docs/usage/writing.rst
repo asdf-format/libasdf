@@ -123,12 +123,12 @@ block index -- in one shot.
        fprintf(stderr, "write failed\n");
    }
    /* ... use buf[0..len-1] ... */
-   free(buf);
+   asdf_free(buf);
 
 This calls `asdf_write_to_mem`.  When the first output argument ``*buf`` is
 ``NULL``, the library allocates a buffer large enough for the whole file and
 stores its address in ``*buf`` and its size in ``*len``.  The caller is
-responsible for freeing that buffer with ``free()``.  Alternatively, you can
+responsible for releasing that buffer with `asdf_free`.  Alternatively, you can
 pre-allocate a buffer and pass a non-``NULL`` ``*buf`` with the available
 capacity in ``*len``; if the capacity is insufficient the output is truncated
 and a non-zero value is returned.
@@ -207,7 +207,7 @@ result to an in-memory buffer.
        asdf_file_t *out = asdf_open(NULL);
        if (out == NULL) {
            fprintf(stderr, "error creating output file\n");
-           free(src_data);
+           asdf_free(src_data);
            asdf_ndarray_destroy(cube);
            asdf_close(src);
            return 1;
@@ -232,7 +232,7 @@ result to an in-memory buffer.
        uint8_t *out_data = asdf_ndarray_data_alloc(&out_cube);
        if (out_data == NULL) {
            fprintf(stderr, "out of memory\n");
-           free(src_data);
+           asdf_free(src_data);
            asdf_ndarray_destroy(cube);
            asdf_close(src);
            asdf_close(out);
@@ -252,7 +252,7 @@ result to an in-memory buffer.
        size_t len = 0;
        if (asdf_write_to(out, &buf, &len) != 0) {
            fprintf(stderr, "write failed\n");
-           free(src_data);
+           asdf_free(src_data);
            asdf_ndarray_destroy(cube);
            asdf_close(out);
            asdf_close(src);
@@ -262,9 +262,9 @@ result to an in-memory buffer.
        printf("wrote %zu-byte ASDF file to memory\n", len);
 
        /* The file owns out_cube's data now; asdf_close frees it */
-       free(buf);
+       asdf_free(buf);
        asdf_close(out);
-       free(src_data);
+       asdf_free(src_data);
        asdf_ndarray_destroy(cube);
        asdf_close(src);
        return 0;

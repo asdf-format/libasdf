@@ -180,7 +180,7 @@ MU_TEST(ndarray_read_1d_tile_contiguous) {
     assert_int(err, ==, ASDF_NDARRAY_OK);
     assert_not_null(tile);
     assert_memory_equal(2 * sizeof(uint8_t), tile, expected1);
-    free(tile);
+    asdf_free(tile);
     asdf_ndarray_destroy(ndarray);
 
     /* Read tile from a 2-D array */
@@ -194,7 +194,7 @@ MU_TEST(ndarray_read_1d_tile_contiguous) {
     assert_int(err, ==, ASDF_NDARRAY_OK);
     assert_not_null(tile);
     assert_memory_equal(2 * sizeof(uint16_t), tile, expected2);
-    free(tile);
+    asdf_free(tile);
     asdf_ndarray_destroy(ndarray);
 
     /* Read tile from a 3-D array */
@@ -208,7 +208,7 @@ MU_TEST(ndarray_read_1d_tile_contiguous) {
     assert_int(err, ==, ASDF_NDARRAY_OK);
     assert_not_null(tile);
     assert_memory_equal(2 * sizeof(int32_t), tile, expected3);
-    free(tile);
+    asdf_free(tile);
     asdf_ndarray_destroy(ndarray);
 
     asdf_close(file);
@@ -234,7 +234,7 @@ MU_TEST(test_asdf_ndarray_read_tile_2d) {
     assert_int(err, ==, ASDF_NDARRAY_OK);
     assert_not_null(tile);
     assert_memory_equal(4 * sizeof(uint16_t), tile, expected2);
-    free(tile);
+    asdf_free(tile);
     asdf_ndarray_destroy(ndarray);
 
     /* Read 2-D tile from the 1th layer of a 3-D array */
@@ -247,7 +247,7 @@ MU_TEST(test_asdf_ndarray_read_tile_2d) {
     assert_int(err, ==, ASDF_NDARRAY_OK);
     assert_not_null(tile);
     assert_memory_equal(4 * sizeof(int32_t), tile, expected3);
-    free(tile);
+    asdf_free(tile);
     asdf_ndarray_destroy(ndarray);
 
     asdf_close(file);
@@ -273,7 +273,7 @@ MU_TEST(ndarray_read_3d_tile) {
     assert_int(err, ==, ASDF_NDARRAY_OK);
     assert_not_null(tile);
     assert_memory_equal(8 * sizeof(int32_t), tile, expected3);
-    free(tile);
+    asdf_free(tile);
     asdf_ndarray_destroy(ndarray);
 
     asdf_close(file);
@@ -303,7 +303,7 @@ MU_TEST(ndarray_read_3d_tile) {
     assert_not_null(tile); \
     dtype##_t expected[] = {0, 1, 2, 3, 4, 5, 6, 7}; \
     assert_memory_equal(8 * sizeof(dtype##_t), tile, expected); \
-    free(tile); \
+    asdf_free(tile); \
     asdf_ndarray_destroy(ndarray); \
 } while (0)
 
@@ -698,7 +698,7 @@ MU_TEST(ndarray_numeric_conversion) {
 #ifndef HAVE_FLOAT16
 cleanup:
 #endif
-    free(array);
+    asdf_free(array);
     asdf_ndarray_destroy(ndarray);
     asdf_close(file);
     return MUNIT_OK;
@@ -1288,7 +1288,7 @@ MU_TEST(ndarray_extension_embedded_ndarray) {
 
     asdf_test_affine_destroy(affine_in);
     asdf_close(file);
-    free(buf);
+    asdf_free(buf);
     return MUNIT_OK;
 }
 

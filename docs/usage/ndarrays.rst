@@ -161,16 +161,16 @@ the host's native byte order and, optionally, to a different numeric datatype:
    if (err == ASDF_NDARRAY_OK) {
        uint64_t n = asdf_ndarray_size(array);
        /* values[0 .. n-1] are now native-endian doubles */
-       free(values);
+       asdf_free(values);
    }
 
 Passing ``NULL`` for the destination (as above, via a pointer whose value is
 ``NULL``) asks the library to allocate a buffer of the right size; the caller
-then owns that memory and must ``free()`` it.  Alternatively, pre-allocate a
-buffer of `asdf_ndarray_nbytes` (or the appropriate size for the converted
-type) and pass its address.  Pass `ASDF_DATATYPE_SOURCE` as the destination
-datatype to keep the array's original element type and only normalize byte
-order.
+then owns that memory and must release it with `asdf_free`.  Alternatively,
+pre-allocate a buffer of `asdf_ndarray_nbytes` (or the appropriate size for the
+converted type) and pass its address.  Pass `ASDF_DATATYPE_SOURCE` as the
+destination datatype to keep the array's original element type and only
+normalize byte order.
 
 Reading tiles
 ~~~~~~~~~~~~~
@@ -191,7 +191,7 @@ Often you only need a rectangular sub-region ("tile") of a large array.
 
    if (err == ASDF_NDARRAY_OK) {
        /* tile holds 25 native-endian floats in row-major order */
-       free(tile);
+       asdf_free(tile);
    }
 
 The same buffer-ownership and datatype-conversion rules as
