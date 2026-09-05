@@ -20,7 +20,7 @@ ASDF_BEGIN_DECLS
 
 typedef enum {
 // clang-format off
-#define X(flag, bit) flag = (1UL << (bit)),
+#define X(flag, bit) flag = (1ULL << (bit)),
     _ASDF_PARSER_OPTS(X)
 #undef X
     // clang-format on
@@ -28,7 +28,7 @@ typedef enum {
 
 
 // NOLINTNEXTLINE(readability-magic-numbers)
-ASDF_STATIC_ASSERT(ASDF_PARSER_OPT_BUFFER_TREE < (1UL << 63), "too many flags for 64-bit int");
+ASDF_STATIC_ASSERT(ASDF_PARSER_OPT_BUFFER_TREE < (1ULL << 63), "too many flags for 64-bit int");
 
 
 typedef uint64_t asdf_parser_optflags_t;

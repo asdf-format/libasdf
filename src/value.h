@@ -91,7 +91,7 @@ typedef struct asdf_find_frame {
     bool owns_container;
     bool visited;
     bool is_mapping;
-    ssize_t depth;
+    ptrdiff_t depth;
     asdf_container_iter_t *iter;
 } asdf_find_frame_t;
 
@@ -102,7 +102,7 @@ typedef struct asdf_find_iter_impl {
     asdf_value_pred_t pred;
     bool depth_first;
     asdf_value_pred_t descend_pred;
-    ssize_t max_depth;
+    ptrdiff_t max_depth;
     asdf_find_frame_t *frames;
     size_t frame_count;
     size_t frame_cap;
