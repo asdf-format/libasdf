@@ -1,0 +1,6 @@
+Fixed the public headers failing to compile with MSVC.  ``asdf_value_find_ex``
+and ``asdf_find_iter_init_ex`` now take their ``max_depth`` argument as
+``ptrdiff_t`` rather than the POSIX-only ``ssize_t``, and the option flag
+bitmasks in ``asdf/emitter.h``, ``asdf/parser.h`` and ``asdf/log.h`` are built
+with ``1ULL`` rather than ``1UL``, which overflows where ``unsigned long`` is
+32 bits.

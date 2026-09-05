@@ -10,7 +10,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <sys/types.h>
 
 #include <asdf/util.h>
 #include <asdf/yaml.h>
@@ -1199,7 +1198,7 @@ ASDF_EXPORT asdf_value_t *asdf_value_find_ex(
     asdf_value_pred_t pred,
     bool depth_first,
     asdf_value_pred_t descend_pred,
-    ssize_t max_depth);
+    ptrdiff_t max_depth);
 
 
 /**
@@ -1264,7 +1263,7 @@ ASDF_EXPORT asdf_find_iter_t *asdf_find_iter_init_ex(
     asdf_value_pred_t pred,
     bool depth_first,
     asdf_value_pred_t descend_pred,
-    ssize_t max_depth);
+    ptrdiff_t max_depth);
 
 
 /**

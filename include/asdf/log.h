@@ -93,7 +93,7 @@ typedef enum {
  */
 typedef enum {
 // clang-format off
-#define X(flag, bit) flag = (1UL << (bit)),
+#define X(flag, bit) flag = (1ULL << (bit)),
     ASDF_LOG_FIELDS(X)
 #undef X
     // clang-format on

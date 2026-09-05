@@ -2936,14 +2936,14 @@ ASDF_VALUE_OF_TYPE(double, double, ASDF_VALUE_DOUBLE, d, double);
 #define ASDF_VALUE_FIND_ITER_MAX_DEPTH 256
 
 static inline asdf_find_frame_t *asdf_find_iter_push_frame(
-    asdf_find_iter_impl_t *iter, asdf_value_t *container, ssize_t depth);
+    asdf_find_iter_impl_t *iter, asdf_value_t *container, ptrdiff_t depth);
 
 static asdf_find_iter_impl_t *asdf_find_iter_create(
     asdf_value_t *root,
     asdf_value_pred_t pred,
     bool depth_first,
     asdf_value_pred_t descend_pred,
-    ssize_t max_depth) {
+    ptrdiff_t max_depth) {
     asdf_find_iter_impl_t *impl = calloc(1, sizeof(asdf_find_iter_impl_t));
 
     if (!impl)
@@ -2972,7 +2972,7 @@ static asdf_find_iter_impl_t *asdf_find_iter_create(
 
 /** Doubles the frame capacity when needed */
 static inline asdf_find_frame_t *asdf_find_iter_push_frame(
-    asdf_find_iter_impl_t *iter, asdf_value_t *container, ssize_t depth) {
+    asdf_find_iter_impl_t *iter, asdf_value_t *container, ptrdiff_t depth) {
     // Refuse to push a new frame if we are already at max-depth or the new
     // container doesn't match the descend predicate.
     // Always allow push though if frame_count == 0; that is, the root node is
@@ -3116,7 +3116,7 @@ asdf_find_iter_t *asdf_find_iter_init_ex(
     asdf_value_pred_t pred,
     bool depth_first,
     asdf_value_pred_t descend_pred,
-    ssize_t max_depth) {
+    ptrdiff_t max_depth) {
     if (!asdf_value_is_container(root))
         return NULL;
 
@@ -3172,7 +3172,7 @@ asdf_value_t *asdf_value_find_ex(
     asdf_value_pred_t pred,
     bool depth_first,
     asdf_value_pred_t descend_pred,
-    ssize_t max_depth) {
+    ptrdiff_t max_depth) {
     if (!asdf_value_is_container(root)) {
         if (!pred || pred(root))
             return asdf_value_copy(root);
