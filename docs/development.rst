@@ -54,6 +54,12 @@ The practical consequences:
   docs/Makefile.am**, or it will be missing from the release tarball and
   the documentation build inside ``make distcheck`` will fail.
 
+* **When you change the ABI, update the interface version in both.**  The
+  ``LIBASDF_VERSION_INFO`` triple in ``configure.ac`` and the
+  ``PROJECT_SOVERSION``/``PROJECT_LIBVERSION`` pair in ``CMakeLists.txt``
+  describe the same thing by different means and must agree; see
+  :ref:`abi-versioning`.
+
 
 Building with autotools
 =======================
@@ -373,6 +379,122 @@ Write the entry for the reader of the release notes, not for the reviewer of
 the diff.
 
 
+.. _abi-versioning:
+
+Shared library versioning
+=========================
+
+The ABI version is not the same as the version of the *package*, and the two
+move on different schedules.  A release that only fixes bugs changes the
+package version while leaving the binary interface untouched; a change that
+adds one public function changes the interface without being a notable
+release.  Conflating them is how a project ends up with an SONAME that churns
+on every release, breaking installed binaries needlessly.
+
+Three names, one library
+------------------------
+
+A shared library is installed on GNU/Linux under three names::
+
+    libasdf.so.0.1.0   the real file
+    libasdf.so.0       the soname: a symlink, and the name recorded in the ELF
+    libasdf.so         the linker name: a symlink used only at link time
+
+At link time ``-lasdf`` finds ``libasdf.so``, follows it to the real file, and
+records *that file's* ``DT_SONAME``--``libasdf.so.0``--in the program being
+linked.  At run time the dynamic loader looks for exactly that name; it never
+sees ``libasdf.so``, and never looks at the trailing ``.1.0``.
+
+The soname is therefore the only compatibility identifier that matters.  Two
+libraries sharing a soname are asserting that either can satisfy the other's
+consumers.  This is also why distributions split the packages: e.g. on
+Debian-based systems the runtime package ships the real file and the soname
+symlink, the ``-dev`` package ships ``libasdf.so`` and the headers.
+
+The interface version
+---------------------
+
+Both build systems derive those names from a single ``current:revision:age``
+triple, libtool's ``-version-info``.  It is not a version number; it describes
+the set of interfaces the library implements:
+
+``current``
+    A monotonically increasing number of the newest interface.
+
+``age``
+    How many older consecutive interfaces are still supported.  The library
+    implements interfaces ``current - age`` through ``current``.
+
+``revision``
+    The implementation serial within ``current``: changes that alter no
+    interface at all.
+
+From which::
+
+    soname   = libasdf.so.(current - age)
+    filename = libasdf.so.(current - age).(age).(revision)
+
+``current - age`` is the oldest interface still supported, which is what makes
+it the right SONAME.  Adding new symbols raises ``current`` and ``age`` together
+and leaves the difference unchanged, so existing binaries keep resolving;
+removing or changing one resets ``age`` and moves the difference, so those
+binaries correctly fail to find their library rather than silently binding to
+an incompatible one.
+
+Updating it
+-----------
+
+Apply these in order, considering everything that has changed since the last
+release:
+
+#. Any source change at all: ``revision++``.
+#. Any interface added, removed or changed: ``current++``, ``revision = 0``.
+#. Interfaces added, and none removed or changed: ``age++``.
+#. Any interface removed or changed: ``age = 0``.
+
+"Interface" means anything a *compiled* consumer can observe: an exported
+function appearing, disappearing, or changing signature; a public struct
+changing size, alignment or field order; an enum constant changing value; a
+public typedef whose underlying type changes width on any supported platform.
+Adding a macro or a ``static inline`` to a public header is a source change
+but not an interface change, since nothing new is exported.
+
+**Make this part of the change that causes it, not a step at release time.**
+The author of a patch that adds a public function knows it is an addition;
+whoever cuts the release two months later has to reconstruct that from the
+changelog.  Only the first such change in a release cycle needs to move
+``current``--once it has moved, further *additions* in the same cycle are
+already covered by it, though a later removal still forces ``age = 0``.
+
+Where it lives
+--------------
+
+``configure.ac`` holds the triple itself, after ``AC_INIT``, together
+with the rules above and a history of its past values::
+
+    LIBASDF_VERSION_INFO=1:0:1
+
+CMake cannot consume that directly, and takes the two derived names as
+independent inputs rather than deriving them::
+
+    set(PROJECT_SOVERSION 0)        # current - age
+    set(PROJECT_LIBVERSION 0.1.0)   # (current - age).(age).(revision)
+
+**These must be kept in step.**  libtool computes both names from one input
+and so cannot contradict itself, but CMake cross-checks nothing and will
+happily build a library whose real name and SONAME disagree.  That is not
+hypothetical: before this was written down (prior to v0.2.0), the autotools
+build produced SONAME ``libasdf.so.0`` while the CMake build produced
+the incorrect ``libasdf.so.0.0.0`` from the same tree.
+
+Note that ``PROJECT_LIBVERSION`` will usually *not* match the package version.
+A release with only bug fixes leaves the interface alone, so v0.3.0 might well
+ship, for example ``libasdf.so.0.1.1``.
+
+None of these values are managed by bumpver, deliberately; see
+:ref:`making-a-release`.
+
+
 .. _making-a-release:
 
 Making a release
@@ -397,6 +519,15 @@ Tags are the bare version string, with no ``v`` prefix--``0.1.0a2``, not
    ``PACKAGE_VERSION`` variable (mirroring autoconf); the CMake standard
    variable ``PROJECT_VERSION`` is also managed by bumpver, but only contains
    the ``MAJOR.MINOR.PATCH`` portion of the version.
+
+.. note::
+
+   bumpver does **not** manage the shared library's interface version
+   (``LIBASDF_VERSION_INFO``, ``PROJECT_SOVERSION``, ``PROJECT_LIBVERSION``),
+   and must not.  Those describe the binary interface rather than the release,
+   and move on a different schedule: deriving them from the package version
+   would move the soname on every release, breaking installed binaries for
+   changes that altered no interface.  See :ref:`abi-versioning`.
 
 Signing the tag
 ---------------
@@ -425,6 +556,13 @@ Cutting the release
    .. code:: console
 
        $ towncrier build --draft --version <new version>
+
+#. Check that the interface version reflects this cycle.  If any public
+   interface was added, removed or changed since the last release,
+   ``LIBASDF_VERSION_INFO`` and the matching CMake variables must already
+   account for it (see :ref:`abi-versioning`).  This is normally done by the
+   change that caused it, so this is a last check rather than the place to do
+   the work.
 
 #. Run bumpver with the appropriate increment.  Use ``--dry`` first to see
    exactly what will be rewritten:

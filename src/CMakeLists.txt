@@ -104,8 +104,10 @@ target_compile_options(libasdf_objs PRIVATE
     -fmacro-prefix-map=${CMAKE_SOURCE_DIR}/=
 )
 
-# Avoid generating "liblibasdf"
-set_target_properties(libasdf ${PROJECT_NAME} PROPERTIES
+# OUTPUT_NAME avoids generating "liblibasdf".  VERSION and SOVERSION must
+# match what libtool derives from -version-info in configure.ac.
+set_target_properties(libasdf PROPERTIES
+    VERSION ${PROJECT_LIBVERSION}
     SOVERSION ${PROJECT_SOVERSION}
     OUTPUT_NAME "asdf")
 

@@ -84,7 +84,7 @@ noinst_HEADERS = $(src_headers)
 lib_LTLIBRARIES = libasdf.la
 libasdf_la_SOURCES = $(src_files)
 libasdf_la_CFLAGS = $(AM_CFLAGS) $(FYAML_CFLAGS) $(STATGRAB_CFLAGS) $(LZ4_CFLAGS) $(CODE_COVERAGE_CFLAGS)
-libasdf_la_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
+libasdf_la_LDFLAGS = $(CODE_COVERAGE_LDFLAGS) -version-info $(LIBASDF_VERSION_INFO)
 libasdf_la_LIBADD =  third_party/libstc.la $(ASDF_LIBS)
 
 # Static convenience library for malloc-wrap tests and tests of
