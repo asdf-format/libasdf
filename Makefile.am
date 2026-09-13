@@ -161,6 +161,12 @@ CMAKE_EXTRA_FLAGS=
 # - Pass BZIP2_LIBRARIES etc. since my system at least is missing a pc file
 #   for bzip2.  Maybe should do this for other dependencies as well but only
 #   on an as-needed basis
+#
+# Also checks that the library CMake produced carries the soname implied by
+# LIBASDF_VERSION_INFO.  CMake takes PROJECT_SOVERSION and PROJECT_LIBVERSION
+# as independent inputs and cross-checks nothing, so it is the side that can
+# drift away from configure.ac; libtool derives both names from the triple and
+# cannot.  See "Shared library versioning" in docs/development.rst.
 distcheck-cmake:
 	@echo "=== Running CMake build inside distcheck ==="
 	rm -rf $(distdir)/_build/cmake
@@ -173,6 +179,9 @@ distcheck-cmake:
                 $(CMAKE_EXTRA_FLAGS) && \
             $(MAKE) && \
             $(MAKE) test
+	@echo "=== Checking the CMake build's soname against -version-info ==="
+	$(SHELL) $(top_srcdir)/scripts/check-soversion.sh \
+	    '$(LIBASDF_VERSION_INFO)' '$(distdir)/_build/cmake/src'
 
 .PHONY: distcheck-cmake
 
@@ -217,6 +226,7 @@ EXTRA_DIST = \
     CODE_OF_CONDUCT.md \
     LICENSE \
     README.rst \
+    scripts/check-soversion.sh \
     $(reference_files)/anchor.asdf \
     $(reference_files)/ascii.asdf \
     $(reference_files)/basic.asdf \
