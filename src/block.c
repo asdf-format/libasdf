@@ -615,7 +615,7 @@ int asdf_block_data_set_compressed(
 
     memset(block->info.header.compression, 0, ASDF_BLOCK_COMPRESSION_FIELD_SIZE);
     if (compression && *compression)
-        strncpy(block->info.header.compression, compression, ASDF_BLOCK_COMPRESSION_FIELD_SIZE);
+        memcpy(block->info.header.compression, compression, ASDF_BLOCK_COMPRESSION_FIELD_SIZE);
 
     return 0;
 }
