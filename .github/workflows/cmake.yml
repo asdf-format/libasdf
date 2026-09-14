@@ -163,7 +163,7 @@ jobs:
     needs: build_matrix
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
         with:
           submodules: true
 
