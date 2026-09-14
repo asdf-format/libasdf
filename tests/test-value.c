@@ -1,4 +1,5 @@
 #include <float.h>
+#include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -61,6 +62,26 @@ MU_TEST(test_asdf_value_get_type) {
     CHECK_VALUE_TYPE("float32", ASDF_VALUE_DOUBLE);
     CHECK_VALUE_TYPE("float64", ASDF_VALUE_DOUBLE);
     CHECK_VALUE_TYPE("bigfloat", ASDF_VALUE_DOUBLE);
+    CHECK_VALUE_TYPE("inf", ASDF_VALUE_DOUBLE);
+    CHECK_VALUE_TYPE("Inf", ASDF_VALUE_DOUBLE);
+    CHECK_VALUE_TYPE("INF", ASDF_VALUE_DOUBLE);
+    CHECK_VALUE_TYPE("pos_inf", ASDF_VALUE_DOUBLE);
+    CHECK_VALUE_TYPE("neg_inf", ASDF_VALUE_DOUBLE);
+    CHECK_VALUE_TYPE("neg_Inf", ASDF_VALUE_DOUBLE);
+    CHECK_VALUE_TYPE("neg_INF", ASDF_VALUE_DOUBLE);
+    CHECK_VALUE_TYPE("nan", ASDF_VALUE_DOUBLE);
+    CHECK_VALUE_TYPE("NaN", ASDF_VALUE_DOUBLE);
+    CHECK_VALUE_TYPE("NAN", ASDF_VALUE_DOUBLE);
+    // Not valid YAML 1.1 float spellings; plain strings (same as PyYAML)
+    CHECK_VALUE_TYPE("bad_inf", ASDF_VALUE_STRING);
+    CHECK_VALUE_TYPE("neg_nan", ASDF_VALUE_STRING);
+    CHECK_VALUE_TYPE("pos_nan", ASDF_VALUE_STRING);
+    CHECK_VALUE_TYPE("bare_inf", ASDF_VALUE_STRING);
+    CHECK_VALUE_TYPE("bare_Inf", ASDF_VALUE_STRING);
+    CHECK_VALUE_TYPE("bare_neg_inf", ASDF_VALUE_STRING);
+    CHECK_VALUE_TYPE("bare_infinity", ASDF_VALUE_STRING);
+    CHECK_VALUE_TYPE("bare_nan", ASDF_VALUE_STRING);
+    CHECK_VALUE_TYPE("bare_NaN", ASDF_VALUE_STRING);
     asdf_close(file);
     return MUNIT_OK;
 }
@@ -753,10 +774,16 @@ MU_TEST(test_asdf_value_as_float) {
     assert_not_null(file);
     CHECK_FLOAT_VALUE(float, "float32", ASDF_VALUE_OK, 0.15625);
     CHECK_FLOAT_VALUE(float, "float64", ASDF_VALUE_OK, 1.000000059604644775390625);
+    CHECK_FLOAT_VALUE(float, "inf", ASDF_VALUE_OK, INFINITY);
+    CHECK_FLOAT_VALUE(float, "pos_inf", ASDF_VALUE_OK, INFINITY);
+    CHECK_FLOAT_VALUE(float, "neg_INF", ASDF_VALUE_OK, -INFINITY);
     CHECK_FLOAT_VALUE_MISMATCH(float, "plain");
     CHECK_FLOAT_VALUE_MISMATCH(float, "");
-    asdf_value_t *float_val = asdf_value_of_float(file, 1.0F);
+    CHECK_FLOAT_VALUE_MISMATCH(float, "bad_inf");
     float out = 0.0F;
+    assert_int(asdf_get_float(file, "NaN", &out), ==, ASDF_VALUE_OK);
+    assert_true(isnan(out));
+    asdf_value_t *float_val = asdf_value_of_float(file, 1.0F);
     assert_int(asdf_value_as_float(float_val, &out), ==, ASDF_VALUE_OK);
     assert_float(out, ==, 1.0F);
     asdf_value_destroy(float_val);
@@ -781,11 +808,23 @@ MU_TEST(test_asdf_value_as_double) {
     assert_not_null(file);
     CHECK_FLOAT_VALUE(double, "float32", ASDF_VALUE_OK, 0.15625);
     CHECK_FLOAT_VALUE(double, "float64", ASDF_VALUE_OK, 1.000000059604644775390625);
+    CHECK_FLOAT_VALUE(double, "Inf", ASDF_VALUE_OK, INFINITY);
+    CHECK_FLOAT_VALUE(double, "INF", ASDF_VALUE_OK, INFINITY);
+    CHECK_FLOAT_VALUE(double, "neg_inf", ASDF_VALUE_OK, -INFINITY);
+    CHECK_FLOAT_VALUE(double, "neg_Inf", ASDF_VALUE_OK, -INFINITY);
     CHECK_FLOAT_VALUE_MISMATCH(double, "plain");
     CHECK_FLOAT_VALUE_MISMATCH(double, "");
+    CHECK_FLOAT_VALUE_MISMATCH(double, "neg_nan");
+    CHECK_FLOAT_VALUE_MISMATCH(double, "bare_inf");
+    CHECK_FLOAT_VALUE_MISMATCH(double, "bare_nan");
+
+    double out = 0.0;
+    assert_int(asdf_get_double(file, "nan", &out), ==, ASDF_VALUE_OK);
+    assert_true(isnan(out));
+    assert_int(asdf_get_double(file, "NAN", &out), ==, ASDF_VALUE_OK);
+    assert_true(isnan(out));
 
     asdf_value_t *float_val = asdf_value_of_float(file, 1.0F);
-    double out = 0.0;
     assert_int(asdf_value_as_double(float_val, &out), ==, ASDF_VALUE_OK);
     assert_double(out, ==, 1.0);
     asdf_value_destroy(float_val);

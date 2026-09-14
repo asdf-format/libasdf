@@ -36,4 +36,23 @@ bigint: 18446744073709551616
 float32: 0.15625
 float64: 1.000000059604644775390625
 bigfloat: 1e400
+inf: .inf
+Inf: .Inf
+INF: .INF
+pos_inf: +.inf
+neg_inf: -.inf
+neg_Inf: -.Inf
+neg_INF: -.INF
+nan: .nan
+NaN: .NaN
+NAN: .NAN
+bad_inf: .iNf
+neg_nan: -.nan
+pos_nan: +.nan
+bare_inf: inf
+bare_Inf: Inf
+bare_neg_inf: -inf
+bare_infinity: infinity
+bare_nan: nan
+bare_NaN: NaN
 ...

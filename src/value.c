@@ -1736,11 +1736,56 @@ static asdf_value_err_t is_yaml_unsigned_int(
 }
 
 
+/**
+ * Parse the YAML 1.1 special float values ``[-+]?.inf`` and ``.nan``
+ *
+ * Only the lowercase, titlecase, and uppercase spellings are allowed, and
+ * NaN may not be signed.
+ */
+static bool is_yaml_special_float(const char *scalar, size_t len, double *value) {
+    char sign = '\0';
+
+    if (len == 5 && (scalar[0] == '-' || scalar[0] == '+')) {
+        sign = scalar[0];
+        scalar++;
+        len--;
+    }
+
+    if (len != 4)
+        return false;
+
+    if ((0 == strncmp(scalar, ".inf", len)) || (0 == strncmp(scalar, ".Inf", len)) ||
+        (0 == strncmp(scalar, ".INF", len))) {
+        *value = (sign == '-') ? -INFINITY : INFINITY;
+        return true;
+    }
+
+    if (sign)
+        return false;
+
+    if ((0 == strncmp(scalar, ".nan", len)) || (0 == strncmp(scalar, ".NaN", len)) ||
+        (0 == strncmp(scalar, ".NAN", len))) {
+        *value = NAN;
+        return true;
+    }
+
+    return false;
+}
+
+
 static asdf_value_err_t is_yaml_float(
     const char *scalar, size_t len, double *value, asdf_value_type_t *type) {
 
     if (!scalar)
         return ASDF_VALUE_ERR_UNKNOWN;
+
+    /* strtod also accepts bare inf, nan, and infinity, which YAML 1.1 (and
+     * PyYAML) treat as strings, so only hand it scalars that start with a
+     * digit or '.' after an optional sign */
+    size_t start = (len > 0 && (scalar[0] == '-' || scalar[0] == '+')) ? 1 : 0;
+
+    if (start >= len || !(isdigit((unsigned char)scalar[start]) || scalar[start] == '.'))
+        return ASDF_VALUE_ERR_PARSE_FAILURE;
 
     char *double_s = strndup(scalar, len);
 
@@ -1759,6 +1804,13 @@ static asdf_value_err_t is_yaml_float(
 
     if (errno || *end) {
         free(double_s);
+
+        /* Less common, so only checked after strtod fails */
+        if (is_yaml_special_float(scalar, len, value)) {
+            *type = ASDF_VALUE_DOUBLE;
+            return ASDF_VALUE_OK;
+        }
+
         return ASDF_VALUE_ERR_PARSE_FAILURE;
     }
 
@@ -2687,7 +2739,8 @@ asdf_value_err_t asdf_value_as_float(asdf_value_t *value, float *out) {
         if (LIKELY(out))
             *out = flt;
 
-        if (!isfinite(flt))
+        /* Only an overflow if a finite double became non-finite (not .inf/.nan) */
+        if (!isfinite(flt) && isfinite(value->scalar.d))
             return ASDF_VALUE_ERR_OVERFLOW;
 
         return ASDF_VALUE_OK;
