@@ -5,6 +5,33 @@ AC_INIT(
   [],
   [https://github.com/asdf-format/libasdf],
 )
+# Shared library interface version, for libtool's -version-info, as
+# current:revision:age.  This is deliberately NOT the package version: this
+# describes the library's ABI version, not its package version.
+#
+# On GNU/Linux libtool derives from it:
+#
+#   soname   = libasdf.so.(current - age)
+#   filename = libasdf.so.(current - age).(age).(revision)
+#
+# Update it at each release, applying these in order:
+#
+#   - source changed at all:               revision++
+#   - any interface added/removed/changed: current++, revision = 0
+#   - interfaces added, none removed:      age++
+#   - any interface removed or changed:    age = 0
+#
+# History:
+#
+#   - 0:0:0 (0.1.0):  initial default
+#   - 1:0:1 (0.2.0):  added asdf_free().  Also changed max_depth from ssize_t
+#                     to asdf_depth_t (int64_t): identical on LP64, but wider
+#                     on ILP32, where it is an interface change rather than an
+#                     addition.  age was deliberately NOT reset, knowingly
+#                     breaking 32-bit targets, which are not actively supported.
+LIBASDF_VERSION_INFO=1:0:1
+AC_SUBST([LIBASDF_VERSION_INFO])
+
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CANONICAL_HOST
 AM_INIT_AUTOMAKE([foreign subdir-objects])

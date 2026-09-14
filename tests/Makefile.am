@@ -313,6 +313,13 @@ QUIET_OUT = $(if $(filter 1,$(V)),, > /dev/null)
 TESTS += test-symbol-leakage.sh
 
 
+# Regression test that the ABI has not changed without the interface version
+# and the committed baseline moving with it.  Like the test above it needs no
+# `asdf` tool, but it does need libabigail and a build carrying debug info;
+# it skips otherwise, so at least one CI target must build with -g.
+TESTS += test-abi.sh
+
+
 # Test headers on C++
 cpp_header_test = $(builddir)/test-cpp-headers.cpp
 # Generate the C++ header test file
@@ -444,6 +451,7 @@ EXTRA_DIST += \
     scripts/extract_doc_examples.py \
     scripts/generate_test_cpp_headers.sh \
     shell-test.sh \
+    test-abi.sh \
     test-symbol-leakage.sh \
     util.h \
     $(top_srcdir)/docs/usage/writing.rst
@@ -457,6 +465,15 @@ distclean-local:
 	rm -rf $(builddir)/tmp
 	rm -rf $(srcdir)/doc_examples
 	rm -rf $(builddir)/doc_examples
+
+# Rewrite the committed ABI baseline.  Deliberately separate from
+# update-fixtures: rewriting the ABI baseline is a decision, not a chore, and
+# should not ride along with regenerating CLI golden output.
+update-abi:
+	top_srcdir=$(abs_top_srcdir) top_builddir=$(abs_top_builddir) \
+	    $(srcdir)/test-abi.sh --update
+
+.PHONY: update-abi
 
 update-fixtures:
 	top_srcdir=$(top_srcdir) srcdir=$(srcdir) $(srcdir)/test-events.sh --update

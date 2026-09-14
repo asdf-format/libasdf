@@ -84,7 +84,7 @@ noinst_HEADERS = $(src_headers)
 lib_LTLIBRARIES = libasdf.la
 libasdf_la_SOURCES = $(src_files)
 libasdf_la_CFLAGS = $(AM_CFLAGS) $(FYAML_CFLAGS) $(STATGRAB_CFLAGS) $(LZ4_CFLAGS) $(CODE_COVERAGE_CFLAGS)
-libasdf_la_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
+libasdf_la_LDFLAGS = $(CODE_COVERAGE_LDFLAGS) -version-info $(LIBASDF_VERSION_INFO)
 libasdf_la_LIBADD =  third_party/libstc.la $(ASDF_LIBS)
 
 # Static convenience library for malloc-wrap tests and tests of
@@ -161,6 +161,12 @@ CMAKE_EXTRA_FLAGS=
 # - Pass BZIP2_LIBRARIES etc. since my system at least is missing a pc file
 #   for bzip2.  Maybe should do this for other dependencies as well but only
 #   on an as-needed basis
+#
+# Also checks that the library CMake produced carries the soname implied by
+# LIBASDF_VERSION_INFO.  CMake takes PROJECT_SOVERSION and PROJECT_LIBVERSION
+# as independent inputs and cross-checks nothing, so it is the side that can
+# drift away from configure.ac; libtool derives both names from the triple and
+# cannot.  See "Shared library versioning" in docs/development.rst.
 distcheck-cmake:
 	@echo "=== Running CMake build inside distcheck ==="
 	rm -rf $(distdir)/_build/cmake
@@ -173,6 +179,15 @@ distcheck-cmake:
                 $(CMAKE_EXTRA_FLAGS) && \
             $(MAKE) && \
             $(MAKE) test
+	@echo "=== Checking the CMake build's soname against -version-info ==="
+	$(SHELL) $(top_srcdir)/scripts/check-soversion.sh \
+	    '$(LIBASDF_VERSION_INFO)' '$(distdir)/_build/cmake/src'; \
+	    ret=$$?; \
+	    if [ $$ret -eq 77 ]; then \
+	        true; \
+	    elif [ $$ret -ne 0 ]; then \
+	        exit $$ret; \
+	    fi
 
 .PHONY: distcheck-cmake
 
@@ -217,6 +232,8 @@ EXTRA_DIST = \
     CODE_OF_CONDUCT.md \
     LICENSE \
     README.rst \
+    abi/libasdf-x86_64.abi \
+    scripts/check-soversion.sh \
     $(reference_files)/anchor.asdf \
     $(reference_files)/ascii.asdf \
     $(reference_files)/basic.asdf \

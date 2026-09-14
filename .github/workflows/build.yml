@@ -48,6 +48,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
+            abigail-tools \
             autoconf \
             automake \
             libtool \
@@ -100,7 +101,14 @@ jobs:
           make ${{ github.event.inputs.make_flags }} V=1
 
       - name: Check
-        run: make check ${{ github.event.inputs.make_flags }}
+        run: |
+          # Force the ABI test to pass on Linux builds (an ELF binary with
+          # DWARF symbols is required for it to pass). This ensures that
+          # the test is not skipped in CI due to a misconfiguration.
+          if [ "${{ runner.os }}" = "Linux" ]; then
+            export ASDF_TEST_ABI_STRICT=1
+          fi
+          make check ${{ github.event.inputs.make_flags }}
 
       - name: Output test logs on failure
         if: failure()
