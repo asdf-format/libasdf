@@ -1,0 +1,8 @@
+Corrected handling of special float values (.nan, .inf, etc.) in the YAML tree
+
+Previously scalars were just passed through ``strtod`` to check if they were
+value float scalars but this is incorrect for the YAML core schema which does
+not parse bare (unquoted) "inf" or "nan" as floats, but rather as strings.
+
+This corrects handling of these values in-line with what PyYAML does, as well
+as what the YAML core schema documents.
