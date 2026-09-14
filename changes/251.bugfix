@@ -10,3 +10,6 @@ argument to ``asdf_value_find_ex`` from ``ssize_t`` to a new ``asdf_depth_t``
 which is defined simply as ``int64_t``.  This is much larger than any
 depth that can practically be reached in the find implementation, but is
 ABI-compatible with the original interface.
+
+Also dropped unnecessary ``sys/`` header includes from the public headers (e.g.
+``sys/time.h``) per #261.

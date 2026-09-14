@@ -7,7 +7,6 @@
 #ifndef ASDF_CORE_TIME_H
 #define ASDF_CORE_TIME_H
 
-#include <sys/time.h>
 #include <time.h>
 
 #include <asdf/extension.h>
