@@ -38,6 +38,11 @@ jobs:
         os: [ubuntu-latest, macos-14]
         cc: [clang, gcc]
         cmake_options: ["", "-DENABLE_ASAN=ON"]
+        include:
+          - cc: clang
+            cxx: clang++
+          - cc: gcc
+            cxx: g++
         exclude:
           - os: macos-14
             cc: gcc
@@ -46,6 +51,9 @@ jobs:
             cc: gcc
             cmake_options: "-DENABLE_ASAN=ON"
     runs-on: ${{ matrix.os }}
+    env:
+      CC: ${{ matrix.cc }}
+      CXX: ${{ matrix.cxx }}
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
@@ -96,8 +104,6 @@ jobs:
     - name: MacOS build
       if: startsWith(matrix.os, 'macos')
       env:
-        CC: ${{ matrix.cc }}
-        CXX: ${{ matrix.cc }}++
         PKG_CONFIG_PATH: /opt/homebrew/lib/pkgconfig:/usr/local/lib/pkgconfig
 
       run: |
