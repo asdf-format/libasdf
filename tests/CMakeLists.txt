@@ -21,6 +21,12 @@ endif()
 set(symbol_leakage_test "${CMAKE_CURRENT_SOURCE_DIR}/test-symbol-leakage.sh")
 list(REMOVE_ITEM shell_files "${symbol_leakage_test}")
 
+# test-abi.sh tests the built shared library against the committed baseline.
+# Like test-symbol-leakage.sh it is not a test of the `asdf` CLI tool and is
+# handled separately.
+set(abi_test "${CMAKE_CURRENT_SOURCE_DIR}/test-abi.sh")
+list(REMOVE_ITEM shell_files "${abi_test}")
+
 # test-malloc-fail requires --wrap linker support (GNU/LLVM ld).
 # Apple ld does not support it, so exclude the test on those platforms.
 check_linker_flag(C "-Wl,--wrap=malloc" HAVE_LINKER_WRAP)
@@ -95,6 +101,15 @@ if (BASH_PROGRAM)
     # The script exits 77 (automake's SKIP code) when there is no shared
     # library to inspect, e.g. a static-only build
     set_property(TEST test-symbol-leakage PROPERTY SKIP_RETURN_CODE 77)
+endif()
+
+# -------- Check ABI consistency------------------------------- --------------
+if (BASH_PROGRAM)
+    add_test(test-abi ${BASH_PROGRAM} ${abi_test})
+    set_property(TEST test-abi
+        PROPERTY ENVIRONMENT_MODIFICATION "${runtime}")
+    # The script exits 77 (automake's SKIP code) in several cases
+    set_property(TEST test-abi PROPERTY SKIP_RETURN_CODE 77)
 endif()
 
 # -------- Build and run C unit tests ----------------------------------------

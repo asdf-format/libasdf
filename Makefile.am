@@ -232,6 +232,7 @@ EXTRA_DIST = \
     CODE_OF_CONDUCT.md \
     LICENSE \
     README.rst \
+    abi/libasdf-x86_64.abi \
     scripts/check-soversion.sh \
     $(reference_files)/anchor.asdf \
     $(reference_files)/ascii.asdf \

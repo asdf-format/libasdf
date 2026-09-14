@@ -48,6 +48,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
+            abigail-tools \
             autoconf \
             automake \
             libtool \
