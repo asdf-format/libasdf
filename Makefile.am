@@ -181,7 +181,13 @@ distcheck-cmake:
             $(MAKE) test
 	@echo "=== Checking the CMake build's soname against -version-info ==="
 	$(SHELL) $(top_srcdir)/scripts/check-soversion.sh \
-	    '$(LIBASDF_VERSION_INFO)' '$(distdir)/_build/cmake/src'
+	    '$(LIBASDF_VERSION_INFO)' '$(distdir)/_build/cmake/src'; \
+	    ret=$$?; \
+	    if [ $$ret -eq 77 ]; then \
+	        true; \
+	    elif [ $$ret -ne 0 ]; then \
+	        exit $$ret; \
+	    fi
 
 .PHONY: distcheck-cmake
 
