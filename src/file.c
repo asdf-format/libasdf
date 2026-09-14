@@ -11,7 +11,6 @@
 #include <libfyaml.h>
 
 #include "block.h"
-#include "compression/compression.h"
 #include "context.h"
 #include "core/asdf.h"
 #include "core/software.h"
