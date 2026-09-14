@@ -34,6 +34,8 @@ file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/fixtures
 
 # Build munit static library
 add_library(munit ${MUNIT_DIR}/munit.c)
+# Suppress spurious compiler warning noted when building munit
+target_compile_options(munit PRIVATE -Wno-unused-result)
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(munit PRIVATE MUNIT_NO_FORK)
@@ -98,6 +100,23 @@ endif()
 # -------- Build and run C unit tests ----------------------------------------
 set(ASDFSTD_DIR PARENT_SCOPE)
 
+# Third-party libraries linked into each unit test.  Several of the
+# pkg-config library lists overlap (e.g. both libfyaml and libstatgrab bring
+# in pthread).  If an item appears more than once in a target's link list,
+# CMake treats the repeats as a dependency cycle and repeats the whole list
+# of -l flags at the end of the link line, so de-duplicate it here
+# (src/CMakeLists.txt does the same for libasdf).
+set(test_libraries
+    ${FYAML_LIBRARIES}
+    ${BZIP2_LIBRARIES}
+    ${STATGRAB_LIBRARIES}
+    ${LZ4_LIBRARIES}
+    ${ZLIB_LIBRARIES}
+    ${MD5_LIBRARIES}
+    m
+)
+list(REMOVE_DUPLICATES test_libraries)
+
 foreach(source_file ${source_files})
     string(REGEX REPLACE ${ext_pattern} "" test_executable ${source_file})
     add_executable(${test_executable} ${source_file})
@@ -134,18 +153,15 @@ foreach(source_file ${source_files})
 
     # Linking tests to libasdf does not work. Some symbols used by the test(s) are marked "hidden"
     # and show as undefined at link-time. The object library is used as a workaround.
+    # The static libraries go before the third-party libraries they depend on,
+    # and test_libraries is de-duplicated (see above) to keep CMake from
+    # repeating linker flags it's already used (seems to come from cyclic dependencies)
     target_link_libraries(${test_executable} PRIVATE
-        ${FYAML_LIBRARIES}
-        ${BZIP2_LIBRARIES}
-        ${STATGRAB_LIBRARIES}
-        ${LZ4_LIBRARIES}
-        ${ZLIB_LIBRARIES}
-        ${MD5_LIBRARIES}
-        stc
         $<TARGET_OBJECTS:libasdf_objs>
         munit
         util
-        m
+        stc
+        ${test_libraries}
     )
 
     target_link_directories(${test_executable} PRIVATE

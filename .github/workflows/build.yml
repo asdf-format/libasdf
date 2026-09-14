@@ -39,7 +39,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
         with:
           submodules: true
 
@@ -78,6 +78,9 @@ jobs:
 
       - name: Setup ccache action
         uses: Chocobo1/setup-ccache-action@v1.5.1
+        with:
+          remove_stale_cache: false
+          update_packager_index: false
 
       - name: Bootstrap autotools
         run: ./autogen.sh
@@ -130,7 +133,7 @@ jobs:
     needs: build-and-test
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
         with:
           submodules: true
 

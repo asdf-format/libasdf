@@ -54,11 +54,15 @@ if [ -z "${symbols}" ]; then
 fi
 
 # Ignore decorations that are not part of the symbol name itself:
-# - ASan emits __odr_asan.<name> aliases for globals
+# - ASan emits various aliases for globals depending on the compiler version:
+#   - __odr_asan.<name>
+#   - __odr_asan_gen_<name>
+#   - __start_asan_globals, __stop_asan_globals
 # - Mach-O prefixes every C symbol with an underscore, hence the optional
 #   leading _ in the pattern below
 leaked=$(echo "${symbols}" \
-  | sed -e 's/^__odr_asan\.//' \
+  | sed -e 's/^__odr_asan.*//' \
+  | grep -vE '^__(start|stop)_asan_globals' \
   | grep -vE '^_?(asdf_|ASDF_|libasdf_)' \
   | sort -u)
 
