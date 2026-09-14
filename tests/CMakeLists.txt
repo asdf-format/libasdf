@@ -34,6 +34,8 @@ file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/fixtures
 
 # Build munit static library
 add_library(munit ${MUNIT_DIR}/munit.c)
+# Suppress spurious compiler warning noted when building munit
+target_compile_options(munit PRIVATE -Wno-unused-result)
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(munit PRIVATE MUNIT_NO_FORK)
