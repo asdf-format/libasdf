@@ -1,0 +1,3 @@
+``-DUSE_STATGRAB=OFF`` now turns libstatgrab off.  The option was declared but
+never consulted, so the ``REQUIRED`` pkg-config check ran regardless and
+configure failed on platforms where libstatgrab is not packaged.
