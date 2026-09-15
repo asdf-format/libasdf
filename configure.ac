@@ -23,12 +23,16 @@ AC_INIT(
 #
 # History:
 #
-#   - 0:0:0 (0.1.0):  initial default
-#   - 1:0:1 (0.2.0):  added asdf_free().  Also changed max_depth from ssize_t
-#                     to asdf_depth_t (int64_t): identical on LP64, but wider
-#                     on ILP32, where it is an interface change rather than an
-#                     addition.  age was deliberately NOT reset, knowingly
-#                     breaking 32-bit targets, which are not actively supported.
+#   - 0:0:0 (0.1.0):  Initial default
+#   - 1:0:1 (0.2.0):  Added asdf_free().
+#
+#                     Changed max_depth from ssize_t to asdf_depth_t (int64_t):
+#                     identical on LP64, but wider on ILP32, where it is an
+#                     interface change rather than an addition.  age was
+#                     deliberately NOT reset, knowingly breaking 32-bit
+#                     targets, which are not actively supported.
+#
+#                     Added asdf_file_find and asdf_file_find_ex.
 LIBASDF_VERSION_INFO=1:0:1
 AC_SUBST([LIBASDF_VERSION_INFO])
 

@@ -60,6 +60,8 @@
     <elf-symbol name='asdf_file_error_common' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes'/>
     <elf-symbol name='asdf_file_error_oom' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes'/>
     <elf-symbol name='asdf_file_error_system' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes'/>
+    <elf-symbol name='asdf_file_find' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes'/>
+    <elf-symbol name='asdf_file_find_ex' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes'/>
     <elf-symbol name='asdf_file_log' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes'/>
     <elf-symbol name='asdf_find_iter_destroy' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes'/>
     <elf-symbol name='asdf_find_iter_init' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes'/>
@@ -2435,8 +2437,11 @@
     </function-decl>
   </abi-instr>
   <abi-instr address-size='64' path='../src/file.c' language='LANG_C11'>
+    <typedef-decl name='asdf_depth_t' type-id='9da381c4' id='ef85e943'/>
+    <typedef-decl name='asdf_value_pred_t' type-id='c988a833' id='55806fb9'/>
     <pointer-type-def type-id='241167d5' size-in-bits='64' id='c666b66d'/>
     <pointer-type-def type-id='2f407acc' size-in-bits='64' id='48817812'/>
+    <pointer-type-def type-id='b5b387ef' size-in-bits='64' id='c988a833'/>
     <pointer-type-def type-id='c894953d' size-in-bits='64' id='d8e6b335'/>
     <pointer-type-def type-id='80f4b756' size-in-bits='64' id='7d3cd834'/>
     <pointer-type-def type-id='a0eb0f08' size-in-bits='64' id='7408d286'/>
@@ -2446,8 +2451,6 @@
     <pointer-type-def type-id='ee31ee44' size-in-bits='64' id='256d5229'/>
     <pointer-type-def type-id='149c6638' size-in-bits='64' id='8a121f49'/>
     <pointer-type-def type-id='8f92235e' size-in-bits='64' id='90421557'/>
-    <pointer-type-def type-id='b2dd3d8e' size-in-bits='64' id='fc7bf74e'/>
-    <class-decl name='fy_node' is-struct='yes' visibility='default' is-declaration-only='yes' id='b2dd3d8e'/>
     <function-decl name='asdf_open_file_ex' mangled-name='asdf_open_file_ex' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='asdf_open_file_ex'>
       <parameter type-id='80f4b756' name='filename'/>
       <parameter type-id='80f4b756' name='mode'/>
@@ -2814,6 +2817,23 @@
       <parameter type-id='2f407acc' name='sequence'/>
       <return type-id='88078e53'/>
     </function-decl>
+    <function-decl name='asdf_file_find' mangled-name='asdf_file_find' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='asdf_file_find'>
+      <parameter type-id='b14ada4d' name='file'/>
+      <parameter type-id='55806fb9' name='pred'/>
+      <return type-id='4c28b278'/>
+    </function-decl>
+    <function-decl name='asdf_file_find_ex' mangled-name='asdf_file_find_ex' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='asdf_file_find_ex'>
+      <parameter type-id='b14ada4d' name='file'/>
+      <parameter type-id='55806fb9' name='pred'/>
+      <parameter type-id='c894953d' name='depth_first'/>
+      <parameter type-id='55806fb9' name='descend_pred'/>
+      <parameter type-id='ef85e943' name='max_depth'/>
+      <return type-id='4c28b278'/>
+    </function-decl>
+    <function-type size-in-bits='64' id='b5b387ef'>
+      <parameter type-id='4c28b278'/>
+      <return type-id='c894953d'/>
+    </function-type>
   </abi-instr>
   <abi-instr address-size='64' path='../src/info.c' language='LANG_C11'>
     <qualified-type-def type-id='cd88a909' const='yes' id='5ab04299'/>
@@ -2957,11 +2977,9 @@
       </data-member>
     </class-decl>
     <typedef-decl name='asdf_container_iter_t' type-id='86b8634d' id='4d433ebe'/>
-    <typedef-decl name='asdf_depth_t' type-id='9da381c4' id='ef85e943'/>
     <typedef-decl name='asdf_find_iter_t' type-id='031f26e1' id='a42f9c70'/>
     <typedef-decl name='asdf_mapping_iter_t' type-id='b392b722' id='7738f409'/>
     <typedef-decl name='asdf_sequence_iter_t' type-id='da91e0b3' id='67aa79fa'/>
-    <typedef-decl name='asdf_value_pred_t' type-id='c988a833' id='55806fb9'/>
     <pointer-type-def type-id='4d433ebe' size-in-bits='64' id='35494c2d'/>
     <pointer-type-def type-id='35494c2d' size-in-bits='64' id='e962af05'/>
     <pointer-type-def type-id='a42f9c70' size-in-bits='64' id='601313a9'/>
@@ -2970,7 +2988,6 @@
     <pointer-type-def type-id='48fb8db0' size-in-bits='64' id='7dffe96e'/>
     <pointer-type-def type-id='67aa79fa' size-in-bits='64' id='5da8d9c3'/>
     <pointer-type-def type-id='5da8d9c3' size-in-bits='64' id='59cf09cb'/>
-    <pointer-type-def type-id='b5b387ef' size-in-bits='64' id='c988a833'/>
     <qualified-type-def type-id='c894953d' const='yes' id='4ab96a04'/>
     <pointer-type-def type-id='4ab96a04' size-in-bits='64' id='cfe2266a'/>
     <qualified-type-def type-id='a0eb0f08' const='yes' id='c80c3491'/>
@@ -3710,10 +3727,6 @@
       <parameter type-id='55806fb9' name='pred'/>
       <return type-id='4c28b278'/>
     </function-decl>
-    <function-type size-in-bits='64' id='b5b387ef'>
-      <parameter type-id='4c28b278'/>
-      <return type-id='c894953d'/>
-    </function-type>
   </abi-instr>
   <abi-instr address-size='64' path='../src/version.c' language='LANG_C11'>
     <function-decl name='asdf_version_parse' mangled-name='asdf_version_parse' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='asdf_version_parse'>

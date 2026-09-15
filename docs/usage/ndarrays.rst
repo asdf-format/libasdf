@@ -93,13 +93,12 @@ you are done:
    asdf_ndarray_destroy(array);
 
 If you do not know the path in advance you can search the tree for the first
-ndarray with `asdf_value_find` and the ``asdf_value_is_ndarray`` predicate, then
-cast the matching value with `asdf_value_as_ndarray`:
+ndarray with `asdf_find` and the ``asdf_value_is_ndarray`` predicate, then cast
+the matching value with `asdf_value_as_ndarray`:
 
 .. code:: c
 
-   asdf_value_t *root = asdf_get_value(file, "");
-   asdf_value_t *found = asdf_value_find(root, asdf_value_is_ndarray);
+   asdf_value_t *found = asdf_find(file, asdf_value_is_ndarray);
 
    asdf_ndarray_t *array = NULL;
    if (found && asdf_value_as_ndarray(found, &array) == ASDF_VALUE_OK) {
@@ -107,7 +106,6 @@ cast the matching value with `asdf_value_as_ndarray`:
    }
 
    asdf_value_destroy(found);
-   asdf_value_destroy(root);
 
 See :ref:`values` for more on generic value handles and tree traversal.
 
