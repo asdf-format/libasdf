@@ -947,6 +947,106 @@ asdf_set_mapping(asdf_file_t *file, const char *path, asdf_mapping_t *mapping);
 ASDF_EXPORT asdf_value_err_t
 asdf_set_sequence(asdf_file_t *file, const char *path, asdf_sequence_t *sequence);
 
+
+/**
+ * .. _file-traversal:
+ *
+ * Tree traversal
+ * --------------
+ */
+
+// clang-format off
+
+/**
+ * Traverse the tree breadth-first starting from ``root`` and return the first
+ * value matching ``pred``
+ *
+ * The caller owns the returned `asdf_value_t *` and must eventually destroy it
+ * with `asdf_value_destroy`.  Returns ``NULL`` if no matching value was found.
+ *
+ * This is a macro that can take either an `asdf_file_t *` or `asdf_value_t *`
+ * as the root from which to traverse.  In the former case, this is equivalent
+ * to starting the traversal from the root of the tree (via `asdf_file_find`).
+ *
+ * :param root: `asdf_value_t *` handle for the root node to search from or
+ *   an `asdf_file_t *`.
+ * :param pred: A predicate function to match the value to return; see
+ *   `asdf_value_pred_t`
+ * :return: The first matching `asdf_value_t *`, or ``NULL`` if not found
+ */
+#define asdf_find(root, pred) /* NOLINT(readability-identifier-naming) */ \
+    _Generic( \
+        (root), \
+        asdf_file_t *: asdf_file_find, \
+        asdf_value_t *: asdf_value_find)(root, pred)
+
+/**
+ * Extended version of `asdf_find` with additional traversal options
+ *
+ * Like `asdf_find` but allows controlling traversal order, which
+ * container types to descend into, and the maximum search depth.
+ *
+ * :param root: `asdf_value_t *` handle for the root node to search from
+ *   or an `asdf_file_t *`
+ * :param pred: A predicate function to match the value to return; see
+ *   `asdf_value_pred_t`
+ * :param depth_first: If ``true`` descend the tree in depth-first order;
+ *   otherwise the tree is traversed breadth-first
+ * :param descend_pred: Optional predicate (``NULL`` means descend into all
+ *   containers) controlling which containers are descended into
+ * :param max_depth: Maximum depth to descend; ``-1`` means no limit
+ * :return: The first matching `asdf_value_t *`, or ``NULL`` if not found
+ */
+#define asdf_find_ex(root, pred, depth_first, descend_pred, max_depth) /* NOLINT(readability-identifier-naming) */ \
+    _Generic( \
+        (root), \
+        asdf_file_t *: asdf_file_find_ex, \
+        asdf_value_t *: asdf_value_find_ex)(root, pred, depth_first, descend_pred, max_depth)
+
+// clang-format on
+
+/**
+ * Traverse the tree breadth-first starting from root of the given file's tree
+ * and return the first value matching ``pred``
+ *
+ * This is a shorthand for calling `asdf_value_find` starting from the root
+ * of the tree, equivalent to:
+ *
+ * .. code:: c
+ *
+ *     asdf_value_t *root = asdf_get_value(file, "");
+ *     asdf_value_t *found = asdf_value_find(root, pred);
+ *
+ * :param root: `asdf_file_t *` handle for the file to search
+ * :param pred: A predicate function to match the value to return; see
+ *   `asdf_value_pred_t`
+ * :return: The first matching `asdf_value_t *`, or ``NULL`` if not found
+ */
+ASDF_EXPORT asdf_value_t *asdf_file_find(asdf_file_t *file, asdf_value_pred_t pred);
+
+/**
+ * Extended version of `asdf_file_find` with additional traversal options
+ *
+ * This is just the file-level companion to `asdf_file_find`, similarly to
+ * `asdf_value_find_ex`.
+ *
+ * :param root: `asdf_file_t *` handle for the file to search
+ * :param pred: A predicate function to match the value to return; see
+ *   `asdf_value_pred_t`
+ * :param depth_first: If ``true`` descend the tree in depth-first order;
+ *   otherwise the tree is traversed breadth-first
+ * :param descend_pred: Optional predicate (``NULL`` means descend into all
+ *   containers) controlling which containers are descended into
+ * :param max_depth: Maximum depth to descend; ``-1`` means no limit
+ * :return: The first matching `asdf_value_t *`, or ``NULL`` if not found
+ */
+ASDF_EXPORT asdf_value_t *asdf_file_find_ex(
+    asdf_file_t *file,
+    asdf_value_pred_t pred,
+    bool depth_first,
+    asdf_value_pred_t descend_pred,
+    asdf_depth_t max_depth);
+
 ASDF_END_DECLS
 
 #endif /* ASDF_FILE_H */

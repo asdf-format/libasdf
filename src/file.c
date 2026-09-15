@@ -5,10 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/mman.h>
 #include <unistd.h>
-
-#include <libfyaml.h>
 
 #include "block.h"
 #include "context.h"
@@ -1018,4 +1015,26 @@ cleanup:
     sequence->value.node = NULL;
     asdf_sequence_destroy(sequence);
     return err;
+}
+
+
+asdf_value_t *asdf_file_find(asdf_file_t *file, asdf_value_pred_t pred) {
+    return asdf_file_find_ex(file, pred, false, NULL, -1);
+}
+
+
+asdf_value_t *asdf_file_find_ex(
+    asdf_file_t *file,
+    asdf_value_pred_t pred,
+    bool depth_first,
+    asdf_value_pred_t descend_pred,
+    asdf_depth_t max_depth) {
+    asdf_value_t *root = asdf_get_value(file, "");
+
+    if (UNLIKELY(!root))
+        return NULL;
+
+    asdf_value_t *found = asdf_value_find_ex(root, pred, depth_first, descend_pred, max_depth);
+    asdf_value_destroy(root);
+    return found;
 }

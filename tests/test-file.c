@@ -1,6 +1,7 @@
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE  /* for memmem */
 #endif
+#include <errno.h>
 #include <float.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -9,9 +10,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <stc/cstr.h>
-
-#include <errno.h>
+#include "stc/cstr.h"
 
 #include "asdf/emitter.h"
 #include "asdf/error.h"
@@ -869,6 +868,35 @@ MU_TEST(test_asdf_free) {
 }
 
 
+static bool value_find_pred_b(asdf_value_t *value) {
+    const char *str = NULL;
+    asdf_value_err_t err = asdf_value_as_string0(value, &str);
+
+    if (ASDF_VALUE_OK != err)
+        return false;
+
+    return strcmp(str, "b") == 0;
+}
+
+
+MU_TEST(test_asdf_file_find) {
+    const char *filename = get_fixture_file_path("nested.asdf");
+    asdf_file_t *file = asdf_open(filename, "r");
+    assert_not_null(file);
+    asdf_value_t *val = asdf_file_find(file, value_find_pred_b);
+    assert_not_null(val);
+    const char *str = NULL;
+    // BFS should find the value "b" at the top-level first
+    assert_string_equal(asdf_value_path(val), "/b");
+    asdf_value_err_t err = asdf_value_as_string0(val, &str);
+    assert_int(err, ==, ASDF_VALUE_OK);
+    assert_string_equal(str, "b");
+    asdf_value_destroy(val);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
 MU_TEST_SUITE(
     file,
     MU_RUN_TEST(test_asdf_open_file),
@@ -902,7 +930,8 @@ MU_TEST_SUITE(
     MU_RUN_TEST(write_custom_tag_handle),
     MU_RUN_TEST(write_to_nonexistent_file),
     MU_RUN_TEST(test_asdf_set_value_double_free),
-    MU_RUN_TEST(test_asdf_free)
+    MU_RUN_TEST(test_asdf_free),
+    MU_RUN_TEST(test_asdf_file_find)
 );
 
 
