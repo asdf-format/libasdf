@@ -5,7 +5,7 @@ Development resources
 
 This page covers building libasdf from a git checkout, the conventions the
 project follows, and how releases are made.  If you only want to *use* the
-library, the build instructions in the :ref:`README <development>` *should*
+library, the build instructions in the :ref:`README <installation>` *should*
 be sufficient.
 
 
@@ -586,6 +586,10 @@ Cutting the release
 
 #. Review the draft release on GitHub and publish it.
 
+#. Update the downstream packages; see `Downstream packaging`_ below.  Neither
+   happens automatically, and both consume the release tarball, so nothing can
+   be done until the release is actually published.
+
 The release workflow refuses to run unless the tag matches the version recorded
 in ``.bumpver.toml`` and ``configure.ac``, and unless the top section of
 ``CHANGES.rst`` is the one for that version, so a mistagged or half-finished
@@ -600,3 +604,78 @@ itself, it can be triggered by hand, e.g. with the GitHub CLI:
     $ gh workflow run release.yml -f tag=<version>
 
 Re-running updates the existing draft rather than failing.
+
+
+.. _downstream-packaging:
+
+Downstream packaging
+--------------------
+
+libasdf is published through two channels that live in their own repositories,
+and each needs a version bump of its own after a release.  Both fetch::
+
+    https://github.com/asdf-format/libasdf/releases/download/<version>/libasdf-<version>.tar.gz
+
+so that asset name is effectively part of the release contract: renaming it, or
+attaching the tarball under a different name, breaks both packagers at once.
+
+conda-forge
+^^^^^^^^^^^
+
+The feedstock is `conda-forge/libasdf-feedstock
+<https://github.com/conda-forge/libasdf-feedstock>`__.
+
+Usually there is nothing to do: conda-forge's autotick bot notices the new
+GitHub release, opens a pull request updating the version and checksum, and a
+maintainer reviews and merges it once CI is green.  It can take a few hours to
+appear.
+
+To do it by hand, in ``recipe/recipe.yaml``: set ``context.version``, replace
+``source.sha256`` with the checksum of the new tarball, and reset
+``build.number`` to ``0``.
+
+One thing about that recipe is worth knowing: its ``run_exports`` pin uses
+``upper_bound='x.x'``, which injects ``libasdf >=0.1.0.0.0.0,<0.2.0a0`` into
+the run requirements of anything built against libasdf ``0.1.x``.  That is
+deliberately stricter than libasdf's own ABI guarantee, which lets a binary
+keep working across any release that only adds interfaces.
+
+It is a packaging policy rather than a restatement of the C-level promise, and
+no pin can express that promise exactly: the pin is written in version-number
+space, while the ABI boundary lives in soname space, and
+:ref:`the two are decoupled on purpose <abi-versioning>`.  A looser pin would
+be wrong in the dangerous direction the first time ``age`` resets and the
+soname moves mid-series; this one is wrong only in the conservative direction,
+where the cost is an unnecessary rebuild of everything downstream.  While we
+are in ``0.x`` and reserve the right to break ABI at a minor release, that is
+the right trade.  Once the SONAME and the version number have a settled
+relationship at 1.0, ``upper_bound='x'``--the rattler-build default, which
+permits any release sharing a major version--becomes a safe place to pin it.
+
+
+Homebrew
+^^^^^^^^
+
+The tap is `asdf-format/homebrew-tap
+<https://github.com/asdf-format/homebrew-tap>`__, providing
+``Formula/libasdf.rb``.
+
+#. Open a pull request bumping ``url`` and ``sha256`` in the formula.
+   ``brew bump-formula-pr`` will do this for you.
+
+#. The tap's ``tests.yml`` workflow builds bottles for the PR.  Wait for it.
+
+#. Label the pull request ``pr-pull``.  That triggers ``publish.yml``, which
+   runs ``brew pr-pull`` to fetch the built bottles, commit the bottle block,
+   and push to ``main``.
+
+Bottles are built for Apple Silicon macOS and x86-64 Linux.  Intel macOS is not
+bottled--Homebrew has moved it to Tier 3--so users there build from source.
+
+The formula's Linux-only linker version script is the workaround described
+under conda-forge above, and can go the same way.
+
+Note also that the formula declares ``conflicts_with "asdf"``, since our
+command-line tool collides with the ``asdf`` version manager.  Keep that in
+place: dropping it would let Homebrew link both and leave whichever came second
+shadowed.

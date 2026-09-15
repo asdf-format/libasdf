@@ -1,0 +1,5 @@
+Replaced the README's ``Development`` section with a more prominent
+``Installation`` section covering conda-forge and Homebrew as well as building
+from source, and added a brief ``Versioning and stability`` section describing
+the version scheme, the API and ABI compatibility guarantees, and what is
+required for 1.0.
