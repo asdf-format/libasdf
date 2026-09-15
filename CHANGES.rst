@@ -1,3 +1,92 @@
+libasdf 0.2.0 (2026-09-15)
+==========================
+
+Feature
+-------
+
+- Added ``asdf_file_find`` and ``asdf_file_find_ex`` functions, corresponding
+  to ``asdf_value_find`` and ``asdf_value_find_ex``, the only difference being
+  that they take the ``asdf_file_t *`` as their first argument as a shortcut
+  for searching from the root of the tree.
+
+  Also adds convenience macros ``asdf_find`` and ``asdf_find_ex`` which are
+  generic in the first argument (can be either a file or a value). (`#246
+  <https://github.com/asdf-format/asdf/issues/246>`_)
+- Added ``asdf_free`` for releasing buffers that libasdf allocates on the
+  caller's behalf: those returned by ``asdf_write_to_mem``,
+  ``asdf_ndarray_read_all``, ``asdf_ndarray_read_tile_ndim`` and
+  ``asdf_ndarray_read_tile_2d``.
+
+  It is currently just ``free()``, so existing code keeps working, but it stops
+  the allocator from being part of the ABI: freeing across a DLL boundary is
+  undefined where the library and the application link different C runtimes,
+  and naming ``free()`` in the contract would prevent these functions from ever
+  allocating differently. (`#250
+  <https://github.com/asdf-format/asdf/issues/250>`_)
+
+
+Bugfix
+------
+
+- Fixes to allow the public headers to be used on MSVC.
+
+  Adapted from #252 submitted by @cruzzil.  This does not make libasdf
+  compilable with MSVC or runnable in Windows in general--that would take more
+  work.  It does allow the public headers to be used, e.g., with an
+  ABI-compatible port of libasdf, on MSVC.
+
+  The only major change to be aware of is the change of the ``max_depth``
+  argument to ``asdf_value_find_ex`` from ``ssize_t`` to a new ``asdf_depth_t``
+  which is defined simply as ``int64_t``.  This is much larger than any depth
+  that can practically be reached in the find implementation, but is
+  ABI-compatible with the original interface.
+
+  Also dropped unnecessary ``sys/`` header includes from the public headers
+  (e.g. ``sys/time.h``) per #261. (`#251
+  <https://github.com/asdf-format/asdf/issues/251>`_)
+- Corrected handling of special float values (.nan, .inf, etc.) in the YAML
+  tree
+
+  Previously scalars were just passed through ``strtod`` to check if they were
+  value float scalars but this is incorrect for the YAML core schema which does
+  not parse bare (unquoted) "inf" or "nan" as floats, but rather as strings.
+
+  This corrects handling of these values in-line with what PyYAML does, as well
+  as what the YAML core schema documents. (`#256
+  <https://github.com/asdf-format/asdf/issues/256>`_)
+- ``-DUSE_STATGRAB=OFF`` now turns libstatgrab off.  The option was declared
+  but never consulted, so the ``REQUIRED`` pkg-config check ran regardless and
+  configure failed on platforms where libstatgrab is not packaged. (`#262
+  <https://github.com/asdf-format/asdf/issues/262>`_)
+- Fix SONAME incompatibility between autotools and CMake builds.
+
+  Ensure that these are correctly managed and add tooling and tests to help
+  maintain a stable ABI between versions. (`#264
+  <https://github.com/asdf-format/asdf/issues/264>`_)
+
+
+Documentation
+-------------
+
+- Replaced the README's ``Development`` section with a more prominent
+  ``Installation`` section covering conda-forge and Homebrew as well as
+  building from source, and added a brief ``Versioning and stability`` section
+  describing the version scheme, the API and ABI compatibility guarantees, and
+  what is required for 1.0. (`#267
+  <https://github.com/asdf-format/asdf/issues/267>`_)
+
+
+Misc
+----
+
+- ``tests/test-symbol-leakage.sh`` no longer reports linker- and CRT-generated
+  symbols (``_init``, ``_fini``, ``__bss_start``, ``_edata``, ``_end`` and
+  friends) as leaked.
+
+  The workarounds for these can be hopefully now be removed from downstream
+  packages (i.e. the conda-forge and homebrew receipes).
+
+
 libasdf 0.1.0 (2026-09-04)
 ==========================
 

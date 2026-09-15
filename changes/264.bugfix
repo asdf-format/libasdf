@@ -1,4 +1,0 @@
-Fix SONAME incompatibility between autotools and CMake builds.
-
-Ensure that these are correctly managed and add tooling and tests to help
-maintain a stable ABI between versions.

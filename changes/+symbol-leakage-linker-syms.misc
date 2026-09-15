@@ -1,6 +1,0 @@
-``tests/test-symbol-leakage.sh`` no longer reports linker- and CRT-generated
-symbols (``_init``, ``_fini``, ``__bss_start``, ``_edata``, ``_end`` and
-friends) as leaked.
-
-The workarounds for these can be hopefully now be removed from downstream
-packages (i.e. the conda-forge and homebrew receipes).

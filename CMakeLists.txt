@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.21)
 
 # Internal full package version
-set(PACKAGE_VERSION 0.1.0)
+set(PACKAGE_VERSION 0.2.0)
 
 # CMake-compatible project version
-set(PROJECT_VERSION 0.1.0)
+set(PROJECT_VERSION 0.2.0)
 
 set(PACKAGE_URL https://github.com/asdf-format/libasdf)
 set(PACKAGE_BUGREPORT https://github.com/asdf-format/libasdf/issues)
