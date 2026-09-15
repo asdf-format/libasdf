@@ -53,16 +53,30 @@ if [ -z "${symbols}" ]; then
   exit 77
 fi
 
-# Ignore decorations that are not part of the symbol name itself:
+# Ignore decorations and symbols that are not libasdf's to begin with:
+#
 # - ASan emits various aliases for globals depending on the compiler version:
 #   - __odr_asan.<name>
 #   - __odr_asan_gen_<name>
 #   - __start_asan_globals, __stop_asan_globals
+#
+# - Linker- and CRT-generated symbols (the section boundary markers the GNU
+#   linker provides, plus _init/_fini from crti.o/crtn.o).  These are not
+#   emitted by libasdf at all, and every shared object on the platform may
+#   define its own, so they cannot collide in the way this test exists to
+#   catch.  Current binutils and glibc keep them hidden, which is why this
+#   never fires locally; the older toolchains used by conda-forge and by
+#   Homebrew on Linux export them with default visibility.  Both carried
+#   linker version-script workarounds to get past this test before the
+#   exception below was added: conda-forge for _init/_fini, Homebrew for
+#   __bss_start/_edata/_end.
+#
 # - Mach-O prefixes every C symbol with an underscore, hence the optional
-#   leading _ in the pattern below
+#   leading _ in the asdf_ pattern below
 leaked=$(echo "${symbols}" \
-  | sed -e 's/^__odr_asan.*//' \
+  | sed -e '/^__odr_asan/d' \
   | grep -vE '^__(start|stop)_asan_globals' \
+  | grep -vxE '_init|_fini|_etext|_edata|_end|__bss_start|__data_start|data_start' \
   | grep -vE '^_?(asdf_|ASDF_|libasdf_)' \
   | sort -u)
 

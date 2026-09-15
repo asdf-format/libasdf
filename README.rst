@@ -11,6 +11,14 @@ libasdf
     :target: https://libasdf.readthedocs.io/en/latest/
     :alt: Documentation Status
 
+.. image:: https://anaconda.org/conda-forge/libasdf/badges/version.svg
+    :target: https://anaconda.org/channels/conda-forge/packages/libasdf
+    :alt: Conda Package
+
+.. image:: https://img.shields.io/badge/dynamic/regex?url=https%3A%2F%2Fraw.githubusercontent.com%2Fasdf-format%2Fhomebrew-tap%2Fmain%2FFormula%2Flibasdf.rb&search=releases%2Fdownload%2F%28%5B0-9%5D%5B0-9a-zA-Z.%5D%2A%29%2F&replace=%241&label=Homebrew%20Tap&color=orange
+    :target: https://github.com/asdf-format/homebrew-tap
+    :alt: Homebrew Tap
+
 .. _end-badges:
 
 A C library for reading (and eventually writing) `ASDF
@@ -20,21 +28,160 @@ A C library for reading (and eventually writing) `ASDF
 Introduction
 ============
 
-libasdf is largely a wrapper around `libfyaml <https://pantoniou.github.io/libfyaml/>`__
-but with an understanding of the structure of ASDF files, with the capability to read and
-extract binary block data, as well as typed getters for metadata in the ASDF tree.
+libasdf is largely a wrapper around `libfyaml
+<https://pantoniou.github.io/libfyaml/>`__ but with an understanding of the
+structure of ASDF files, with the capability to read and extract binary block
+data, as well as typed getters for metadata in the ASDF tree.
 
-It also features an extension mechanism (still nascent) for reading ASDF schemas, including
-the core schemas such as ``core/ndarray-<x.y.z>`` into C-native datastructures.
+It also features an extension mechanism for reading ASDF schemas, including the
+core schemas such as ``core/ndarray-<x.y.z>`` into C-native datastructures.
 
-libasdf additionally installs a companion command-line tool, ``asdf``: a wrapper around the
-library providing utilities for inspecting and extracting data from ASDF files.  Its
-capabilities are currently modest but will be expanded in the future; see the
-`command-line tool documentation <https://libasdf.readthedocs.io/en/latest/usage/cli.html>`__
+libasdf additionally installs a companion command-line tool, ``asdf``: a
+wrapper around the library providing utilities for inspecting and extracting
+data from ASDF files.  Its capabilities are currently modest but will be
+expanded in the future; see the `command-line tool documentation
+<https://libasdf.readthedocs.io/en/latest/usage/cli.html>`__ for details.
+
+
+.. _installation:
+
+Installation
+============
+
+libasdf is packaged for conda and Homebrew.  Both install the shared library,
+the public headers, and the ``asdf`` command-line tool.  It can also be built
+from source.  If you would rather see what using the library looks like first,
+skip ahead to `Getting started`_.
+
+conda
+-----
+
+libasdf is available from `conda-forge
+<https://anaconda.org/conda-forge/libasdf>`__::
+
+    conda install -c conda-forge libasdf
+
+Packages are built for Linux and macOS; there is currently no Windows build.
+
+Homebrew
+--------
+
+libasdf is distributed through the asdf-format `tap
+<https://github.com/asdf-format/homebrew-tap>`__::
+
+    brew tap asdf-format/tap
+    brew install libasdf
+
+or, equivalently, in a single step::
+
+    brew install asdf-format/tap/libasdf
+
+Bottles (pre-built binaries) are provided for Apple Silicon macOS and x86-64
+Linux.  On Intel macOS the formula builds from source, which takes
+considerably longer.
+
+.. note::
+
+   The formula declares ``conflicts_with "asdf"``: libasdf's command-line tool
+   and the `asdf <https://asdf-vm.com/>`__ version manager both install a
+   binary named ``asdf``, so Homebrew will not link the two at once.
+
+From source
+-----------
+
+libasdf's build system is built with CMake.  To build from a release tarball
+or from a git checkout, you'll need the following software installed on your
+system:
+
+Requirements
+^^^^^^^^^^^^
+
+- **CMake** (for generating the build system)
+- **C compiler** (e.g., ``gcc`` or ``clang``)
+- **Make** (e.g., ``GNU make``)
+- **pkg-config**
+- **libfyaml**
+  - Version >=0.8 is tested to work
+- **zlib**, **bzip2**, and **lz4** (for compression support)
+- **libmd** (required for MD5 checksum support)
+- **libstatgrab** (optional, for system resource heuristics)
+- **argp** (this is a feature of glibc, but if compiling with a different libc you need a
+  standalone version of this; also it is only needed if building the command-line tool)
+
+On **Debian/Ubuntu**::
+
+    sudo apt install build-essential pkg-config libfyaml-dev \
+      zlib1g-dev libbz2-dev liblz4-dev libstatgrab-dev libmd-dev
+
+On **Fedora**::
+
+    sudo dnf install gcc make pkgconf libfyaml-devel \
+      zlib-devel bzip2-devel lz4-devel libstatgrab-devel libmd-devel
+
+On **macOS** (with Homebrew)::
+
+    brew install pkg-config libfyaml argp-standalone \
+      zlib bzip2 lz4 libstatgrab libmd
+
+Building
+^^^^^^^^
+
+Clone the repository and build the project as follows (if you are building
+from a release tarball, unpack it and skip the ``git clone``)::
+
+    git clone https://github.com/asdf-format/libasdf.git
+    cd libasdf
+    mkdir build
+    cd build
+    cmake .. \
+        -D ENABLE_TESTING=[YES/NO] \
+        -D ENABLE_TESTING_SHELL=[YES/NO] \
+        -D ENABLE_TOOL=[YES/NO] \
+        -D ENABLE_ASAN=[YES/NO] \
+        -D FYAML_NO_PKGCONFIG=[YES/NO] \
+            # If YES \
+            -D FYAML_LIBDIR=[path/lib] \
+            -D FYAML_INCLUDEDIR=[path/include] \
+        -D ARGP_NO_PKGCONFIG=[YES/NO] \
+            # If YES \
+            -D ARGP_LIBDIR=[path/lib] \
+            -D ARGP_INCLUDEDIR=[path/include]
+    make
+    sudo make install   # Optional, installs the binary system-wide
+
+If doing a system install, as usual it's recommended to install to
+``/usr/local`` by providing ``-DCMAKE_INSTALL_PREFIX=/usr/local`` when running
+``cmake``.  Or, if you have a ``${HOME}/.local`` you can set the prefix there,
+etc.
+
+Logging
+^^^^^^^
+
+libasdf can emit diagnostic log messages, controlled by the following options:
+
+- ``-D ENABLE_LOG=[YES/NO]`` -- compile libasdf's internal log statements into
+  the library (default ``YES``).  When ``NO`` they compile to nothing.
+- ``-D ENABLE_LOG_COLOR=[YES/NO]`` -- colorize log output (default ``YES``).
+- ``-D LOG_DEFAULT=LEVEL`` -- the default runtime log level, used when none is
+  set explicitly; one of ``TRACE``, ``DEBUG``, ``INFO``, ``WARN`` (the
+  default), ``ERROR``, ``FATAL``, or ``NONE``.
+- ``-D LOG_MIN=LEVEL`` -- the compile-time minimum level; messages below it are
+  compiled out entirely (default ``TRACE``).
+
+At runtime the default level can also be overridden through the
+``ASDF_LOG_LEVEL`` environment variable.  See the
+`logging documentation <https://libasdf.readthedocs.io/en/latest/usage/opening.html#logging>`__
 for details.
 
-Getting Started
----------------
+Notes
+^^^^^
+
+- Run ``make clean`` to clean build artifacts.
+- Run ``ctest --output-on-failure`` to execute unit tests
+
+
+Getting started
+===============
 
 To open an ASDF file with libasdf the simplest way is to use the ``asdf_open`` function.
 This returns an ``asdf_file_t *`` which is your main interface to the ASDF file.
@@ -126,7 +273,7 @@ to a new file:
        return 0;
    }
 
-With libasdf installed on your system (see `Development`_) you can compile
+With libasdf installed on your system (see `Installation`_) you can compile
 and run this test like:
 
 .. code:: console
@@ -244,105 +391,29 @@ Additional examples can be found in the
 `libasdf documentation <https://libasdf.readthedocs.io/en/latest/usage/examples.html>`__.
 
 
-.. _development:
+Versioning and stability
+========================
 
-Development
-===========
+libasdf follows `semantic versioning <https://semver.org/>`__, and is
+currently in the ``0.x`` series.
 
-Building from git
------------------
+**API stability.**  Source compatibility is maintained between ``0.x``
+releases: code that compiles against one release compiles against the next.
 
-libasdf's build system is built with CMake. To build this project
-from source, you'll need the following software installed on your system:
+**ABI stability.**  The shared library carries a SONAME (``libasdf.so.0``)
+derived from an interface version that moves independently of the package
+version.  It changes only when an interface is removed or altered, never when
+interfaces are merely added, so a binary linked against one release keeps
+working with later releases that only add to the API.  This is guaranteed for
+64-bit targets; 32-bit ABI compatibility is not promised.  See `shared library
+versioning
+<https://libasdf.readthedocs.io/en/latest/development.html#abi-versioning>`__
+for how this is managed.
 
-Requirements
-^^^^^^^^^^^^
+**Road to 1.0.**  Version 1.0 aims for at least complete *read* support for
+every feature of the ASDF standard and the core schemas.  libasdf already
+supports reading *most* ASDF files one is likely to encounter in the wild.
 
-To build this project from source, you'll need the following software installed
-on your system:
-
-- **CMake** (for generating the build system)
-- **C compiler** (e.g., ``gcc`` or ``clang``)
-- **Make** (e.g., ``GNU make``)
-- **pkg-config**
-- **libfyaml**
-  - Version >=0.8 is tested to work
-- **zlib**, **bzip2**, and **lz4** (for compression support)
-- **libmd** (required for MD5 checksum support)
-- **libstatgrab** (optional, for system resource heuristics)
-- **argp** (this is a feature of glibc, but if compiling with a different libc you need a
-  standalone version of this; also it is only needed if building the command-line tool)
-
-On **Debian/Ubuntu**::
-
-    sudo apt install build-essential pkg-config libfyaml-dev \
-      zlib1g-dev libbz2-dev liblz4-dev libstatgrab-dev libmd-dev
-
-On **Fedora**::
-
-    sudo dnf install gcc make pkgconf libfyaml-devel \
-      zlib-devel bzip2-devel lz4-devel libstatgrab-devel libmd-devel
-
-On **macOS** (with Homebrew)::
-
-    brew install pkg-config libfyaml argp-standalone \
-      zlib bzip2 lz4 libstatgrab libmd
-
-Building
-^^^^^^^^
-
-Clone the repository and build the project as follows::
-
-    git clone https://github.com/asdf-format/libasdf.git
-    cd libasdf
-    mkdir build
-    cd build
-    cmake .. \
-        -D ENABLE_TESTING=[YES/NO] \
-        -D ENABLE_TESTING_SHELL=[YES/NO] \
-        -D ENABLE_TOOL=[YES/NO] \
-        -D ENABLE_ASAN=[YES/NO] \
-        -D FYAML_NO_PKGCONFIG=[YES/NO] \
-            # If YES \
-            -D FYAML_LIBDIR=[path/lib] \
-            -D FYAML_INCLUDEDIR=[path/include] \
-        -D ARGP_NO_PKGCONFIG=[YES/NO] \
-            # If YES \
-            -D ARGP_LIBDIR=[path/lib] \
-            -D ARGP_INCLUDEDIR=[path/include]
-    make
-    sudo make install   # Optional, installs the binary system-wide
-
-If doing a system install, as usual it's recommended to install to
-``/usr/local`` by providing ``-DCMAKE_INSTALL_PREFIX=/usr/local`` when running
-``cmake``.  Or, if you have a ``${HOME}/.local`` you can set the prefix there,
-etc.
-
-Logging
-^^^^^^^
-
-libasdf can emit diagnostic log messages, controlled by the following options:
-
-- ``-D ENABLE_LOG=[YES/NO]`` -- compile libasdf's internal log statements into
-  the library (default ``YES``).  When ``NO`` they compile to nothing.
-- ``-D ENABLE_LOG_COLOR=[YES/NO]`` -- colorize log output (default ``YES``).
-- ``-D LOG_DEFAULT=LEVEL`` -- the default runtime log level, used when none is
-  set explicitly; one of ``TRACE``, ``DEBUG``, ``INFO``, ``WARN`` (the
-  default), ``ERROR``, ``FATAL``, or ``NONE``.
-- ``-D LOG_MIN=LEVEL`` -- the compile-time minimum level; messages below it are
-  compiled out entirely (default ``TRACE``).
-
-At runtime the default level can also be overridden through the
-``ASDF_LOG_LEVEL`` environment variable.  See the
-`logging documentation <https://libasdf.readthedocs.io/en/latest/usage/opening.html#logging>`__
-for details.
-
-Notes
-^^^^^
-
-- Run ``make clean`` to clean build artifacts.
-- Run ``make project_source`` to generate a source archive with CPack
-- Run ``ctest --output-on-failure`` to execute unit tests
 
 Official Extensions
 ===================
