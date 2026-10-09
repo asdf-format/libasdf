@@ -3,8 +3,6 @@
 #endif
 
 #include <assert.h>
-#include <ctype.h>
-#include <errno.h>
 #include <limits.h>
 #include <math.h>
 #include <stdbool.h>
@@ -12,8 +10,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <libfyaml.h>
 
 #include "error.h"
 #include "file.h"
@@ -1592,237 +1588,79 @@ asdf_value_t *asdf_value_of_extension_type(
 }
 
 
-/* Scalar functions */
-static bool is_yaml_null(const char *scalar, size_t len) {
-    return (
-        !scalar || len == 0 ||
-        (len == 4 && ((strncmp(scalar, "null", len) == 0) || (strncmp(scalar, "Null", len) == 0) ||
-                      (strncmp(scalar, "NULL", len) == 0))) ||
-        (len == 1 && scalar[0] == '~'));
+asdf_value_t *asdf_value_of_plain_scalar(asdf_file_t *file, const char *str) {
+    if (UNLIKELY(!file || !str))
+        return NULL;
+
+    struct fy_document *doc = asdf_file_tree_document(file);
+
+    if (UNLIKELY(!doc))
+        return NULL;
+
+    struct fy_node *node = fy_node_create_scalarf(doc, "%s", str);
+
+    if (UNLIKELY(!node))
+        return NULL;
+
+    return asdf_value_create(file, node);
 }
 
 
-static bool is_yaml_bool(const char *scalar, size_t len, bool *value) {
-    if (!scalar)
-        return false;
+struct fy_node *asdf_node_of_string(struct fy_document *doc, const char *str, size_t len) {
+    if (len > INT_MAX)
+        return NULL;
 
-    /* Allow 0 and 1 tagged as bool */
-    if (len == 1) {
-        if (scalar[0] == '0') {
-            *value = false;
-            return true;
-        }
+    if (!asdf_yaml_string_is_ambiguous(str, len))
+        return fy_node_create_scalarf(doc, "%.*s", (int)len, str);
 
-        if (scalar[0] == '1') {
-            *value = true;
-            return true;
-        }
+    /* libfyaml has no API for setting a scalar node's style, so build the
+     * node from a single-quoted YAML scalar instead; ambiguous strings never
+     * contain line breaks, so the only escaping needed is doubling any ' */
+    char *quoted = malloc((len * 2) + 3);
+
+    if (!quoted)
+        return NULL;
+
+    char *out = quoted;
+    *out++ = '\'';
+
+    for (size_t idx = 0; idx < len; idx++) {
+        if (str[idx] == '\'')
+            *out++ = '\'';
+
+        *out++ = str[idx];
     }
 
-    // NOLINTNEXTLINE(readability-magic-numbers)
-    if (len == 5 && ((0 == strncmp(scalar, "false", len)) || (0 == strncmp(scalar, "False", len)) ||
-                     (0 == strncmp(scalar, "FALSE", len)))) {
-        *value = false;
-        return true;
-    }
-
-    if (len == 4 && ((0 == strncmp(scalar, "true", len)) || (0 == strncmp(scalar, "True", len)) ||
-                     (0 == strncmp(scalar, "TRUE", len)))) {
-        *value = true;
-        return true;
-    }
-
-    return false;
+    *out++ = '\'';
+    *out = '\0';
+    return fy_node_build_from_malloc_string(doc, quoted, out - quoted);
 }
 
 
-static asdf_value_err_t is_yaml_signed_int(
-    const char *scalar, size_t len, int64_t *value, asdf_value_type_t *type) {
-    if (!scalar)
-        return ASDF_VALUE_ERR_UNKNOWN;
+struct fy_node *asdf_node_of_string0(struct fy_document *doc, const char *str) {
+    if (!str)
+        return NULL;
 
-    char *int_s = strndup(scalar, len);
-
-    if (!int_s)
-        return ASDF_VALUE_ERR_UNKNOWN;
-
-    errno = 0;
-    char *end = NULL;
-    int64_t val = strtoll(int_s, &end, 0);
-
-    if (errno == ERANGE) {
-        free(int_s);
-        return ASDF_VALUE_ERR_OVERFLOW;
-    }
-
-    if (errno || *end) {
-        free(int_s);
-        return ASDF_VALUE_ERR_PARSE_FAILURE;
-    }
-
-    /* choose smallest int that fits */
-    if (val >= INT8_MIN && val <= INT8_MAX)
-        *type = ASDF_VALUE_INT8;
-    else if (val >= INT16_MIN && val <= INT16_MAX)
-        *type = ASDF_VALUE_INT16;
-    else if (val >= INT32_MIN && val <= INT32_MAX)
-        *type = ASDF_VALUE_INT32;
-    else
-        *type = ASDF_VALUE_INT64;
-
-    *value = val;
-    free(int_s);
-    return ASDF_VALUE_OK;
+    return asdf_node_of_string(doc, str, strlen(str));
 }
 
 
-#define MAX_UINT64_DIGITS 20
-
-
-static asdf_value_err_t is_yaml_unsigned_int(
-    const char *scalar, size_t len, uint64_t *value, asdf_value_type_t *type) {
-    if (!scalar)
-        return ASDF_VALUE_ERR_UNKNOWN;
-
-    const char *stmp = scalar;
-    char *end = (char *)scalar + len;
-
-    /**
-     * TIL: strtoull is stupid--it will happily parse negative signs and even
-     * return a successful result so long as converting from the signed to
-     * unsigned value does not overflow.
-     *
-     * Hence we do the whitespace skipping and check ourselves for a negative
-     * sign.
-     */
-    while (isspace(*stmp) && stmp <= end)
-        stmp++;
-
-    if (stmp > end || (!isdigit(*stmp) && *stmp != '+'))
-        return ASDF_VALUE_ERR_PARSE_FAILURE;
-
-    size_t maxlen = MAX_UINT64_DIGITS + 1; // Allow for an optional + sign
-    char *uint_s = strndup(stmp, len < maxlen ? len : maxlen);
-
-    if (!uint_s)
-        return ASDF_VALUE_ERR_OOM;
-
-    errno = 0;
-    uint64_t val = strtoull(uint_s, &end, 0);
-
-    if (errno == ERANGE) {
-        free(uint_s);
-        return ASDF_VALUE_ERR_OVERFLOW;
-    }
-
-    if (errno || *end) {
-        free(uint_s);
-        return ASDF_VALUE_ERR_PARSE_FAILURE;
-    }
-
-    /* choose smallest int that fits */
-    if (val <= UINT8_MAX)
-        *type = ASDF_VALUE_UINT8;
-    else if (val <= UINT16_MAX)
-        *type = ASDF_VALUE_UINT16;
-    else if (val <= UINT32_MAX)
-        *type = ASDF_VALUE_UINT32;
-    else
-        *type = ASDF_VALUE_UINT64;
-
-    *value = val;
-    free(uint_s);
-    return ASDF_VALUE_OK;
+struct fy_node *asdf_node_of_float(struct fy_document *doc, float val) {
+    char buf[ASDF_YAML_FLOAT_BUFSIZE];
+    asdf_yaml_format_float(buf, sizeof(buf), val, true);
+    return fy_node_create_scalarf(doc, "%s", buf);
 }
 
 
-/**
- * Parse the YAML 1.1 special float values ``[-+]?.inf`` and ``.nan``
- *
- * Only the lowercase, titlecase, and uppercase spellings are allowed, and
- * NaN may not be signed.
- */
-static bool is_yaml_special_float(const char *scalar, size_t len, double *value) {
-    char sign = '\0';
-
-    if (len == 5 && (scalar[0] == '-' || scalar[0] == '+')) {
-        sign = scalar[0];
-        scalar++;
-        len--;
-    }
-
-    if (len != 4)
-        return false;
-
-    if ((0 == strncmp(scalar, ".inf", len)) || (0 == strncmp(scalar, ".Inf", len)) ||
-        (0 == strncmp(scalar, ".INF", len))) {
-        *value = (sign == '-') ? -INFINITY : INFINITY;
-        return true;
-    }
-
-    if (sign)
-        return false;
-
-    if ((0 == strncmp(scalar, ".nan", len)) || (0 == strncmp(scalar, ".NaN", len)) ||
-        (0 == strncmp(scalar, ".NAN", len))) {
-        *value = NAN;
-        return true;
-    }
-
-    return false;
-}
-
-
-static asdf_value_err_t is_yaml_float(
-    const char *scalar, size_t len, double *value, asdf_value_type_t *type) {
-
-    if (!scalar)
-        return ASDF_VALUE_ERR_UNKNOWN;
-
-    /* strtod also accepts bare inf, nan, and infinity, which YAML 1.1 (and
-     * PyYAML) treat as strings, so only hand it scalars that start with a
-     * digit or '.' after an optional sign */
-    size_t start = (len > 0 && (scalar[0] == '-' || scalar[0] == '+')) ? 1 : 0;
-
-    if (start >= len || !(isdigit((unsigned char)scalar[start]) || scalar[start] == '.'))
-        return ASDF_VALUE_ERR_PARSE_FAILURE;
-
-    char *double_s = strndup(scalar, len);
-
-    if (!double_s)
-        return ASDF_VALUE_ERR_UNKNOWN;
-
-    errno = 0;
-    char *end = NULL;
-    double val = strtod(double_s, &end);
-
-    if (errno == ERANGE) {
-        free(double_s);
-        *type = ASDF_VALUE_DOUBLE;
-        return ASDF_VALUE_ERR_OVERFLOW;
-    }
-
-    if (errno || *end) {
-        free(double_s);
-
-        /* Less common, so only checked after strtod fails */
-        if (is_yaml_special_float(scalar, len, value)) {
-            *type = ASDF_VALUE_DOUBLE;
-            return ASDF_VALUE_OK;
-        }
-
-        return ASDF_VALUE_ERR_PARSE_FAILURE;
-    }
-
-    *value = val;
-    *type = ASDF_VALUE_DOUBLE;
-    free(double_s);
-    return ASDF_VALUE_OK;
+struct fy_node *asdf_node_of_double(struct fy_document *doc, double val) {
+    char buf[ASDF_YAML_FLOAT_BUFSIZE];
+    asdf_yaml_format_float(buf, sizeof(buf), val, false);
+    return fy_node_create_scalarf(doc, "%s", buf);
 }
 
 
 static asdf_value_err_t asdf_value_infer_null(asdf_value_t *value, const char *scalar, size_t len) {
-    if (is_yaml_null(scalar, len)) {
+    if (asdf_yaml_scalar_is_null(scalar, len)) {
         value->type = ASDF_VALUE_NULL;
         value->err = ASDF_VALUE_OK;
         return ASDF_VALUE_OK;
@@ -1836,7 +1674,7 @@ static asdf_value_err_t asdf_value_infer_null(asdf_value_t *value, const char *s
 
 static asdf_value_err_t asdf_value_infer_bool(asdf_value_t *value, const char *scalar, size_t len) {
     bool b_val = false;
-    if (is_yaml_bool(scalar, len, &b_val)) {
+    if (asdf_yaml_scalar_is_bool(scalar, len, &b_val)) {
         value->type = ASDF_VALUE_BOOL;
         value->scalar.b = b_val;
         value->err = ASDF_VALUE_OK;
@@ -1850,36 +1688,55 @@ static asdf_value_err_t asdf_value_infer_bool(asdf_value_t *value, const char *s
 
 
 static asdf_value_err_t asdf_value_infer_int(asdf_value_t *value, const char *scalar, size_t len) {
-    uint64_t u_val = 0;
-    asdf_value_type_t type = ASDF_VALUE_UNKNOWN;
-    asdf_value_err_t err = is_yaml_unsigned_int(scalar, len, &u_val, &type);
+    bool negative = false;
+    uint64_t magnitude = 0;
+    asdf_value_err_t err = asdf_yaml_scalar_is_int(scalar, len, &negative, &magnitude);
 
-    if (ASDF_VALUE_OK == err) {
-        value->type = type;
-        value->scalar.u = u_val;
-    } else {
-        int64_t i_val = 0;
-        err = is_yaml_signed_int(scalar, len, &i_val, &type);
+    value->type = ASDF_VALUE_UNKNOWN;
 
-        if (ASDF_VALUE_OK == err) {
-            value->type = type;
-            value->scalar.i = i_val;
+    /* Non-negative ints are typed as the smallest unsigned int that fits,
+     * negative ints as the smallest signed int */
+    if (ASDF_VALUE_OK == err && !negative) {
+        if (magnitude <= UINT8_MAX)
+            value->type = ASDF_VALUE_UINT8;
+        else if (magnitude <= UINT16_MAX)
+            value->type = ASDF_VALUE_UINT16;
+        else if (magnitude <= UINT32_MAX)
+            value->type = ASDF_VALUE_UINT32;
+        else
+            value->type = ASDF_VALUE_UINT64;
+
+        value->scalar.u = magnitude;
+    } else if (ASDF_VALUE_OK == err) {
+        if (magnitude > (uint64_t)INT64_MAX + 1) {
+            err = ASDF_VALUE_ERR_OVERFLOW;
         } else {
-            value->type = ASDF_VALUE_UNKNOWN;
+            int64_t i_val = magnitude == (uint64_t)INT64_MAX + 1 ? INT64_MIN : -(int64_t)magnitude;
+
+            if (i_val >= INT8_MIN)
+                value->type = ASDF_VALUE_INT8;
+            else if (i_val >= INT16_MIN)
+                value->type = ASDF_VALUE_INT16;
+            else if (i_val >= INT32_MIN)
+                value->type = ASDF_VALUE_INT32;
+            else
+                value->type = ASDF_VALUE_INT64;
+
+            value->scalar.i = i_val;
         }
     }
+
     value->err = err;
     return err;
 }
 
 
 static asdf_value_err_t asdf_value_infer_float(
-    asdf_value_t *value, const char *scalar, size_t len) {
+    asdf_value_t *value, const char *scalar, size_t len, bool allow_int) {
     double d_val = 0.0;
-    asdf_value_type_t type = ASDF_VALUE_UNKNOWN;
-    asdf_value_err_t err = is_yaml_float(scalar, len, &d_val, &type);
+    asdf_value_err_t err = asdf_yaml_scalar_is_float(scalar, len, allow_int, &d_val);
     if (ASDF_VALUE_OK == err || ASDF_VALUE_ERR_OVERFLOW == err) {
-        value->type = type;
+        value->type = ASDF_VALUE_DOUBLE;
         value->scalar.d = d_val;
     } else {
         value->type = ASDF_VALUE_UNKNOWN;
@@ -1957,7 +1814,7 @@ static asdf_value_err_t asdf_value_infer_scalar_type(asdf_value_t *value) {
             break;
         }
         case ASDF_YAML_COMMON_TAG_FLOAT: {
-            err = asdf_value_infer_float(value, scalar, len);
+            err = asdf_value_infer_float(value, scalar, len, true);
             break;
         }
         case ASDF_YAML_COMMON_TAG_STR:
@@ -1995,7 +1852,7 @@ static asdf_value_err_t asdf_value_infer_scalar_type(asdf_value_t *value) {
         return ASDF_VALUE_OK;
     }
 
-    err = asdf_value_infer_float(value, scalar, len);
+    err = asdf_value_infer_float(value, scalar, len, false);
 
     if (ASDF_VALUE_OK == err || ASDF_VALUE_ERR_OVERFLOW == err) {
 #ifdef ASDF_LOG_ENABLED
@@ -3393,7 +3250,7 @@ static asdf_value_err_t asdf_node_materialize_path(
             return ASDF_VALUE_ERR_NOT_FOUND;
 
         if (fy_node_is_mapping(parent)) {
-            struct fy_node *key = fy_node_create_scalar_copy(doc, comp->key, FY_NT);
+            struct fy_node *key = asdf_node_of_string0(doc, comp->key);
 
             if (!key)
                 return ASDF_VALUE_ERR_OOM;

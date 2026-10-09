@@ -110,21 +110,21 @@ typedef struct asdf_find_iter_impl {
 
 
 /**
- * Inline functions pertaining to creating / writing values (specifically for
+ * Functions pertaining to creating / writing values (specifically for
  * building scalar nodes)
  */
-static inline struct fy_node *asdf_node_of_string(
-    struct fy_document *doc, const char *str, size_t len) {
-    if (len > INT_MAX)
-        return NULL;
+ASDF_LOCAL struct fy_node *asdf_node_of_string(
+    struct fy_document *doc, const char *str, size_t len);
+ASDF_LOCAL struct fy_node *asdf_node_of_string0(struct fy_document *doc, const char *str);
 
-    return fy_node_create_scalarf(doc, "%.*s", (int)len, str);
-}
-
-
-static inline struct fy_node *asdf_node_of_string0(struct fy_document *doc, const char *str) {
-    return fy_node_create_scalarf(doc, "%s", str);
-}
+/**
+ * Create a value from scalar text emitted verbatim in plain style
+ *
+ * Unlike `asdf_value_of_string`, the text is never quoted, so its type is
+ * resolved from the text when read back.  This is for writing numbers whose
+ * exact original text must be preserved.
+ */
+ASDF_LOCAL asdf_value_t *asdf_value_of_plain_scalar(asdf_file_t *file, const char *str);
 
 
 static inline struct fy_node *asdf_node_of_bool(struct fy_document *doc, bool val) {
@@ -153,25 +153,9 @@ ASDF_NODE_OF_VALUE_TYPE(uint16, uint16_t, "%" PRIu16)
 ASDF_NODE_OF_VALUE_TYPE(uint32, uint32_t, "%" PRIu32)
 ASDF_NODE_OF_VALUE_TYPE(uint64, uint64_t, "%" PRIu64)
 
-// Here there be Dragons!
-// TODO: For now we pick some reasonable defaults to get up and running with,
-// though it might be better to use something like dtoa.c https://netlib.sandia.gov/fp/dtoa.c
-// which also happens to be what CPython uses
-#define ASDF_NODE_OF_FLOAT_VALUE_TYPE(typ, value_type, fmt) \
-    static inline struct fy_node *asdf_node_of_##typ(struct fy_document *doc, value_type val) { \
-        if (isnan(val)) \
-            return fy_node_create_scalarf(doc, ".nan"); \
-        if (isinf(val)) { \
-            if (signbit(val)) \
-                return fy_node_create_scalarf(doc, "-.inf"); \
-            return fy_node_create_scalarf(doc, ".inf"); \
-        } \
-        return fy_node_create_scalarf((doc), (fmt), (val)); \
-    }
-
-
-ASDF_NODE_OF_FLOAT_VALUE_TYPE(float, float, "%.9g")
-ASDF_NODE_OF_FLOAT_VALUE_TYPE(double, double, "%.17g")
+/** Floats are emitted using `asdf_yaml_format_float` */
+ASDF_LOCAL struct fy_node *asdf_node_of_float(struct fy_document *doc, float val);
+ASDF_LOCAL struct fy_node *asdf_node_of_double(struct fy_document *doc, double val);
 
 /**
  * Utility to wrap empty container value workaround

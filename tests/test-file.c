@@ -3,6 +3,7 @@
 #endif
 #include <errno.h>
 #include <float.h>
+#include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -657,6 +658,42 @@ MU_TEST(test_asdf_set_scalar_type) {
     assert_int(asdf_set_uint64(file, "uint64", UINT64_MAX), ==, ASDF_VALUE_OK);
     assert_int(asdf_set_float(file, "float", FLT_MAX), ==, ASDF_VALUE_OK);
     assert_int(asdf_set_double(file, "double", DBL_MAX), ==, ASDF_VALUE_OK);
+    // Floats are emitted as valid YAML 1.1 floats in shortest round-trip form
+    assert_int(asdf_set_double(file, "double_1e_8", 1e-8), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_double(file, "double_2e_8", 2e-8), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_double(file, "double_1_5e_8", 1.5e-8), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_double(file, "double_0_1", 0.1), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_double(file, "double_1", 1.0), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_double(file, "double_100", 100.0), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_double(file, "double_neg_zero", -0.0), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_double(file, "double_1e15", 1e15), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_double(file, "double_1e16", 1e16), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_double(file, "double_1e_4", 1e-4), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_double(file, "double_1e_5", 1e-5), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_double(file, "double_min", 5e-324), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_double(file, "double_neg_inf", -INFINITY), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_double(file, "double_nan", NAN), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_float(file, "float_0_1", 0.1F), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_float(file, "float_1e_8", 1e-8F), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_float(file, "float_2_24", 16777216.0F), ==, ASDF_VALUE_OK);
+    // Strings that would otherwise resolve as non-strings must be quoted,
+    // both as values and as keys
+    assert_int(asdf_set_string0(file, "str_yes", "yes"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_string0(file, "str_Off", "Off"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_string0(file, "str_n", "n"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_string0(file, "str_empty", ""), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_string0(file, "str_tilde", "~"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_string0(file, "str_null", "null"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_string0(file, "str_int", "123"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_string0(file, "str_float_no_dot", "1e-08"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_string0(file, "str_yaml12_oct", "0o17"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_string0(file, "str_base60", "1:30"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_string0(file, "str_inf", ".inf"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_string0(file, "str_timestamp", "2001-12-14"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_string0(file, "str_merge", "<<"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_string0(file, "str_version", "1.2.3"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_string0(file, "str_no_way", "no way"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_int8(file, "on", 1), ==, ASDF_VALUE_OK);
     asdf_library_set_version(file, "0.0.0");
     assert_int(asdf_write_to(file, filename), ==, 0);
     asdf_close(file);
