@@ -1,4 +1,8 @@
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE /* for memmem */
+#endif
 #include <float.h>
+#include <locale.h>
 #include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -82,6 +86,40 @@ MU_TEST(test_asdf_value_get_type) {
     CHECK_VALUE_TYPE("bare_infinity", ASDF_VALUE_STRING);
     CHECK_VALUE_TYPE("bare_nan", ASDF_VALUE_STRING);
     CHECK_VALUE_TYPE("bare_NaN", ASDF_VALUE_STRING);
+    // YAML 1.1 bools
+    CHECK_VALUE_TYPE("yes", ASDF_VALUE_BOOL);
+    CHECK_VALUE_TYPE("No", ASDF_VALUE_BOOL);
+    CHECK_VALUE_TYPE("ON", ASDF_VALUE_BOOL);
+    CHECK_VALUE_TYPE("off", ASDF_VALUE_BOOL);
+    // y/n are bools in the YAML 1.1 spec but not in PyYAML; we follow PyYAML
+    CHECK_VALUE_TYPE("y", ASDF_VALUE_STRING);
+    // YAML 1.1 ints
+    CHECK_VALUE_TYPE("bin", ASDF_VALUE_UINT8);
+    CHECK_VALUE_TYPE("neg_bin", ASDF_VALUE_INT8);
+    CHECK_VALUE_TYPE("oct", ASDF_VALUE_UINT8);
+    CHECK_VALUE_TYPE("hex", ASDF_VALUE_UINT8);
+    CHECK_VALUE_TYPE("int_underscores", ASDF_VALUE_UINT32);
+    CHECK_VALUE_TYPE("base60", ASDF_VALUE_UINT32);
+    CHECK_VALUE_TYPE("neg_base60", ASDF_VALUE_INT8);
+    // Not ints in YAML 1.1 (0o17 is a YAML 1.2 octal)
+    CHECK_VALUE_TYPE("yaml12_oct", ASDF_VALUE_STRING);
+    CHECK_VALUE_TYPE("not_oct", ASDF_VALUE_STRING);
+    CHECK_VALUE_TYPE("bad_base60", ASDF_VALUE_STRING);
+    // YAML 1.1 floats; float_no_dot and float_unsigned_exp are strictly
+    // strings in YAML 1.1, but are accepted as floats for leniency
+    CHECK_VALUE_TYPE("float_underscores", ASDF_VALUE_DOUBLE);
+    CHECK_VALUE_TYPE("float_base60", ASDF_VALUE_DOUBLE);
+    CHECK_VALUE_TYPE("float_no_dot", ASDF_VALUE_DOUBLE);
+    CHECK_VALUE_TYPE("float_unsigned_exp", ASDF_VALUE_DOUBLE);
+    CHECK_VALUE_TYPE("float_trailing_dot", ASDF_VALUE_DOUBLE);
+    CHECK_VALUE_TYPE("float_leading_dot", ASDF_VALUE_DOUBLE);
+    CHECK_VALUE_TYPE("float_tagged_int", ASDF_VALUE_DOUBLE);
+    CHECK_VALUE_TYPE("subnormal", ASDF_VALUE_DOUBLE);
+    // Not floats (strtod would accept hex_float)
+    CHECK_VALUE_TYPE("hex_float", ASDF_VALUE_STRING);
+    CHECK_VALUE_TYPE("dot", ASDF_VALUE_STRING);
+    // Timestamps are not resolved; left as strings
+    CHECK_VALUE_TYPE("timestamp", ASDF_VALUE_STRING);
     asdf_close(file);
     return MUNIT_OK;
 }
@@ -282,6 +320,10 @@ MU_TEST(test_asdf_value_as_bool) {
     CHECK_BOOL_VALUE("TRUE", true);
     // Allow 1 to be cast to bool
     CHECK_BOOL_VALUE("true1", true);
+    CHECK_BOOL_VALUE("yes", true);
+    CHECK_BOOL_VALUE("No", false);
+    CHECK_BOOL_VALUE("ON", true);
+    CHECK_BOOL_VALUE("off", false);
     CHECK_BOOL_MISMATCH("int64");
     CHECK_BOOL_MISMATCH("plain");
 
@@ -507,6 +549,8 @@ MU_TEST(test_asdf_value_as_int64) {
     CHECK_INT_VALUE(int64, "uint32", ASDF_VALUE_OK, 4294967295);
     CHECK_INT_VALUE(int64, "uint16", ASDF_VALUE_OK, 65535);
     CHECK_INT_VALUE(int64, "uint8", ASDF_VALUE_OK, 255);
+    CHECK_INT_VALUE(int64, "neg_bin", ASDF_VALUE_OK, -10);
+    CHECK_INT_VALUE(int64, "neg_base60", ASDF_VALUE_OK, -90);
     CHECK_INT_VALUE_MISMATCH(int64, "plain");
     CHECK_INT_VALUE_MISMATCH(int64, "");
     asdf_close(file);
@@ -702,6 +746,11 @@ MU_TEST(test_asdf_value_as_uint64) {
     CHECK_INT_VALUE(uint64, "uint32", ASDF_VALUE_OK, 4294967295);
     CHECK_INT_VALUE(uint64, "int64", ASDF_VALUE_ERR_OVERFLOW, -9223372036854775807LL);
     CHECK_INT_VALUE(uint64, "uint64", ASDF_VALUE_OK, 18446744073709551615ULL);
+    CHECK_INT_VALUE(uint64, "bin", ASDF_VALUE_OK, 10);
+    CHECK_INT_VALUE(uint64, "oct", ASDF_VALUE_OK, 15);
+    CHECK_INT_VALUE(uint64, "hex", ASDF_VALUE_OK, 255);
+    CHECK_INT_VALUE(uint64, "int_underscores", ASDF_VALUE_OK, 1000000);
+    CHECK_INT_VALUE(uint64, "base60", ASDF_VALUE_OK, 685230);
     CHECK_INT_VALUE_MISMATCH(uint64, "plain");
     CHECK_INT_VALUE_MISMATCH(uint64, "");
 
@@ -812,11 +861,22 @@ MU_TEST(test_asdf_value_as_double) {
     CHECK_FLOAT_VALUE(double, "INF", ASDF_VALUE_OK, INFINITY);
     CHECK_FLOAT_VALUE(double, "neg_inf", ASDF_VALUE_OK, -INFINITY);
     CHECK_FLOAT_VALUE(double, "neg_Inf", ASDF_VALUE_OK, -INFINITY);
+    CHECK_FLOAT_VALUE(double, "float_underscores", ASDF_VALUE_OK, 1000.5);
+    CHECK_FLOAT_VALUE(double, "float_base60", ASDF_VALUE_OK, 90.5);
+    CHECK_FLOAT_VALUE(double, "float_no_dot", ASDF_VALUE_OK, 1e-08);
+    CHECK_FLOAT_VALUE(double, "float_unsigned_exp", ASDF_VALUE_OK, 1e8);
+    CHECK_FLOAT_VALUE(double, "float_trailing_dot", ASDF_VALUE_OK, 1.0);
+    CHECK_FLOAT_VALUE(double, "float_leading_dot", ASDF_VALUE_OK, -0.5);
+    CHECK_FLOAT_VALUE(double, "float_tagged_int", ASDF_VALUE_OK, 1.0);
+    // Underflow is not an error; the result is the nearest subnormal
+    CHECK_FLOAT_VALUE(double, "subnormal", ASDF_VALUE_OK, 4.9406564584124654e-324);
     CHECK_FLOAT_VALUE_MISMATCH(double, "plain");
     CHECK_FLOAT_VALUE_MISMATCH(double, "");
     CHECK_FLOAT_VALUE_MISMATCH(double, "neg_nan");
     CHECK_FLOAT_VALUE_MISMATCH(double, "bare_inf");
     CHECK_FLOAT_VALUE_MISMATCH(double, "bare_nan");
+    CHECK_FLOAT_VALUE_MISMATCH(double, "hex_float");
+    CHECK_FLOAT_VALUE_MISMATCH(double, "dot");
 
     double out = 0.0;
     assert_int(asdf_get_double(file, "nan", &out), ==, ASDF_VALUE_OK);
@@ -1011,6 +1071,14 @@ MU_TEST(test_asdf_value_of_sequence) {
 } while (0)
 
 
+#define SET_VALUE_OF_TYPE(type, key, val) \
+    do { \
+        value = asdf_value_of_##type(file, (val)); \
+        assert_not_null(value); \
+        assert_int(asdf_set_value(file, (key), value), ==, ASDF_VALUE_OK); \
+    } while (0)
+
+
 MU_TEST(test_asdf_value_of_type) {
     const char *path = get_temp_file_path(fixture->tempfile_prefix, ".asdf");
     asdf_file_t *file = asdf_open(NULL);
@@ -1044,6 +1112,42 @@ MU_TEST(test_asdf_value_of_type) {
     CHECK_SET_VALUE_OF_TYPE(uint64, UINT64_MAX);
     CHECK_SET_VALUE_OF_TYPE(float, FLT_MAX);
     CHECK_SET_VALUE_OF_TYPE(double, DBL_MAX);
+    // Floats are emitted as valid YAML 1.1 floats in shortest round-trip form
+    SET_VALUE_OF_TYPE(double, "double_1e_8", 1e-8);
+    SET_VALUE_OF_TYPE(double, "double_2e_8", 2e-8);
+    SET_VALUE_OF_TYPE(double, "double_1_5e_8", 1.5e-8);
+    SET_VALUE_OF_TYPE(double, "double_0_1", 0.1);
+    SET_VALUE_OF_TYPE(double, "double_1", 1.0);
+    SET_VALUE_OF_TYPE(double, "double_100", 100.0);
+    SET_VALUE_OF_TYPE(double, "double_neg_zero", -0.0);
+    SET_VALUE_OF_TYPE(double, "double_1e15", 1e15);
+    SET_VALUE_OF_TYPE(double, "double_1e16", 1e16);
+    SET_VALUE_OF_TYPE(double, "double_1e_4", 1e-4);
+    SET_VALUE_OF_TYPE(double, "double_1e_5", 1e-5);
+    SET_VALUE_OF_TYPE(double, "double_min", 5e-324);
+    SET_VALUE_OF_TYPE(double, "double_neg_inf", -INFINITY);
+    SET_VALUE_OF_TYPE(double, "double_nan", NAN);
+    SET_VALUE_OF_TYPE(float, "float_0_1", 0.1F);
+    SET_VALUE_OF_TYPE(float, "float_1e_8", 1e-8F);
+    SET_VALUE_OF_TYPE(float, "float_2_24", 16777216.0F);
+    // Strings that would otherwise resolve as non-strings must be quoted,
+    // both as values and as keys
+    SET_VALUE_OF_TYPE(string0, "str_yes", "yes");
+    SET_VALUE_OF_TYPE(string0, "str_Off", "Off");
+    SET_VALUE_OF_TYPE(string0, "str_n", "n");
+    SET_VALUE_OF_TYPE(string0, "str_empty", "");
+    SET_VALUE_OF_TYPE(string0, "str_tilde", "~");
+    SET_VALUE_OF_TYPE(string0, "str_null", "null");
+    SET_VALUE_OF_TYPE(string0, "str_int", "123");
+    SET_VALUE_OF_TYPE(string0, "str_float_no_dot", "1e-08");
+    SET_VALUE_OF_TYPE(string0, "str_yaml12_oct", "0o17");
+    SET_VALUE_OF_TYPE(string0, "str_base60", "1:30");
+    SET_VALUE_OF_TYPE(string0, "str_inf", ".inf");
+    SET_VALUE_OF_TYPE(string0, "str_timestamp", "2001-12-14");
+    SET_VALUE_OF_TYPE(string0, "str_merge", "<<");
+    SET_VALUE_OF_TYPE(string0, "str_version", "1.2.3");
+    SET_VALUE_OF_TYPE(string0, "str_no_way", "no way");
+    SET_VALUE_OF_TYPE(int8, "on", 1);
     asdf_library_set_version(file, "0.0.0");
     assert_int(asdf_write_to(file, path), ==, 0);
     asdf_close(file);
@@ -1226,6 +1330,42 @@ MU_TEST(test_asdf_mapping_set_scalars) {
     assert_int(asdf_mapping_set_uint64(mapping, "uint64", UINT64_MAX), ==, ASDF_VALUE_OK);
     assert_int(asdf_mapping_set_float(mapping, "float", FLT_MAX), ==, ASDF_VALUE_OK);
     assert_int(asdf_mapping_set_double(mapping, "double", DBL_MAX), ==, ASDF_VALUE_OK);
+    // Floats are emitted as valid YAML 1.1 floats in shortest round-trip form
+    assert_int(asdf_mapping_set_double(mapping, "double_1e_8", 1e-8), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_double(mapping, "double_2e_8", 2e-8), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_double(mapping, "double_1_5e_8", 1.5e-8), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_double(mapping, "double_0_1", 0.1), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_double(mapping, "double_1", 1.0), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_double(mapping, "double_100", 100.0), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_double(mapping, "double_neg_zero", -0.0), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_double(mapping, "double_1e15", 1e15), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_double(mapping, "double_1e16", 1e16), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_double(mapping, "double_1e_4", 1e-4), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_double(mapping, "double_1e_5", 1e-5), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_double(mapping, "double_min", 5e-324), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_double(mapping, "double_neg_inf", -INFINITY), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_double(mapping, "double_nan", NAN), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_float(mapping, "float_0_1", 0.1F), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_float(mapping, "float_1e_8", 1e-8F), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_float(mapping, "float_2_24", 16777216.0F), ==, ASDF_VALUE_OK);
+    // Strings that would otherwise resolve as non-strings must be quoted,
+    // both as values and as keys
+    assert_int(asdf_mapping_set_string0(mapping, "str_yes", "yes"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_string0(mapping, "str_Off", "Off"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_string0(mapping, "str_n", "n"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_string0(mapping, "str_empty", ""), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_string0(mapping, "str_tilde", "~"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_string0(mapping, "str_null", "null"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_string0(mapping, "str_int", "123"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_string0(mapping, "str_float_no_dot", "1e-08"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_string0(mapping, "str_yaml12_oct", "0o17"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_string0(mapping, "str_base60", "1:30"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_string0(mapping, "str_inf", ".inf"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_string0(mapping, "str_timestamp", "2001-12-14"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_string0(mapping, "str_merge", "<<"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_string0(mapping, "str_version", "1.2.3"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_string0(mapping, "str_no_way", "no way"), ==, ASDF_VALUE_OK);
+    assert_int(asdf_mapping_set_int8(mapping, "on", 1), ==, ASDF_VALUE_OK);
 
     // Assign the mapping as the root
     assert_int(asdf_set_mapping(file, "", mapping), ==, ASDF_VALUE_OK);
@@ -2111,6 +2251,164 @@ MU_TEST(test_asdf_value_copy_attached_shallow) {
 }
 
 
+MU_TEST(test_read_scalars_out) {
+    const char *path = get_fixture_file_path("scalars-out.asdf");
+    asdf_file_t *file = asdf_open(path, "r");
+    assert_not_null(file);
+    double out = 0.0;
+    CHECK_FLOAT_VALUE(double, "double_1e_8", ASDF_VALUE_OK, 1e-8);
+    CHECK_FLOAT_VALUE(double, "double_2e_8", ASDF_VALUE_OK, 2e-8);
+    CHECK_FLOAT_VALUE(double, "double_1_5e_8", ASDF_VALUE_OK, 1.5e-8);
+    CHECK_FLOAT_VALUE(double, "double_0_1", ASDF_VALUE_OK, 0.1);
+    CHECK_FLOAT_VALUE(double, "double_1", ASDF_VALUE_OK, 1.0);
+    CHECK_FLOAT_VALUE(double, "double_100", ASDF_VALUE_OK, 100.0);
+    CHECK_FLOAT_VALUE(double, "double_neg_zero", ASDF_VALUE_OK, -0.0);
+    CHECK_FLOAT_VALUE(double, "double_1e15", ASDF_VALUE_OK, 1e15);
+    CHECK_FLOAT_VALUE(double, "double_1e16", ASDF_VALUE_OK, 1e16);
+    CHECK_FLOAT_VALUE(double, "double_1e_4", ASDF_VALUE_OK, 1e-4);
+    CHECK_FLOAT_VALUE(double, "double_1e_5", ASDF_VALUE_OK, 1e-5);
+    CHECK_FLOAT_VALUE(double, "double_min", ASDF_VALUE_OK, 5e-324);
+    CHECK_FLOAT_VALUE(double, "double_neg_inf", ASDF_VALUE_OK, -INFINITY);
+    assert_int(asdf_get_double(file, "double_nan", &out), ==, ASDF_VALUE_OK);
+    assert_true(isnan(out));
+    assert_int(asdf_get_double(file, "double_neg_zero", &out), ==, ASDF_VALUE_OK);
+    assert_true(signbit(out));
+    CHECK_FLOAT_VALUE(float, "float_0_1", ASDF_VALUE_OK, 0.1F);
+    CHECK_FLOAT_VALUE(float, "float_1e_8", ASDF_VALUE_OK, 1e-8F);
+    CHECK_FLOAT_VALUE(float, "float_2_24", ASDF_VALUE_OK, 16777216.0F);
+    CHECK_STR_VALUE("str_yes", "yes");
+    CHECK_STR_VALUE("str_Off", "Off");
+    CHECK_STR_VALUE("str_n", "n");
+    CHECK_STR_VALUE("str_empty", "");
+    CHECK_STR_VALUE("str_tilde", "~");
+    CHECK_STR_VALUE("str_null", "null");
+    CHECK_STR_VALUE("str_int", "123");
+    CHECK_STR_VALUE("str_float_no_dot", "1e-08");
+    CHECK_STR_VALUE("str_yaml12_oct", "0o17");
+    CHECK_STR_VALUE("str_base60", "1:30");
+    CHECK_STR_VALUE("str_inf", ".inf");
+    CHECK_STR_VALUE("str_timestamp", "2001-12-14");
+    CHECK_STR_VALUE("str_merge", "<<");
+    CHECK_STR_VALUE("str_version", "1.2.3");
+    CHECK_STR_VALUE("str_no_way", "no way");
+    CHECK_INT_VALUE(int8, "on", ASDF_VALUE_OK, 1);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+/** Many doubles and floats round-trip exactly through the emitter */
+MU_TEST(test_float_emission_round_trip) {
+    void *buf = NULL;
+    size_t n_vals = 5000;
+    size_t size = 0;
+    size_t idx = 0;
+    double d_val = 0.0;
+    float f_val = 0.0F;
+    double *vals = malloc(n_vals * sizeof(double));
+    asdf_sequence_t *doubles = NULL;
+    asdf_sequence_t *floats = NULL;
+    asdf_sequence_iter_t *d_iter = NULL;
+    asdf_sequence_iter_t *f_iter = NULL;
+
+    assert_not_null(vals);
+
+    for (idx = 0; idx < n_vals; idx++) {
+        /* Mantissa and exponent spread across the whole double range */
+        double mant = (double)munit_rand_uint32() / UINT32_MAX + 1.0;
+        int exponent = (int)(munit_rand_uint32() % 2000) - 1000;
+        vals[idx] = ldexp(mant, exponent) * ((idx % 2) ? -1 : 1);
+    }
+
+    /* Write the double/float values into YAML sequences to read back in */
+    asdf_file_t *file = asdf_open(NULL);
+    assert_not_null(file);
+    doubles = asdf_sequence_create(file);
+    floats = asdf_sequence_create(file);
+    assert_not_null(doubles);
+    assert_not_null(floats);
+
+    for (idx = 0; idx < n_vals; idx++) {
+        assert_int(asdf_sequence_append_double(doubles, vals[idx]), ==, ASDF_VALUE_OK);
+        assert_int(asdf_sequence_append_float(floats, (float)vals[idx]), ==, ASDF_VALUE_OK);
+    }
+
+    assert_int(asdf_set_sequence(file, "doubles", doubles), ==, ASDF_VALUE_OK);
+    assert_int(asdf_set_sequence(file, "floats", floats), ==, ASDF_VALUE_OK);
+    assert_int(asdf_write_to(file, &buf, &size), ==, 0);
+    asdf_close(file);
+
+    /* Test accurate round-trip of all values */
+    file = asdf_open_mem(buf, size);
+    assert_not_null(file);
+    assert_int(asdf_get_sequence(file, "doubles", &doubles), ==, ASDF_VALUE_OK);
+    assert_int(asdf_get_sequence(file, "floats", &floats), ==, ASDF_VALUE_OK);
+    d_iter = asdf_sequence_iter_init(doubles);
+    f_iter = asdf_sequence_iter_init(floats);
+
+    for (idx = 0; idx < n_vals; idx++) {
+        assert_true(asdf_sequence_iter_next(&d_iter));
+        assert_true(asdf_sequence_iter_next(&f_iter));
+        assert_int(asdf_value_as_double(d_iter->value, &d_val), ==, ASDF_VALUE_OK);
+        assert_double(d_val, ==, vals[idx]);
+        // Out-of-range floats were emitted as -/+.inf
+        assert_int(asdf_value_as_float(f_iter->value, &f_val), ==, ASDF_VALUE_OK);
+        assert_float(f_val, ==, (float)vals[idx]);
+    }
+
+    assert_false(asdf_sequence_iter_next(&d_iter));
+    assert_false(asdf_sequence_iter_next(&f_iter));
+    asdf_sequence_destroy(doubles);
+    asdf_sequence_destroy(floats);
+    asdf_close(file);
+    asdf_free(buf);
+    free(vals);
+    return MUNIT_OK;
+}
+
+
+/** Float emission and parsing are independent of LC_NUMERIC */
+MU_TEST(test_float_locale_independent) {
+    /* de_DE and fr_FR use , for the decimal; try any one of these */
+    const char *locales[] = {"de_DE.UTF-8", "de_DE.utf8", "fr_FR.UTF-8", "fr_FR.utf8", NULL};
+    const char *old_locale = setlocale(LC_NUMERIC, NULL);
+    char *saved = old_locale ? strdup(old_locale) : NULL;
+    const char **locale = locales;
+    void *buf = NULL;
+    size_t size = 0;
+    double d_val = 0.0;
+
+    for (; *locale; locale++) {
+        if (setlocale(LC_NUMERIC, *locale))
+            break;
+    }
+
+    /* If none of the above locales are installed, just skip the test */
+    if (!*locale) {
+        free(saved);
+        return MUNIT_SKIP;
+    }
+
+    asdf_file_t *file = asdf_open(NULL);
+    assert_not_null(file);
+    assert_int(asdf_set_double(file, "val", 1.5), ==, ASDF_VALUE_OK);
+    assert_int(asdf_write_to(file, &buf, &size), ==, 0);
+    asdf_close(file);
+    assert_not_null(memmem(buf, size, "\nval: 1.5\n", 10));
+
+    file = asdf_open_mem(buf, size);
+    assert_not_null(file);
+    assert_int(asdf_get_double(file, "val", &d_val), ==, ASDF_VALUE_OK);
+    assert_double(d_val, ==, 1.5);
+    asdf_close(file);
+    asdf_free(buf);
+
+    setlocale(LC_NUMERIC, saved ? saved : "C");
+    free(saved);
+    return MUNIT_OK;
+}
+
+
 MU_TEST_SUITE(
     value,
     MU_RUN_TEST(test_asdf_value_get_type),
@@ -2181,7 +2479,10 @@ MU_TEST_SUITE(
     MU_RUN_TEST(regression_copy_extension_value),
     MU_RUN_TEST(regression_read_min_int),
     MU_RUN_TEST(regression_read_flt_max),
-    MU_RUN_TEST(test_asdf_value_copy_attached_shallow)
+    MU_RUN_TEST(test_asdf_value_copy_attached_shallow),
+    MU_RUN_TEST(test_read_scalars_out),
+    MU_RUN_TEST(test_float_emission_round_trip),
+    MU_RUN_TEST(test_float_locale_independent)
 );
 
 

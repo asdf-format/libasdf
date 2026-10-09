@@ -1,0 +1,20 @@
+Improved handling of YAML 1.1 core schema scalars, especially of floats.
+
+Floats are now always written as valid YAML 1.1 floats, and plain scalars are
+resolved according to the YAML 1.1 rules used by ASDF; see
+https://yaml.org/type/float.pdf
+
+Previously this was punted on and floats were just written with printf format
+strings, but this does not guarantee correct formatting for YAML.  Floats are
+also now written in the shortest form that round-trips without loss of
+precision, following the same rules as Python's ``repr``.  Also fixed
+locale-dependent float formatting (i.e. locale-specific decimal points).
+
+When reading, the YAML 1.1 forms ``yes``/``no``/``on``/``off`` (bools),
+``0b``/``0x``/``0``-prefixed octal, ``_`` digit separators and base-60 (ints
+and floats) are now recognized.  Floats without a ``.`` such as ``1e-08`` are
+still read as floats, for compatibility with files written by earlier
+versions.
+
+Strings that would otherwise be read back as another type (e.g. ``'yes'``,
+``'123'``, ``'null'``) are now quoted when written, including in mapping keys.

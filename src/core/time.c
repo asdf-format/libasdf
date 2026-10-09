@@ -18,6 +18,7 @@
 #include "../log.h"
 #include "../util.h"
 #include "../value.h"
+#include "../yaml.h"
 
 /**
  * Auto-detect patterns -- compiled once upon first use
@@ -954,7 +955,16 @@ static asdf_value_t *asdf_time_serialize(
         value_out = value_buf;
     }
 
-    err = asdf_mapping_set_string0(map, "value", value_out);
+    /* Numeric values (e.g. jd, mjd, jyear) are written verbatim as plain
+     * numbers to preserve their full precision; anything else is a string */
+    if (asdf_yaml_scalar_is_number(value_out, strlen(value_out))) {
+        value = asdf_value_of_plain_scalar(file, value_out);
+        err = value ? asdf_mapping_set(map, "value", value) : ASDF_VALUE_ERR_OOM;
+        value = NULL;
+    } else {
+        err = asdf_mapping_set_string0(map, "value", value_out);
+    }
+
     if (err != ASDF_VALUE_OK)
         goto cleanup;
 

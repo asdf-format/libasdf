@@ -13,9 +13,8 @@
 #endif
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
-
-#include <libfyaml.h>
 
 #include "asdf/file.h"
 #include "asdf/yaml.h" // IWYU pragma: export
@@ -135,3 +134,60 @@ typedef asdf_yaml_path_iter asdf_yaml_path_iter_t;
 ASDF_LOCAL char *asdf_yaml_tag_canonicalize(const char *tag);
 ASDF_LOCAL char *asdf_yaml_tag_normalize(const char *tag, const asdf_yaml_tag_handle_t *handles);
 ASDF_LOCAL bool asdf_yaml_path_parse(const char *path, asdf_yaml_path_t *out_path);
+
+
+/**
+ * YAML 1.1 scalar resolution
+ *
+ * Each ``asdf_yaml_scalar_is_<type>`` function returns whether the text of a
+ * plain scalar resolves as that type (see the comments in yaml.c for the
+ * exact rules) and if so parses its value.  The int and float functions
+ * return ``ASDF_VALUE_ERR_PARSE_FAILURE`` if the scalar is not of that type,
+ * or ``ASDF_VALUE_ERR_OVERFLOW`` if it is but its value is out of range.
+ *
+ * Ints are returned as a sign and a magnitude, so that the caller can choose
+ * a signed or unsigned type.  ``allow_int`` additionally accepts plain
+ * decimal ints as floats, for scalars tagged ``!!float``.
+ */
+ASDF_LOCAL bool asdf_yaml_scalar_is_null(const char *scalar, size_t len);
+ASDF_LOCAL bool asdf_yaml_scalar_is_bool(const char *scalar, size_t len, bool *value);
+ASDF_LOCAL asdf_value_err_t
+asdf_yaml_scalar_is_int(const char *scalar, size_t len, bool *negative, uint64_t *magnitude);
+ASDF_LOCAL asdf_value_err_t
+asdf_yaml_scalar_is_float(const char *scalar, size_t len, bool allow_int, double *value);
+
+/**
+ * Return true if the scalar text would be resolved as an int or float
+ */
+ASDF_LOCAL bool asdf_yaml_scalar_is_number(const char *scalar, size_t len);
+
+/**
+ * Return true if the string would be resolved as something other than a
+ * string if emitted as a plain scalar, and so must be quoted
+ *
+ * This errs on the side of quoting: besides libasdf's own resolution rules,
+ * it also covers forms that a YAML 1.2 core schema resolver (e.g. a
+ * non-ASDF-aware YAML library) or PyYAML would read as non-strings, such as
+ * ``0o17``, ``y``/``n``, timestamps, and the ``<<`` merge key.
+ */
+ASDF_LOCAL bool asdf_yaml_string_is_ambiguous(const char *str, size_t len);
+
+
+/** Large enough for any output of `asdf_yaml_format_float` */
+#define ASDF_YAML_FLOAT_BUFSIZE 512
+
+
+/**
+ * Format a float or double as a YAML 1.1 float, in the shortest form that
+ * round-trips
+ *
+ * If ``single`` then ``val`` is treated as a ``float`` and the result
+ * round-trips through `strtof`.  The format follows Python's `repr` for
+ * floats (which is what Python asdf writes): fixed notation for decimal
+ * exponents in [-4, 16), otherwise scientific notation, and always with a
+ * ``.`` in the mantissa as required for a YAML 1.1 float, e.g. ``1.0``,
+ * ``0.1``, ``1.0e-08``, ``1.0e+16``.  Non-finite values are written as
+ * ``.nan``, ``.inf``, or ``-.inf``.  The output does not depend on the
+ * current locale.
+ */
+ASDF_LOCAL void asdf_yaml_format_float(char *buf, size_t size, double val, bool single);

@@ -55,4 +55,30 @@ bare_neg_inf: -inf
 bare_infinity: infinity
 bare_nan: nan
 bare_NaN: NaN
+yes: yes
+No: No
+ON: ON
+off: off
+y: y
+bin: 0b1010
+neg_bin: -0b1010
+oct: 017
+yaml12_oct: 0o17
+not_oct: 08
+hex: 0xff
+int_underscores: 1_000_000
+base60: 190:20:30
+neg_base60: -1:30
+bad_base60: 1:60
+float_underscores: 1_000.5
+float_base60: 1:30.5
+float_no_dot: 1e-08
+float_unsigned_exp: 1.0e8
+float_trailing_dot: 1.
+float_leading_dot: -.5
+float_tagged_int: !!float 1
+hex_float: 0x1p3
+dot: .
+subnormal: 4.9406564584124654e-324
+timestamp: 2001-12-14
 ...
