@@ -358,7 +358,7 @@ static void *asdf_block_comp_userfaultfd_handler(void *arg) {
 }
 
 
-#define FEATURE_IS_SET(bits, bit) (((bits) & (bit)) == (bit))
+#define FEATURE_IS_SET(bits, bit) (((bits) & (1ULL << (bit))) != 0)
 
 /**
  * Probe the running kernel for basic userfaultfd support.
@@ -755,16 +755,14 @@ static asdf_block_comp_state_t *asdf_block_comp_state_create(
                     "using eager decompression mode, since lazy mode is not possible when "
                     "decompressing to a temp file on disk");
                 use_lazy_mode = false;
-                mode = ASDF_BLOCK_DECOMP_MODE_EAGER;
             } else {
                 // If the user explicitly requested lazy mode, disable file backing instead
                 ASDF_LOG(
                     block->file,
                     ASDF_LOG_WARN,
-                    "using eager decompression mode, since lazy mode is not possible when "
-                    "decompressing to a temp file on disk");
+                    "lazy decompression mode requested, which is not possible when "
+                    "decompressing to a temp file on disk; decompressing in memory instead");
                 use_file_backing = false;
-                mode = ASDF_BLOCK_DECOMP_MODE_LAZY;
             }
         } else if (!use_lazy_mode && mode == ASDF_BLOCK_DECOMP_MODE_LAZY) {
             ASDF_LOG(
@@ -772,9 +770,12 @@ static asdf_block_comp_state_t *asdf_block_comp_state_create(
                 ASDF_LOG_WARN,
                 "lazy decompression mode requested, but the runtime check for kernel "
                 "support failed");
-            mode = ASDF_BLOCK_DECOMP_MODE_EAGER;
         }
     }
+
+    // Resolve AUTO (and LAZY when not possible) to the effective mode; only
+    // the effective mode is stored on the state
+    mode = use_lazy_mode ? ASDF_BLOCK_DECOMP_MODE_LAZY : ASDF_BLOCK_DECOMP_MODE_EAGER;
 
     if (use_file_backing && !use_lazy_mode) {
         if (asdf_create_temp_file(dest_size, config->decomp.tmp_dir, &state->fd) != 0) {

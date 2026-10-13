@@ -18,6 +18,19 @@
 #include "config.h"
 #include "file.h"
 
+#if defined(HAVE_USERFAULTFD) && defined(HAVE_DECL_SYS_USERFAULTFD)
+#include <fcntl.h>
+#include <linux/userfaultfd.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
+#include <sys/syscall.h>
+
+#ifndef UFFD_USER_MODE_ONLY
+/* Missing from older Linux headers; see the same fallback in compression.c */
+#define UFFD_USER_MODE_ONLY 1
+#endif
+#endif
+
 #include "munit.h"
 #include "util.h"
 
@@ -38,9 +51,9 @@
  */
 static char *comp_params[] = {"zlib", "bzp2", "lz4", NULL};
 #ifdef ASDF_BLOCK_DECOMP_LAZY_AVAILABLE
-static char *mode_params[] = {"eager", "lazy", NULL};
+static char *mode_params[] = {"auto", "eager", "lazy", NULL};
 #else
-static char *mode_params[] = {"eager", NULL};
+static char *mode_params[] = {"auto", "eager", NULL};
 #endif
 static MunitParameterEnum comp_mode_test_params[] = {
     {"comp", comp_params},
@@ -56,6 +69,9 @@ static MunitParameterEnum comp_test_params[] = {
 
 
 static asdf_block_decomp_mode_t decomp_mode_from_param(const char *mode) {
+    if (strcmp(mode, "auto") == 0)
+        return ASDF_BLOCK_DECOMP_MODE_AUTO;
+
     if (strcmp(mode, "eager") == 0)
         return ASDF_BLOCK_DECOMP_MODE_EAGER;
 
@@ -274,6 +290,211 @@ MU_TEST(read_compressed_block_to_file_on_threshold) {
     int ret = test_compressed_file(file, comp, true, false);
     asdf_close(file);
     return ret;
+}
+
+
+/*
+ * Probes for whether lazy decompression is possible on this system
+ *
+ * These mirror the library's internal (and not exported) runtime checks, so
+ * that the tests can determine which decompression mode the library should
+ * select.
+ */
+#if defined(HAVE_USERFAULTFD) && defined(HAVE_DECL_SYS_USERFAULTFD)
+/**
+ * Open a userfaultfd and perform the API handshake; returns -1 on failure
+ *
+ * If ``ioctls`` is non-``NULL`` it receives the bitmask of ioctls supported
+ * by the kernel, as returned by the handshake.
+ */
+static int open_uffd(uint64_t *ioctls) {
+    struct uffdio_api uffd_api = {.api = UFFD_API};
+    long uffd = syscall(SYS_userfaultfd, O_CLOEXEC | O_NONBLOCK | UFFD_USER_MODE_ONLY);
+
+    // Pre-5.11 kernels reject the unknown flag; retry without it
+    if (uffd < 0 && errno == EINVAL)
+        uffd = syscall(SYS_userfaultfd, O_CLOEXEC | O_NONBLOCK);
+
+    if (uffd < 0)
+        return -1;
+
+    if (ioctl((int)uffd, UFFDIO_API, &uffd_api) == -1) {
+        close((int)uffd);
+        return -1;
+    }
+
+    if (ioctls)
+        *ioctls = uffd_api.ioctls;
+
+    return (int)uffd;
+}
+
+
+/**
+ * Test whether the kernel supports lazy decompression with userfaultfd
+ */
+static bool lazy_available(void) {
+    uint64_t ioctls = 0;
+    int uffd = open_uffd(&ioctls);
+
+    if (uffd < 0)
+        return false;
+
+    close(uffd);
+    // The ioctls bitmask is indexed by the _UFFDIO_* bit numbers
+    return (ioctls & (1ULL << _UFFDIO_REGISTER)) != 0;
+}
+
+
+/**
+ * Test whether userfaultfd can handle a mapping of a temp file in the default
+ * temp dir
+ *
+ * This generally only succeeds if the temp dir is on a memory-backed
+ * filesystem such as tmpfs.  The result determines whether an explicit
+ * request for lazy decompression takes precedence over decompressing to a
+ * temp file.
+ */
+static bool lazy_file_backing_available(void) {
+    size_t page_size = sysconf(_SC_PAGESIZE);
+    const char *tmp_dir = getenv("ASDF_TMPDIR");
+    char path[4096];
+    bool available = false;
+    int uffd = -1;
+    int fd = -1;
+    void *map = MAP_FAILED;
+    struct uffdio_register uffd_reg = {0};
+
+    if (!tmp_dir || !tmp_dir[0])
+        tmp_dir = getenv("TMPDIR");
+
+    if (!tmp_dir || !tmp_dir[0])
+        tmp_dir = "/tmp";
+
+    uffd = open_uffd(NULL);
+
+    if (uffd < 0)
+        goto finish;
+
+    snprintf(path, sizeof(path), "%s/libasdf-test-XXXXXX", tmp_dir);
+    fd = mkstemp(path);
+
+    if (fd < 0)
+        goto finish;
+
+    unlink(path);
+
+    if (ftruncate(fd, (off_t)page_size) != 0)
+        goto finish;
+
+    map = mmap(NULL, page_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+
+    if (map == MAP_FAILED)
+        goto finish;
+
+    uffd_reg.range.start = (uintptr_t)map;
+    uffd_reg.range.len = page_size;
+    uffd_reg.mode = UFFDIO_REGISTER_MODE_MISSING;
+    available = ioctl(uffd, UFFDIO_REGISTER, &uffd_reg) == 0;
+
+finish:
+    if (map != MAP_FAILED)
+        munmap(map, page_size);
+
+    if (fd >= 0)
+        close(fd);
+
+    if (uffd >= 0)
+        close(uffd);
+
+    return available;
+}
+#else
+static bool lazy_available(void) {
+    return false;
+}
+
+
+static bool lazy_file_backing_available(void) {
+    return false;
+}
+#endif
+
+
+/**
+ * Test that the effective decompression mode is selected correctly
+ *
+ * Eager mode is always eager; auto and lazy modes are lazy if and only if
+ * lazy decompression is available on this system, and otherwise fall back to
+ * eager.
+ *
+ * Regression test for #276.
+ */
+MU_TEST(decomp_mode_selection) {
+    const char *comp = munit_parameters_get(params, "comp");
+    const char *filename = get_fixture_file_path("compressed.asdf");
+    asdf_block_decomp_mode_t mode = decomp_mode_from_param(munit_parameters_get(params, "mode"));
+    asdf_config_t config = {.decomp = {.mode = mode}};
+    asdf_block_decomp_mode_t expected = ASDF_BLOCK_DECOMP_MODE_EAGER;
+
+    if (mode != ASDF_BLOCK_DECOMP_MODE_EAGER && lazy_available())
+        expected = ASDF_BLOCK_DECOMP_MODE_LAZY;
+
+    asdf_file_t *file = asdf_open_file_ex(filename, "r", &config);
+    assert_not_null(file);
+    asdf_ndarray_t *ndarray = NULL;
+    assert_int(asdf_get_ndarray(file, comp, &ndarray), ==, ASDF_VALUE_OK);
+    assert_not_null(ndarray);
+    assert_not_null(asdf_ndarray_data(ndarray, NULL));
+    const asdf_block_t *block = asdf_ndarray_block(ndarray);
+    assert_not_null(block);
+    assert_not_null(block->comp_state);
+    assert_int(block->comp_state->mode, ==, expected);
+    asdf_ndarray_destroy(ndarray);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+/**
+ * Test the effective decompression mode when decompressing to a temp file
+ *
+ * Lazy decompression is incompatible with decompressing to a temp file, so
+ * in auto mode decompression to a temp file takes precedence and is eager,
+ * whereas in lazy mode lazy decompression (in memory) takes precedence if it
+ * is available, including the check that userfaultfd works with the temp
+ * dir (see lazy_file_backing_available).
+ *
+ * Regression test for #276.
+ */
+MU_TEST(decomp_mode_selection_to_file) {
+    const char *comp = munit_parameters_get(params, "comp");
+    const char *filename = get_fixture_file_path("compressed.asdf");
+    asdf_block_decomp_mode_t mode = decomp_mode_from_param(munit_parameters_get(params, "mode"));
+    asdf_config_t config = {.decomp = {.mode = mode, .max_memory_bytes = 1}};
+    asdf_block_decomp_mode_t expected = ASDF_BLOCK_DECOMP_MODE_EAGER;
+    bool expect_own_fd = true;
+
+    if (mode == ASDF_BLOCK_DECOMP_MODE_LAZY && lazy_available() &&
+        lazy_file_backing_available()) {
+        expected = ASDF_BLOCK_DECOMP_MODE_LAZY;
+        expect_own_fd = false;
+    }
+
+    asdf_file_t *file = asdf_open_file_ex(filename, "r", &config);
+    assert_not_null(file);
+    asdf_ndarray_t *ndarray = NULL;
+    assert_int(asdf_get_ndarray(file, comp, &ndarray), ==, ASDF_VALUE_OK);
+    assert_not_null(ndarray);
+    assert_not_null(asdf_ndarray_data(ndarray, NULL));
+    const asdf_block_t *block = asdf_ndarray_block(ndarray);
+    assert_not_null(block);
+    assert_not_null(block->comp_state);
+    assert_int(block->comp_state->mode, ==, expected);
+    assert_int(block->comp_state->own_fd, ==, expect_own_fd);
+    asdf_ndarray_destroy(ndarray);
+    asdf_close(file);
+    return MUNIT_OK;
 }
 
 
@@ -1081,6 +1302,8 @@ MU_TEST_SUITE(
     MU_RUN_TEST(open_close_compressed_block, comp_mode_test_params),
     MU_RUN_TEST(read_compressed_block_lazy_random_access, comp_mode_test_params),
     MU_RUN_TEST(compressed_block_no_hang_on_segfault, comp_mode_test_params),
+    MU_RUN_TEST(decomp_mode_selection, comp_mode_test_params),
+    MU_RUN_TEST(decomp_mode_selection_to_file, comp_mode_test_params),
     MU_RUN_TEST(reemit_compressed_verbatim, comp_test_params),
     MU_RUN_TEST(recompress_block),
     MU_RUN_TEST(copy_compressed_block, comp_test_params),
