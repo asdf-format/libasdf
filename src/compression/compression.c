@@ -287,17 +287,15 @@ static inline asdf_block_comp_uffd_evt_t wait_for_event(
  * the faulting thread.  A partial last chunk is rounded up to a whole page,
  * padded with zeros from the work buffer.
  *
- * .. note::
- *
- *    The faulting chunk is currently detected as ``got_offset == offset``,
- *    where ``offset`` is the offset of the faulting *page*, which only works
- *    if that is the first page of its chunk.  Otherwise the loop runs past the
- *    chunk, asdf_block_decomp_offset returns without producing anything,
- *    ``got_offset`` stays 0, and UFFDIO_COPY fails with EEXIST; the handler
- *    thread then exits, and all pages not yet filled read as zeros (#274).
+ * The faulting page may already have been filled by the time its fault is
+ * handled: when several threads fault at once, their faults are queued, and
+ * handling one may fill pages that other threads are waiting on.  Pages
+ * filled with DONTWAKE do not wake those threads (nor discard their queued
+ * faults), so if the compressor produces nothing for the faulting page this
+ * just wakes the faulting thread with UFFDIO_WAKE.
  *
  * Returns 0 on success, the decompressor's nonzero error code, or -1 from a
- * failed UFFDIO_COPY with errno set.
+ * failed ioctl with errno set.
  */
 static int handle_pagefault(
     asdf_block_comp_userfaultfd_t *uffd, struct uffd_msg *msg, size_t page_size) {
@@ -310,13 +308,27 @@ static int handle_pagefault(
     int ret = 0;
 
     while (!atomic_load(&uffd->stop)) {
-        size_t got_offset = 0;
+        // Sentinel for the compressor producing nothing, because the data at
+        // the requested offset was already produced.  This used to default to
+        // got_offset = 0 but then there was no way to distinguish from
+        // asdf_block_decomp_offset doing nothing and returning without setting
+        // got_offset, versus returning that the chunk at offset 0 was
+        // decompressed (return value is 0 in either case; may be better to
+        // have a separate return value indicating 'already done'...?)
+        size_t got_offset = SIZE_MAX;
         memset(state->work_buf, 0, chunk_size);
         ret = asdf_block_decomp_offset(state, &got_offset, offset);
 
         // TODO: Better handling or at least logging of error in decompressor
         if (ret != 0)
             return ret;
+
+        if (got_offset == SIZE_MAX) {
+            // The faulting page is already filled; just wake the faulting
+            // thread
+            struct uffdio_range wake_range = {.start = fault_addr, .len = page_size};
+            return ioctl(uffd->uffd, UFFDIO_WAKE, &wake_range);
+        }
 
         size_t dst = (uintptr_t)state->dest + got_offset;
         size_t src = (size_t)uffd->work_buf;

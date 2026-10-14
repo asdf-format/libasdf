@@ -2,6 +2,7 @@
 #define _GNU_SOURCE  /* for memmem */
 #endif
 #include <errno.h>
+#include <pthread.h>
 #include <setjmp.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -674,6 +675,133 @@ MU_TEST(read_compressed_block_lazy_random_access) {
     int ret = test_compressed_file(file, comp, false, true);
     asdf_close(file);
     return ret;
+}
+
+
+/** Argument for concurrent_fault_thread */
+typedef struct {
+    pthread_barrier_t *barrier;
+    const volatile uint8_t *addr;
+    uint8_t value;
+} concurrent_fault_arg_t;
+
+
+static void *concurrent_fault_thread(void *arg) {
+    concurrent_fault_arg_t *fault_arg = arg;
+    pthread_barrier_wait(fault_arg->barrier);
+    fault_arg->value = *fault_arg->addr;
+    return NULL;
+}
+
+
+#define CONCURRENT_FAULT_THREADS 8
+
+
+/**
+ * Test several threads faulting on lazily-decompressed pages at once
+ *
+ * The data pointer is shared between threads (not the asdf_ndarray_t itself,
+ * which is not currently thread-safe) which each read a different
+ * not-yet-decompressed page at the same time.  Each of their faults is
+ * reported to the decompression handler separately, and whichever it handles
+ * first decompresses all pages up to that one.  So faults on earlier pages are
+ * generally still queued (in the waiting threads) for pages it has already
+ * filled (without waking their threads), and the handler has to cope with
+ * them.
+ *
+ * This is the regression tested here: the UFFDIO_COPY ioctl called from the
+ * subsequently awakened threads would get an EEXIST error which was not handled
+ * properly.
+ *
+ * One-page chunks are used so that this is independent of the chunk size
+ * handling tested in read_compressed_block_lazy_random_access.
+ */
+MU_TEST(read_compressed_block_lazy_concurrent_fault) {
+    const char *comp = munit_parameters_get(params, "comp");
+    const char *filename = get_fixture_file_path("compressed.asdf");
+
+    if (!lazy_available()) {
+        munit_log(MUNIT_LOG_INFO, "lazy decompression not available; skipping test...");
+        return MUNIT_SKIP;
+    }
+
+    asdf_config_t config = {
+        .decomp = {
+            .mode = ASDF_BLOCK_DECOMP_MODE_LAZY,
+            .chunk_size = (size_t)sysconf(_SC_PAGESIZE)
+        }
+    };
+    asdf_file_t *file = asdf_open_ex(filename, "r", &config);
+    assert_not_null(file);
+    asdf_ndarray_t *ndarray = NULL;
+    assert_int(asdf_get_ndarray(file, comp, &ndarray), ==, ASDF_VALUE_OK);
+    assert_not_null(ndarray);
+    size_t size = 0;
+    const uint8_t *data = asdf_ndarray_data(ndarray, &size);
+    assert_not_null(data);
+
+    // Same data layout as in test_compressed_file: 100 4 KiB "pages" of the
+    // repeating pattern 0 to 255, except the first byte of each is its index
+    const size_t page_size = 4096;
+    const size_t num_pages = 100;
+    assert_size(size, ==, page_size * num_pages);
+    uint8_t *expected = malloc(size);
+
+    if (!expected)
+        return MUNIT_ERROR;
+
+    for (size_t idx = 0; idx < size; idx++)
+        expected[idx] = (idx % page_size == 0) ? (idx / page_size) % 256 : idx % 256;
+
+    // Spread the faults over the first part of the array, so that there is
+    // still data after them to be decompressed by later faults
+    pthread_barrier_t barrier;
+    pthread_t threads[CONCURRENT_FAULT_THREADS];
+    concurrent_fault_arg_t args[CONCURRENT_FAULT_THREADS];
+    assert_int(pthread_barrier_init(&barrier, NULL, CONCURRENT_FAULT_THREADS), ==, 0);
+
+    for (int idx = 0; idx < CONCURRENT_FAULT_THREADS; idx++) {
+        size_t fault_offset = (size_t)(idx + 1) * 5 * page_size;
+        args[idx] = (concurrent_fault_arg_t){.barrier = &barrier, .addr = data + fault_offset};
+        // Each thread is started and blocks at the barrier--once all
+        // CONCURRENT_FAULT_THREADS(=8) reach the pthread_barrier_wait call
+        // the barrier is unblocked and the first thread to run causes the
+        // first page fault and becomes blocked. Subsequent fault_threads can
+        // also become blocked at a page fault, with each unhandled fault
+        // queued by the kernel as a pending UFFD message sent over the fd.
+        // The single fault handler thread reads the queued faults one at a
+        // time, sequentially (though in arbitrary order).  Handling a fault
+        // on a later page (in terms of offset) will fill prior pages as well,
+        // at least in the current sequential decompressors.  But
+        // UFFDIO_COPY_MODE_DONTWAKE, which neither wakes the thread waiting
+        // on the page fault, nor removes queued faults on other threads.
+        // So those faults are still handled afters, for pages that have now
+        // already been filled, and the handler must simply wake their threads
+        // rather than attempt to fill their faulted pages again (this resulted
+        // in an EEXIST error from the UFFDIO_COPY ioctl, causing the fault
+        // handler thread to exit, but this is symptom not the cause of the
+        // problem).
+        assert_int(pthread_create(&threads[idx], NULL, concurrent_fault_thread, &args[idx]), ==, 0);
+    }
+
+    for (int idx = 0; idx < CONCURRENT_FAULT_THREADS; idx++) {
+        pthread_join(threads[idx], NULL);
+        assert_uint8(args[idx].value, ==, *(expected + (args[idx].addr - data)));
+    }
+
+    pthread_barrier_destroy(&barrier);
+
+    const char *error = asdf_error(file);
+    if (error)
+        munit_logf(MUNIT_LOG_ERROR, "error after concurrent faults: %s", error);
+    assert_null(error);
+
+    // The rest of the data is still decompressed correctly
+    assert_memory_equal(size, data, expected);
+    free(expected);
+    asdf_ndarray_destroy(ndarray);
+    asdf_close(file);
+    return MUNIT_OK;
 }
 
 
@@ -1478,6 +1606,7 @@ MU_TEST_SUITE(
     MU_RUN_TEST(read_compressed_block_to_file_on_threshold, comp_test_params),
     MU_RUN_TEST(open_close_compressed_block, comp_mode_test_params),
     MU_RUN_TEST(read_compressed_block_lazy_random_access, comp_mode_chunk_test_params),
+    MU_RUN_TEST(read_compressed_block_lazy_concurrent_fault, comp_test_params),
     MU_RUN_TEST(compressed_block_no_hang_on_segfault, comp_mode_test_params),
     MU_RUN_TEST(decomp_mode_selection, comp_mode_test_params),
     MU_RUN_TEST(decomp_mode_selection_to_file, comp_mode_test_params),
