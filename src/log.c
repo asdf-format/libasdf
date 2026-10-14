@@ -103,6 +103,7 @@ static void asdf_log_impl(
             vfprintf(stream, fmt, args);
 
         fputc('\n', stream);
+        fflush(stream);
         return;
     }
 #endif
@@ -126,6 +127,7 @@ static void asdf_log_impl(
         vfprintf(stream, fmt, args);
 
     fputc('\n', stream);
+    fflush(stream);
 }
 
 
