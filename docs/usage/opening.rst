@@ -156,8 +156,10 @@ Messages are emitted only if their severity meets the configured
 the destination defaults to ``stderr``, the included fields to
 `ASDF_LOG_FIELD_ALL`, and the level to the value of the ``ASDF_LOG_LEVEL``
 environment variable (one of ``NONE``, ``TRACE``, ``DEBUG``, ``INFO``,
-``WARN``, ``ERROR``, ``FATAL``), or ``WARN`` if it is unset.  This makes it
-possible to raise the log level of an application without recompiling it::
+``WARN``, ``ERROR``, ``FATAL``), or ``WARN`` if it is unset.  Setting the level
+to ``ASDF_LOG_NONE`` disables logging for the file.  Leaving the level unset
+makes it possible to raise the log level of an application without
+recompiling it::
 
    ASDF_LOG_LEVEL=debug ./my-program observation.asdf
 

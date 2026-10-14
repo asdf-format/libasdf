@@ -53,6 +53,51 @@ MU_TEST(level_explicit_overrides_env) {
 
 
 /*
+ * ASDF_LOG_DEFAULT (the zero value) takes the level from ASDF_LOG_LEVEL
+ */
+MU_TEST(level_default_uses_env) {
+    asdf_log_cfg_t log_cfg = {.level = ASDF_LOG_DEFAULT, .fields = ASDF_LOG_FIELD_MSG};
+    log_capture_t cap = {0};
+    assert_true(log_capture_open(&cap));
+
+    setenv("ASDF_LOG_LEVEL", "DEBUG", 1);
+    asdf_file_t *file = open_with_log(log_cfg, cap.stream);
+    unsetenv("ASDF_LOG_LEVEL");
+    assert_not_null(file);
+
+    asdf_file_log(file, ASDF_LOG_TRACE, "src.c", 1, "trace");
+    asdf_file_log(file, ASDF_LOG_DEBUG, "src.c", 2, "debug");
+    assert_string_equal(log_capture_text(&cap), "debug\n");
+    asdf_close(file);
+    log_capture_close(&cap);
+    return MUNIT_OK;
+}
+
+
+/*
+ * ASDF_LOG_NONE in the configuration disables logging entirely, even if
+ * ASDF_LOG_LEVEL is set (regression test: it used to be 0 and so was
+ * indistinguishable from an unset level)
+ */
+MU_TEST(level_config_none) {
+    asdf_log_cfg_t log_cfg = {.level = ASDF_LOG_NONE};
+    log_capture_t cap = {0};
+    assert_true(log_capture_open(&cap));
+
+    setenv("ASDF_LOG_LEVEL", "TRACE", 1);
+    asdf_file_t *file = open_with_log(log_cfg, cap.stream);
+    unsetenv("ASDF_LOG_LEVEL");
+    assert_not_null(file);
+
+    asdf_file_log(file, ASDF_LOG_FATAL, "src.c", 1, "fatal");
+    assert_string_equal(log_capture_text(&cap), "");
+    asdf_close(file);
+    log_capture_close(&cap);
+    return MUNIT_OK;
+}
+
+
+/*
  * ASDF_LOG_LEVEL=NONE in the environment disables logging entirely
  */
 MU_TEST(level_env_none) {
@@ -84,8 +129,9 @@ MU_TEST(message_level_out_of_range) {
     asdf_file_t *file = open_with_log(log_cfg, cap.stream);
     assert_not_null(file);
 
-    asdf_file_log(file, ASDF_LOG_NONE, "src.c", 1, "none");
-    asdf_file_log(file, (asdf_log_level_t)ASDF_LOG_NUM_LEVELS, "src.c", 2, "too high");
+    asdf_file_log(file, ASDF_LOG_DEFAULT, "src.c", 1, "default");
+    asdf_file_log(file, ASDF_LOG_NONE, "src.c", 2, "none");
+    asdf_file_log(file, (asdf_log_level_t)(ASDF_LOG_NONE + 1), "src.c", 3, "too high");
     assert_string_equal(log_capture_text(&cap), "");
     asdf_close(file);
     log_capture_close(&cap);
@@ -240,6 +286,8 @@ MU_TEST(color_tty) {
 MU_TEST_SUITE(
     logging,
     MU_RUN_TEST(level_explicit_overrides_env),
+    MU_RUN_TEST(level_default_uses_env),
+    MU_RUN_TEST(level_config_none),
     MU_RUN_TEST(level_env_none),
     MU_RUN_TEST(message_level_out_of_range),
     MU_RUN_TEST(errno_preserved),
