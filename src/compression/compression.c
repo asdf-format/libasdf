@@ -95,6 +95,28 @@ static int asdf_create_temp_file(size_t data_size, const char *tmp_dir, int *out
 }
 
 
+/**
+ * Decompress a chunk of a block into the state's work buffer
+ *
+ * Thin wrapper around the compressor's ``decomp`` callback, used by both
+ * eager and lazy decompression.  In eager mode the work buffer is the whole
+ * destination mapping, so one call decompresses the entire block in place; in
+ * lazy mode it is a separate chunk-sized buffer (see handle_pagefault).
+ *
+ * ``offset_hint`` is the offset into the decompressed data that the caller
+ * needs, and on success ``*offset_out`` is set to the offset of the chunk
+ * actually written to the work buffer, which is not necessarily the chunk
+ * containing ``offset_hint``.  zlib and bzip2 can only decompress
+ * sequentially, so they always produce the next chunk after the previous call
+ * and the caller must keep calling until it gets the chunk it needs.  Other
+ * schemes such as ASDF's LZ4 format allow random access (up to the LZ4 block
+ * size), though that is not implemented yet (see #90).
+ *
+ * Currently, if ``offset_hint`` is before data the compressor has already
+ * produced, it returns 0 without writing anything or setting ``*offset_out``.
+ *
+ * Returns 0 on success or a compressor-specific nonzero error code.
+ */
 static int asdf_block_decomp_offset(
     asdf_block_comp_state_t *state, size_t *offset_out, size_t offset_hint) {
     assert(state);
@@ -252,6 +274,31 @@ static inline asdf_block_comp_uffd_evt_t wait_for_event(
 }
 
 
+/**
+ * Resolve a userfaultfd page fault by decompressing the faulting page
+ *
+ * Called from asdf_block_comp_userfaultfd_handler with a fault on an address
+ * in the destination mapping ``state->dest``.  This decompresses chunks of
+ * ``state->work_buf_size`` bytes (a whole number of pages) via
+ * asdf_block_decomp_offset and copies each one into the mapping at the offset
+ * the compressor reports, using UFFDIO_COPY, until the chunk containing the
+ * faulting page has been copied.  Chunks copied before then use
+ * UFFDIO_COPY_MODE_DONTWAKE; only the copy that fills the faulting page wakes
+ * the faulting thread.  A partial last chunk is rounded up to a whole page,
+ * padded with zeros from the work buffer.
+ *
+ * .. note::
+ *
+ *    The faulting chunk is currently detected as ``got_offset == offset``,
+ *    where ``offset`` is the offset of the faulting *page*, which only works
+ *    if that is the first page of its chunk.  Otherwise the loop runs past the
+ *    chunk, asdf_block_decomp_offset returns without producing anything,
+ *    ``got_offset`` stays 0, and UFFDIO_COPY fails with EEXIST; the handler
+ *    thread then exits, and all pages not yet filled read as zeros (#274).
+ *
+ * Returns 0 on success, the decompressor's nonzero error code, or -1 from a
+ * failed UFFDIO_COPY with errno set.
+ */
 static int handle_pagefault(
     asdf_block_comp_userfaultfd_t *uffd, struct uffd_msg *msg, size_t page_size) {
     asdf_block_comp_state_t *state = uffd->comp_state;
@@ -273,11 +320,18 @@ static int handle_pagefault(
 
         size_t dst = (uintptr_t)state->dest + got_offset;
         size_t src = (size_t)uffd->work_buf;
-        size_t len =
-            ((got_offset + chunk_size) > state->dest_size ? (state->dest_size - got_offset)
-                                                          : chunk_size);
+        size_t dest_size = state->dest_size;
+        size_t next_offset = got_offset + chunk_size;
+        /* Here len is the size of the chunk read from the decompression buffer:
+         * usually just chunk_size, or otherwise the trailing bytes at the last
+         * page */
+        size_t len = next_offset > dest_size ? (dest_size - got_offset) : chunk_size;
+        /* align to page size */
         len = (len + page_size - 1) & ~page_mask;
-        uint64_t mode = (got_offset == offset) ? 0 : UFFDIO_COPY_MODE_DONTWAKE;
+        /* The decompressed chunk contains the faulting address; if not we must
+         * continue decompression until it does */
+        bool has_fault = offset >= got_offset && offset - got_offset < len;
+        uint64_t mode = has_fault ? 0 : UFFDIO_COPY_MODE_DONTWAKE;
 
         struct uffdio_copy uffd_copy = {
             // Copy back to the (page-aligned) destination in the user's mmap
@@ -295,7 +349,7 @@ static int handle_pagefault(
         if (ret != 0)
             return ret;
 
-        if (got_offset == offset)
+        if (has_fault)
             break;
     }
 
@@ -303,6 +357,25 @@ static int handle_pagefault(
 }
 
 
+/** Main userfaultfd fault handler thread
+ *
+ * The way UFFD works in UFFDIO_REGISTER_MODE_MISSING (as configured via ioctl
+ * in asdf_block_decomp_lazy), is if a page fault occurs the faulting thread
+ * (typically the main thread) is blocked until another ioctl is received
+ * *on* the same UFFD file descriptor with UFFDIO_COPY or UFFDIO_ZEROPAGE,
+ * signaling that the fault has been handled in some way (either copying of
+ * data into the faulted page address which we do here, or zeroing the page).
+ *
+ * The UFFD mechanism itself does not know anything about this thread--it just
+ * runs in the background and blocks (via poll()) until the UFFD is ready, or
+ * a separate 'event' file descriptor that we manage which signals the thread
+ * to stop.  The ``wait_for_events()`` function implements the polling, and
+ * when the event is a UFFD page fault, we pass to ``handle_pagefault()`` also
+ * defined above.  It fills the faulting page with data from the decompressor
+ * and sets the UFFDIO_COPY ioctl, unblocking the main thread and allowing it
+ * to continue from before the page fault--it will retry reading the now filled
+ * memory page and continue.
+ */
 static void *asdf_block_comp_userfaultfd_handler(void *arg) {
     asdf_block_comp_userfaultfd_t *uffd = arg;
     asdf_block_comp_state_t *state = uffd->comp_state;

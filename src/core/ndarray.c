@@ -1897,7 +1897,9 @@ asdf_ndarray_err_t asdf_ndarray_read_tile_ndim(
     size_t data_size = 0;
     const void *data = asdf_ndarray_data(ndarray, &data_size);
 
-    if (data_size < src_tile_size)
+    // The tile is already known to lie within the array's shape, so it suffices to check that
+    // the data actually covers the full array (not just a tile's worth of bytes anywhere in it)
+    if (data_size < src_tile_size || data_size < asdf_ndarray_nbytes(ndarray))
         return ASDF_NDARRAY_ERR_OUT_OF_BOUNDS;
 
     // Determine the copy strategy to use; right now this just handles whether-or-not byteswap

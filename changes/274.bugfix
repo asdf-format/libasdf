@@ -1,0 +1,11 @@
+Fixed reading compressed arrays.  Every access to a compressed block's data
+after the first returned the raw compressed bytes instead of the decompressed
+data, so that, for example, reading successive tiles with
+``asdf_ndarray_read_tile_2d`` returned garbage and could crash reading past the
+end of the compressed data.
+
+Also fixed lazy decompression of LZ4-compressed arrays larger than 4 MB, which
+returned zeros for all data past the first 4 MB, and could read past the end of
+a buffer for the last, partial chunk.  Tile reads now return
+``ASDF_NDARRAY_ERR_OUT_OF_BOUNDS`` rather than reading out of bounds when the
+array's data is smaller than its shape requires.
