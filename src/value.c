@@ -1461,7 +1461,7 @@ static asdf_value_err_t asdf_value_infer_extension_type(asdf_value_t *value) {
         // TODO: Possibly enable the case of implicit extensions based on path
         return ASDF_VALUE_ERR_TYPE_MISMATCH;
 
-    ASDF_LOG(value->file, ASDF_LOG_DEBUG, "inferring value as extension type for %s", tag);
+    ASDF_LOG(value->file, ASDF_LOG_TRACE, "inferring value as extension type for %s", tag);
     const asdf_extension_t *ext = asdf_extension_get(value->file, tag);
 
     if (!ext)
@@ -1793,7 +1793,7 @@ static asdf_value_err_t asdf_value_infer_scalar_type(asdf_value_t *value) {
         if (tag != ASDF_YAML_COMMON_TAG_UNKNOWN) {
             ASDF_LOG(
                 value->file,
-                ASDF_LOG_DEBUG,
+                ASDF_LOG_TRACE,
                 "inferring value type from YAML Common Schema tag: %s",
                 tag_str);
         }
@@ -1830,7 +1830,7 @@ static asdf_value_err_t asdf_value_infer_scalar_type(asdf_value_t *value) {
 
     /* Untagged -> core schema heuristics (plain style only) */
     if (ASDF_VALUE_OK == asdf_value_infer_null(value, scalar, len)) {
-        ASDF_LOG(value->file, ASDF_LOG_DEBUG, "inferred %.*s as null", len, scalar);
+        ASDF_LOG(value->file, ASDF_LOG_TRACE, "inferred %.*s as null", len, scalar);
         return ASDF_VALUE_OK;
     }
 
@@ -1840,15 +1840,15 @@ static asdf_value_err_t asdf_value_infer_scalar_type(asdf_value_t *value) {
 #ifdef ASDF_LOG_ENABLED
         if (ASDF_VALUE_ERR_OVERFLOW == err)
             ASDF_LOG(
-                value->file, ASDF_LOG_DEBUG, "inferred %.*s as int (with overflow)", len, scalar);
+                value->file, ASDF_LOG_TRACE, "inferred %.*s as int (with overflow)", len, scalar);
         else
-            ASDF_LOG(value->file, ASDF_LOG_DEBUG, "inferred %.*s as int", len, scalar);
+            ASDF_LOG(value->file, ASDF_LOG_TRACE, "inferred %.*s as int", len, scalar);
 #endif
         return err;
     }
 
     if (ASDF_VALUE_OK == asdf_value_infer_bool(value, scalar, len)) {
-        ASDF_LOG(value->file, ASDF_LOG_DEBUG, "inferred %.*s as bool", len, scalar);
+        ASDF_LOG(value->file, ASDF_LOG_TRACE, "inferred %.*s as bool", len, scalar);
         return ASDF_VALUE_OK;
     }
 
@@ -1858,15 +1858,15 @@ static asdf_value_err_t asdf_value_infer_scalar_type(asdf_value_t *value) {
 #ifdef ASDF_LOG_ENABLED
         if (ASDF_VALUE_ERR_OVERFLOW == err)
             ASDF_LOG(
-                value->file, ASDF_LOG_DEBUG, "inferred %.*s as float (with overflow)", len, scalar);
+                value->file, ASDF_LOG_TRACE, "inferred %.*s as float (with overflow)", len, scalar);
         else
-            ASDF_LOG(value->file, ASDF_LOG_DEBUG, "inferred %.*s as float", len, scalar);
+            ASDF_LOG(value->file, ASDF_LOG_TRACE, "inferred %.*s as float", len, scalar);
 #endif
         return err;
     }
 
     /* Otherwise treat as a string */
-    ASDF_LOG(value->file, ASDF_LOG_DEBUG, "inferred %.*s as string", len, scalar);
+    ASDF_LOG(value->file, ASDF_LOG_TRACE, "inferred %.*s as string", len, scalar);
     value->type = ASDF_VALUE_STRING;
     value->err = ASDF_VALUE_OK;
     return ASDF_VALUE_OK;
