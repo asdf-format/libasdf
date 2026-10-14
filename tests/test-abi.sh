@@ -91,11 +91,21 @@ trap 'rm -f "${tmp}"' EXIT HUP INT TERM
 # The sed strips AddressSanitizer's ODR-violation aliases (__odr_asan.<name>,
 # one per global) from the symbol table.  They are build instrumentation, not
 # ABI.
+#
+# It also makes each translation unit's path relative to the source root: the
+# path is whatever the compiler was given, which is absolute for an
+# out-of-tree build configured with an absolute srcdir and ../-relative for a
+# build directory inside the source tree.  abidiff ignores these paths, but
+# normalizing them keeps the regenerated baseline from churning when rebuilding
+# it from different build VPATHs.
+abs_top_srcdir=$(cd "${top_srcdir}" && pwd -P) || exit 1
 abidw --no-show-locs --no-comp-dir-path --no-corpus-path \
       --drop-private-types --headers-dir "${top_srcdir}/include" \
       --exported-interfaces-only --type-id-style hash \
       "${lib}" 2>/dev/null \
-  | sed -e "/<elf-symbol name='__odr_asan\./d" > "${tmp}"
+  | sed -e "/<elf-symbol name='__odr_asan\./d" \
+        -e "s|\(<abi-instr [^>]*path='\)${abs_top_srcdir}/|\1|" \
+        -e "s|\(<abi-instr [^>]*path='\)\(\.\./\)*|\1|" > "${tmp}"
 
 if [ ! -s "${tmp}" ]; then
   skip_or_die "abidw produced nothing for ${lib}"
