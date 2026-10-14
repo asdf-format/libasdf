@@ -307,6 +307,13 @@ static int handle_pagefault(
     size_t offset = (fault_addr - (uintptr_t)state->dest) & ~page_mask;
     int ret = 0;
 
+    ASDF_LOG(
+        state->file,
+        ASDF_LOG_TRACE,
+        "lazy decompression %p: page fault at offset %zu",
+        (void *)state->dest,
+        offset);
+
     while (!atomic_load(&uffd->stop)) {
         // Sentinel for the compressor producing nothing, because the data at
         // the requested offset was already produced.  This used to default to
@@ -326,6 +333,13 @@ static int handle_pagefault(
         if (got_offset == SIZE_MAX) {
             // The faulting page is already filled; just wake the faulting
             // thread
+            ASDF_LOG(
+                state->file,
+                ASDF_LOG_TRACE,
+                "lazy decompression %p: page at offset %zu already filled; waking faulting "
+                "thread",
+                (void *)state->dest,
+                offset);
             struct uffdio_range wake_range = {.start = fault_addr, .len = page_size};
             return ioctl(uffd->uffd, UFFDIO_WAKE, &wake_range);
         }
@@ -360,6 +374,15 @@ static int handle_pagefault(
 
         if (ret != 0)
             return ret;
+
+        ASDF_LOG(
+            state->file,
+            ASDF_LOG_TRACE,
+            "lazy decompression %p: filled [%zu, %zu)%s",
+            (void *)state->dest,
+            got_offset,
+            got_offset + len,
+            has_fault ? " and woke faulting thread" : "");
 
         if (has_fault)
             break;
@@ -402,16 +425,30 @@ static void *asdf_block_comp_userfaultfd_handler(void *arg) {
     fds[1].fd = uffd->evtfd;
     fds[1].events = POLLIN;
 
+    // Reason the handler stopped, for logging
+    const char *reason = "shutdown requested";
+
+    ASDF_LOG(
+        state->file,
+        ASDF_LOG_TRACE,
+        "lazy decompression %p: handler started (%zu bytes, %zu-byte chunks)",
+        (void *)state->dest,
+        state->dest_size,
+        state->work_buf_size);
+
     // Wait for an event, exiting if we get a stop signal or a ready event (or error)
     while (!atomic_load(&uffd->stop)) {
         info = state->compressor->info(state->userdata);
-        if (!info || info->status == ASDF_COMPRESSOR_DONE)
+        if (!info || info->status == ASDF_COMPRESSOR_DONE) {
+            reason = "decompression complete";
             break;
+        }
 
         evt = wait_for_event(fds, &msg);
 
         switch (evt) {
         case ASDF_BLOCK_COMP_UFFD_EVT_ERROR:
+            reason = "error waiting for events";
             ASDF_ERROR_SYSTEM(state->file, errno);
             break;
         case ASDF_BLOCK_COMP_UFFD_EVT_NOT_READY:
@@ -420,6 +457,7 @@ static void *asdf_block_comp_userfaultfd_handler(void *arg) {
             break;
         case ASDF_BLOCK_COMP_UFFD_EVT_PAGEFAULT:
             if (handle_pagefault(uffd, &msg, page_size)) {
+                reason = "error handling page fault";
                 ASDF_ERROR_SYSTEM(state->file, errno);
                 break;
             }
@@ -431,6 +469,13 @@ static void *asdf_block_comp_userfaultfd_handler(void *arg) {
         // or EVT_EXIT
         break;
     }
+
+    ASDF_LOG(
+        state->file,
+        ASDF_LOG_TRACE,
+        "lazy decompression %p: handler exiting: %s",
+        (void *)state->dest,
+        reason);
 
     // If the thread exits for any reason make sure to deregister UFFD for
     // for the range handled; of course if the thread crashes we're in deep

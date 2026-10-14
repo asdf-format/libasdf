@@ -678,6 +678,13 @@ MU_TEST(read_compressed_block_lazy_random_access) {
 }
 
 
+/*
+ * The concurrent fault test needs lazy decompression with userfaultfd (so it
+ * is Linux-only anyway) and pthread barriers, which are optional in POSIX and
+ * notably missing on macOS; where either is unavailable the test is skipped.
+ */
+#if defined(HAVE_USERFAULTFD) && defined(HAVE_DECL_SYS_USERFAULTFD) && \
+    defined(_POSIX_BARRIERS) && _POSIX_BARRIERS > 0
 /** Argument for concurrent_fault_thread */
 typedef struct {
     pthread_barrier_t *barrier;
@@ -803,6 +810,14 @@ MU_TEST(read_compressed_block_lazy_concurrent_fault) {
     asdf_close(file);
     return MUNIT_OK;
 }
+#else
+MU_TEST(read_compressed_block_lazy_concurrent_fault) {
+    munit_log(
+        MUNIT_LOG_INFO,
+        "lazy decompression or pthread barriers not available; skipping test...");
+    return MUNIT_SKIP;
+}
+#endif
 
 
 /**
