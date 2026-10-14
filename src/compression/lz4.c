@@ -51,6 +51,8 @@ typedef struct {
     asdf_file_t *file;
     uint8_t *data;
     size_t data_size;
+    /** Total size of the decompressed data */
+    size_t dest_size;
     size_t pos;
     size_t progress;
 
@@ -65,8 +67,9 @@ typedef struct {
     /**
      * Intermediate buffer for decompressed blocks
      *
-     * These are always the same size so no need for a separate capacity (except for the last
-     * block which may be smaller)
+     * These are normally all the same size (except for the last block which
+     * may be smaller), but the capacity is tracked separately in case a
+     * malformed file declares a later block larger than the first.
      *
      * Later will maybe have a collection of these since for some cases, like tile reading,
      * it will be useful to have multiple fully decompressed but partially read blocks in memory
@@ -74,6 +77,7 @@ typedef struct {
      */
     struct {
         uint8_t *buf;
+        size_t cap;
         size_t size;
         size_t pos;
     } block;
@@ -114,7 +118,7 @@ static int asdf_compressor_lz4_read_header(asdf_compressor_lz4_userdata_t *lz4) 
 
 
 static asdf_compressor_userdata_t *asdf_compressor_lz4_init(
-    const asdf_block_t *block, UNUSED(const void *dest), UNUSED(size_t dest_size)) {
+    const asdf_block_t *block, UNUSED(const void *dest), size_t dest_size) {
     asdf_compressor_lz4_userdata_t *userdata = NULL;
 
     userdata = calloc(1, sizeof(asdf_compressor_lz4_userdata_t));
@@ -128,6 +132,7 @@ static asdf_compressor_userdata_t *asdf_compressor_lz4_init(
     userdata->file = block->file;
     userdata->data = block->data;
     userdata->data_size = block->avail_size;
+    userdata->dest_size = dest_size;
     userdata->pos = 0;
     userdata->progress = 0;
 
@@ -172,8 +177,13 @@ static const asdf_compressor_info_t *asdf_compressor_lz4_info(
 
 
 static int asdf_compresser_lz4_read_block(asdf_compressor_lz4_userdata_t *lz4) {
-    if (asdf_compressor_lz4_read_header(lz4) != 0)
-        return 0;
+    if (asdf_compressor_lz4_read_header(lz4) != 0) {
+        ASDF_LOG(
+            lz4->file,
+            ASDF_LOG_ERROR,
+            "LZ4 compressed data ended before the full decompressed size was reached");
+        return -1;
+    }
 
     if (lz4->header.block_size <= 0) {
         // Zero-width compressed block encountered--I guess done?
@@ -192,17 +202,30 @@ static int asdf_compresser_lz4_read_block(asdf_compressor_lz4_userdata_t *lz4) {
         return -1;
     }
 
-    // Allocate buffer for decompressed block
-    // This is always the same size through the entire compressed block
-    // except possibly for the last LZ4 block which may be smaller but
-    // never larger
-    if (!lz4->block.buf) {
-        lz4->block.buf = malloc(lz4->header.decomp_block_size);
+    if ((size_t)lz4->header.block_size > lz4->data_size - lz4->pos) {
+        ASDF_LOG(
+            lz4->file,
+            ASDF_LOG_ERROR,
+            "LZ4 block size (%d) exceeds the remaining compressed data (%zu); aborting "
+            "decompression",
+            lz4->header.block_size,
+            lz4->data_size - lz4->pos);
+        return -1;
+    }
 
-        if (!lz4->block.buf) {
+    // Allocate buffer for decompressed block
+    // This is normally the same size through the entire compressed block
+    // except possibly for the last LZ4 block which may be smaller
+    if ((size_t)lz4->header.decomp_block_size > lz4->block.cap) {
+        uint8_t *buf = realloc(lz4->block.buf, lz4->header.decomp_block_size);
+
+        if (!buf) {
             ASDF_ERROR_OOM(lz4->file);
             return -1;
         }
+
+        lz4->block.buf = buf;
+        lz4->block.cap = lz4->header.decomp_block_size;
     }
 
     lz4->block.size = lz4->header.decomp_block_size;
@@ -217,6 +240,16 @@ static int asdf_compresser_lz4_read_block(asdf_compressor_lz4_userdata_t *lz4) {
     if (ret < 0) {
         ASDF_LOG(lz4->file, ASDF_LOG_ERROR, "LZ4 block decompression failed: %d", ret);
         return ret;
+    }
+
+    if ((size_t)ret != lz4->block.size) {
+        ASDF_LOG(
+            lz4->file,
+            ASDF_LOG_ERROR,
+            "LZ4 block decompressed to %d bytes, but its header declares %zu bytes",
+            ret,
+            lz4->block.size);
+        return -1;
     }
 
     lz4->pos += lz4->header.block_size;
@@ -326,7 +359,9 @@ static int asdf_compressor_lz4_decomp(
     if (offset_hint < lz4->progress)
         return 0;
 
-    size_t need = buf_size;
+    // The last chunk may be partial; the remainder of buf is left untouched
+    size_t remaining = lz4->dest_size - lz4->progress;
+    size_t need = buf_size < remaining ? buf_size : remaining;
     size_t pos = 0;
 
     while (need > 0) {
@@ -339,6 +374,14 @@ static int asdf_compressor_lz4_decomp(
                 return ret;
 
             avail = lz4->block.size;
+
+            if (avail == 0) {
+                ASDF_LOG(
+                    lz4->file,
+                    ASDF_LOG_ERROR,
+                    "empty LZ4 block encountered; aborting decompression");
+                return -1;
+            }
         }
 
         size_t take = avail < need ? avail : need;
@@ -353,7 +396,7 @@ static int asdf_compressor_lz4_decomp(
 
     lz4->progress += buf_size;
 
-    if (lz4->progress >= (uint32_t)lz4->header.decomp_block_size)
+    if (lz4->progress >= lz4->dest_size)
         lz4->info.status = ASDF_COMPRESSOR_DONE;
 
     return 0;

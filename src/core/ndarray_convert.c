@@ -97,7 +97,7 @@ static atomic_bool conversion_table_initialized = false;
         const char *_src = (const char *)src; \
         for (size_t idx = 0; idx < count; idx++) { \
             src_t val; \
-            LOAD_UNALIGNED(val, _src + idx * sizeof(src_t)); \
+            LOAD_UNALIGNED(val, _src + (idx * sizeof(src_t))); \
             _DO_BSWAP_##bswap(src_t, val); \
             _dst[idx] = (dst_t)val; \
         } \
@@ -119,7 +119,7 @@ static atomic_bool conversion_table_initialized = false;
         int overflow = 0; \
         for (size_t idx = 0; idx < count; idx++) { \
             src_t val; \
-            LOAD_UNALIGNED(val, _src + idx * sizeof(src_t)); \
+            LOAD_UNALIGNED(val, _src + (idx * sizeof(src_t))); \
             _DO_BSWAP_##bswap(src_t, val); \
             if (val < (src_t)(minval)) { \
                 _dst[idx] = minval; \
@@ -151,7 +151,7 @@ static atomic_bool conversion_table_initialized = false;
         int overflow = 0; \
         for (size_t idx = 0; idx < count; idx++) { \
             src_t val; \
-            LOAD_UNALIGNED(val, _src + idx * sizeof(src_t)); \
+            LOAD_UNALIGNED(val, _src + (idx * sizeof(src_t))); \
             _DO_BSWAP_##bswap(src_t, val); \
             if (isinf(val)) { \
                 _dst[idx] = (dst_t)val; \
@@ -182,7 +182,7 @@ static atomic_bool conversion_table_initialized = false;
         int overflow = 0; \
         for (size_t idx = 0; idx < count; idx++) { \
             src_t val; \
-            LOAD_UNALIGNED(val, _src + idx * sizeof(src_t)); \
+            LOAD_UNALIGNED(val, _src + (idx * sizeof(src_t))); \
             _DO_BSWAP_##bswap(src_t, val); \
             if (val < (src_t)(minval)) { \
                 _dst[idx] = (half)(-INFINITY); \
@@ -213,7 +213,7 @@ static atomic_bool conversion_table_initialized = false;
         int overflow = 0; \
         for (size_t idx = 0; idx < count; idx++) { \
             src_t val; \
-            LOAD_UNALIGNED(val, _src + idx * sizeof(src_t)); \
+            LOAD_UNALIGNED(val, _src + (idx * sizeof(src_t))); \
             _DO_BSWAP_##bswap(src_t, val); \
             if (val > (src_t)(maxval)) { \
                 _dst[idx] = (half)(INFINITY); \
@@ -250,7 +250,7 @@ static atomic_bool conversion_table_initialized = false;
         int overflow = 0; \
         for (size_t idx = 0; idx < count; idx++) { \
             half hval; \
-            LOAD_UNALIGNED(hval, _src + idx * sizeof(half)); \
+            LOAD_UNALIGNED(hval, _src + (idx * sizeof(half))); \
             _DO_BSWAP_##bswap(half, hval); \
             float val = (float)hval; \
             if (isnan(val)) { \
@@ -279,7 +279,7 @@ static atomic_bool conversion_table_initialized = false;
         int overflow = 0; \
         for (size_t idx = 0; idx < count; idx++) { \
             src_t val; \
-            LOAD_UNALIGNED(val, _src + idx * sizeof(src_t)); \
+            LOAD_UNALIGNED(val, _src + (idx * sizeof(src_t))); \
             _DO_BSWAP_##bswap(src_t, val); \
             if (val > (src_t)(maxval)) { \
                 _dst[idx] = maxval; \
@@ -303,7 +303,7 @@ static atomic_bool conversion_table_initialized = false;
         int overflow = 0; \
         for (size_t idx = 0; idx < count; idx++) { \
             src_t val; \
-            LOAD_UNALIGNED(val, csrc + idx * sizeof(src_t)); \
+            LOAD_UNALIGNED(val, csrc + (idx * sizeof(src_t))); \
             _DO_BSWAP_##bswap(src_t, val); \
             if (val < (src_t)(0)) { \
                 val = (src_t)(0); \
@@ -343,7 +343,7 @@ static atomic_bool conversion_table_initialized = false;
 #define DEFINE_IDENTITY_CONVERSION(src_name, src_t) \
     static int convert_##src_name##_to_##src_name( \
         void *dst, const void *src, size_t nelem, size_t elsize) { \
-        memcpy(dst, src, nelem *elsize); \
+        memcpy(dst, src, (nelem * elsize)); \
         return 0; \
     } \
     _DEFINE_GENERIC_CONV_FN(src_t, src_t, src_name##_to_##src_name##_bswap, 1)

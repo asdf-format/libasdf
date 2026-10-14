@@ -2,6 +2,7 @@
 #define _GNU_SOURCE  /* for memmem */
 #endif
 #include <errno.h>
+#include <pthread.h>
 #include <setjmp.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -17,6 +18,19 @@
 #include "compression/compression.h"
 #include "config.h"
 #include "file.h"
+
+#if defined(HAVE_USERFAULTFD) && defined(HAVE_DECL_SYS_USERFAULTFD)
+#include <fcntl.h>
+#include <linux/userfaultfd.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
+#include <sys/syscall.h>
+
+#ifndef UFFD_USER_MODE_ONLY
+/* Missing from older Linux headers; see the same fallback in compression.c */
+#define UFFD_USER_MODE_ONLY 1
+#endif
+#endif
 
 #include "munit.h"
 #include "util.h"
@@ -38,9 +52,9 @@
  */
 static char *comp_params[] = {"zlib", "bzp2", "lz4", NULL};
 #ifdef ASDF_BLOCK_DECOMP_LAZY_AVAILABLE
-static char *mode_params[] = {"eager", "lazy", NULL};
+static char *mode_params[] = {"auto", "eager", "lazy", NULL};
 #else
-static char *mode_params[] = {"eager", NULL};
+static char *mode_params[] = {"auto", "eager", NULL};
 #endif
 static MunitParameterEnum comp_mode_test_params[] = {
     {"comp", comp_params},
@@ -55,7 +69,31 @@ static MunitParameterEnum comp_test_params[] = {
 };
 
 
+/**
+ * Lazy decompression chunk sizes, in pages, or "default" to leave
+ * decomp.chunk_size unset
+ */
+static char *chunk_params[] = {"1", "4", "default", NULL};
+static MunitParameterEnum comp_mode_chunk_test_params[] = {
+    {"comp", comp_params},
+    {"mode", mode_params},
+    {"chunk", chunk_params},
+    {NULL, NULL}
+};
+
+
+static size_t chunk_size_from_param(const char *chunk) {
+    if (strcmp(chunk, "default") == 0)
+        return 0;
+
+    return strtoul(chunk, NULL, 10) * (size_t)sysconf(_SC_PAGESIZE);
+}
+
+
 static asdf_block_decomp_mode_t decomp_mode_from_param(const char *mode) {
+    if (strcmp(mode, "auto") == 0)
+        return ASDF_BLOCK_DECOMP_MODE_AUTO;
+
     if (strcmp(mode, "eager") == 0)
         return ASDF_BLOCK_DECOMP_MODE_EAGER;
 
@@ -169,6 +207,20 @@ static int test_compressed_file(
 
         fisher_yates_shuffle(pages, num_pages);
 
+        // Always read page 1 first: with lazy decompression in chunks of
+        // more than one page, the first page fault is then guaranteed not to
+        // be on the first page of a chunk, ensuring better determinism in
+        // failure modes. The bug in #274 is triggered particularly when the
+        // decompression chunk_size is > page_size, and the first fault falls
+        // on a page other than the first (0-th) page within that chunk.
+        for (int idx = 0; idx < num_pages; idx++) {
+            if (pages[idx] == 1) {
+                pages[idx] = pages[0];
+                pages[0] = 1;
+                break;
+            }
+        }
+
         for (int idx = 0; idx < num_pages; idx++) {
             size_t page_idx = pages[idx];
             //munit_logf(MUNIT_LOG_DEBUG, "checking page %zu\n", page_idx);
@@ -178,6 +230,13 @@ static int test_compressed_file(
 
         free(pages);
     }
+
+    // In lazy mode errors in the decompression handler only occur once the
+    // data is actually read, so check again
+    error = asdf_error(file);
+    if (error)
+        munit_logf(MUNIT_LOG_ERROR, "error after reading the ndarray data: %s", error);
+    assert_null(error);
 
     const asdf_block_t *block = asdf_ndarray_block(ndarray);
     assert_not_null(block);
@@ -274,6 +333,211 @@ MU_TEST(read_compressed_block_to_file_on_threshold) {
     int ret = test_compressed_file(file, comp, true, false);
     asdf_close(file);
     return ret;
+}
+
+
+/*
+ * Probes for whether lazy decompression is possible on this system
+ *
+ * These mirror the library's internal (and not exported) runtime checks, so
+ * that the tests can determine which decompression mode the library should
+ * select.
+ */
+#if defined(HAVE_USERFAULTFD) && defined(HAVE_DECL_SYS_USERFAULTFD)
+/**
+ * Open a userfaultfd and perform the API handshake; returns -1 on failure
+ *
+ * If ``ioctls`` is non-``NULL`` it receives the bitmask of ioctls supported
+ * by the kernel, as returned by the handshake.
+ */
+static int open_uffd(uint64_t *ioctls) {
+    struct uffdio_api uffd_api = {.api = UFFD_API};
+    long uffd = syscall(SYS_userfaultfd, O_CLOEXEC | O_NONBLOCK | UFFD_USER_MODE_ONLY);
+
+    // Pre-5.11 kernels reject the unknown flag; retry without it
+    if (uffd < 0 && errno == EINVAL)
+        uffd = syscall(SYS_userfaultfd, O_CLOEXEC | O_NONBLOCK);
+
+    if (uffd < 0)
+        return -1;
+
+    if (ioctl((int)uffd, UFFDIO_API, &uffd_api) == -1) {
+        close((int)uffd);
+        return -1;
+    }
+
+    if (ioctls)
+        *ioctls = uffd_api.ioctls;
+
+    return (int)uffd;
+}
+
+
+/**
+ * Test whether the kernel supports lazy decompression with userfaultfd
+ */
+static bool lazy_available(void) {
+    uint64_t ioctls = 0;
+    int uffd = open_uffd(&ioctls);
+
+    if (uffd < 0)
+        return false;
+
+    close(uffd);
+    // The ioctls bitmask is indexed by the _UFFDIO_* bit numbers
+    return (ioctls & (1ULL << _UFFDIO_REGISTER)) != 0;
+}
+
+
+/**
+ * Test whether userfaultfd can handle a mapping of a temp file in the default
+ * temp dir
+ *
+ * This generally only succeeds if the temp dir is on a memory-backed
+ * filesystem such as tmpfs.  The result determines whether an explicit
+ * request for lazy decompression takes precedence over decompressing to a
+ * temp file.
+ */
+static bool lazy_file_backing_available(void) {
+    size_t page_size = sysconf(_SC_PAGESIZE);
+    const char *tmp_dir = getenv("ASDF_TMPDIR");
+    char path[4096];
+    bool available = false;
+    int uffd = -1;
+    int fd = -1;
+    void *map = MAP_FAILED;
+    struct uffdio_register uffd_reg = {0};
+
+    if (!tmp_dir || !tmp_dir[0])
+        tmp_dir = getenv("TMPDIR");
+
+    if (!tmp_dir || !tmp_dir[0])
+        tmp_dir = "/tmp";
+
+    uffd = open_uffd(NULL);
+
+    if (uffd < 0)
+        goto finish;
+
+    snprintf(path, sizeof(path), "%s/libasdf-test-XXXXXX", tmp_dir);
+    fd = mkstemp(path);
+
+    if (fd < 0)
+        goto finish;
+
+    unlink(path);
+
+    if (ftruncate(fd, (off_t)page_size) != 0)
+        goto finish;
+
+    map = mmap(NULL, page_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+
+    if (map == MAP_FAILED)
+        goto finish;
+
+    uffd_reg.range.start = (uintptr_t)map;
+    uffd_reg.range.len = page_size;
+    uffd_reg.mode = UFFDIO_REGISTER_MODE_MISSING;
+    available = ioctl(uffd, UFFDIO_REGISTER, &uffd_reg) == 0;
+
+finish:
+    if (map != MAP_FAILED)
+        munmap(map, page_size);
+
+    if (fd >= 0)
+        close(fd);
+
+    if (uffd >= 0)
+        close(uffd);
+
+    return available;
+}
+#else
+static bool lazy_available(void) {
+    return false;
+}
+
+
+static bool lazy_file_backing_available(void) {
+    return false;
+}
+#endif
+
+
+/**
+ * Test that the effective decompression mode is selected correctly
+ *
+ * Eager mode is always eager; auto and lazy modes are lazy if and only if
+ * lazy decompression is available on this system, and otherwise fall back to
+ * eager.
+ *
+ * Regression test for #276.
+ */
+MU_TEST(decomp_mode_selection) {
+    const char *comp = munit_parameters_get(params, "comp");
+    const char *filename = get_fixture_file_path("compressed.asdf");
+    asdf_block_decomp_mode_t mode = decomp_mode_from_param(munit_parameters_get(params, "mode"));
+    asdf_config_t config = {.decomp = {.mode = mode}};
+    asdf_block_decomp_mode_t expected = ASDF_BLOCK_DECOMP_MODE_EAGER;
+
+    if (mode != ASDF_BLOCK_DECOMP_MODE_EAGER && lazy_available())
+        expected = ASDF_BLOCK_DECOMP_MODE_LAZY;
+
+    asdf_file_t *file = asdf_open_file_ex(filename, "r", &config);
+    assert_not_null(file);
+    asdf_ndarray_t *ndarray = NULL;
+    assert_int(asdf_get_ndarray(file, comp, &ndarray), ==, ASDF_VALUE_OK);
+    assert_not_null(ndarray);
+    assert_not_null(asdf_ndarray_data(ndarray, NULL));
+    const asdf_block_t *block = asdf_ndarray_block(ndarray);
+    assert_not_null(block);
+    assert_not_null(block->comp_state);
+    assert_int(block->comp_state->mode, ==, expected);
+    asdf_ndarray_destroy(ndarray);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+/**
+ * Test the effective decompression mode when decompressing to a temp file
+ *
+ * Lazy decompression is incompatible with decompressing to a temp file, so
+ * in auto mode decompression to a temp file takes precedence and is eager,
+ * whereas in lazy mode lazy decompression (in memory) takes precedence if it
+ * is available, including the check that userfaultfd works with the temp
+ * dir (see lazy_file_backing_available).
+ *
+ * Regression test for #276.
+ */
+MU_TEST(decomp_mode_selection_to_file) {
+    const char *comp = munit_parameters_get(params, "comp");
+    const char *filename = get_fixture_file_path("compressed.asdf");
+    asdf_block_decomp_mode_t mode = decomp_mode_from_param(munit_parameters_get(params, "mode"));
+    asdf_config_t config = {.decomp = {.mode = mode, .max_memory_bytes = 1}};
+    asdf_block_decomp_mode_t expected = ASDF_BLOCK_DECOMP_MODE_EAGER;
+    bool expect_own_fd = true;
+
+    if (mode == ASDF_BLOCK_DECOMP_MODE_LAZY && lazy_available() &&
+        lazy_file_backing_available()) {
+        expected = ASDF_BLOCK_DECOMP_MODE_LAZY;
+        expect_own_fd = false;
+    }
+
+    asdf_file_t *file = asdf_open_file_ex(filename, "r", &config);
+    assert_not_null(file);
+    asdf_ndarray_t *ndarray = NULL;
+    assert_int(asdf_get_ndarray(file, comp, &ndarray), ==, ASDF_VALUE_OK);
+    assert_not_null(ndarray);
+    assert_not_null(asdf_ndarray_data(ndarray, NULL));
+    const asdf_block_t *block = asdf_ndarray_block(ndarray);
+    assert_not_null(block);
+    assert_not_null(block->comp_state);
+    assert_int(block->comp_state->mode, ==, expected);
+    assert_int(block->comp_state->own_fd, ==, expect_own_fd);
+    asdf_ndarray_destroy(ndarray);
+    asdf_close(file);
+    return MUNIT_OK;
 }
 
 
@@ -388,6 +652,12 @@ MU_TEST(compressed_block_no_hang_on_segfault) {
 
 /**
  * Test decompressed block lazy random access
+ *
+ * The pages of the array are read in random order, so with chunks larger
+ * than one page the first fault in a chunk is usually not on its first page.
+ * With the default chunk size the whole array fits in one chunk.
+ *
+ * Regression test for #274.
  */
 MU_TEST(read_compressed_block_lazy_random_access) {
     const char *comp = munit_parameters_get(params, "comp");
@@ -397,7 +667,7 @@ MU_TEST(read_compressed_block_lazy_random_access) {
         .decomp = {
             // Run the test in eager mode too as a control
             .mode = decomp_mode_from_param(munit_parameters_get(params, "mode")),
-            .chunk_size = 4096
+            .chunk_size = chunk_size_from_param(munit_parameters_get(params, "chunk"))
         }
     };
 
@@ -406,6 +676,148 @@ MU_TEST(read_compressed_block_lazy_random_access) {
     asdf_close(file);
     return ret;
 }
+
+
+/*
+ * The concurrent fault test needs lazy decompression with userfaultfd (so it
+ * is Linux-only anyway) and pthread barriers, which are optional in POSIX and
+ * notably missing on macOS; where either is unavailable the test is skipped.
+ */
+#if defined(HAVE_USERFAULTFD) && defined(HAVE_DECL_SYS_USERFAULTFD) && \
+    defined(_POSIX_BARRIERS) && _POSIX_BARRIERS > 0
+/** Argument for concurrent_fault_thread */
+typedef struct {
+    pthread_barrier_t *barrier;
+    const volatile uint8_t *addr;
+    uint8_t value;
+} concurrent_fault_arg_t;
+
+
+static void *concurrent_fault_thread(void *arg) {
+    concurrent_fault_arg_t *fault_arg = arg;
+    pthread_barrier_wait(fault_arg->barrier);
+    fault_arg->value = *fault_arg->addr;
+    return NULL;
+}
+
+
+#define CONCURRENT_FAULT_THREADS 8
+
+
+/**
+ * Test several threads faulting on lazily-decompressed pages at once
+ *
+ * The data pointer is shared between threads (not the asdf_ndarray_t itself,
+ * which is not currently thread-safe) which each read a different
+ * not-yet-decompressed page at the same time.  Each of their faults is
+ * reported to the decompression handler separately, and whichever it handles
+ * first decompresses all pages up to that one.  So faults on earlier pages are
+ * generally still queued (in the waiting threads) for pages it has already
+ * filled (without waking their threads), and the handler has to cope with
+ * them.
+ *
+ * This is the regression tested here: the UFFDIO_COPY ioctl called from the
+ * subsequently awakened threads would get an EEXIST error which was not handled
+ * properly.
+ *
+ * One-page chunks are used so that this is independent of the chunk size
+ * handling tested in read_compressed_block_lazy_random_access.
+ */
+MU_TEST(read_compressed_block_lazy_concurrent_fault) {
+    const char *comp = munit_parameters_get(params, "comp");
+    const char *filename = get_fixture_file_path("compressed.asdf");
+
+    if (!lazy_available()) {
+        munit_log(MUNIT_LOG_INFO, "lazy decompression not available; skipping test...");
+        return MUNIT_SKIP;
+    }
+
+    asdf_config_t config = {
+        .decomp = {
+            .mode = ASDF_BLOCK_DECOMP_MODE_LAZY,
+            .chunk_size = (size_t)sysconf(_SC_PAGESIZE)
+        }
+    };
+    asdf_file_t *file = asdf_open_ex(filename, "r", &config);
+    assert_not_null(file);
+    asdf_ndarray_t *ndarray = NULL;
+    assert_int(asdf_get_ndarray(file, comp, &ndarray), ==, ASDF_VALUE_OK);
+    assert_not_null(ndarray);
+    size_t size = 0;
+    const uint8_t *data = asdf_ndarray_data(ndarray, &size);
+    assert_not_null(data);
+
+    // Same data layout as in test_compressed_file: 100 4 KiB "pages" of the
+    // repeating pattern 0 to 255, except the first byte of each is its index
+    const size_t page_size = 4096;
+    const size_t num_pages = 100;
+    assert_size(size, ==, page_size * num_pages);
+    uint8_t *expected = malloc(size);
+
+    if (!expected)
+        return MUNIT_ERROR;
+
+    for (size_t idx = 0; idx < size; idx++)
+        expected[idx] = (idx % page_size == 0) ? (idx / page_size) % 256 : idx % 256;
+
+    // Spread the faults over the first part of the array, so that there is
+    // still data after them to be decompressed by later faults
+    pthread_barrier_t barrier;
+    pthread_t threads[CONCURRENT_FAULT_THREADS];
+    concurrent_fault_arg_t args[CONCURRENT_FAULT_THREADS];
+    assert_int(pthread_barrier_init(&barrier, NULL, CONCURRENT_FAULT_THREADS), ==, 0);
+
+    for (int idx = 0; idx < CONCURRENT_FAULT_THREADS; idx++) {
+        size_t fault_offset = (size_t)(idx + 1) * 5 * page_size;
+        args[idx] = (concurrent_fault_arg_t){.barrier = &barrier, .addr = data + fault_offset};
+        // Each thread is started and blocks at the barrier--once all
+        // CONCURRENT_FAULT_THREADS(=8) reach the pthread_barrier_wait call
+        // the barrier is unblocked and the first thread to run causes the
+        // first page fault and becomes blocked. Subsequent fault_threads can
+        // also become blocked at a page fault, with each unhandled fault
+        // queued by the kernel as a pending UFFD message sent over the fd.
+        // The single fault handler thread reads the queued faults one at a
+        // time, sequentially (though in arbitrary order).  Handling a fault
+        // on a later page (in terms of offset) will fill prior pages as well,
+        // at least in the current sequential decompressors.  But
+        // UFFDIO_COPY_MODE_DONTWAKE, which neither wakes the thread waiting
+        // on the page fault, nor removes queued faults on other threads.
+        // So those faults are still handled afters, for pages that have now
+        // already been filled, and the handler must simply wake their threads
+        // rather than attempt to fill their faulted pages again (this resulted
+        // in an EEXIST error from the UFFDIO_COPY ioctl, causing the fault
+        // handler thread to exit, but this is symptom not the cause of the
+        // problem).
+        assert_int(pthread_create(&threads[idx], NULL, concurrent_fault_thread, &args[idx]), ==, 0);
+    }
+
+    for (int idx = 0; idx < CONCURRENT_FAULT_THREADS; idx++) {
+        pthread_join(threads[idx], NULL);
+        assert_uint8(args[idx].value, ==, *(expected + (args[idx].addr - data)));
+    }
+
+    pthread_barrier_destroy(&barrier);
+
+    const char *error = asdf_error(file);
+    if (error)
+        munit_logf(MUNIT_LOG_ERROR, "error after concurrent faults: %s", error);
+    assert_null(error);
+
+    // The rest of the data is still decompressed correctly
+    assert_memory_equal(size, data, expected);
+    free(expected);
+    asdf_ndarray_destroy(ndarray);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+#else
+MU_TEST(read_compressed_block_lazy_concurrent_fault) {
+    munit_log(
+        MUNIT_LOG_INFO,
+        "lazy decompression or pthread barriers not available; skipping test...");
+    return MUNIT_SKIP;
+}
+#endif
 
 
 /**
@@ -558,6 +970,135 @@ static const char *write_compressed_ndarray_to_file(
     asdf_close(file);
     asdf_ndarray_data_dealloc(&ndarray);
     return path;
+}
+
+
+/**
+ * Test repeated access to the data of a compressed ndarray
+ *
+ * Regression test for #274.
+ *
+ * Every access after the first must still return the decompressed data, not
+ * the raw compressed bytes of the block.  Each tile read accesses the
+ * ndarray's data anew, so reading tiles one after another is the most common
+ * way to hit this.
+ */
+MU_TEST(read_compressed_block_repeated_access) {
+    const char *comp = munit_parameters_get(params, "comp");
+    const char *filename = get_fixture_file_path("compressed.asdf");
+    asdf_config_t config = {
+        .decomp = {
+            .mode = decomp_mode_from_param(munit_parameters_get(params, "mode"))
+        }
+    };
+    asdf_file_t *file = asdf_open_file_ex(filename, "r", &config);
+    assert_not_null(file);
+    asdf_ndarray_t *ndarray = NULL;
+    asdf_value_err_t err = asdf_get_ndarray(file, comp, &ndarray);
+    assert_int(err, ==, ASDF_VALUE_OK);
+    assert_not_null(ndarray);
+
+    // Same data layout as in test_compressed_file: 100 pages of the repeating
+    // pattern 0 to 255, except the first byte of each page is the page index
+    const size_t page_size = 4096;
+    const size_t num_pages = 100;
+    const uint64_t tile_shape[] = {page_size};
+    uint64_t origin[] = {0};
+    uint8_t expected[4096] = {0};
+    uint8_t *tile = NULL;
+
+    for (size_t idx = 0; idx < page_size; idx++)
+        expected[idx] = idx % 256;
+
+    // First access, reading the first page
+    expected[0] = 0;
+    assert_int(
+        asdf_ndarray_read_tile_ndim(ndarray, origin, tile_shape, ASDF_DATATYPE_SOURCE, (void **)&tile),
+        ==,
+        ASDF_NDARRAY_OK);
+    assert_memory_equal(page_size, tile, expected);
+    free(tile);
+    tile = NULL;
+
+    // Subsequent accesses all return the same decompressed data
+    size_t size = 0;
+    const void *data = asdf_ndarray_data(ndarray, &size);
+    assert_not_null(data);
+    assert_size(size, ==, page_size * num_pages);
+    size_t size2 = 0;
+    assert_ptr_equal(asdf_ndarray_data(ndarray, &size2), data);
+    assert_size(size2, ==, size);
+
+    // Read the last page
+    origin[0] = page_size * (num_pages - 1);
+    expected[0] = num_pages - 1;
+    assert_int(
+        asdf_ndarray_read_tile_ndim(ndarray, origin, tile_shape, ASDF_DATATYPE_SOURCE, (void **)&tile),
+        ==,
+        ASDF_NDARRAY_OK);
+    assert_memory_equal(page_size, tile, expected);
+    free(tile);
+
+    asdf_ndarray_destroy(ndarray);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+/**
+ * Test reading a compressed array large enough to span multiple chunks
+ *
+ * Regression test for #274.
+ *
+ * The array in ``compressed.asdf`` decompresses in a single chunk (and is a
+ * single LZ4 block) so it does not exercise decompression of multiple chunks
+ * in lazy mode.  This writes an array larger than the 4 MB LZ4 block size
+ * (and the default lazy decompression chunk size), and which is not a
+ * multiple of either the block size or the page size, so that the last chunk
+ * and the last page are both partial.
+ */
+MU_TEST(read_compressed_block_multi_chunk) {
+    const char *comp = munit_parameters_get(params, "comp");
+    /* Large enough to span two LZ4 blocks plus a partial one, and not a
+     * multiple of page size */
+    const size_t n = 9000000;
+    uint8_t *ref = malloc(n);
+
+    if (!ref)
+        return MUNIT_ERROR;
+
+    // Use a prime period so the pattern does not line up with page or chunk
+    // boundaries
+    for (size_t idx = 0; idx < n; idx++)
+        ref[idx] = idx % 251;
+
+    const char *path = write_compressed_ndarray_to_file(comp, fixture->tempfile_prefix, ref, n);
+
+    if (!path) {
+        free(ref);
+        return MUNIT_ERROR;
+    }
+
+    asdf_config_t config = {
+        .decomp = {
+            .mode = decomp_mode_from_param(munit_parameters_get(params, "mode"))
+        }
+    };
+    asdf_file_t *file = asdf_open_file_ex(path, "r", &config);
+    assert_not_null(file);
+    asdf_ndarray_t *ndarray = NULL;
+    assert_int(asdf_get_ndarray(file, "data", &ndarray), ==, ASDF_VALUE_OK);
+    assert_not_null(ndarray);
+    size_t size = 0;
+    const uint8_t *data = asdf_ndarray_data(ndarray, &size);
+    assert_not_null(data);
+    assert_size(size, ==, n);
+    assert_memory_equal(n, data, ref);
+    asdf_ndarray_destroy(ndarray);
+    asdf_close(file);
+    free(ref);
+    free((void *)path);
+    return MUNIT_OK;
 }
 
 
@@ -1079,8 +1620,13 @@ MU_TEST_SUITE(
     MU_RUN_TEST(read_compressed_block_to_file, comp_test_params),
     MU_RUN_TEST(read_compressed_block_to_file_on_threshold, comp_test_params),
     MU_RUN_TEST(open_close_compressed_block, comp_mode_test_params),
-    MU_RUN_TEST(read_compressed_block_lazy_random_access, comp_mode_test_params),
+    MU_RUN_TEST(read_compressed_block_lazy_random_access, comp_mode_chunk_test_params),
+    MU_RUN_TEST(read_compressed_block_lazy_concurrent_fault, comp_test_params),
     MU_RUN_TEST(compressed_block_no_hang_on_segfault, comp_mode_test_params),
+    MU_RUN_TEST(decomp_mode_selection, comp_mode_test_params),
+    MU_RUN_TEST(decomp_mode_selection_to_file, comp_mode_test_params),
+    MU_RUN_TEST(read_compressed_block_repeated_access, comp_mode_test_params),
+    MU_RUN_TEST(read_compressed_block_multi_chunk, comp_mode_test_params),
     MU_RUN_TEST(reemit_compressed_verbatim, comp_test_params),
     MU_RUN_TEST(recompress_block),
     MU_RUN_TEST(copy_compressed_block, comp_test_params),

@@ -95,6 +95,28 @@ static int asdf_create_temp_file(size_t data_size, const char *tmp_dir, int *out
 }
 
 
+/**
+ * Decompress a chunk of a block into the state's work buffer
+ *
+ * Thin wrapper around the compressor's ``decomp`` callback, used by both
+ * eager and lazy decompression.  In eager mode the work buffer is the whole
+ * destination mapping, so one call decompresses the entire block in place; in
+ * lazy mode it is a separate chunk-sized buffer (see handle_pagefault).
+ *
+ * ``offset_hint`` is the offset into the decompressed data that the caller
+ * needs, and on success ``*offset_out`` is set to the offset of the chunk
+ * actually written to the work buffer, which is not necessarily the chunk
+ * containing ``offset_hint``.  zlib and bzip2 can only decompress
+ * sequentially, so they always produce the next chunk after the previous call
+ * and the caller must keep calling until it gets the chunk it needs.  Other
+ * schemes such as ASDF's LZ4 format allow random access (up to the LZ4 block
+ * size), though that is not implemented yet (see #90).
+ *
+ * Currently, if ``offset_hint`` is before data the compressor has already
+ * produced, it returns 0 without writing anything or setting ``*offset_out``.
+ *
+ * Returns 0 on success or a compressor-specific nonzero error code.
+ */
 static int asdf_block_decomp_offset(
     asdf_block_comp_state_t *state, size_t *offset_out, size_t offset_hint) {
     assert(state);
@@ -252,6 +274,29 @@ static inline asdf_block_comp_uffd_evt_t wait_for_event(
 }
 
 
+/**
+ * Resolve a userfaultfd page fault by decompressing the faulting page
+ *
+ * Called from asdf_block_comp_userfaultfd_handler with a fault on an address
+ * in the destination mapping ``state->dest``.  This decompresses chunks of
+ * ``state->work_buf_size`` bytes (a whole number of pages) via
+ * asdf_block_decomp_offset and copies each one into the mapping at the offset
+ * the compressor reports, using UFFDIO_COPY, until the chunk containing the
+ * faulting page has been copied.  Chunks copied before then use
+ * UFFDIO_COPY_MODE_DONTWAKE; only the copy that fills the faulting page wakes
+ * the faulting thread.  A partial last chunk is rounded up to a whole page,
+ * padded with zeros from the work buffer.
+ *
+ * The faulting page may already have been filled by the time its fault is
+ * handled: when several threads fault at once, their faults are queued, and
+ * handling one may fill pages that other threads are waiting on.  Pages
+ * filled with DONTWAKE do not wake those threads (nor discard their queued
+ * faults), so if the compressor produces nothing for the faulting page this
+ * just wakes the faulting thread with UFFDIO_WAKE.
+ *
+ * Returns 0 on success, the decompressor's nonzero error code, or -1 from a
+ * failed ioctl with errno set.
+ */
 static int handle_pagefault(
     asdf_block_comp_userfaultfd_t *uffd, struct uffd_msg *msg, size_t page_size) {
     asdf_block_comp_state_t *state = uffd->comp_state;
@@ -262,8 +307,22 @@ static int handle_pagefault(
     size_t offset = (fault_addr - (uintptr_t)state->dest) & ~page_mask;
     int ret = 0;
 
+    ASDF_LOG(
+        state->file,
+        ASDF_LOG_TRACE,
+        "lazy decompression %p: page fault at offset %zu",
+        (void *)state->dest,
+        offset);
+
     while (!atomic_load(&uffd->stop)) {
-        size_t got_offset = 0;
+        // Sentinel for the compressor producing nothing, because the data at
+        // the requested offset was already produced.  This used to default to
+        // got_offset = 0 but then there was no way to distinguish from
+        // asdf_block_decomp_offset doing nothing and returning without setting
+        // got_offset, versus returning that the chunk at offset 0 was
+        // decompressed (return value is 0 in either case; may be better to
+        // have a separate return value indicating 'already done'...?)
+        size_t got_offset = SIZE_MAX;
         memset(state->work_buf, 0, chunk_size);
         ret = asdf_block_decomp_offset(state, &got_offset, offset);
 
@@ -271,13 +330,34 @@ static int handle_pagefault(
         if (ret != 0)
             return ret;
 
+        if (got_offset == SIZE_MAX) {
+            // The faulting page is already filled; just wake the faulting
+            // thread
+            ASDF_LOG(
+                state->file,
+                ASDF_LOG_TRACE,
+                "lazy decompression %p: page at offset %zu already filled; waking faulting "
+                "thread",
+                (void *)state->dest,
+                offset);
+            struct uffdio_range wake_range = {.start = fault_addr, .len = page_size};
+            return ioctl(uffd->uffd, UFFDIO_WAKE, &wake_range);
+        }
+
         size_t dst = (uintptr_t)state->dest + got_offset;
         size_t src = (size_t)uffd->work_buf;
-        size_t len =
-            ((got_offset + chunk_size) > state->dest_size ? (state->dest_size - got_offset)
-                                                          : chunk_size);
+        size_t dest_size = state->dest_size;
+        size_t next_offset = got_offset + chunk_size;
+        /* Here len is the size of the chunk read from the decompression buffer:
+         * usually just chunk_size, or otherwise the trailing bytes at the last
+         * page */
+        size_t len = next_offset > dest_size ? (dest_size - got_offset) : chunk_size;
+        /* align to page size */
         len = (len + page_size - 1) & ~page_mask;
-        uint64_t mode = (got_offset == offset) ? 0 : UFFDIO_COPY_MODE_DONTWAKE;
+        /* The decompressed chunk contains the faulting address; if not we must
+         * continue decompression until it does */
+        bool has_fault = offset >= got_offset && offset - got_offset < len;
+        uint64_t mode = has_fault ? 0 : UFFDIO_COPY_MODE_DONTWAKE;
 
         struct uffdio_copy uffd_copy = {
             // Copy back to the (page-aligned) destination in the user's mmap
@@ -295,7 +375,16 @@ static int handle_pagefault(
         if (ret != 0)
             return ret;
 
-        if (got_offset == offset)
+        ASDF_LOG(
+            state->file,
+            ASDF_LOG_TRACE,
+            "lazy decompression %p: filled [%zu, %zu)%s",
+            (void *)state->dest,
+            got_offset,
+            got_offset + len,
+            has_fault ? " and woke faulting thread" : "");
+
+        if (has_fault)
             break;
     }
 
@@ -303,6 +392,25 @@ static int handle_pagefault(
 }
 
 
+/** Main userfaultfd fault handler thread
+ *
+ * The way UFFD works in UFFDIO_REGISTER_MODE_MISSING (as configured via ioctl
+ * in asdf_block_decomp_lazy), is if a page fault occurs the faulting thread
+ * (typically the main thread) is blocked until another ioctl is received
+ * *on* the same UFFD file descriptor with UFFDIO_COPY or UFFDIO_ZEROPAGE,
+ * signaling that the fault has been handled in some way (either copying of
+ * data into the faulted page address which we do here, or zeroing the page).
+ *
+ * The UFFD mechanism itself does not know anything about this thread--it just
+ * runs in the background and blocks (via poll()) until the UFFD is ready, or
+ * a separate 'event' file descriptor that we manage which signals the thread
+ * to stop.  The ``wait_for_events()`` function implements the polling, and
+ * when the event is a UFFD page fault, we pass to ``handle_pagefault()`` also
+ * defined above.  It fills the faulting page with data from the decompressor
+ * and sets the UFFDIO_COPY ioctl, unblocking the main thread and allowing it
+ * to continue from before the page fault--it will retry reading the now filled
+ * memory page and continue.
+ */
 static void *asdf_block_comp_userfaultfd_handler(void *arg) {
     asdf_block_comp_userfaultfd_t *uffd = arg;
     asdf_block_comp_state_t *state = uffd->comp_state;
@@ -317,16 +425,30 @@ static void *asdf_block_comp_userfaultfd_handler(void *arg) {
     fds[1].fd = uffd->evtfd;
     fds[1].events = POLLIN;
 
+    // Reason the handler stopped, for logging
+    const char *reason = "shutdown requested";
+
+    ASDF_LOG(
+        state->file,
+        ASDF_LOG_TRACE,
+        "lazy decompression %p: handler started (%zu bytes, %zu-byte chunks)",
+        (void *)state->dest,
+        state->dest_size,
+        state->work_buf_size);
+
     // Wait for an event, exiting if we get a stop signal or a ready event (or error)
     while (!atomic_load(&uffd->stop)) {
         info = state->compressor->info(state->userdata);
-        if (!info || info->status == ASDF_COMPRESSOR_DONE)
+        if (!info || info->status == ASDF_COMPRESSOR_DONE) {
+            reason = "decompression complete";
             break;
+        }
 
         evt = wait_for_event(fds, &msg);
 
         switch (evt) {
         case ASDF_BLOCK_COMP_UFFD_EVT_ERROR:
+            reason = "error waiting for events";
             ASDF_ERROR_SYSTEM(state->file, errno);
             break;
         case ASDF_BLOCK_COMP_UFFD_EVT_NOT_READY:
@@ -335,6 +457,7 @@ static void *asdf_block_comp_userfaultfd_handler(void *arg) {
             break;
         case ASDF_BLOCK_COMP_UFFD_EVT_PAGEFAULT:
             if (handle_pagefault(uffd, &msg, page_size)) {
+                reason = "error handling page fault";
                 ASDF_ERROR_SYSTEM(state->file, errno);
                 break;
             }
@@ -347,6 +470,13 @@ static void *asdf_block_comp_userfaultfd_handler(void *arg) {
         break;
     }
 
+    ASDF_LOG(
+        state->file,
+        ASDF_LOG_TRACE,
+        "lazy decompression %p: handler exiting: %s",
+        (void *)state->dest,
+        reason);
+
     // If the thread exits for any reason make sure to deregister UFFD for
     // for the range handled; of course if the thread crashes we're in deep
     // water (main thread may hang)
@@ -358,7 +488,7 @@ static void *asdf_block_comp_userfaultfd_handler(void *arg) {
 }
 
 
-#define FEATURE_IS_SET(bits, bit) (((bits) & (bit)) == (bit))
+#define FEATURE_IS_SET(bits, bit) (((bits) & (1ULL << (bit))) != 0)
 
 /**
  * Probe the running kernel for basic userfaultfd support.
@@ -755,16 +885,14 @@ static asdf_block_comp_state_t *asdf_block_comp_state_create(
                     "using eager decompression mode, since lazy mode is not possible when "
                     "decompressing to a temp file on disk");
                 use_lazy_mode = false;
-                mode = ASDF_BLOCK_DECOMP_MODE_EAGER;
             } else {
                 // If the user explicitly requested lazy mode, disable file backing instead
                 ASDF_LOG(
                     block->file,
                     ASDF_LOG_WARN,
-                    "using eager decompression mode, since lazy mode is not possible when "
-                    "decompressing to a temp file on disk");
+                    "lazy decompression mode requested, which is not possible when "
+                    "decompressing to a temp file on disk; decompressing in memory instead");
                 use_file_backing = false;
-                mode = ASDF_BLOCK_DECOMP_MODE_LAZY;
             }
         } else if (!use_lazy_mode && mode == ASDF_BLOCK_DECOMP_MODE_LAZY) {
             ASDF_LOG(
@@ -772,9 +900,12 @@ static asdf_block_comp_state_t *asdf_block_comp_state_create(
                 ASDF_LOG_WARN,
                 "lazy decompression mode requested, but the runtime check for kernel "
                 "support failed");
-            mode = ASDF_BLOCK_DECOMP_MODE_EAGER;
         }
     }
+
+    // Resolve AUTO (and LAZY when not possible) to the effective mode; only
+    // the effective mode is stored on the state
+    mode = use_lazy_mode ? ASDF_BLOCK_DECOMP_MODE_LAZY : ASDF_BLOCK_DECOMP_MODE_EAGER;
 
     if (use_file_backing && !use_lazy_mode) {
         if (asdf_create_temp_file(dest_size, config->decomp.tmp_dir, &state->fd) != 0) {

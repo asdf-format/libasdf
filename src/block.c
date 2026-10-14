@@ -686,8 +686,23 @@ const void *asdf_block_data_impl(asdf_block_t *block, size_t *size, bool decompr
     if (!block)
         return NULL;
 
-    /* Cached data from a previous stream open */
+    /* Cached data from a previous stream open; block->data is always the raw
+     * (possibly compressed) data, so return the decompressed data if asked */
     if (block->data && block->should_close) {
+        if (decompress) {
+            if (!block->comp_state && asdf_block_comp_open(block) != 0) {
+                ASDF_LOG(block->file, ASDF_LOG_ERROR, "failed to open compressed block data");
+                return NULL;
+            }
+
+            if (block->comp_state) {
+                if (size)
+                    *size = block->comp_state->dest_size;
+
+                return block->comp_state->dest;
+            }
+        }
+
         if (size)
             *size = block->avail_size;
 
