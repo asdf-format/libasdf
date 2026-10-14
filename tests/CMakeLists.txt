@@ -72,7 +72,9 @@ target_include_directories(run-dir SYSTEM PRIVATE ${STATGRAB_INCLUDEDIR})
 target_link_directories(run-dir PRIVATE ${STATGRAB_LIBDIR})
 target_link_libraries(run-dir PRIVATE util ${STATGRAB_LIBRARIES})
 
-set(runtime "WITH_CMAKE=set:YES;OBJC_DISABLE_INITIALIZE_FORK_SAFETY=set:YES;srcdir=set:${CMAKE_CURRENT_SOURCE_DIR};top_srcdir=set:${CMAKE_SOURCE_DIR};top_builddir=set:${CMAKE_BINARY_DIR};LD_LIBRARY_PATH=path_list_prepend:${CMAKE_BINARY_DIR}/src")
+# ASDF_LOG_LEVEL/ASDF_LOG_COLOR are cleared so a developer's settings can't
+# change test outcomes; tests that exercise them set them explicitly
+set(runtime "ASDF_LOG_LEVEL=unset:;ASDF_LOG_COLOR=unset:;WITH_CMAKE=set:YES;OBJC_DISABLE_INITIALIZE_FORK_SAFETY=set:YES;srcdir=set:${CMAKE_CURRENT_SOURCE_DIR};top_srcdir=set:${CMAKE_SOURCE_DIR};top_builddir=set:${CMAKE_BINARY_DIR};LD_LIBRARY_PATH=path_list_prepend:${CMAKE_BINARY_DIR}/src")
 
 set(sanitizer_options "ASAN_OPTIONS=detect_leaks=1:suppressions=${CMAKE_CURRENT_SOURCE_DIR}/libfyaml.asan.supp;LSAN_OPTIONS=suppressions=${CMAKE_CURRENT_SOURCE_DIR}/libfyaml.lsan.supp")
 

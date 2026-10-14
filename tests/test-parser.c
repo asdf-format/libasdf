@@ -191,17 +191,15 @@ static char *capture_parse_log(const char *filename, asdf_log_level_t level, boo
     (void)had_error;
     return NULL;
 #else
-    char *log_buf = NULL;
-    size_t log_size = 0;
-    FILE *log_stream = open_memstream(&log_buf, &log_size);
+    log_capture_t cap = {0};
 
-    if (!log_stream)
-        munit_error("failed to open memstream for log capture");
+    if (!log_capture_open(&cap))
+        munit_error("failed to open log capture");
 
     // Only the message text, so the assertions below don't depend on the
     // source location or on whether color is enabled
     asdf_log_cfg_t log_cfg = {
-        .stream = log_stream,
+        .stream = cap.stream,
         .level = level,
         .fields = ASDF_LOG_FIELD_MSG,
         .no_color = true};
@@ -218,8 +216,9 @@ static char *capture_parse_log(const char *filename, asdf_log_level_t level, boo
 
     *had_error = asdf_parser_has_error(parser);
     asdf_parser_destroy(parser);
-    fclose(log_stream);
-    return log_buf;
+    char *log = strdup(log_capture_text(&cap));
+    log_capture_close(&cap);
+    return log;
 #endif
 }
 
