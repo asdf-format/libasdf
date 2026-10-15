@@ -223,9 +223,9 @@ static bool log_is_colored(
 
 
 /*
- * Color is decided by the stream being a terminal, ``no_color``, and the
- * ASDF_LOG_COLOR environment variable (which overrides both); builds without
- * color support never colorize
+ * Color is decided by ``no_color``, then the ASDF_LOG_COLOR environment
+ * variable, then whether the stream is a terminal; builds without color
+ * support never colorize
  */
 MU_TEST(color_not_tty) {
     log_capture_t cap = {0};
@@ -237,13 +237,19 @@ MU_TEST(color_not_tty) {
     assert_false(colored);
 
     assert_true(log_capture_open(&cap));
-    colored = log_is_colored(cap.stream, -1, &cap, true, "1");
+    colored = log_is_colored(cap.stream, -1, &cap, false, "1");
     log_capture_close(&cap);
 #ifdef ASDF_LOG_COLOR
     assert_true(colored);
 #else
     assert_false(colored);
 #endif
+
+    // An explicit no_color wins over ASDF_LOG_COLOR=1 (regression test)
+    assert_true(log_capture_open(&cap));
+    colored = log_is_colored(cap.stream, -1, &cap, true, "1");
+    log_capture_close(&cap);
+    assert_false(colored);
 
     assert_true(log_capture_open(&cap));
     colored = log_is_colored(cap.stream, -1, &cap, false, "0");
@@ -269,12 +275,13 @@ MU_TEST(color_tty) {
 
 #ifdef ASDF_LOG_COLOR
     assert_true(log_is_colored(stream, master_fd, NULL, false, NULL));
-    assert_true(log_is_colored(stream, master_fd, NULL, true, "1"));
+    assert_true(log_is_colored(stream, master_fd, NULL, false, "1"));
 #else
     assert_false(log_is_colored(stream, master_fd, NULL, false, NULL));
-    assert_false(log_is_colored(stream, master_fd, NULL, true, "1"));
+    assert_false(log_is_colored(stream, master_fd, NULL, false, "1"));
 #endif
     assert_false(log_is_colored(stream, master_fd, NULL, true, NULL));
+    assert_false(log_is_colored(stream, master_fd, NULL, true, "1"));
     assert_false(log_is_colored(stream, master_fd, NULL, false, "0"));
 
     fclose(stream);

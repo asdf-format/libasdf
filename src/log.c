@@ -81,6 +81,12 @@ bool asdf_log_use_color(FILE *stream, bool no_color) {
     int saved_errno = errno;
     bool color = false;
 
+    // Eexplicitly disabled color in the config has the strongest claim:
+    // it may be parsing the output, and escape codes would break that,
+    // for example.
+    if (no_color)
+        return false;
+
     if (env && 0 == strcmp(env, "1"))
         return true;
 
@@ -90,7 +96,7 @@ bool asdf_log_use_color(FILE *stream, bool no_color) {
     // Otherwise only colorize when writing to a terminal; for any other stream
     // (a file, a pipe, or a non-file stream with no descriptor at all) the
     // escape codes would end up in the output verbatim
-    color = !no_color && isatty(fileno(stream));
+    color = isatty(fileno(stream));
     errno = saved_errno;
     return color;
 #else

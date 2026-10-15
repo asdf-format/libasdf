@@ -15,7 +15,8 @@ Several fixes to logging:
 - Log output is colorized only when the stream is a terminal, rather than
   always in builds with color support, which wrote escape codes into log
   files and pipes.  The new ``ASDF_LOG_COLOR`` environment variable forces
-  color on (``1``) or off (``0``).
+  color on (``1``) or off (``0``), but `asdf_log_cfg_t.no_color` takes
+  precedence if set explicitly.
 - Fixed doubled or trailing spaces in log lines when some of the log fields
   are disabled.
 - The log stream is flushed after every message, so messages are not lost or

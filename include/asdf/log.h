@@ -18,10 +18,12 @@
  *
  * When the build supports color, output is colorized only if the stream is a
  * terminal and `asdf_log_cfg_t.no_color` is not set.  The ``ASDF_LOG_COLOR``
- * environment variable overrides both: ``ASDF_LOG_COLOR=1`` forces color on
- * (even when the stream is not a terminal) and ``ASDF_LOG_COLOR=0`` forces it
- * off; any other value is ignored.  Builds without color support ignore it.
- * The environment is read once, when a file is opened.
+ * environment variable overrides the terminal check: ``ASDF_LOG_COLOR=1``
+ * forces color on (even when the stream is not a terminal) and
+ * ``ASDF_LOG_COLOR=0`` forces it off; any other value is ignored.  It does not
+ * override `asdf_log_cfg_t.no_color`, so an application that disables color
+ * always gets uncolored output.  Builds without color support ignore it.  The
+ * environment is read once, when a file is opened.
  *
  * The library's own internal log statements are compiled in only when libasdf
  * is built with logging enabled (the default; disable with ``-DENABLE_LOG=NO``
@@ -154,7 +156,7 @@ typedef struct {
     /**
      * Disable colorized output even when the build supports it and ``stream``
      * is a terminal (output to any other stream is not colorized by default);
-     * overridden by the ``ASDF_LOG_COLOR`` environment variable
+     * takes precedence over the ``ASDF_LOG_COLOR`` environment variable
      */
     bool no_color;
 } asdf_log_cfg_t;
