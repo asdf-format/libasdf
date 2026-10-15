@@ -18,10 +18,13 @@ Newlines within a paragraph become spaces.  Blank lines, section underlines,
 explicit markup (``.. directive::``) and indented literal blocks are all left
 alone.  Hopefully that covers most of the common cases.
 
-Lists are deliberately left alone too: towncrier indents every wrapped line of
-a bullet to the paragraph indent rather than to a hanging indent.
-Hand-wrapped list items already come through towncrier intact, so there is
-nothing to fix there anyway.
+Lists, and anything else indented within the fragment, are deliberately left
+alone too: towncrier indents every wrapped line to the same 2-space indent
+(the indent of the fragment's own bullet) rather than to a hanging indent, so
+it can only re-wrap text at the fragment's base indent.  Hand-wrapped list
+items already come through towncrier intact, so there is nothing to fix there
+anyway, but it's kind of annoying how towncrier makes its own assumptions that
+have to be fought against; it should be fixed upstream.
 """
 
 import argparse
@@ -83,6 +86,10 @@ def unwrap_paragraph(lines: list[str]) -> list[str]:
 def paragraphs(lines: list[str]):
     """
     Yield ``(is_blank, group)`` runs of consecutive blank / non-blank lines
+
+    A list item always starts a new non-blank group, even without a blank line
+    before it, so a group is either a single list item (with any continuation
+    lines) or contains no list items at all.
     """
 
     group: list[str] = []
@@ -90,8 +97,9 @@ def paragraphs(lines: list[str]):
 
     for line in lines:
         line_blank = not line.strip()
+        new_item = not line_blank and blank is False and LIST_ITEM_RE.match(line)
 
-        if blank is None or line_blank == blank:
+        if blank is None or (line_blank == blank and not new_item):
             group.append(line)
         else:
             yield blank, group
@@ -131,9 +139,10 @@ def unwrap(text: str) -> str:
         elif EXPLICIT_MARKUP_RE.match(group[0]):
             verbatim = True
             literal_indent = base
-        elif LIST_ITEM_RE.match(group[0]):
+        elif base > 0 or LIST_ITEM_RE.match(group[0]):
             # See the module docstring: towncrier cannot re-wrap a long list
-            # item without breaking the hanging indent, so leave lists as-is
+            # item, or a paragraph indented under one, without breaking its
+            # hanging indent, so leave those as-is
             verbatim = True
             literal_indent = None
         else:
