@@ -8,12 +8,22 @@
  * be provided up front through the ``log`` field of `asdf_config_t` when opening
  * a file with `asdf_open_ex`.  Messages at or above the configured
  * `asdf_log_level_t` are written to the configured stream (``stderr`` by
- * default), optionally colorized and with a configurable set of prefix fields.
+ * default), with a configurable set of prefix fields.  The stream is flushed
+ * after every message.
  *
  * If no level is set explicitly the default is taken from the ``ASDF_LOG_LEVEL``
  * environment variable (one of ``NONE``, ``TRACE``, ``DEBUG``, ``INFO``,
  * ``WARN``, ``ERROR``, or ``FATAL``, case-insensitive), falling back to
  * ``WARN``.
+ *
+ * When the build supports color, output is colorized only if the stream is a
+ * terminal and `asdf_log_cfg_t.no_color` is not set.  The ``ASDF_LOG_COLOR``
+ * environment variable overrides the terminal check: ``ASDF_LOG_COLOR=1``
+ * forces color on (even when the stream is not a terminal) and
+ * ``ASDF_LOG_COLOR=0`` forces it off; any other value is ignored.  It does not
+ * override `asdf_log_cfg_t.no_color`, so an application that disables color
+ * always gets uncolored output.  Builds without color support ignore it.  The
+ * environment is read once, when a file is opened.
  *
  * The library's own internal log statements are compiled in only when libasdf
  * is built with logging enabled (the default; disable with ``-DENABLE_LOG=NO``
@@ -38,11 +48,19 @@
  * Severity levels for log messages, in increasing order of severity
  *
  * A configured level acts as a threshold: only messages at that level or higher
- * are emitted.  `ASDF_LOG_NONE` disables logging entirely.
+ * are emitted.  `ASDF_LOG_NONE` is higher than every message severity, so as a
+ * threshold it disables logging entirely.
  */
 typedef enum {
-    /** Emit no messages */
-    ASDF_LOG_NONE = 0,
+    /**
+     * Use the default level: the value of the ``ASDF_LOG_LEVEL`` environment
+     * variable if set, otherwise ``ASDF_LOG_DEFAULT_LEVEL`` (``ASDF_LOG_WARN``
+     * unless libasdf was built with a different default)
+     *
+     * This is the zero value, so it is what a zero-initialized
+     * `asdf_log_cfg_t` selects.  It is not a message severity.
+     */
+    ASDF_LOG_DEFAULT = 0,
     /** Very fine-grained tracing messages */
     ASDF_LOG_TRACE,
     /** Debugging messages */
@@ -55,9 +73,17 @@ typedef enum {
     ASDF_LOG_ERROR,
     /** Fatal, unrecoverable errors */
     ASDF_LOG_FATAL,
+    /** Emit no messages; only meaningful as a threshold, not a severity */
+    ASDF_LOG_NONE,
 } asdf_log_level_t;
 
-/** The number of distinct `asdf_log_level_t` values */
+/**
+ * One past the highest message severity (`ASDF_LOG_FATAL`)
+ *
+ * Message severities are the values from `ASDF_LOG_TRACE` up to, but not
+ * including, this.  It does not count `ASDF_LOG_NONE`, which is a threshold
+ * only.
+ */
 #define ASDF_LOG_NUM_LEVELS (ASDF_LOG_FATAL + 1)
 
 
@@ -111,7 +137,8 @@ typedef uint64_t asdf_log_fields_t;
  * to control logging for a file.  Any field left zero-initialized is filled in
  * with a default: the stream defaults to ``stderr``, the level to the value of
  * the ``ASDF_LOG_LEVEL`` environment variable (or ``ASDF_LOG_WARN``), and the
- * fields to `ASDF_LOG_FIELD_ALL`.
+ * fields to `ASDF_LOG_FIELD_ALL`.  Set ``level`` to `ASDF_LOG_NONE` to disable
+ * logging for the file.
  */
 typedef struct {
     /** Destination stream for log output (defaults to ``stderr``) */
@@ -126,7 +153,11 @@ typedef struct {
      * enabled / disabled; see `asdf_log_field_t`.
      */
     asdf_log_fields_t fields;
-    /** Disable colorized output even when the build supports it */
+    /**
+     * Disable colorized output even when the build supports it and ``stream``
+     * is a terminal (output to any other stream is not colorized by default);
+     * takes precedence over the ``ASDF_LOG_COLOR`` environment variable
+     */
     bool no_color;
 } asdf_log_cfg_t;
 

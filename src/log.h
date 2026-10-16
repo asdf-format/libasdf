@@ -72,3 +72,12 @@ ASDF_LOCAL void asdf_log_fallback(
 
 
 ASDF_LOCAL asdf_log_level_t asdf_log_level_from_env(void);
+
+
+/*
+ * Decide whether log output to ``stream`` is colorized: never if ``no_color``
+ * is true; otherwise ``ASDF_LOG_COLOR=1`` or ``0`` in the environment forces
+ * it on or off, and failing that it is colorized only if ``stream`` is a
+ * terminal.  Always false in builds without color support.
+ */
+ASDF_LOCAL bool asdf_log_use_color(FILE *stream, bool no_color);

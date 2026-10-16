@@ -1,6 +1,10 @@
+#include <errno.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -25,9 +29,12 @@
 #define DIM(str) ANSI_DIM str ANSI_RESET
 
 #define ASDF_LOG_LEVEL_ENV_VAR "ASDF_LOG_LEVEL"
+#define ASDF_LOG_COLOR_ENV_VAR "ASDF_LOG_COLOR"
 
 
-static const char *level_names[] = {"NONE", "TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
+// Indexed by message severity; ASDF_LOG_DEFAULT is never a message severity
+// so its slot is unused, and ASDF_LOG_NONE is past the end
+static const char *level_names[] = {"DEFAULT", "TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
 
 
 _Static_assert(
@@ -45,7 +52,10 @@ _Static_assert(
 
 
 static asdf_log_level_t asdf_log_level_from_string(const char *str) {
-    for (unsigned int idx = 1; idx < ASDF_LOG_NUM_LEVELS; idx++) {
+    if (0 == strcasecmp(str, "NONE"))
+        return ASDF_LOG_NONE;
+
+    for (unsigned int idx = ASDF_LOG_TRACE; idx < ASDF_LOG_NUM_LEVELS; idx++) {
         if (0 == strcasecmp(str, level_names[idx]))
             return (asdf_log_level_t)idx;
     }
@@ -65,6 +75,38 @@ asdf_log_level_t asdf_log_level_from_env() {
 }
 
 
+bool asdf_log_use_color(FILE *stream, bool no_color) {
+#ifdef ASDF_LOG_COLOR
+    const char *env = getenv(ASDF_LOG_COLOR_ENV_VAR);
+    int saved_errno = errno;
+    bool color = false;
+
+    // Eexplicitly disabled color in the config has the strongest claim:
+    // it may be parsing the output, and escape codes would break that,
+    // for example.
+    if (no_color)
+        return false;
+
+    if (env && 0 == strcmp(env, "1"))
+        return true;
+
+    if (env && 0 == strcmp(env, "0"))
+        return false;
+
+    // Otherwise only colorize when writing to a terminal; for any other stream
+    // (a file, a pipe, or a non-file stream with no descriptor at all) the
+    // escape codes would end up in the output verbatim
+    color = isatty(fileno(stream));
+    errno = saved_errno;
+    return color;
+#else
+    (void)stream;
+    (void)no_color;
+    return false;
+#endif
+}
+
+
 static void asdf_log_impl(
     FILE *stream,
     asdf_log_level_t level,
@@ -74,58 +116,74 @@ static void asdf_log_impl(
     int lineno,
     const char *fmt,
     va_list args) {
+    // Logging must not clobber errno for callers that log before reporting it
+    int saved_errno = errno;
+    bool color = false;
+    bool sep = false;
+
+    // Messages can only be logged at a real severity; this also keeps the
+    // level_names lookup in bounds
+    if (UNLIKELY(level < ASDF_LOG_TRACE || level >= ASDF_LOG_NUM_LEVELS))
+        return;
+
     // Don't allow logging "nothing" (logging should simply be disabled for
     // that); if fields is empty enable all fields
     fields = fields ? fields : ASDF_LOG_FIELD_ALL;
+
 #ifdef ASDF_LOG_COLOR
-    if (!no_color) {
-        if (fields & ASDF_LOG_FIELD_LEVEL)
+    color = !no_color;
+#else
+    (void)no_color;
+#endif
+
+    if (fields & ASDF_LOG_FIELD_LEVEL) {
+#ifdef ASDF_LOG_COLOR
+        if (color)
             fprintf(
                 stream,
-                DIM("[") COLOR("%s", "%s") DIM("]") " ",
+                DIM("[") COLOR("%s", "%s") DIM("]"),
                 level_colors[level],
                 level_names[level]);
+        else
+#endif
+            fprintf(stream, "[%-5s]", level_names[level]);
 
-        if (fields & ASDF_LOG_FIELD_PACKAGE)
-            fputs(COLOR(COLOR_DIM_GREY, "(" PACKAGE_NAME ")"), stream);
+        sep = true;
+    }
 
-        if (fields & ASDF_LOG_FIELD_FILE)
-            fprintf(stream, COLOR(COLOR_DIM_GREY, "%s:"), file);
-
-        if (fields & ASDF_LOG_FIELD_LINE)
-            fprintf(stream, COLOR(COLOR_DIM_GREY, "%d:"), lineno);
-
-        if (fields > ASDF_LOG_FIELD_MSG)
+    if (fields & (ASDF_LOG_FIELD_PACKAGE | ASDF_LOG_FIELD_FILE | ASDF_LOG_FIELD_LINE)) {
+        if (sep)
             fputc(' ', stream);
 
-        if (fields & ASDF_LOG_FIELD_MSG)
-            // NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized)
-            vfprintf(stream, fmt, args);
+        if (color)
+            fputs(COLOR_DIM_GREY, stream);
 
-        fputc('\n', stream);
-        return;
+        if (fields & ASDF_LOG_FIELD_PACKAGE)
+            fputs("(" PACKAGE_NAME ")", stream);
+
+        if (fields & ASDF_LOG_FIELD_FILE)
+            fprintf(stream, "%s:", file);
+
+        if (fields & ASDF_LOG_FIELD_LINE)
+            fprintf(stream, "%d:", lineno);
+
+        if (color)
+            fputs(ANSI_RESET, stream);
+
+        sep = true;
     }
-#endif
-    if (fields & ASDF_LOG_FIELD_LEVEL)
-        fprintf(stream, "[%-5s] ", level_names[level]);
 
-    if (fields & ASDF_LOG_FIELD_PACKAGE)
-        fputs("(" PACKAGE_NAME ")", stream);
+    if (fields & ASDF_LOG_FIELD_MSG) {
+        if (sep)
+            fputc(' ', stream);
 
-    if (fields & ASDF_LOG_FIELD_FILE)
-        fprintf(stream, "%s:", file);
-
-    if (fields & ASDF_LOG_FIELD_LINE)
-        fprintf(stream, "%d:", lineno);
-
-    if (fields > ASDF_LOG_FIELD_MSG)
-        fputc(' ', stream);
-
-    if (fields & ASDF_LOG_FIELD_MSG)
         // NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized)
         vfprintf(stream, fmt, args);
+    }
 
     fputc('\n', stream);
+    fflush(stream);
+    errno = saved_errno;
 }
 
 
@@ -186,6 +244,14 @@ void asdf_log_fallback(asdf_log_level_t level, const char *file, int lineno, con
     // NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized)
     va_list args;
     va_start(args, fmt);
-    asdf_log_impl(stderr, level, ASDF_LOG_FIELD_ALL, false, file, lineno, fmt, args);
+    asdf_log_impl(
+        stderr,
+        level,
+        ASDF_LOG_FIELD_ALL,
+        !asdf_log_use_color(stderr, false),
+        file,
+        lineno,
+        fmt,
+        args);
     va_end(args);
 }

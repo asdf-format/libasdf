@@ -1,3 +1,3 @@
-Fixed auto-selection of decompression mode.  Lazy decompression was only being
-used if explicitly requested and not as the default on supported platforms
-(i.e. Linux).
+Fixed auto-selection of decompression mode.  Lazy decompression was only
+being used if explicitly requested and not as the default on supported
+platforms (i.e. Linux).

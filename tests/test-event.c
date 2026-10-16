@@ -489,12 +489,11 @@ MU_TEST(basic_buffer_yaml) {
 
 MU_TEST(test_asdf_event_summary) {
     const char *filename = get_reference_file_path("1.6.0/basic.asdf");
-    const char *log_file = get_temp_file_path(fixture->tempfile_prefix, ".log");
-    FILE *log_stream = fopen(log_file, "w");
-    assert_not_null(log_stream);
+    log_capture_t cap = {0};
+    assert_true(log_capture_open(&cap));
     asdf_log_cfg_t log_config = {
         .level = ASDF_LOG_TRACE, .fields = ASDF_LOG_FIELD_ALL ^ ASDF_LOG_FIELD_LINE,
-        .stream = log_stream, .no_color = true};
+        .stream = cap.stream, .no_color = true};
     asdf_parser_cfg_t parser_cfg = {.flags = ASDF_PARSER_OPT_EMIT_YAML_EVENTS, .log=&log_config};
 
     asdf_parser_t *parser = asdf_parser_create(&parser_cfg);
@@ -502,9 +501,11 @@ MU_TEST(test_asdf_event_summary) {
     assert_int(asdf_parser_set_input_file(parser, filename), ==, 0);
     while (asdf_event_iterate(parser));
     asdf_parser_destroy(parser);
-    fclose(log_stream);
-    const char *expected_log_file = get_fixture_file_path("events/basic.log");
-    assert_true(compare_files(log_file, expected_log_file));
+    char *expected = read_file(get_fixture_file_path("events/basic.log"), NULL);
+    assert_not_null(expected);
+    assert_string_equal(log_capture_text(&cap), expected);
+    free(expected);
+    log_capture_close(&cap);
     return MUNIT_OK;
 }
 

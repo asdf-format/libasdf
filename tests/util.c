@@ -437,3 +437,29 @@ cleanup:
     free(contents_b);
     return ret;
 }
+
+
+bool log_capture_open(log_capture_t *cap) {
+    cap->buf = NULL;
+    cap->size = 0;
+    cap->stream = open_memstream(&cap->buf, &cap->size);
+    return cap->stream != NULL;
+}
+
+
+const char *log_capture_text(log_capture_t *cap) {
+    // Deliberately not flushed here: libasdf flushes after every message, so
+    // reading the buffer without flushing also checks that it does
+    return cap->buf ? cap->buf : "";
+}
+
+
+void log_capture_close(log_capture_t *cap) {
+    if (cap->stream)
+        fclose(cap->stream);
+
+    free(cap->buf);
+    cap->stream = NULL;
+    cap->buf = NULL;
+    cap->size = 0;
+}

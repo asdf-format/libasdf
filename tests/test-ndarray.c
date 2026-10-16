@@ -975,16 +975,11 @@ MU_TEST(ndarray_inline_warning_thresh) {
     memset(data, 0, (size_t)shape[0]);
     asdf_ndarray_storage_set(&ndarray, ASDF_ARRAY_STORAGE_INLINE);
 
-    /* Redirect warnings to a temp log file.  get_temp_file_path returns a
-     * static buffer, so duplicate the path before calling it again. */
-    const char *log_path_tmp = get_temp_file_path(fixture->tempfile_prefix, ".log");
-    char *log_path = strdup(log_path_tmp);
-    assert_not_null(log_path);
-    FILE *log_stream = fopen(log_path, "w");
-    assert_not_null(log_stream);
+    log_capture_t cap = {0};
+    assert_true(log_capture_open(&cap));
 
     asdf_config_t config = {
-        .log = {.stream = log_stream, .level = ASDF_LOG_WARN, .no_color = true},
+        .log = {.stream = cap.stream, .level = ASDF_LOG_WARN, .no_color = true},
         .emitter = {.inline_ndarray_warning_thresh = 99}
     };
     asdf_file_t *file = asdf_open_mem_ex(NULL, 0, &config);
@@ -997,16 +992,11 @@ MU_TEST(ndarray_inline_warning_thresh) {
     const char *out_path = get_temp_file_path(fixture->tempfile_prefix, "-thresh.asdf");
     assert_int(asdf_write_to(file, out_path), ==, 0);
     asdf_close(file);
-    fclose(log_stream);
     asdf_ndarray_data_dealloc(&ndarray);
 
     /* Verify that the warning was written to the log */
-    size_t log_len = 0;
-    char *log_content = read_file(log_path, &log_len);
-    free(log_path);
-    assert_not_null(log_content);
-    assert_not_null(strstr(log_content, "exceeding the threshold of 99"));
-    free(log_content);
+    assert_not_null(strstr(log_capture_text(&cap), "exceeding the threshold of 99"));
+    log_capture_close(&cap);
     return MUNIT_OK;
 }
 

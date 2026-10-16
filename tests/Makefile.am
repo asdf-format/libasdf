@@ -35,6 +35,7 @@ unit_tests = \
     test-event.unit \
     test-extension.unit \
     test-file.unit \
+    test-log.unit \
     test-ndarray.unit \
     test-parse-util.unit \
     test-parser.unit \
@@ -52,6 +53,9 @@ unit_tests = \
 # check_PROGRAMS (built by `make check`) but not in TESTS.
 check_PROGRAMS = $(unit_tests) run-dir
 
+# Clear libasdf's logging environment variables so a developer's settings
+# can't change test outcomes; tests that exercise them set them explicitly
+AM_TESTS_ENVIRONMENT = unset ASDF_LOG_LEVEL ASDF_LOG_COLOR;
 TESTS_ENVIRONMENT = top_builddir=$(top_builddir) top_srcdir=$(top_srcdir)
 
 if UBSAN
@@ -176,6 +180,13 @@ test_file_unit_CPPFLAGS = $(unit_test_cppflags)
 test_file_unit_CFLAGS = $(unit_test_cflags)
 test_file_unit_LDFLAGS = $(unit_test_ldflags)
 test_file_unit_LDADD = $(unit_test_ldadd)
+
+# test-log.unit
+test_log_unit_SOURCES = test-log.c
+test_log_unit_CPPFLAGS = $(unit_test_cppflags)
+test_log_unit_CFLAGS = $(unit_test_cflags)
+test_log_unit_LDFLAGS = $(unit_test_ldflags)
+test_log_unit_LDADD = $(unit_test_ldadd)
 
 # test-ndarray.unit
 test_ndarray_unit_SOURCES = test-ndarray.c
