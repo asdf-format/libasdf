@@ -1283,6 +1283,53 @@ MU_TEST(ndarray_extension_embedded_ndarray) {
 }
 
 
+/* A shape whose byte size overflows 64 bits is refused rather than read into
+ * an undersized buffer */
+MU_TEST(ndarray_read_size_overflow) {
+    const char *path = get_fixture_file_path("ndarray-size-overflow.asdf");
+    asdf_file_t *file = asdf_open(path, "r");
+    assert_not_null(file);
+
+    asdf_ndarray_t *ndarray = NULL;
+    assert_int(asdf_get_ndarray(file, "arr", &ndarray), ==, ASDF_VALUE_OK);
+    assert_not_null(ndarray);
+    assert_uint64(asdf_ndarray_nbytes(ndarray), ==, UINT64_MAX);
+
+    void *data = NULL;
+    assert_int(
+        asdf_ndarray_read_all(ndarray, ASDF_DATATYPE_INT32, &data),
+        ==,
+        ASDF_NDARRAY_ERR_OUT_OF_BOUNDS);
+    assert_null(data);
+    asdf_ndarray_destroy(ndarray);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+/* A tile whose origin plus shape overflows is out of bounds */
+MU_TEST(ndarray_read_tile_bounds_overflow) {
+    const char *path = get_fixture_file_path("tiles.asdf");
+    asdf_file_t *file = asdf_open(path, "r");
+    assert_not_null(file);
+
+    asdf_ndarray_t *ndarray = NULL;
+    assert_int(asdf_get_ndarray(file, "1d", &ndarray), ==, ASDF_VALUE_OK);
+    assert_not_null(ndarray);
+    uint64_t origin[] = {UINT64_MAX};
+    uint64_t shape[] = {2};
+    void *tile = NULL;
+    assert_int(
+        asdf_ndarray_read_tile_ndim(ndarray, origin, shape, ASDF_DATATYPE_SOURCE, &tile),
+        ==,
+        ASDF_NDARRAY_ERR_OUT_OF_BOUNDS);
+    assert_null(tile);
+    asdf_ndarray_destroy(ndarray);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
 MU_TEST_SUITE(
     ndarray,
     MU_RUN_TEST(ndarray_read_1d_tile_contiguous),
@@ -1299,7 +1346,9 @@ MU_TEST_SUITE(
     MU_RUN_TEST(heap_use_after_free_issue_63),
     MU_RUN_TEST(ndarray_data_alloc_storage_set_ordering),
     MU_RUN_TEST(ndarray_read_at),
-    MU_RUN_TEST(ndarray_extension_embedded_ndarray)
+    MU_RUN_TEST(ndarray_extension_embedded_ndarray),
+    MU_RUN_TEST(ndarray_read_size_overflow),
+    MU_RUN_TEST(ndarray_read_tile_bounds_overflow)
 );
 
 
