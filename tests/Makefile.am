@@ -399,6 +399,8 @@ EXTRA_DIST += \
     fixtures/255-out.asdf \
     fixtures/255-padding-after-header.asdf \
     fixtures/255-padding-after-tree.asdf \
+    fixtures/alias-cycle.asdf \
+    fixtures/alias-expansion.asdf \
     fixtures/anchors.asdf \
     fixtures/byteorder.asdf \
     fixtures/compressed.asdf \
@@ -412,6 +414,8 @@ EXTRA_DIST += \
     fixtures/events/compressed.events.txt \
     fixtures/events/int.events.txt \
     fixtures/extension-metadata-with-package.asdf \
+    fixtures/info/alias-cycle.info.txt \
+    fixtures/info/alias-expansion.info.txt \
     fixtures/info/anchor.info.txt \
     fixtures/info/ascii.info.txt \
     fixtures/info/basic.info.txt \

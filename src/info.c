@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <libfyaml.h>
+
 #include "file.h"
 #include "info.h"
 #include "value.h"
@@ -31,6 +33,18 @@
 /** Maximum number of display columns of a scalar value shown in the tree preview */
 #define SCALAR_PREVIEW_MAX 64
 
+/**
+ * Maximum number of nodes printed again under containers reached a second time
+ * through an alias; beyond this such containers are shown collapsed
+ */
+#define MAX_REPEATED_NODES 1024
+
+
+// NOLINTNEXTLINE(readability-identifier-naming)
+#define i_type node_set
+#define i_key const struct fy_node *
+#include "stc/hset.h"
+
 
 // Growable indentation bookkeeping shared by every recursion frame.  This is
 // held once (owned by asdf_info) and referenced via a pointer by all frames so
@@ -39,7 +53,12 @@
 // pointers once the buffer is reallocated (see issue #191).
 typedef struct {
     bool *active_levels;
+    // The container at each depth on the path to the current node
+    const struct fy_node **ancestors;
     size_t max_depth;
+    // Every container printed so far; meeting one again means an alias led to it
+    node_set visited;
+    size_t repeated_nodes;
 } node_indent_t;
 
 
@@ -47,6 +66,8 @@ typedef struct {
     size_t depth;
     bool is_mapping;
     bool is_leaf;
+    // Under a container already printed elsewhere in the tree
+    bool is_repeat;
     node_indent_t *indent;
 } node_state_t;
 
@@ -135,6 +156,32 @@ static void print_scalar_value(FILE *out, const char *value) {
 }
 
 
+/*
+ * Print a marker in place of a container's children when they are not shown:
+ * when an alias leads back to one of the container's own ancestors, which
+ * would otherwise be followed forever, or when the container was reached
+ * through an alias and nested aliases have already repeated too many nodes,
+ * since they can expand the tree exponentially
+ *
+ * Returns true if the marker was printed
+ */
+static bool print_collapsed(FILE *out, asdf_value_t *node, node_state_t *state, bool is_repeat) {
+    for (size_t idx = 0; idx < state->depth; idx++) {
+        if (state->indent->ancestors[idx] == node->node) {
+            fputs(" " DIM("(cycle)") "\n", out);
+            return true;
+        }
+    }
+
+    if (is_repeat && state->indent->repeated_nodes >= MAX_REPEATED_NODES) {
+        fputs(" " DIM("(...)") "\n", out);
+        return true;
+    }
+
+    return false;
+}
+
+
 // TODO: Make this non-recursive using a stack of iterators / states
 // Easy-enough conversion though unlikely to find many files deep enough to blow the C stack
 
@@ -164,6 +211,9 @@ static int print_node(FILE *out, asdf_value_t *node, node_index_t *index, node_s
         fprintf(out, DIM("[") BOLD("%d") DIM("]") " (%s)", index->index, tag);
     }
 
+    if (state->is_repeat)
+        state->indent->repeated_nodes++;
+
     if (!asdf_value_is_container(node)) {
         const char *value = NULL;
         asdf_value_as_scalar0(node, &value);
@@ -171,6 +221,14 @@ static int print_node(FILE *out, asdf_value_t *node, node_index_t *index, node_s
         fputc('\n', out);
         return 0;
     }
+
+    bool is_repeat = state->is_repeat || node_set_contains(&state->indent->visited, node->node);
+
+    if (print_collapsed(out, node, state, is_repeat))
+        return 0;
+
+    if (!is_repeat)
+        node_set_insert(&state->indent->visited, node->node);
 
     fputc('\n', out);
     bool is_mapping = asdf_value_is_mapping(node);
@@ -189,15 +247,26 @@ static int print_node(FILE *out, asdf_value_t *node, node_index_t *index, node_s
         }
 
         state->indent->active_levels = new_active_levels;
+        const struct fy_node **new_ancestors = (const struct fy_node **)realloc(
+            (void *)state->indent->ancestors, new_max_depth * sizeof(*new_ancestors));
+
+        if (!new_ancestors) {
+            asdf_container_iter_destroy(iter);
+            return -1;
+        }
+
+        state->indent->ancestors = new_ancestors;
         state->indent->max_depth = new_max_depth;
     }
 
     state->indent->active_levels[state->depth] = true;
+    state->indent->ancestors[state->depth] = node->node;
 
     node_state_t child_state = {
         .depth = state->depth + 1,
         .is_mapping = is_mapping,
         .is_leaf = false,
+        .is_repeat = is_repeat,
         .indent = state->indent};
 
     while (asdf_container_iter_next(&iter)) {
@@ -407,19 +476,31 @@ int asdf_info(asdf_file_t *file, FILE *out, const asdf_info_cfg_t *cfg) {
         asdf_value_t *root = asdf_get_value(file, "/");
         // Yes, could use a bitfield too but that's overkill
         bool *active_levels = calloc(INITIAL_MAX_DEPTH, sizeof(bool));
+        const struct fy_node **ancestors = (const struct fy_node **)calloc(
+            INITIAL_MAX_DEPTH, sizeof(*ancestors));
 
-        if (UNLIKELY(!active_levels))
+        if (UNLIKELY(!active_levels || !ancestors)) {
+            free(active_levels);
+            free((void *)ancestors);
+            asdf_value_destroy(root);
             return -1;
+        }
 
         // active_levels may be reallocated (grown) during the recursive walk;
         // it is shared by reference through indent so that the final pointer is
         // the one we free here.
-        node_indent_t indent = {.active_levels = active_levels, .max_depth = INITIAL_MAX_DEPTH};
+        node_indent_t indent = {
+            .active_levels = active_levels,
+            .ancestors = ancestors,
+            .max_depth = INITIAL_MAX_DEPTH,
+            .visited = node_set_init()};
         node_state_t state = {.depth = 0, .is_mapping = true, .is_leaf = true, .indent = &indent};
         node_index_t index = {.key = "root"};
         ret = print_node(out, root, &index, &state);
         asdf_value_destroy(root);
         free(indent.active_levels);
+        free((void *)indent.ancestors);
+        node_set_drop(&indent.visited);
     }
 
     if (ret == 0 && cfg->print_blocks) {
