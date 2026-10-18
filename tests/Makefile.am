@@ -402,6 +402,7 @@ EXTRA_DIST += \
     fixtures/anchors.asdf \
     fixtures/byteorder.asdf \
     fixtures/compressed.asdf \
+    fixtures/compressed-asdf-5.4.asdf \
     fixtures/cube.asdf \
     fixtures/custom-tag-handle.asdf \
     fixtures/datatypes.asdf \
