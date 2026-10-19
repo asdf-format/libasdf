@@ -1,3 +1,69 @@
+libasdf 0.2.2 (2026-10-19)
+==========================
+
+Bugfix
+------
+
+- Several fixes to compressed block data reading:
+
+  Fixed reading compressed arrays.  Every access to a compressed block's data
+  after the first returned the raw compressed bytes instead of the decompressed
+  data, so that, for example, reading successive tiles with
+  ``asdf_ndarray_read_tile_2d`` returned garbage and could crash reading past
+  the end of the compressed data.
+
+  Fixed lazy decompression of LZ4-compressed arrays larger than 4 MB, which
+  returned zeros for all data past the first 4 MB, and could read past the end
+  of a buffer for the last, partial chunk.  Tile reads now return
+  ``ASDF_NDARRAY_ERR_OUT_OF_BOUNDS`` rather than reading out of bounds when the
+  array's data is smaller than its shape requires.
+
+  Finally, fixed a race condition if multiple threads are reading the same
+  decompressed data buffer (e.g. as returned by `asdf_block_data` or
+  `asdf_ndarray_data`), and each encounter page faults.  If multiple threads
+  cause page faults in the same range handled by a UFFD, the kernel queues
+  these and handles one at a time, even if the faulting address has had its
+  page filled by a previous fault handler call for one one of the other
+  threads.  In this case the subsequent page faults, which have already been
+  handled, should just wake the faulting thread and allow it to resume. Instead
+  it fell through to attempting to copy the data again, resulting in an error
+  (``EEXIST`` from ``ioctl``) causing the fault handler thread to exit. (`#274
+  <https://github.com/asdf-format/asdf/issues/274>`_)
+- Fixed auto-selection of decompression mode.  Lazy decompression was only
+  being used if explicitly requested and not as the default on supported
+  platforms (i.e. Linux). (`#276
+  <https://github.com/asdf-format/asdf/issues/276>`_)
+- Several fixes to logging:
+
+  - Setting `asdf_log_cfg_t.level` to `ASDF_LOG_NONE` now disables logging.
+    Previously ``ASDF_LOG_NONE`` was ``0``, the same as an unset level, so it
+    selected the default level instead.  The default is now the new
+    ``ASDF_LOG_DEFAULT=0``, implying to use the global default
+    (`ASDF_LOG_WARN`) and `ASDF_LOG_NONE` is higher than every message
+    severity.
+
+    This also fixes building with ``--with-log-default=NONE`` (or
+    ``-DLOG_DEFAULT=NONE``), which logged everything instead of nothing.
+  - Explicitly setting `asdf_log_cfg_t.level` to `ASDF_LOG_WARN` was
+    treated as unset, so the ``ASDF_LOG_LEVEL`` environment variable took
+    precedence over it.
+  - Log output is colorized only when the stream is a terminal, rather than
+    always in builds with color support, which wrote escape codes into log
+    files and pipes.  The new ``ASDF_LOG_COLOR`` environment variable forces
+    color on (``1``) or off (``0``), but `asdf_log_cfg_t.no_color` takes
+    precedence if set explicitly.
+  - Fixed doubled or trailing spaces in log lines when some of the log fields
+    are disabled.
+  - The log stream is flushed after every message, so messages are not lost or
+    delayed when it is buffered.
+  - Logging no longer clobbers ``errno``.
+  - ``asdf_file_log`` with an invalid level no longer reads out of bounds; the
+    message is dropped.
+  - Lowered the very frequent YAML scalar type inference messages from
+    ``DEBUG`` to ``TRACE``, so ``DEBUG`` logging is no longer dominated by
+    them.
+
+
 libasdf 0.2.1 (2026-10-09)
 ==========================
 
