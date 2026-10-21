@@ -116,7 +116,11 @@ typedef struct {
     asdf_datatype_t datatype;
     /** The byteorder of the array data where applicable */
     asdf_byteorder_t byteorder;
-    /** Optional offset into the binary block where the array data begins */
+    /**
+     * Optional offset, in bytes, into the binary block where the array data
+     * begins; for compressed blocks this is an offset into the uncompressed
+     * data
+     */
     uint64_t offset;
     /**
      * Optional strides to use when iterating/index array data (an array of
@@ -264,6 +268,11 @@ ASDF_DECLARE_EXTENSION(ndarray, asdf_ndarray_t);
  * use `asdf_ndarray_read_all` or the ``asdf_ndarray_read_tile_*``
  * functions to read it converted to a host datatype and native byte order.
  *
+ * If the array has a non-zero :c:member:`offset <asdf_ndarray_t.offset>`
+ * the returned pointer is to the start of the array's data at that offset
+ * into the (decompressed) block data, and the returned size is the number of
+ * bytes in the block from that point on.
+ *
  * The returned pointer is owned by ``ndarray`` and remains valid until the
  * ndarray (or its file) is destroyed; the caller must not free it.
  *
@@ -271,7 +280,8 @@ ASDF_DECLARE_EXTENSION(ndarray, asdf_ndarray_t);
  * :param size: If non-``NULL``, receives the size of the data in bytes
  * :return: A pointer to the (decompressed) data, or ``NULL`` on error -- for
  *   example if the array has no associated data block (such as an inline
- *   array) or if decompression failed
+ *   array), if decompression failed, or if the array's offset lies beyond
+ *   the end of its block data
  */
 ASDF_EXPORT const void *asdf_ndarray_data(asdf_ndarray_t *ndarray, size_t *size);
 
@@ -282,6 +292,11 @@ ASDF_EXPORT const void *asdf_ndarray_data(asdf_ndarray_t *ndarray, size_t *size)
  * For arrays stored in a compressed block this returns the still-compressed
  * bytes exactly as they appear in the file.  For uncompressed arrays it is
  * equivalent to `asdf_ndarray_data`.
+ *
+ * In particular, an array's :c:member:`offset <asdf_ndarray_t.offset>` is
+ * applied to the returned pointer and size for uncompressed arrays (just as
+ * in `asdf_ndarray_data`), but not for compressed arrays: the offset is into
+ * the uncompressed data, so the full compressed block data is returned.
  *
  * As with `asdf_ndarray_data`, the returned pointer is owned by ``ndarray``
  * and must not be freed by the caller.

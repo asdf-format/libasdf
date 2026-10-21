@@ -285,6 +285,86 @@ MU_TEST(read_compressed_block) {
 
 
 /**
+ * Read compressed arrays with an offset into their (uncompressed) block data
+ *
+ * Each array in offset.asdf is a view starting 17 bytes (arbitrarily) into
+ * the 4th page (also arbitrary) of same paged pattern used in compressed.asdf,
+ * so the view's data starts past several pages that must be decompressed first
+ * (in lazy mode), and the 5th page's canary byte appears at index 4096 - 17 of
+ * the view.
+ */
+MU_TEST(read_compressed_ndarray_offset) {
+    const char *comp = munit_parameters_get(params, "comp");
+    const char *filename = get_fixture_file_path("offset.asdf");
+    asdf_config_t config = {
+        .decomp = {
+            .mode = decomp_mode_from_param(munit_parameters_get(params, "mode"))
+        }
+    };
+    asdf_file_t *file = asdf_open_file_ex(filename, "r", &config);
+    assert_not_null(file);
+    asdf_ndarray_t *ndarray = NULL;
+    assert_int(asdf_get_ndarray(file, comp, &ndarray), ==, ASDF_VALUE_OK);
+
+    const size_t page_size = 4096;
+    const size_t num_pages = 100;
+    const size_t offset = (3 * page_size) + 17;
+    const size_t nelem = (page_size * num_pages) - offset;
+    assert_int(ndarray->offset, ==, offset);
+    assert_int(ndarray->shape[0], ==, nelem);
+
+    uint8_t *expected = malloc(nelem);
+
+    if (!expected)
+        return MUNIT_ERROR;
+
+    for (size_t idx = 0; idx < nelem; idx++) {
+        size_t base_idx = idx + offset;
+
+        if (base_idx % page_size == 0)
+            expected[idx] = (base_idx / page_size) % 256;
+        else
+            expected[idx] = base_idx % 256;
+    }
+
+    size_t size = 0;
+    const uint8_t *data = asdf_ndarray_data(ndarray, &size);
+    assert_not_null(data);
+    assert_null(asdf_error(file));
+    assert_size(size, ==, nelem);
+    assert_uint8(data[0], ==, 17);
+    assert_uint8(data[page_size - 17], ==, 4);
+    assert_memory_equal(size, data, expected);
+
+    /* The raw data is the whole compressed block, without the offset */
+    size_t raw_size = 0;
+    size_t block_raw_size = 0;
+    const void *raw = asdf_ndarray_data_raw(ndarray, &raw_size);
+    assert_not_null(raw);
+    asdf_block_t *block = asdf_ndarray_block(ndarray);
+    assert_not_null(block);
+    assert_ptr_equal(raw, asdf_block_data_raw(block, &block_raw_size));
+    assert_size(raw_size, ==, block_raw_size);
+    assert_size(raw_size, <, nelem);
+
+    /* read_all, etc. returns the data starting from the offset */
+    void *buf = NULL;
+    assert_int(asdf_ndarray_read_all(ndarray, ASDF_DATATYPE_SOURCE, &buf), ==, ASDF_NDARRAY_OK);
+    assert_memory_equal(nelem, buf, expected);
+    free(buf);
+
+    asdf_ndarray_err_t err = ASDF_NDARRAY_ERR_INVAL;
+    assert_uint8(asdf_ndarray_at_err(ndarray, uint8_t, &err, (page_size * 50) - offset), ==, 50);
+    assert_int(err, ==, ASDF_NDARRAY_OK);
+
+    free(expected);
+    asdf_ndarray_destroy(ndarray);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+/**
  * Test decompression to a temp file (set memory threshold very low to force it)
  */
 MU_TEST(read_compressed_block_to_file) {
@@ -1617,6 +1697,7 @@ MU_TEST_SUITE(
     MU_RUN_TEST(write_compressed_ndarray, comp_test_params),
     MU_RUN_TEST(read_compressed_reference_file, comp_mode_test_params),
     MU_RUN_TEST(read_compressed_block, comp_mode_test_params),
+    MU_RUN_TEST(read_compressed_ndarray_offset, comp_mode_test_params),
     MU_RUN_TEST(read_compressed_block_to_file, comp_test_params),
     MU_RUN_TEST(read_compressed_block_to_file_on_threshold, comp_test_params),
     MU_RUN_TEST(open_close_compressed_block, comp_mode_test_params),

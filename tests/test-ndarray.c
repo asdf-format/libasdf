@@ -7,7 +7,6 @@
 #include <string.h>
 
 #include "asdf/core/ndarray.h"
-#include "asdf/core/software.h"
 #include "asdf/extension.h"
 #include "asdf/extension_util.h"
 #include "asdf/file.h"
@@ -1237,6 +1236,161 @@ MU_TEST(ndarray_read_at) {
 
 
 /*
+ * Read arrays that are contiguous views at an offset into a larger base
+ * array's block (offset.asdf).  The offset is applied to the pointer
+ * returned by asdf_ndarray_data (and asdf_ndarray_data_raw, since none of
+ * these are compressed), and to all the read routines.
+ *
+ * For compressed arrays with offsets see ``read_compressed_ndarray_offset``
+ * in ``test-compression.c`` which is similar, though this checks a wider
+ * range of cases.  See the next test ``ndarray_offset_out_of_bounds`` for
+ * OOB error handling; this test is all sane cases.
+ */
+MU_TEST(ndarray_offset) {
+    const char *path = get_fixture_file_path("offset.asdf");
+    asdf_file_t *file = asdf_open(path, "r");
+    assert_not_null(file);
+
+    asdf_ndarray_t *ndarray = NULL;
+    asdf_ndarray_err_t err = ASDF_NDARRAY_ERR_INVAL;
+    size_t size = 0;
+    size_t raw_size = 0;
+    void *buf = NULL;
+
+    /* u1: arange(256)[16:] */
+    assert_int(asdf_get_ndarray(file, "u1", &ndarray), ==, ASDF_VALUE_OK);
+    assert_int(ndarray->offset, ==, 16);
+    const uint8_t *u1_data = asdf_ndarray_data(ndarray, &size);
+    assert_not_null(u1_data);
+    assert_size(size, ==, 256 - 16);
+    assert_uint8(u1_data[0], ==, 16);
+    assert_uint8(u1_data[size - 1], ==, 255);
+    assert_ptr_equal(asdf_ndarray_data_raw(ndarray, &raw_size), u1_data);
+    assert_size(raw_size, ==, size);
+
+    assert_int(asdf_ndarray_read_all(ndarray, ASDF_DATATYPE_SOURCE, &buf), ==, ASDF_NDARRAY_OK);
+
+    for (size_t idx = 0; idx < 240; idx++)
+        assert_uint8(((uint8_t *)buf)[idx], ==, idx + 16);
+
+    free(buf);
+    buf = NULL;
+    assert_uint8(asdf_ndarray_at_err(ndarray, uint8_t, &err, 0), ==, 16);
+    assert_int(err, ==, ASDF_NDARRAY_OK);
+    assert_uint8(asdf_ndarray_at_err(ndarray, uint8_t, &err, 239), ==, 255);
+    assert_int(err, ==, ASDF_NDARRAY_OK);
+    asdf_ndarray_destroy(ndarray);
+
+    /* i4_2d: arange(100).reshape(10, 10)[3:] i.e. offset by 3 rows */
+    assert_int(asdf_get_ndarray(file, "i4_2d", &ndarray), ==, ASDF_VALUE_OK);
+    assert_int(ndarray->offset, ==, 3 * 10 * sizeof(int32_t));
+    const int32_t *i4_data = asdf_ndarray_data(ndarray, &size);
+    assert_not_null(i4_data);
+    assert_size(size, ==, 7 * 10 * sizeof(int32_t));
+    assert_int32(i4_data[0], ==, 30);
+
+    assert_int(asdf_ndarray_read_all(ndarray, ASDF_DATATYPE_INT32, &buf), ==, ASDF_NDARRAY_OK);
+
+    for (int32_t idx = 0; idx < 70; idx++)
+        assert_int32(((int32_t *)buf)[idx], ==, idx + 30);
+
+    free(buf);
+    buf = NULL;
+    assert_int32(asdf_ndarray_at_err(ndarray, int32_t, &err, 0, 0), ==, 30);
+    assert_int(err, ==, ASDF_NDARRAY_OK);
+    assert_int32(asdf_ndarray_at_err(ndarray, int32_t, &err, 6, 9), ==, 99);
+    assert_int(err, ==, ASDF_NDARRAY_OK);
+
+    /* 2x2 tile at row 1, column 2 of the view */
+    int32_t expected_tile[] = {42, 43, 52, 53};
+    err = asdf_ndarray_read_tile_2d(ndarray, 2, 1, 2, 2, NULL, ASDF_DATATYPE_INT32, &buf);
+    assert_int(err, ==, ASDF_NDARRAY_OK);
+    assert_memory_equal(sizeof(expected_tile), buf, expected_tile);
+    free(buf);
+    buf = NULL;
+    asdf_ndarray_destroy(ndarray);
+
+    /* u2_be: big-endian arange(64)[5:], read with byteswapping */
+    assert_int(asdf_get_ndarray(file, "u2_be", &ndarray), ==, ASDF_VALUE_OK);
+    assert_int(ndarray->offset, ==, 5 * sizeof(uint16_t));
+    const uint8_t *u2_data = asdf_ndarray_data(ndarray, &size);
+    assert_not_null(u2_data);
+    assert_size(size, ==, 59 * sizeof(uint16_t));
+    assert_uint8(u2_data[0], ==, 0);
+    assert_uint8(u2_data[1], ==, 5);
+
+    assert_int(asdf_ndarray_read_all(ndarray, ASDF_DATATYPE_UINT16, &buf), ==, ASDF_NDARRAY_OK);
+
+    for (uint16_t idx = 0; idx < 59; idx++)
+        assert_uint16(((uint16_t *)buf)[idx], ==, idx + 5);
+
+    free(buf);
+    buf = NULL;
+    assert_uint16(asdf_ndarray_at_err(ndarray, uint16_t, &err, 58), ==, 63);
+    assert_int(err, ==, ASDF_NDARRAY_OK);
+    asdf_ndarray_destroy(ndarray);
+
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+/*
+ * An offset that leaves too little (or no) block data for the array, or that
+ * lies beyond the end of the block entirely
+ */
+MU_TEST(ndarray_offset_out_of_bounds) {
+    const char *path = get_fixture_file_path("255.asdf");
+    asdf_file_t *file = asdf_open(path, "r");
+    assert_not_null(file);
+
+    asdf_ndarray_t *ndarray = NULL;
+    size_t size = 0;
+    void *buf = NULL;
+    assert_int(asdf_get_ndarray(file, "data", &ndarray), ==, ASDF_VALUE_OK);
+    assert_int(ndarray->shape[0], ==, 256);
+
+    /* Leaves 1 byte of the 256-byte block for a 256-element array
+     * (shape is still set to [256] which is why this is OOB) */
+    ndarray->offset = 255;
+    const uint8_t *data = asdf_ndarray_data(ndarray, &size);
+    assert_not_null(data);
+    assert_size(size, ==, 1);
+    assert_uint8(data[0], ==, 255);
+    assert_int(
+        asdf_ndarray_read_all(ndarray, ASDF_DATATYPE_SOURCE, &buf), ==,
+        ASDF_NDARRAY_ERR_OUT_OF_BOUNDS);
+    assert_null(buf);
+
+    /* Exactly at the end of the block: an empty, but valid, pointer */
+    ndarray->offset = 256;
+    assert_not_null(asdf_ndarray_data(ndarray, &size));
+    assert_size(size, ==, 0);
+    assert_int(
+        asdf_ndarray_read_all(ndarray, ASDF_DATATYPE_SOURCE, &buf), ==,
+        ASDF_NDARRAY_ERR_OUT_OF_BOUNDS);
+    assert_null(buf);
+
+    /* Beyond the end of the block */
+    ndarray->offset = 300;
+    size = 1;
+    assert_null(asdf_ndarray_data(ndarray, &size));
+    assert_size(size, ==, 0);
+    size = 1;
+    assert_null(asdf_ndarray_data_raw(ndarray, &size));
+    assert_size(size, ==, 0);
+    assert_int(
+        asdf_ndarray_read_all(ndarray, ASDF_DATATYPE_SOURCE, &buf), ==,
+        ASDF_NDARRAY_ERR_OUT_OF_BOUNDS);
+    assert_null(buf);
+
+    asdf_ndarray_destroy(ndarray);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+/*
  * Write and read back an extension that embeds an ndarray as one of its
  * properties (the test_affine extension above).  The extension's serialize
  * callback builds the matrix ndarray on the stack and allocates its data but
@@ -1299,6 +1453,8 @@ MU_TEST_SUITE(
     MU_RUN_TEST(heap_use_after_free_issue_63),
     MU_RUN_TEST(ndarray_data_alloc_storage_set_ordering),
     MU_RUN_TEST(ndarray_read_at),
+    MU_RUN_TEST(ndarray_offset),
+    MU_RUN_TEST(ndarray_offset_out_of_bounds),
     MU_RUN_TEST(ndarray_extension_embedded_ndarray)
 );
 

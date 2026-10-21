@@ -436,6 +436,7 @@ EXTRA_DIST += \
     fixtures/ndarray-inline.asdf \
     fixtures/ndarray-out.asdf \
     fixtures/numeric.asdf \
+    fixtures/offset.asdf \
     fixtures/parse-minimal.asdf \
     fixtures/parse-minimal-empty-tree.asdf \
     fixtures/parse-minimal-extra-comment.asdf \

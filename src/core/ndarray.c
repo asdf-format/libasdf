@@ -1,11 +1,11 @@
 #include <assert.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/mman.h>
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -1570,6 +1570,20 @@ ASDF_REGISTER_EXTENSION(
 // clang-format on
 
 
+/*
+ * Whether the block's raw data (as returned by asdf_block_data_raw) is still
+ * compressed: in-memory block content tracks this itself, while data read
+ * from a file is compressed if its block header names a compression.
+ */
+static bool block_raw_is_compressed(asdf_block_t *block) {
+    if (block->info.data)
+        return block->info.data_is_compressed;
+
+    const char *compression = asdf_block_compression_orig(block);
+    return compression && *compression /* != \0 */;
+}
+
+
 /* ndarray methods */
 const void *asdf_ndarray_data_impl(asdf_ndarray_t *ndarray, size_t *size, bool raw) {
     if (!ndarray || !ndarray->internal)
@@ -1608,10 +1622,58 @@ const void *asdf_ndarray_data_impl(asdf_ndarray_t *ndarray, size_t *size, bool r
         }
     }
 
-    if (raw)
-        return asdf_block_data_raw(internal->block, size);
+    asdf_block_t *block = internal->block;
+    size_t block_size = 0;
+    const void *data = NULL;
 
-    return asdf_block_data(internal->block, size);
+    if (raw && block_raw_is_compressed(block)) {
+        /* The offset is into the uncompressed data, so is meaningless here */
+        if (ndarray->offset > 0)
+            ASDF_LOG(
+                internal->file,
+                ASDF_LOG_DEBUG,
+                "ndarray offset %" PRIu64 " not applied to raw compressed block data",
+                ndarray->offset);
+
+        return asdf_block_data_raw(block, size);
+    }
+
+    data = raw ? asdf_block_data_raw(block, &block_size) : asdf_block_data(block, &block_size);
+
+    if (!data || ndarray->offset == 0) {
+        if (size)
+            *size = block_size;
+
+        return data;
+    }
+
+    if (UNLIKELY(ndarray->offset > block_size)) {
+        ASDF_LOG(
+            internal->file,
+            ASDF_LOG_ERROR,
+            "ndarray offset %" PRIu64 " is beyond the end of its block data (%zu bytes)",
+            ndarray->offset,
+            block_size);
+
+        if (size)
+            *size = 0;
+
+        return NULL;
+    }
+
+    size_t remaining = block_size - (size_t)ndarray->offset;
+
+    ASDF_LOG(
+        internal->file,
+        ASDF_LOG_DEBUG,
+        "applying ndarray offset %" PRIu64 " to block data (%zu bytes remaining)",
+        ndarray->offset,
+        remaining);
+
+    if (size)
+        *size = remaining;
+
+    return (const uint8_t *)data + ndarray->offset;
 }
 
 

@@ -38,25 +38,25 @@ def make_byteorder_asdf():
     return f
 
 
+PAGE_SIZE = 4096
+
+
+def make_paged_array(num_pages=100, page_size=PAGE_SIZE):
+    """Each page starts with its page number, rest repeating pattern."""
+    arr = np.empty(num_pages * page_size, dtype=np.uint8)
+    for idx in range(num_pages):
+        page_start = idx * page_size
+        arr[page_start:page_start + page_size] = np.arange(page_size) % 256
+        arr[page_start] = idx % 256
+
+    return arr
+
+
 def make_compressed_asdf():
-    num_pages = 100
-    page_size = 4096
-    total_size = num_pages * page_size
-
-    def make_array():
-        """Each page starts with its page number, rest repeating pattern."""
-        arr = np.empty(total_size, dtype=np.uint8)
-        for idx in range(num_pages):
-            page_start = idx * page_size
-            arr[page_start:page_start + page_size] = np.arange(page_size) % 256
-            arr[page_start] = idx % 256
-
-        return arr
-
     f = asdf.AsdfFile()
-    f['bzp2'] = make_array()
-    f['zlib'] = make_array()
-    f['lz4'] = make_array()
+    f['bzp2'] = make_paged_array()
+    f['zlib'] = make_paged_array()
+    f['lz4'] = make_paged_array()
     f.set_array_compression(f['bzp2'], 'bzp2')
     f.set_array_compression(f['zlib'], 'zlib')
     f.set_array_compression(f['lz4'], 'lz4')
@@ -162,6 +162,36 @@ def make_numeric_asdf():
     return f
 
 
+def make_offset_asdf():
+    """
+    Arrays that are contiguous views into a larger base array, so that
+    the asdf library writes the base array's block and gives each view an
+    ``offset``.
+
+    The compressed views use an offset a few pages into the (uncompressed)
+    data, so that reading them depends on decompressing past page/chunk
+    boundaries.
+
+    Recent versions of the asdf library default to writing only the view's
+    own data (``default_array_save_base = False``), so saving the base array
+    is requested explicitly.
+    """
+    f = asdf.AsdfFile()
+    f['u1'] = np.arange(256, dtype='u1')[16:]
+    f['i4_2d'] = np.arange(100, dtype='<i4').reshape((10, 10))[3:]
+    f['u2_be'] = np.arange(64, dtype='>u2')[5:]
+
+    for comp in ('bzp2', 'zlib', 'lz4'):
+        f[comp] = make_paged_array()[3 * PAGE_SIZE + 17:]
+        f.set_array_compression(f[comp], comp)
+
+    for view in f.tree.values():
+        if isinstance(view, np.ndarray):
+            f.set_array_save_base(view, True)
+
+    return f
+
+
 def make_tiles_asdf():
     f = asdf.AsdfFile()
 
@@ -195,6 +225,7 @@ TEST_FILES = {
     'datatypes.asdf': make_datatypes_asdf,
     'multi-block.asdf': make_multi_block_asdf,
     'numeric.asdf': make_numeric_asdf,
+    'offset.asdf': make_offset_asdf,
     'tiles.asdf': make_tiles_asdf,
 }
 """Maps the names of test files to the function that generates it"""
