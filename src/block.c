@@ -899,10 +899,11 @@ bool asdf_block_checksum_verify(
                 meta->asdf_library->name,
                 meta->asdf_library->version->version);
             data = asdf_block_data(block, &size);
-            asdf_meta_destroy(meta);
         } else {
             data = asdf_block_data_raw(block, &size);
         }
+
+        asdf_meta_destroy(meta);
     } else {
         data = asdf_block_data_raw(block, &size);
     }

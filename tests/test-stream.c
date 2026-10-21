@@ -6,7 +6,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "block.h"
 #include "stream.h"
 #include "stream_intern.h"
 
@@ -241,6 +240,7 @@ MU_TEST(stream_file_open_mem_realloc) {
 
 MU_TEST_SUITE(
     stream,
+    MU_RUN_TEST(file_scan_token_no_match),
     MU_RUN_TEST(file_scan_token_at_beginning),
     MU_RUN_TEST(file_scan_token_at_end),
     MU_RUN_TEST(file_scan_token_in_middle),
