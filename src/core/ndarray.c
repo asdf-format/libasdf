@@ -1,11 +1,11 @@
 #include <assert.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/mman.h>
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -186,6 +186,98 @@ failure:
     free(strides);
     return err;
 }
+
+
+/*
+ * Compute into ``strides`` (of length ``ndim``) the C-contiguous byte strides
+ * of an array with the given shape and element size
+ *
+ * As in numpy, a zero-length dimension is treated as length 1 when computing
+ * the strides of the dimensions outside it.  Returns false if the strides
+ * would overflow an int64_t.
+ */
+static bool asdf_ndarray_c_strides(
+    const uint64_t *shape, uint32_t ndim, uint64_t elsize, int64_t *strides) {
+    if (UNLIKELY(elsize == 0 || elsize > INT64_MAX))
+        return false;
+
+    int64_t stride = (int64_t)elsize;
+
+    for (uint32_t dim = ndim; dim-- > 0;) {
+        uint64_t extent = shape[dim] > 0 ? shape[dim] : 1;
+        strides[dim] = stride;
+
+        if (extent > (uint64_t)INT64_MAX / (uint64_t)stride)
+            return false;
+
+        stride *= (int64_t)extent;
+    }
+
+    return true;
+}
+
+
+/*
+ * Whether the ndarray has no strides, or strides that are just the
+ * C-contiguous strides implied by its shape and datatype, so that they can be
+ * ignored
+ *
+ * As in numpy, the stride of a dimension of length 1 is irrelevant, and an
+ * empty array is trivially contiguous.
+ */
+static bool asdf_ndarray_strides_trivial(const asdf_ndarray_t *ndarray) {
+    if (!ndarray->strides || ndarray->ndim == 0 || asdf_ndarray_size(ndarray) == 0)
+        return true;
+
+    uint64_t elsize = asdf_datatype_size((asdf_datatype_t *)&ndarray->datatype);
+
+    if (UNLIKELY(elsize == 0 || elsize > INT64_MAX))
+        return false;
+
+    int64_t expected = (int64_t)elsize;
+
+    for (uint32_t dim = ndarray->ndim; dim-- > 0;) {
+        uint64_t extent = ndarray->shape[dim];
+
+        if (extent > 1 && ndarray->strides[dim] != expected)
+            return false;
+
+        if (extent > (uint64_t)INT64_MAX / (uint64_t)expected)
+            return false;
+
+        expected *= (int64_t)extent;
+    }
+
+    return true;
+}
+
+
+#ifdef ASDF_LOG_ENABLED
+static void log_strides(asdf_value_t *value, const asdf_ndarray_t *ndarray) {
+    if (!ndarray->strides)
+        return;
+
+    const char *path = asdf_value_path(value);
+
+    if (asdf_ndarray_strides_trivial(ndarray)) {
+        ASDF_LOG(
+            value->file,
+            ASDF_LOG_DEBUG,
+            "ndarray at %s has C-contiguous strides; they will be ignored",
+            path);
+    } else {
+        ASDF_LOG(
+            value->file,
+            ASDF_LOG_DEBUG,
+            "ndarray at %s has non-contiguous strides; they are applied by the "
+            "asdf_ndarray_read_* functions but not to asdf_ndarray_data",
+            path);
+    }
+}
+#else
+static void log_strides(UNUSED(asdf_value_t *value), UNUSED(const asdf_ndarray_t *ndarray)) {
+}
+#endif
 
 
 static asdf_value_err_t asdf_ndarray_parse_block_data(
@@ -823,6 +915,7 @@ static asdf_value_err_t asdf_ndarray_deserialize(
         goto cleanup;
 
     warn_datatype_tag_version(value, &ndarray->datatype);
+    log_strides(value, ndarray);
 
     ndarray->source = source;
     internal->file = value->file;
@@ -1153,16 +1246,38 @@ static asdf_sequence_t *asdf_ndarray_serialize_seq_level(
 }
 
 
+static const void *asdf_ndarray_data_impl(asdf_ndarray_t *ndarray, size_t *size, bool raw);
+static asdf_ndarray_err_t asdf_ndarray_gather(asdf_ndarray_t *ndarray, void **dst);
+
+
 static asdf_sequence_t *asdf_ndarray_serialize_inline_data(
     asdf_file_t *file, const asdf_ndarray_t *ndarray) {
     size_t elem_offset = 0;
     size_t size = 0;
+    void *gathered = NULL;
+    const void *data = NULL;
+    asdf_sequence_t *seq = NULL;
 
     /* Materialize the ndarray's data (from its managed block, or by parsing
-     * inline YAML) and serialize it element-by-element into a YAML sequence. */
-    const void *data = asdf_ndarray_data((asdf_ndarray_t *)ndarray, &size);
+     * inline YAML) and serialize it element-by-element into a YAML sequence.
+     * Strided data is first gathered into a contiguous buffer, since inline
+     * data is always written in C order. */
+    if (asdf_ndarray_strides_trivial(ndarray)) {
+        data = asdf_ndarray_data_impl((asdf_ndarray_t *)ndarray, &size, false);
+    } else {
+        ASDF_LOG(file, ASDF_LOG_DEBUG, "gathering strided ndarray data for inline serialization");
 
-    return asdf_ndarray_serialize_seq_level(file, ndarray, data, 0, &elem_offset);
+        if (asdf_ndarray_gather((asdf_ndarray_t *)ndarray, &gathered) != ASDF_NDARRAY_OK) {
+            ASDF_LOG(file, ASDF_LOG_ERROR, "failed to read strided ndarray data to write inline");
+            return NULL;
+        }
+
+        data = gathered;
+    }
+
+    seq = asdf_ndarray_serialize_seq_level(file, ndarray, data, 0, &elem_offset);
+    free(gathered);
+    return seq;
 }
 
 
@@ -1181,16 +1296,7 @@ static asdf_value_err_t asdf_ndarray_serialize_strides(
     asdf_value_err_t err = ASDF_VALUE_OK;
     asdf_sequence_t *strides_seq = NULL;
 
-    bool trivial = true;
-
-    for (uint32_t idx = 0; idx < ndarray->ndim; idx++) {
-        if (ndarray->strides[idx] != 1) {
-            trivial = false;
-            break;
-        }
-    }
-
-    if (UNLIKELY(!trivial)) {
+    if (UNLIKELY(!asdf_ndarray_strides_trivial(ndarray))) {
         strides_seq = asdf_sequence_create(file);
 
         if (UNLIKELY(!strides_seq))
@@ -1570,9 +1676,23 @@ ASDF_REGISTER_EXTENSION(
 // clang-format on
 
 
+/*
+ * Whether the block's raw data (as returned by asdf_block_data_raw) is still
+ * compressed: in-memory block content tracks this itself, while data read
+ * from a file is compressed if its block header names a compression.
+ */
+static bool block_raw_is_compressed(asdf_block_t *block) {
+    if (block->info.data)
+        return block->info.data_is_compressed;
+
+    const char *compression = asdf_block_compression_orig(block);
+    return compression && *compression /* != \0 */;
+}
+
+
 /* ndarray methods */
-const void *asdf_ndarray_data_impl(asdf_ndarray_t *ndarray, size_t *size, bool raw) {
-    if (!ndarray || !ndarray->internal)
+static const void *asdf_ndarray_data_impl(asdf_ndarray_t *ndarray, size_t *size, bool raw) {
+    if (UNLIKELY(!ndarray || !ndarray->internal))
         return NULL;
 
     asdf_ndarray_internal_t *internal = ndarray->internal;
@@ -1608,19 +1728,85 @@ const void *asdf_ndarray_data_impl(asdf_ndarray_t *ndarray, size_t *size, bool r
         }
     }
 
-    if (raw)
-        return asdf_block_data_raw(internal->block, size);
+    asdf_block_t *block = internal->block;
+    size_t block_size = 0;
+    const void *data = NULL;
 
-    return asdf_block_data(internal->block, size);
+    if (raw && block_raw_is_compressed(block)) {
+        /* The offset is into the uncompressed data, so is meaningless here */
+        if (ndarray->offset > 0)
+            ASDF_LOG(
+                internal->file,
+                ASDF_LOG_DEBUG,
+                "ndarray offset %" PRIu64 " not applied to raw compressed block data",
+                ndarray->offset);
+
+        return asdf_block_data_raw(block, size);
+    }
+
+    data = raw ? asdf_block_data_raw(block, &block_size) : asdf_block_data(block, &block_size);
+
+    if (!data || ndarray->offset == 0) {
+        if (size)
+            *size = block_size;
+
+        return data;
+    }
+
+    if (UNLIKELY(ndarray->offset > block_size)) {
+        ASDF_LOG(
+            internal->file,
+            ASDF_LOG_ERROR,
+            "ndarray offset %" PRIu64 " is beyond the end of its block data (%zu bytes)",
+            ndarray->offset,
+            block_size);
+
+        if (size)
+            *size = 0;
+
+        return NULL;
+    }
+
+    size_t remaining = block_size - (size_t)ndarray->offset;
+
+    ASDF_LOG(
+        internal->file,
+        ASDF_LOG_DEBUG,
+        "applying ndarray offset %" PRIu64 " to block data (%zu bytes remaining)",
+        ndarray->offset,
+        remaining);
+
+    if (size)
+        *size = remaining;
+
+    return (const uint8_t *)data + ndarray->offset;
+}
+
+
+/*
+ * Log that the data pointer returned to the user does not account for the
+ * array's strides, if it has non-trivial strides
+ */
+static void log_data_strides(asdf_ndarray_t *ndarray) {
+    if (UNLIKELY(!ndarray || !ndarray->internal) || LIKELY(asdf_ndarray_strides_trivial(ndarray)))
+        return;
+
+    ASDF_LOG(
+        ndarray->internal->file,
+        ASDF_LOG_DEBUG,
+        "ndarray has non-contiguous strides, which are not applied to its raw data "
+        "pointer; use the asdf_ndarray_read_* functions to read it with its strides");
 }
 
 
 const void *asdf_ndarray_data_raw(asdf_ndarray_t *ndarray, size_t *size) {
+    log_data_strides(ndarray);
     return asdf_ndarray_data_impl(ndarray, size, true);
 }
 
 
 const void *asdf_ndarray_data(asdf_ndarray_t *ndarray, size_t *size) {
+    log_data_strides(ndarray);
     return asdf_ndarray_data_impl(ndarray, size, false);
 }
 
@@ -1757,40 +1943,113 @@ static inline bool should_byteswap(size_t elsize, asdf_byteorder_t byteorder) {
 }
 
 
+/*
+ * Determine the byte strides to use for reading the ndarray's data into
+ * ``strides`` (of length ``ndarray->ndim``): its own strides if it has
+ * non-trivial strides, otherwise the C-contiguous strides for its shape
+ */
 static asdf_ndarray_err_t asdf_ndarray_read_tile_init_strides(
-    const uint64_t *shape, uint32_t ndim, int64_t **strides_out) {
-    assert(shape);
+    const asdf_ndarray_t *ndarray, size_t src_elsize, int64_t **strides_out) {
     assert(strides_out);
-    asdf_ndarray_err_t err = ASDF_NDARRAY_OK;
-    uint32_t inner_dim = ndim - 1;
+    uint32_t ndim = ndarray->ndim;
     int64_t *strides = malloc(sizeof(int64_t) * ndim);
 
-    if (!strides) {
-        err = ASDF_NDARRAY_ERR_OOM;
-        goto cleanup;
-    }
+    if (UNLIKELY(!strides))
+        return ASDF_NDARRAY_ERR_OOM;
 
-    strides[inner_dim] = 1;
-
-    if (ndim > 1) {
-        for (uint32_t dim = inner_dim; dim > 0; dim--) {
-            uint64_t extent = shape[dim];
-            int64_t stride = strides[dim];
-            // Bounds checking
-            if (extent > (uint64_t)INT64_MAX / llabs(stride)) {
-                err = ASDF_NDARRAY_ERR_OUT_OF_BOUNDS;
-                goto cleanup;
-            }
-            strides[dim - 1] = stride * (int64_t)extent;
-        }
+    if (UNLIKELY(!asdf_ndarray_strides_trivial(ndarray))) {
+        memcpy(strides, ndarray->strides, sizeof(int64_t) * ndim);
+    } else if (UNLIKELY(!asdf_ndarray_c_strides(ndarray->shape, ndim, src_elsize, strides))) {
+        free(strides);
+        return ASDF_NDARRAY_ERR_OUT_OF_BOUNDS;
     }
 
     *strides_out = strides;
-cleanup:
-    if (err != ASDF_NDARRAY_OK)
-        free(strides);
+    return ASDF_NDARRAY_OK;
+}
 
-    return err;
+
+/*
+ * Check that every element of a (non-empty) array with the given shape and
+ * byte strides, starting at a pointer ``offset`` bytes into data of
+ * ``offset + data_size`` bytes, lies within that data
+ *
+ * Negative strides reach back from the starting pointer, so the lowest byte
+ * reached must not precede the start of the data (at -offset), and the
+ * highest byte reached must not exceed its end (at data_size).
+ */
+static bool asdf_ndarray_data_check_extent(
+    const uint64_t *shape,
+    const int64_t *strides,
+    uint32_t ndim,
+    size_t elsize,
+    uint64_t offset,
+    size_t data_size) {
+    /* The highest and lowest byte offsets reached relative to the start */
+    uint64_t high = elsize;
+    uint64_t low = 0;
+
+    for (uint32_t dim = 0; dim < ndim; dim++) {
+        uint64_t last = shape[dim] - 1;
+        int64_t stride = strides[dim];
+
+        /* Length 1 dimensions don't contribute */
+        if (last == 0)
+            continue;
+
+        if (UNLIKELY(stride == INT64_MIN))
+            return false;
+
+        uint64_t abs_stride = (uint64_t)llabs(stride);
+
+        if (UNLIKELY(last > UINT64_MAX / abs_stride))
+            return false;
+
+        uint64_t span = last * abs_stride;
+
+        /* Which bound (low or hi) to increment depending on the stride sign */
+        uint64_t *bound = stride < 0 ? &low : &high;
+
+        if (span > UINT64_MAX - *bound)
+            return false;
+
+        *bound += span;
+    }
+
+    return low <= offset && high <= data_size;
+}
+
+
+/*
+ * Convert one row of ``nelem`` elements starting at ``src``, spaced
+ * ``stride`` bytes apart, into contiguous elements at ``dst``; returns
+ * non-zero if any element overflowed in conversion
+ */
+static inline int asdf_ndarray_read_tile_row(
+    void *dst,
+    size_t dst_elsize,
+    const void *src,
+    size_t src_elsize,
+    uint64_t nelem,
+    int64_t stride,
+    asdf_ndarray_convert_fn_t convert) {
+
+    if (LIKELY(stride == (int64_t)src_elsize))
+        return convert(dst, src, nelem, dst_elsize);
+
+    /* Strided case: call convert element-wise over the row
+     * advancing by ``stride`` */
+    int overflow = 0;
+    uint8_t *dst_tmp = dst;
+    const uint8_t *src_tmp = src;
+
+    for (uint64_t idx = 0; idx < nelem; idx++) {
+        overflow |= convert(dst_tmp, src_tmp, 1, dst_elsize);
+        dst_tmp += dst_elsize;
+        src_tmp += stride;
+    }
+
+    return overflow;
 }
 
 
@@ -1813,13 +2072,14 @@ static inline asdf_ndarray_err_t asdf_ndarray_read_tile_main_loop(
     void *dst_tmp = dst;
 
     while (!done) {
-        overflow = convert(dst_tmp, src, inner_nelem, dst_elsize);
+        overflow |= asdf_ndarray_read_tile_row(
+            dst_tmp, dst_elsize, src, src_elsize, inner_nelem, strides[inner_dim], convert);
         dst_tmp += inner_size;
 
         uint32_t dim = inner_dim - 1;
         do {
             odometer[dim]++;
-            src += strides[dim] * src_elsize;
+            src += strides[dim];
 
             if (odometer[dim] < origin[dim] + shape[dim])
                 break;
@@ -1831,7 +2091,7 @@ static inline asdf_ndarray_err_t asdf_ndarray_read_tile_main_loop(
 
             odometer[dim] = origin[dim];
             // Back up
-            src -= shape[dim] * strides[dim] * src_elsize;
+            src -= (int64_t)shape[dim] * strides[dim];
         } while (dim-- > 0);
     }
 
@@ -1839,7 +2099,7 @@ static inline asdf_ndarray_err_t asdf_ndarray_read_tile_main_loop(
 }
 
 
-static inline bool check_bounds(
+static inline bool asdf_ndarray_bounds_check(
     const asdf_ndarray_t *ndarray, const uint64_t *origin, const uint64_t *shape) {
     // TODO: (Maybe? allow option for edge cases with fill values for out-of-bound pixels?
     uint64_t *array_shape = ndarray->shape;
@@ -1854,6 +2114,154 @@ static inline bool check_bounds(
 }
 
 
+static inline const void *asdf_ndarray_read_tile_init_data(
+    asdf_ndarray_t *ndarray,
+    size_t src_elsize,
+    int64_t **strides_out,
+    size_t *data_size_out,
+    asdf_ndarray_err_t *err) {
+
+    assert(ndarray && strides_out && err);
+    uint32_t ndim = ndarray->ndim;
+    const void *data = NULL;
+
+    *err = asdf_ndarray_read_tile_init_strides(ndarray, src_elsize, strides_out);
+
+    if (*err != ASDF_NDARRAY_OK)
+        return NULL;
+
+    data = asdf_ndarray_data_impl(ndarray, data_size_out, false);
+
+    // The tile is already known to lie within the array's shape, so it suffices to check
+    // that the data actually covers the full array (not just a tile's worth of bytes
+    // anywhere in it)
+    if (asdf_ndarray_size(ndarray) > 0 &&
+        !asdf_ndarray_data_check_extent(
+            ndarray->shape, *strides_out, ndim, src_elsize, ndarray->offset, *data_size_out)) {
+        *err = ASDF_NDARRAY_ERR_OUT_OF_BOUNDS;
+        return NULL;
+    }
+
+    return data;
+}
+
+
+/*
+ * Common implementation of asdf_ndarray_read_tile_ndim and of gathering an
+ * ndarray's (possibly strided) data into a contiguous buffer: copies the tile
+ * of ``shape`` at ``origin``, applying the array's offset and strides, using
+ * ``convert`` to convert each run of ``src_elsize``-byte source elements to
+ * ``dst_elsize``-byte destination elements
+ */
+static asdf_ndarray_err_t asdf_ndarray_read_tile_impl(
+    asdf_ndarray_t *ndarray,
+    const uint64_t *origin,
+    const uint64_t *shape,
+    size_t src_elsize,
+    size_t dst_elsize,
+    asdf_ndarray_convert_fn_t convert,
+    void **dst) {
+    void *new_buf = NULL;
+    int64_t *strides = NULL;
+    uint64_t *odometer = NULL;
+    uint32_t ndim = ndarray->ndim;
+    bool overflow = false;
+    asdf_ndarray_err_t err = ASDF_NDARRAY_ERR_INVAL;
+
+    // Check bounds
+    if (!asdf_ndarray_bounds_check(ndarray, origin, shape))
+        return ASDF_NDARRAY_ERR_OUT_OF_BOUNDS;
+
+    size_t tile_nelems = ndim > 0 ? 1 : 0;
+
+    for (uint32_t dim = 0; dim < ndim; dim++) {
+        tile_nelems *= shape[dim];
+    }
+
+    size_t tile_size = dst_elsize * tile_nelems;
+    size_t data_size = 0;
+    const void *data = NULL;
+
+    // Determine element byte strides (the array's own, or C-contiguous)
+    if (LIKELY(ndim > 0)) {
+        data = asdf_ndarray_read_tile_init_data(ndarray, src_elsize, &strides, &data_size, &err);
+
+        if (err != ASDF_NDARRAY_OK)
+            goto cleanup;
+    }
+
+    // If the function is passed a null pointer, allocate memory for the tile ourselves
+    // User is responsible for freeing it.
+    void *tile = *dst;
+
+    if (!tile) {
+        // NOLINTNEXTLINE(clang-analyzer-optin.portability.UnixAPI)
+        tile = malloc(tile_size);
+        new_buf = tile;
+    }
+
+    if (UNLIKELY(!tile)) {
+        err = ASDF_NDARRAY_ERR_OOM;
+        goto cleanup;
+    }
+
+    // Special case, if size of the array is 0 just return now.  We do still malloc though even if
+    // it's a bit pointless, just to ensure that the returned pointer can be freed successfully
+    if (UNLIKELY(0 == ndim || 0 == tile_size)) {
+        *dst = tile;
+        err = ASDF_NDARRAY_OK;
+        goto cleanup;
+    }
+
+    uint32_t inner_dim = ndim - 1;
+    // Byte offset of the tile's first element from the start of the array data
+    int64_t offset = 0;
+    bool is_1d = true;
+
+    for (uint32_t dim = 0; dim < ndim; dim++) {
+        offset += (int64_t)origin[dim] * strides[dim];
+        // If any of the outer dimensions are >1 than it's not a 1d tile
+        if (dim < inner_dim)
+            is_1d &= (shape[dim] == 1);
+    }
+
+    const void *src = (const uint8_t *)data + offset;
+
+    // Special case if the "tile" is one-dimensional (but not necessarily contiguous)
+    if (is_1d) {
+        // If convert() returns non-zero it means an overflow occurred
+        // while copying; this does not necessarily have to be treated as an error depending
+        // on the application.
+        overflow = asdf_ndarray_read_tile_row(
+            tile, dst_elsize, src, src_elsize, tile_nelems, strides[inner_dim], convert);
+        err = overflow ? ASDF_NDARRAY_ERR_OVERFLOW : ASDF_NDARRAY_OK;
+        *dst = tile;
+        goto cleanup;
+    }
+
+    odometer = malloc(sizeof(uint64_t) * inner_dim);
+
+    if (!odometer) {
+        err = ASDF_NDARRAY_ERR_OOM;
+        goto cleanup;
+    }
+
+    memcpy(odometer, origin, sizeof(uint64_t) * inner_dim);
+
+    err = asdf_ndarray_read_tile_main_loop(
+        tile, dst_elsize, src, src_elsize, shape, strides, origin, odometer, ndim, convert);
+    overflow = (err == ASDF_NDARRAY_ERR_OVERFLOW);
+    *dst = tile;
+cleanup:
+    if (!overflow && err != ASDF_NDARRAY_OK)
+        free(new_buf);
+
+    free(strides);
+    free(odometer);
+    return err;
+}
+
+
 asdf_ndarray_err_t asdf_ndarray_read_tile_ndim(
     asdf_ndarray_t *ndarray,
     const uint64_t *origin,
@@ -1865,12 +2273,7 @@ asdf_ndarray_err_t asdf_ndarray_read_tile_ndim(
         // Invalid argument, must be non-NULL
         return ASDF_NDARRAY_ERR_INVAL;
 
-    void *new_buf = NULL;
-    int64_t *strides = NULL;
-    uint64_t *odometer = NULL;
-    uint32_t ndim = ndarray->ndim;
     asdf_scalar_datatype_t src_t = ndarray->datatype.type;
-    asdf_ndarray_err_t err = ASDF_NDARRAY_ERR_INVAL;
 
     if (dst_t == ASDF_DATATYPE_SOURCE)
         dst_t = src_t;
@@ -1881,26 +2284,6 @@ asdf_ndarray_err_t asdf_ndarray_read_tile_ndim(
     // For not-yet-supported datatypes return ERR_INVAL
     if (src_elsize < 1 || dst_elsize < 1)
         return ASDF_NDARRAY_ERR_INVAL;
-
-    // Check bounds
-    if (!check_bounds(ndarray, origin, shape))
-        return ASDF_NDARRAY_ERR_OUT_OF_BOUNDS;
-
-    size_t tile_nelems = ndim > 0 ? 1 : 0;
-
-    for (uint32_t dim = 0; dim < ndim; dim++) {
-        tile_nelems *= shape[dim];
-    }
-
-    size_t src_tile_size = src_elsize * tile_nelems;
-    size_t tile_size = dst_elsize * tile_nelems;
-    size_t data_size = 0;
-    const void *data = asdf_ndarray_data(ndarray, &data_size);
-
-    // The tile is already known to lie within the array's shape, so it suffices to check that
-    // the data actually covers the full array (not just a tile's worth of bytes anywhere in it)
-    if (data_size < src_tile_size || data_size < asdf_ndarray_nbytes(ndarray))
-        return ASDF_NDARRAY_ERR_OUT_OF_BOUNDS;
 
     // Determine the copy strategy to use; right now this just handles whether-or-not byteswap
     // is needed, may have others depending on alignment, vectorization etc.
@@ -1926,79 +2309,44 @@ asdf_ndarray_err_t asdf_ndarray_read_tile_ndim(
         return ASDF_NDARRAY_ERR_CONVERSION;
     }
 
-    // If the function is passed a null pointer, allocate memory for the tile ourselves
-    // User is responsible for freeing it.
-    void *tile = *dst;
+    return asdf_ndarray_read_tile_impl(
+        ndarray, origin, shape, src_elsize, dst_elsize, convert, dst);
+}
 
-    if (!tile) {
-        // NOLINTNEXTLINE(clang-analyzer-optin.portability.UnixAPI)
-        tile = malloc(tile_size);
-        new_buf = tile;
-    }
 
-    if (UNLIKELY(!tile))
+/* Element "conversion" that copies elements verbatim, of any datatype
+ *
+ * Used by asdf_ndarray_gather below.
+ */
+static int copy_elements(
+    void *restrict dst, const void *restrict src, size_t count, size_t elsize) {
+    memcpy(dst, src, count * elsize);
+    return 0;
+}
+
+
+/*
+ * Gather an ndarray's possibly strided data into a newly allocated
+ * C-contiguous buffer, with its elements copied verbatim (i.e. in the
+ * array's source datatype and byte order); the caller must free the buffer
+ */
+static asdf_ndarray_err_t asdf_ndarray_gather(asdf_ndarray_t *ndarray, void **dst) {
+    uint64_t elsize = asdf_datatype_size(&ndarray->datatype);
+    uint64_t *origin = NULL;
+    asdf_ndarray_err_t err = ASDF_NDARRAY_ERR_INVAL;
+
+    if (UNLIKELY(elsize == 0 || elsize > SIZE_MAX))
+        return err;
+
+    origin = calloc(ndarray->ndim > 0 ? ndarray->ndim : 1, sizeof(uint64_t));
+
+    if (!origin)
         return ASDF_NDARRAY_ERR_OOM;
 
-    // Special case, if size of the array is 0 just return now.  We do still malloc though even if
-    // it's a bit pointless, just to ensure that the returned pointer can be freed successfully
-    if (UNLIKELY(0 == ndim || 0 == tile_size)) {
-        *dst = tile;
-        return ASDF_NDARRAY_OK;
-    }
-
-    bool overflow = false;
-    // Determine element strides (assume C-order for now; ndarray->strides is not used yet)
-    err = asdf_ndarray_read_tile_init_strides(ndarray->shape, ndim, &strides);
-
-    if (err != ASDF_NDARRAY_OK)
-        goto cleanup;
-
-    uint32_t inner_dim = ndim - 1;
-    uint64_t offset = origin[inner_dim];
-    bool is_1d = true;
-
-    if (ndim > 1) {
-        for (uint32_t dim = 0; dim < inner_dim; dim++) {
-            offset += origin[dim] * strides[dim];
-            // If any of the outer dimensions are >1 than it's not a 1d tile
-            is_1d &= (shape[dim] == 1);
-        }
-        offset *= src_elsize;
-    } else {
-        offset = origin[0] * src_elsize;
-    }
-
-    // Special case if the "tile" is one-dimensional, C-contiguous
-    if (is_1d) {
-        const void *src = data + offset;
-        // If convert() returns non-zero it means an overflow occurred
-        // while copying; this does not necessarily have to be treated as an error depending
-        // on the application.
-        overflow = convert(tile, src, tile_nelems, dst_elsize);
-        err = overflow ? ASDF_NDARRAY_ERR_OVERFLOW : ASDF_NDARRAY_OK;
-        *dst = tile;
-        goto cleanup;
-    }
-
-    odometer = malloc(sizeof(uint64_t) * inner_dim);
-
-    if (!odometer) {
-        err = ASDF_NDARRAY_ERR_OOM;
-        goto cleanup;
-    }
-
-    memcpy(odometer, origin, sizeof(uint64_t) * inner_dim);
-    const void *src = data + offset;
-
-    err = asdf_ndarray_read_tile_main_loop(
-        tile, dst_elsize, src, src_elsize, shape, strides, origin, odometer, ndim, convert);
-    *dst = tile;
-cleanup:
-    if (!overflow && err != ASDF_NDARRAY_OK)
-        free(new_buf);
-
-    free(strides);
-    free(odometer);
+    *dst = NULL;
+    err = asdf_ndarray_read_tile_impl(
+        ndarray, origin, ndarray->shape, (size_t)elsize, (size_t)elsize, copy_elements, dst);
+    free(origin);
     return err;
 }
 

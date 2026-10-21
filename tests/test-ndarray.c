@@ -1,3 +1,6 @@
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE  /* for memmem */
+#endif
 #include <float.h>
 #include <math.h>
 #include <stdbool.h>
@@ -7,7 +10,6 @@
 #include <string.h>
 
 #include "asdf/core/ndarray.h"
-#include "asdf/core/software.h"
 #include "asdf/extension.h"
 #include "asdf/extension_util.h"
 #include "asdf/file.h"
@@ -1237,6 +1239,512 @@ MU_TEST(ndarray_read_at) {
 
 
 /*
+ * Read arrays that are contiguous views at an offset into a larger base
+ * array's block (offset.asdf).  The offset is applied to the pointer
+ * returned by asdf_ndarray_data (and asdf_ndarray_data_raw, since none of
+ * these are compressed), and to all the read routines.
+ *
+ * For compressed arrays with offsets see ``read_compressed_ndarray_offset``
+ * in ``test-compression.c`` which is similar, though this checks a wider
+ * range of cases.  See the next test ``ndarray_offset_out_of_bounds`` for
+ * OOB error handling; this test is all sane cases.
+ */
+MU_TEST(ndarray_offset) {
+    const char *path = get_fixture_file_path("offset.asdf");
+    asdf_file_t *file = asdf_open(path, "r");
+    assert_not_null(file);
+
+    asdf_ndarray_t *ndarray = NULL;
+    asdf_ndarray_err_t err = ASDF_NDARRAY_ERR_INVAL;
+    size_t size = 0;
+    size_t raw_size = 0;
+    void *buf = NULL;
+
+    /* u1: arange(256)[16:] */
+    assert_int(asdf_get_ndarray(file, "u1", &ndarray), ==, ASDF_VALUE_OK);
+    assert_int(ndarray->offset, ==, 16);
+    const uint8_t *u1_data = asdf_ndarray_data(ndarray, &size);
+    assert_not_null(u1_data);
+    assert_size(size, ==, 256 - 16);
+    assert_uint8(u1_data[0], ==, 16);
+    assert_uint8(u1_data[size - 1], ==, 255);
+    assert_ptr_equal(asdf_ndarray_data_raw(ndarray, &raw_size), u1_data);
+    assert_size(raw_size, ==, size);
+
+    assert_int(asdf_ndarray_read_all(ndarray, ASDF_DATATYPE_SOURCE, &buf), ==, ASDF_NDARRAY_OK);
+
+    for (size_t idx = 0; idx < 240; idx++)
+        assert_uint8(((uint8_t *)buf)[idx], ==, idx + 16);
+
+    free(buf);
+    buf = NULL;
+    assert_uint8(asdf_ndarray_at_err(ndarray, uint8_t, &err, 0), ==, 16);
+    assert_int(err, ==, ASDF_NDARRAY_OK);
+    assert_uint8(asdf_ndarray_at_err(ndarray, uint8_t, &err, 239), ==, 255);
+    assert_int(err, ==, ASDF_NDARRAY_OK);
+    asdf_ndarray_destroy(ndarray);
+
+    /* i4_2d: arange(100).reshape(10, 10)[3:] i.e. offset by 3 rows */
+    assert_int(asdf_get_ndarray(file, "i4_2d", &ndarray), ==, ASDF_VALUE_OK);
+    assert_int(ndarray->offset, ==, 3 * 10 * sizeof(int32_t));
+    const int32_t *i4_data = asdf_ndarray_data(ndarray, &size);
+    assert_not_null(i4_data);
+    assert_size(size, ==, 7 * 10 * sizeof(int32_t));
+    assert_int32(i4_data[0], ==, 30);
+
+    assert_int(asdf_ndarray_read_all(ndarray, ASDF_DATATYPE_INT32, &buf), ==, ASDF_NDARRAY_OK);
+
+    for (int32_t idx = 0; idx < 70; idx++)
+        assert_int32(((int32_t *)buf)[idx], ==, idx + 30);
+
+    free(buf);
+    buf = NULL;
+    assert_int32(asdf_ndarray_at_err(ndarray, int32_t, &err, 0, 0), ==, 30);
+    assert_int(err, ==, ASDF_NDARRAY_OK);
+    assert_int32(asdf_ndarray_at_err(ndarray, int32_t, &err, 6, 9), ==, 99);
+    assert_int(err, ==, ASDF_NDARRAY_OK);
+
+    /* 2x2 tile at row 1, column 2 of the view */
+    int32_t expected_tile[] = {42, 43, 52, 53};
+    err = asdf_ndarray_read_tile_2d(ndarray, 2, 1, 2, 2, NULL, ASDF_DATATYPE_INT32, &buf);
+    assert_int(err, ==, ASDF_NDARRAY_OK);
+    assert_memory_equal(sizeof(expected_tile), buf, expected_tile);
+    free(buf);
+    buf = NULL;
+    asdf_ndarray_destroy(ndarray);
+
+    /* u2_be: big-endian arange(64)[5:], read with byteswapping */
+    assert_int(asdf_get_ndarray(file, "u2_be", &ndarray), ==, ASDF_VALUE_OK);
+    assert_int(ndarray->offset, ==, 5 * sizeof(uint16_t));
+    const uint8_t *u2_data = asdf_ndarray_data(ndarray, &size);
+    assert_not_null(u2_data);
+    assert_size(size, ==, 59 * sizeof(uint16_t));
+    assert_uint8(u2_data[0], ==, 0);
+    assert_uint8(u2_data[1], ==, 5);
+
+    assert_int(asdf_ndarray_read_all(ndarray, ASDF_DATATYPE_UINT16, &buf), ==, ASDF_NDARRAY_OK);
+
+    for (uint16_t idx = 0; idx < 59; idx++)
+        assert_uint16(((uint16_t *)buf)[idx], ==, idx + 5);
+
+    free(buf);
+    buf = NULL;
+    assert_uint16(asdf_ndarray_at_err(ndarray, uint16_t, &err, 58), ==, 63);
+    assert_int(err, ==, ASDF_NDARRAY_OK);
+    asdf_ndarray_destroy(ndarray);
+
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+/*
+ * An offset that leaves too little (or no) block data for the array, or that
+ * lies beyond the end of the block entirely
+ */
+MU_TEST(ndarray_offset_out_of_bounds) {
+    const char *path = get_fixture_file_path("255.asdf");
+    asdf_file_t *file = asdf_open(path, "r");
+    assert_not_null(file);
+
+    asdf_ndarray_t *ndarray = NULL;
+    size_t size = 0;
+    void *buf = NULL;
+    assert_int(asdf_get_ndarray(file, "data", &ndarray), ==, ASDF_VALUE_OK);
+    assert_int(ndarray->shape[0], ==, 256);
+
+    /* Leaves 1 byte of the 256-byte block for a 256-element array
+     * (shape is still set to [256] which is why this is OOB) */
+    ndarray->offset = 255;
+    const uint8_t *data = asdf_ndarray_data(ndarray, &size);
+    assert_not_null(data);
+    assert_size(size, ==, 1);
+    assert_uint8(data[0], ==, 255);
+    assert_int(
+        asdf_ndarray_read_all(ndarray, ASDF_DATATYPE_SOURCE, &buf), ==,
+        ASDF_NDARRAY_ERR_OUT_OF_BOUNDS);
+    assert_null(buf);
+
+    /* Exactly at the end of the block: an empty, but valid, pointer */
+    ndarray->offset = 256;
+    assert_not_null(asdf_ndarray_data(ndarray, &size));
+    assert_size(size, ==, 0);
+    assert_int(
+        asdf_ndarray_read_all(ndarray, ASDF_DATATYPE_SOURCE, &buf), ==,
+        ASDF_NDARRAY_ERR_OUT_OF_BOUNDS);
+    assert_null(buf);
+
+    /* Beyond the end of the block */
+    ndarray->offset = 300;
+    size = 1;
+    assert_null(asdf_ndarray_data(ndarray, &size));
+    assert_size(size, ==, 0);
+    size = 1;
+    assert_null(asdf_ndarray_data_raw(ndarray, &size));
+    assert_size(size, ==, 0);
+    assert_int(
+        asdf_ndarray_read_all(ndarray, ASDF_DATATYPE_SOURCE, &buf), ==,
+        ASDF_NDARRAY_ERR_OUT_OF_BOUNDS);
+    assert_null(buf);
+
+    asdf_ndarray_destroy(ndarray);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+/* Strided ndarray tests */
+
+/*
+ * Expected contents (in C order) of a strided test array, given by its
+ * logical values in the numpy expression that generated it
+ */
+typedef struct {
+    const char *name;
+    uint32_t ndim;
+    uint64_t shape[3];
+    const double *expected;
+} strided_case_t;
+
+/* Expected values (see ``make_strides_asdf`` in ``make_test_fixtures.py``) */
+
+/* arange(32, dtype='<u2')[::2] */
+static const double every_other_expected[] = {
+    0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30};
+
+/* asfortranarray(arange(12, dtype='<i4').reshape(3, 4)) */
+static const double fortran_expected[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
+
+/* arange(12, dtype='u1').reshape(3, 4).T */
+static const double transpose_expected[] = {0, 4, 8, 1, 5, 9, 2, 6, 10, 3, 7, 11};
+
+/* arange(20, dtype='<i4').reshape(4, 5)[:, :2] */
+static const double cols_expected[] = {0, 1, 5, 6, 10, 11, 15, 16};
+
+/* arange(60, dtype='>u2').reshape(3, 4, 5).transpose(2, 0, 1) */
+static const double cube_perm_expected[] = {
+    0,  5,  10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 1,  6,  11, 16, 21, 26, 31, 36,
+    41, 46, 51, 56, 2,  7,  12, 17, 22, 27, 32, 37, 42, 47, 52, 57, 3,  8,  13, 18,
+    23, 28, 33, 38, 43, 48, 53, 58, 4,  9,  14, 19, 24, 29, 34, 39, 44, 49, 54, 59};
+
+/* arange(10, dtype='u1').reshape(10, 1)[::3] */
+static const double unit_dim_expected[] = {0, 3, 6, 9};
+
+
+static const strided_case_t strided_cases[] = {
+    {"every_other", 1, {16}, every_other_expected},
+    {"fortran", 2, {3, 4}, fortran_expected},
+    {"transpose", 2, {4, 3}, transpose_expected},
+    {"cols", 2, {4, 2}, cols_expected},
+    {"cube_perm", 3, {5, 3, 4}, cube_perm_expected},
+    {"unit_dim", 2, {4, 1}, unit_dim_expected},
+};
+
+
+/* Convert a C-order flat index into a multi-dimensional index */
+static void unravel_index(uint64_t flat, const uint64_t *shape, uint32_t ndim, uint64_t *index) {
+    for (uint32_t dim = ndim; dim-- > 0;) {
+        index[dim] = flat % shape[dim];
+        flat /= shape[dim];
+    }
+}
+
+
+/* Convert a multi-dimensional index into a C-order flat index */
+static uint64_t ravel_index(const uint64_t *index, const uint64_t *shape, uint32_t ndim) {
+    uint64_t flat = 0;
+
+    for (uint32_t dim = 0; dim < ndim; dim++)
+        flat = (flat * shape[dim]) + index[dim];
+
+    return flat;
+}
+
+
+/*
+ * Check that a strided array reads back as expected: all at once, element by
+ * element, and as a sub-tile (everything but the first row/column/etc. along
+ * each dimension of length > 1)
+ */
+static void check_strided_case(asdf_file_t *file, const strided_case_t *tcase) {
+    asdf_ndarray_t *ndarray = NULL;
+    asdf_ndarray_err_t err = ASDF_NDARRAY_ERR_INVAL;
+    uint64_t nelem = 1;
+    uint64_t index[3] = {0};
+    uint64_t origin[3] = {0};
+    uint64_t tile_shape[3] = {0};
+    uint64_t tile_nelem = 1;
+    double *buf = NULL;
+
+    munit_logf(MUNIT_LOG_INFO, "checking strided array %s", tcase->name);
+    assert_int(asdf_get_ndarray(file, tcase->name, &ndarray), ==, ASDF_VALUE_OK);
+    assert_not_null(ndarray->strides);
+    assert_uint32(ndarray->ndim, ==, tcase->ndim);
+
+    for (uint32_t dim = 0; dim < tcase->ndim; dim++) {
+        assert_uint64(ndarray->shape[dim], ==, tcase->shape[dim]);
+        nelem *= tcase->shape[dim];
+        origin[dim] = tcase->shape[dim] > 1 ? 1 : 0;
+        tile_shape[dim] = tcase->shape[dim] - origin[dim];
+        tile_nelem *= tile_shape[dim];
+    }
+
+    /* The whole array, converted to double (element-wise for strided rows) */
+    err = asdf_ndarray_read_all(ndarray, ASDF_DATATYPE_FLOAT64, (void **)&buf);
+    assert_int(err, ==, ASDF_NDARRAY_OK);
+
+    for (uint64_t idx = 0; idx < nelem; idx++)
+        assert_double(buf[idx], ==, tcase->expected[idx]);
+
+    free(buf);
+    buf = NULL;
+
+    /* Each element individually */
+    for (uint64_t idx = 0; idx < nelem; idx++) {
+        unravel_index(idx, tcase->shape, tcase->ndim, index);
+        uint64_t value = asdf_ndarray_read_uint64_at(ndarray, index, &err);
+        assert_int(err, ==, ASDF_NDARRAY_OK);
+        assert_double((double)value, ==, tcase->expected[idx]);
+    }
+
+    /* A sub-tile not starting at the origin */
+    err = asdf_ndarray_read_tile_ndim(
+        ndarray, origin, tile_shape, ASDF_DATATYPE_FLOAT64, (void **)&buf);
+    assert_int(err, ==, ASDF_NDARRAY_OK);
+
+    for (uint64_t idx = 0; idx < tile_nelem; idx++) {
+        unravel_index(idx, tile_shape, tcase->ndim, index);
+
+        for (uint32_t dim = 0; dim < tcase->ndim; dim++)
+            index[dim] += origin[dim];
+
+        uint64_t flat = ravel_index(index, tcase->shape, tcase->ndim);
+        assert_double(buf[idx], ==, tcase->expected[flat]);
+    }
+
+    free(buf);
+    asdf_ndarray_destroy(ndarray);
+}
+
+
+/* Read arrays with various non-trivial strides (strides.asdf) */
+MU_TEST(ndarray_strides) {
+    const char *path = get_fixture_file_path("strides.asdf");
+    asdf_file_t *file = asdf_open(path, "r");
+    assert_not_null(file);
+
+    for (size_t idx = 0; idx < sizeof(strided_cases) / sizeof(strided_cases[0]); idx++)
+        check_strided_case(file, &strided_cases[idx]);
+
+    /* Reads in the source datatype (no conversion) for a contiguous inner
+     * dimension with byteswapping, and a non-contiguous one without */
+    asdf_ndarray_t *ndarray = NULL;
+    void *buf = NULL;
+    assert_int(asdf_get_ndarray(file, "cube_perm", &ndarray), ==, ASDF_VALUE_OK);
+    assert_int(asdf_ndarray_read_all(ndarray, ASDF_DATATYPE_SOURCE, &buf), ==, ASDF_NDARRAY_OK);
+
+    for (size_t idx = 0; idx < 60; idx++)
+        assert_uint16(((uint16_t *)buf)[idx], ==, (uint16_t)cube_perm_expected[idx]);
+
+    free(buf);
+    buf = NULL;
+    asdf_ndarray_destroy(ndarray);
+
+    assert_int(asdf_get_ndarray(file, "cols", &ndarray), ==, ASDF_VALUE_OK);
+    assert_int(asdf_ndarray_read_all(ndarray, ASDF_DATATYPE_SOURCE, &buf), ==, ASDF_NDARRAY_OK);
+
+    for (size_t idx = 0; idx < 8; idx++)
+        assert_int32(((int32_t *)buf)[idx], ==, (int32_t)cols_expected[idx]);
+
+    free(buf);
+    buf = NULL;
+
+    /* A single row of a 2-D array with a padded outer stride */
+    int32_t expected_row[] = {10, 11};
+    asdf_ndarray_err_t err = asdf_ndarray_read_tile_2d(
+        ndarray, 0, 2, 2, 1, NULL, ASDF_DATATYPE_INT32, &buf);
+    assert_int(err, ==, ASDF_NDARRAY_OK);
+    assert_memory_equal(sizeof(expected_row), buf, expected_row);
+    free(buf);
+    asdf_ndarray_destroy(ndarray);
+
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+/*
+ * Strides that are just the C-contiguous strides for the array's shape are
+ * ignored, both when reading and writing (they are not written out)
+ */
+MU_TEST(ndarray_strides_trivial) {
+    const char *path = get_fixture_file_path("tiles.asdf");
+    asdf_file_t *file = asdf_open(path, "r");
+    assert_not_null(file);
+
+    asdf_ndarray_t *ndarray = NULL;
+    void *expected = NULL;
+    void *buf = NULL;
+    void *out = NULL;
+    size_t out_size = 0;
+
+    /* 4x4x4 little-endian int32 */
+    assert_int(asdf_get_ndarray(file, "3d", &ndarray), ==, ASDF_VALUE_OK);
+    assert_null(ndarray->strides);
+    assert_int(
+        asdf_ndarray_read_all(ndarray, ASDF_DATATYPE_SOURCE, &expected), ==, ASDF_NDARRAY_OK);
+
+    int64_t *strides = malloc(3 * sizeof(int64_t));
+    assert_not_null(strides);
+    /* The default C-contiguous strides, usually left null */
+    strides[0] = 64;
+    strides[1] = 16;
+    strides[2] = 4;
+    ndarray->strides = strides;
+
+    assert_int(asdf_ndarray_read_all(ndarray, ASDF_DATATYPE_SOURCE, &buf), ==, ASDF_NDARRAY_OK);
+    assert_memory_equal(64 * sizeof(int32_t), buf, expected);
+    free(buf);
+    buf = NULL;
+
+    uint64_t indices[] = {3, 2, 1};
+    asdf_ndarray_err_t err = ASDF_NDARRAY_ERR_INVAL;
+    assert_int32(
+        asdf_ndarray_read_int32_at(ndarray, indices, &err), ==, 432);
+    assert_int(err, ==, ASDF_NDARRAY_OK);
+
+    /* Written to a new file the trivial strides are dropped */
+    asdf_file_t *out_file = asdf_open(NULL);
+    assert_not_null(out_file);
+    asdf_ndarray_t *copy = asdf_ndarray_copy(out_file, ndarray);
+    assert_not_null(copy);
+    assert_int(asdf_set_ndarray(out_file, "data", copy), ==, ASDF_VALUE_OK);
+    assert_int(asdf_write_to(out_file, &out, &out_size), ==, 0);
+    asdf_ndarray_destroy(copy);
+    asdf_close(out_file);
+    assert_null(memmem(out, out_size, "strides", strlen("strides")));
+    free(out);
+    out = NULL;
+
+    free(expected);
+    asdf_ndarray_destroy(ndarray);
+    asdf_close(file);
+
+    /* Whereas non-trivial strides are written */
+    path = get_fixture_file_path("strides.asdf");
+    file = asdf_open(path, "r");
+    assert_not_null(file);
+    assert_int(asdf_get_ndarray(file, "fortran", &ndarray), ==, ASDF_VALUE_OK);
+    out_file = asdf_open(NULL);
+    assert_not_null(out_file);
+    copy = asdf_ndarray_copy(out_file, ndarray);
+    assert_not_null(copy);
+    assert_int(asdf_set_ndarray(out_file, "data", copy), ==, ASDF_VALUE_OK);
+    assert_int(asdf_write_to(out_file, &out, &out_size), ==, 0);
+    asdf_ndarray_destroy(copy);
+    asdf_close(out_file);
+    assert_not_null(memmem(out, out_size, "strides:", strlen("strides:")));
+    free(out);
+
+    asdf_ndarray_destroy(ndarray);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+/* Strides that would read past the end of the block data */
+MU_TEST(ndarray_strides_out_of_bounds) {
+    const char *path = get_fixture_file_path("strides.asdf");
+    asdf_file_t *file = asdf_open(path, "r");
+    assert_not_null(file);
+
+    asdf_ndarray_t *ndarray = NULL;
+    asdf_ndarray_err_t err = ASDF_NDARRAY_ERR_INVAL;
+    void *buf = NULL;
+
+    /* every_other spans 15 * 4 + 2 = 62 of its 64-byte block; offsetting it
+     * by one element still fits, shifting its values by one */
+    assert_int(asdf_get_ndarray(file, "every_other", &ndarray), ==, ASDF_VALUE_OK);
+    ndarray->offset = 2;
+    assert_uint16(asdf_ndarray_at_err(ndarray, uint16_t, &err, 0), ==, 1);
+    assert_int(err, ==, ASDF_NDARRAY_OK);
+    assert_uint16(asdf_ndarray_at_err(ndarray, uint16_t, &err, 15), ==, 31);
+    assert_int(err, ==, ASDF_NDARRAY_OK);
+
+    /* But by two elements the last element is beyond the block, so any read
+     * is out of bounds, not just of that element */
+    ndarray->offset = 4;
+    assert_uint16(asdf_ndarray_at_err(ndarray, uint16_t, &err, 0), ==, 0);
+    assert_int(err, ==, ASDF_NDARRAY_ERR_OUT_OF_BOUNDS);
+    assert_int(
+        asdf_ndarray_read_all(ndarray, ASDF_DATATYPE_SOURCE, &buf), ==,
+        ASDF_NDARRAY_ERR_OUT_OF_BOUNDS);
+    assert_null(buf);
+
+    asdf_ndarray_destroy(ndarray);
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+/*
+ * A strided array written with inline storage is written as contiguous
+ * (C-order) inline data without strides
+ */
+MU_TEST(ndarray_strides_inline_roundtrip) {
+    const char *path = get_fixture_file_path("strides.asdf");
+    asdf_file_t *file = asdf_open(path, "r");
+    assert_not_null(file);
+
+    const char *names[] = {"fortran", "transpose", "cols"};
+    const double *expected[] = {fortran_expected, transpose_expected, cols_expected};
+    const size_t nelems[] = {12, 12, 8};
+
+    for (size_t idx = 0; idx < 3; idx++) {
+        asdf_ndarray_t *ndarray = NULL;
+        void *out = NULL;
+        size_t out_size = 0;
+        double *buf = NULL;
+
+        assert_int(asdf_get_ndarray(file, names[idx], &ndarray), ==, ASDF_VALUE_OK);
+        asdf_file_t *out_file = asdf_open(NULL);
+        assert_not_null(out_file);
+        asdf_ndarray_t *copy = asdf_ndarray_copy(out_file, ndarray);
+        assert_not_null(copy);
+        asdf_ndarray_storage_set(copy, ASDF_ARRAY_STORAGE_INLINE);
+        assert_int(asdf_set_ndarray(out_file, "data", copy), ==, ASDF_VALUE_OK);
+        assert_int(asdf_write_to(out_file, &out, &out_size), ==, 0);
+        asdf_ndarray_destroy(copy);
+        asdf_close(out_file);
+        asdf_ndarray_destroy(ndarray);
+        assert_null(memmem(out, out_size, "strides", strlen("strides")));
+
+        asdf_file_t *in_file = asdf_open_mem(out, out_size);
+        assert_not_null(in_file);
+        assert_size(asdf_block_count(in_file), ==, 0);
+        assert_int(asdf_get_ndarray(in_file, "data", &ndarray), ==, ASDF_VALUE_OK);
+        assert_null(ndarray->strides);
+        assert_int(
+            asdf_ndarray_read_all(ndarray, ASDF_DATATYPE_FLOAT64, (void **)&buf), ==,
+            ASDF_NDARRAY_OK);
+
+        for (size_t jdx = 0; jdx < nelems[idx]; jdx++)
+            assert_double(buf[jdx], ==, expected[idx][jdx]);
+
+        free(buf);
+        asdf_ndarray_destroy(ndarray);
+        asdf_close(in_file);
+        free(out);
+    }
+
+    asdf_close(file);
+    return MUNIT_OK;
+}
+
+
+/* Regression tests */
+
+
+/*
  * Write and read back an extension that embeds an ndarray as one of its
  * properties (the test_affine extension above).  The extension's serialize
  * callback builds the matrix ndarray on the stack and allocates its data but
@@ -1299,6 +1807,12 @@ MU_TEST_SUITE(
     MU_RUN_TEST(heap_use_after_free_issue_63),
     MU_RUN_TEST(ndarray_data_alloc_storage_set_ordering),
     MU_RUN_TEST(ndarray_read_at),
+    MU_RUN_TEST(ndarray_offset),
+    MU_RUN_TEST(ndarray_offset_out_of_bounds),
+    MU_RUN_TEST(ndarray_strides),
+    MU_RUN_TEST(ndarray_strides_trivial),
+    MU_RUN_TEST(ndarray_strides_out_of_bounds),
+    MU_RUN_TEST(ndarray_strides_inline_roundtrip),
     MU_RUN_TEST(ndarray_extension_embedded_ndarray)
 );
 
