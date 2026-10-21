@@ -10,9 +10,11 @@
  * * All int and most float data types (other data types can be read but are
  *   not fully implemented)
  * * :c:member:`shape <asdf_ndarray_t.shape>`,
- *   :c:member:`byteorder <asdf_ndarray_t.byteorder>`, and
- *   :c:member:`offset <asdf_ndarray_t.offset>`
- * * :c:member:`strides <asdf_ndarray_t.strides>` are partially supported
+ *   :c:member:`byteorder <asdf_ndarray_t.byteorder>`,
+ *   :c:member:`offset <asdf_ndarray_t.offset>`, and
+ *   :c:member:`strides <asdf_ndarray_t.strides>` (strides are applied when
+ *   reading data with the ``asdf_ndarray_read_*`` functions, but not to the
+ *   raw pointer returned by `asdf_ndarray_data`)
  *
  * It can provide direct access to the raw data of an ndarray (via a
  * ``void *``); users must use
@@ -28,7 +30,6 @@
  * * Reading string datatypes (``ascii`` or ``ucs4``)
  * * Reading structured datatypes (the datatypes are parsed but there is are
  *   no APIs yet for interpreting structured array data)
- * * Reading arbitrarily strided data
  * * Masks are not parsed or used at all, whether simple mask values or mask
  *   arrays (though if present a warning is logged indicating lack of support)
  *
@@ -123,8 +124,16 @@ typedef struct {
      */
     uint64_t offset;
     /**
-     * Optional strides to use when iterating/index array data (an array of
-     * size ``.ndim`` giving the stride for each dimension)
+     * Optional strides to use when iterating/indexing array data (an array of
+     * size ``.ndim`` giving the stride, in bytes, for each dimension)
+     *
+     * Strides may be negative, in which case elements along that dimension
+     * are at decreasing addresses from the start of the array data (at its
+     * :c:member:`offset <asdf_ndarray_t.offset>`).
+     *
+     * The ``asdf_ndarray_read_*`` functions apply the strides when reading
+     * data, but the pointer returned by `asdf_ndarray_data` is to the
+     * full block data and does not apply strides to its interpretation.
      */
     const int64_t *strides;
 

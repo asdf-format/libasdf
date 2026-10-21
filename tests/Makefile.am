@@ -445,6 +445,7 @@ EXTRA_DIST += \
     fixtures/roman_wcs.asdf \
     fixtures/scalars.asdf \
     fixtures/scalars-out.asdf \
+    fixtures/strides.asdf \
     fixtures/tagged-scalars.asdf \
     fixtures/test-write-file.asdf \
     fixtures/tiles.asdf \

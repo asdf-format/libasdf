@@ -162,6 +162,20 @@ def make_numeric_asdf():
     return f
 
 
+def save_array_bases(f):
+    """
+    Write the base arrays of any views in the tree, rather than just the
+    views' own data.
+
+    Recent versions of the asdf library default to writing only the view's
+    own data (``default_array_save_base = False``), so saving the base array
+    is requested explicitly, giving the views ``offset`` and/or ``strides``.
+    """
+    for view in f.tree.values():
+        if isinstance(view, np.ndarray):
+            f.set_array_save_base(view, True)
+
+
 def make_offset_asdf():
     """
     Arrays that are contiguous views into a larger base array, so that
@@ -171,10 +185,6 @@ def make_offset_asdf():
     The compressed views use an offset a few pages into the (uncompressed)
     data, so that reading them depends on decompressing past page/chunk
     boundaries.
-
-    Recent versions of the asdf library default to writing only the view's
-    own data (``default_array_save_base = False``), so saving the base array
-    is requested explicitly.
     """
     f = asdf.AsdfFile()
     f['u1'] = np.arange(256, dtype='u1')[16:]
@@ -185,10 +195,27 @@ def make_offset_asdf():
         f[comp] = make_paged_array()[3 * PAGE_SIZE + 17:]
         f.set_array_compression(f[comp], comp)
 
-    for view in f.tree.values():
-        if isinstance(view, np.ndarray):
-            f.set_array_save_base(view, True)
+    save_array_bases(f)
+    return f
 
+
+def make_strides_asdf():
+    """
+    Arrays that are non-contiguous views into a base array, so that they are
+    written with ``strides``.
+
+    The strides are in bytes, and include cases where the innermost
+    dimension is not contiguous, where the inner stride is larger than the
+    outer stride (Fortran order / transposes), and length-1 dimensions.
+    """
+    f = asdf.AsdfFile()
+    f['every_other'] = np.arange(32, dtype='<u2')[::2]
+    f['fortran'] = np.asfortranarray(np.arange(12, dtype='<i4').reshape((3, 4)))
+    f['transpose'] = np.arange(12, dtype='u1').reshape((3, 4)).T
+    f['cols'] = np.arange(20, dtype='<i4').reshape((4, 5))[:, :2]
+    f['cube_perm'] = np.arange(60, dtype='>u2').reshape((3, 4, 5)).transpose(2, 0, 1)
+    f['unit_dim'] = np.arange(10, dtype='u1').reshape((10, 1))[::3]
+    save_array_bases(f)
     return f
 
 
@@ -226,6 +253,7 @@ TEST_FILES = {
     'multi-block.asdf': make_multi_block_asdf,
     'numeric.asdf': make_numeric_asdf,
     'offset.asdf': make_offset_asdf,
+    'strides.asdf': make_strides_asdf,
     'tiles.asdf': make_tiles_asdf,
 }
 """Maps the names of test files to the function that generates it"""
