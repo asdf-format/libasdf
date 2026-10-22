@@ -77,6 +77,8 @@ typedef struct asdf_emitter_cfg {
      * per-array storage mode set via `asdf_ndarray_storage_set`.
      */
     asdf_array_storage_t array_storage;
+    /** Reserved for future options (leave zeroed); keeps the ABI stable */
+    void *_reserved[4];
 } asdf_emitter_cfg_t;
 
 ASDF_END_DECLS

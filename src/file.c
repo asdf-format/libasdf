@@ -28,7 +28,8 @@ static const asdf_config_t asdf_config_default = {
     /* Basic parser settings for high-level file interface: ignore individual YAML events and
      * just store the tree in memory to parse into a fy_document later */
     .parser = {.flags = ASDF_PARSER_OPT_BUFFER_TREE},
-    .emitter = ASDF_EMITTER_CFG_DEFAULT};
+    .emitter = ASDF_EMITTER_CFG_DEFAULT,
+    .log = {.handler = asdf_log_default_handler}};
 
 
 /**
@@ -65,6 +66,8 @@ static asdf_config_t *asdf_config_build(asdf_config_t *user_config) {
         ASDF_CONFIG_OVERRIDE(config, user_config, log.level, ASDF_LOG_DEFAULT);
         ASDF_CONFIG_OVERRIDE(config, user_config, log.fields, 0);
         ASDF_CONFIG_OVERRIDE(config, user_config, log.no_color, false);
+        ASDF_CONFIG_OVERRIDE(config, user_config, log.handler, NULL);
+        ASDF_CONFIG_OVERRIDE(config, user_config, log.handler_userdata, NULL);
         ASDF_CONFIG_OVERRIDE(config, user_config, parser.flags, 0);
         ASDF_CONFIG_OVERRIDE(config, user_config, emitter.flags, 0);
         ASDF_CONFIG_OVERRIDE(config, user_config, emitter.tag_handles, NULL);

@@ -55,6 +55,7 @@ set(TEMP_DIR "${CMAKE_CURRENT_BINARY_DIR}/tmp")
 add_library(util util.c)
 target_include_directories(util PRIVATE
     ${CMAKE_BINARY_DIR}/include
+    ${CMAKE_SOURCE_DIR}/include
     ${STATGRAB_INCLUDEDIR}
 )
 add_compile_definitions(REFERENCE_FILES_DIR=\"${REFERENCE_FILES_DIR}\")

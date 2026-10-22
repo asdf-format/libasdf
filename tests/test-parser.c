@@ -180,29 +180,20 @@ MU_TEST(parse_padding_no_tree_padding_after_header) {
  * behavior being checked here only arises when libfyaml is handed the stream
  * directly.
  *
- * Returns the captured log text, which the caller must free, or NULL if the
- * library was built without logging.  ``*had_error`` receives whether the
- * parse failed.
+ * Records are captured into ``cap``, which the caller must clear.  Returns
+ * false if the library was built without logging.  ``*had_error`` receives
+ * whether the parse failed.
  */
-static char *capture_parse_log(const char *filename, asdf_log_level_t level, bool *had_error) {
+static bool capture_parse_log(
+    const char *filename, asdf_log_level_t level, log_capture_t *cap, bool *had_error) {
 #ifndef ASDF_LOG_ENABLED
     (void)filename;
     (void)level;
+    (void)cap;
     (void)had_error;
-    return NULL;
+    return false;
 #else
-    log_capture_t cap = {0};
-
-    if (!log_capture_open(&cap))
-        munit_error("failed to open log capture");
-
-    // Only the message text, so the assertions below don't depend on the
-    // source location or on whether color is enabled
-    asdf_log_cfg_t log_cfg = {
-        .stream = cap.stream,
-        .level = level,
-        .fields = ASDF_LOG_FIELD_MSG,
-        .no_color = true};
+    asdf_log_cfg_t log_cfg = LOG_CAPTURE_CFG(cap, level);
     asdf_parser_cfg_t cfg = {.flags = ASDF_PARSER_OPT_EMIT_YAML_EVENTS, .log = &log_cfg};
     asdf_parser_t *parser = asdf_parser_create(&cfg);
 
@@ -216,9 +207,7 @@ static char *capture_parse_log(const char *filename, asdf_log_level_t level, boo
 
     *had_error = asdf_parser_has_error(parser);
     asdf_parser_destroy(parser);
-    char *log = strdup(log_capture_text(&cap));
-    log_capture_close(&cap);
-    return log;
+    return true;
 #endif
 }
 
@@ -232,16 +221,18 @@ static char *capture_parse_log(const char *filename, asdf_log_level_t level, boo
 MU_TEST(parse_yaml_diagnostic_forwarded) {
     const char *filename = get_fixture_file_path("parse-unsupported-directive.asdf");
     bool had_error = true;
-    char *log = capture_parse_log(filename, ASDF_LOG_WARN, &had_error);
+    log_capture_t cap = {0};
 
-    if (!log)
+    if (!capture_parse_log(filename, ASDF_LOG_WARN, &cap, &had_error))
         return MUNIT_SKIP; // built without logging
 
     // The bad directive does not prevent the file from parsing
     assert_false(had_error);
-    assert_not_null(strstr(log, "libfyaml:"));
-    assert_not_null(strstr(log, "Unsupported directive"));
-    free(log);
+    const asdf_log_rec_t *rec = log_capture_find(&cap, "Unsupported directive");
+    assert_not_null(rec);
+    assert_not_null(strstr(rec->msg, "libfyaml:"));
+    assert_int(rec->level, ==, ASDF_LOG_WARN);
+    log_capture_clear(&cap);
     return MUNIT_OK;
 }
 
@@ -263,15 +254,15 @@ MU_TEST(parse_yaml_diagnostic_forwarded) {
 MU_TEST(parse_yaml_utf8_input_error_not_logged) {
     const char *filename = get_fixture_file_path("255-padding-after-header.asdf");
     bool had_error = true;
-    char *log = capture_parse_log(filename, ASDF_LOG_DEBUG, &had_error);
+    log_capture_t cap = {0};
 
-    if (!log)
+    if (!capture_parse_log(filename, ASDF_LOG_DEBUG, &cap, &had_error))
         return MUNIT_SKIP; // built without logging
 
     assert_false(had_error);
-    assert_null(strstr(log, "libfyaml:"));
-    assert_null(strstr(log, "Invalid UTF8"));
-    free(log);
+    assert_null(log_capture_find(&cap, "libfyaml:"));
+    assert_null(log_capture_find(&cap, "Invalid UTF8"));
+    log_capture_clear(&cap);
     return MUNIT_OK;
 }
 

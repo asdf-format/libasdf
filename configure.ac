@@ -33,7 +33,24 @@ AC_INIT(
 #                     targets, which are not actively supported.
 #
 #                     Added asdf_file_find and asdf_file_find_ex.
-LIBASDF_VERSION_INFO=1:0:1
+#
+#   - 1:1:1 (0.3.0):  Added structured log handlers: asdf_log_rec_t,
+#                     asdf_log_handler_t and asdf_log_default_handler.
+#
+#                     asdf_log_cfg_t gained the handler and
+#                     handler_userdata fields, changing its size and that
+#                     of asdf_config_t, which embeds it.  This is an
+#                     interface change, but current and age were
+#                     deliberately NOT moved (only revision), knowingly
+#                     breaking binaries built against 0.2.x.  Since no
+#                     known software depends on the ABI yet we can afford a
+#                     little instability for now.  A void *_reserved[4] was
+#                     added to the end of asdf_log_cfg_t, asdf_parser_cfg_t,
+#                     asdf_emitter_cfg_t, asdf_config_t and its decomp options,
+#                     so that future options can be added without changing
+#                     their size too often.
+#
+LIBASDF_VERSION_INFO=1:1:1
 AC_SUBST([LIBASDF_VERSION_INFO])
 
 AC_CONFIG_AUX_DIR([build-aux])

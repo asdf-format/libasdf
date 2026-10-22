@@ -134,7 +134,13 @@ typedef struct {
          * Optional temporary directory path to use when decompressing to disk
          */
         const char *tmp_dir;
+
+        /** Reserved for future options (leave zeroed); keeps the ABI stable */
+        void *_reserved[4];
     } decomp;
+
+    /** Reserved for future options (leave zeroed); keeps the ABI stable */
+    void *_reserved[4];
 } asdf_config_t;
 
 
