@@ -131,6 +131,61 @@ typedef uint64_t asdf_log_fields_t;
 
 
 /**
+ * Struct representing a single log message
+ *
+ * This is how log messages are represented by the logging system before
+ * formatting them to lines to an I/O stream.  Applications wishing to
+ * capture libasdf log messages and reformat them entirely, or forward them
+ * to their own logging infrastructure can assign an `asdf_log_handler_t`
+ * to `asdf_log_cfg_t.handler`.
+ *
+ * .. version-added:: 0.3
+ */
+typedef struct {
+    /** The log level of the message */
+    asdf_log_level_t level;
+    /**
+     * A string representing the software package that produced the message
+     *
+     * Currently this always just carries "libasdf", but in the future it
+     * may be allowed to carry something more specific, like an extension
+     * name, etc. Same as the value in the ``ASDF_LOG_FIELD_PACKAGE`` field
+     * of the default handler.
+     */
+    const char *package;
+    /** Name of the source file from which the log message emanated */
+    const char *file;
+    /** Line number in ``file`` from which the log message emanated */
+    int lineno;
+    /** The log message, formatted (without a trailing newline) */
+    const char *msg;
+} asdf_log_rec_t;
+
+
+/**
+ * Type for optional structured logging callback functions
+ *
+ * See `asdf_log_rec_t` and `asdf_log_cfg_t.handler`.  The handler is only
+ * called for messages at or above the configured `asdf_log_cfg_t.level`.
+ *
+ * A handler may itself log through libasdf.  It may be called concurrently
+ * from different threads if files sharing it are used from different threads,
+ * in which case it must be thread-safe.  libasdf preserves ``errno`` across
+ * the call, so the handler need not.
+ *
+ * The `asdf_log_rec_t *` for a single log message.  It is owned by
+ * libasdf and is only valid for the duration of the call; copy anything
+ * (including ``rec->msg``) that must outlive it.
+ *
+ * The custom user data, if any, assigned to the
+ * `asdf_log_cfg_t.handler_userdata` that configured this log handler
+ *
+ * .. version-added:: 0.3
+ */
+typedef void (*asdf_log_handler_t)(const asdf_log_rec_t *rec, void *userdata);
+
+
+/**
  * Per-file logging configuration
  *
  * Pass one of these as the ``log`` field of `asdf_config_t` to `asdf_open_ex`
@@ -159,6 +214,31 @@ typedef struct {
      * takes precedence over the ``ASDF_LOG_COLOR`` environment variable
      */
     bool no_color;
+    /**
+     * Optional callback to intercept log records and implement custom logging
+     *
+     * The handler receives an `const asdf_log_rec_t *` as well as a pointer
+     * to the optional userdata declared below, and returns ``void``.
+     *
+     * If left as ``NULL`` (the default) libasdf's standard stream-based
+     * logging is used (`asdf_log_default_handler`).
+     *
+     * .. version-added:: 0.3
+     */
+    asdf_log_handler_t handler;
+
+    /**
+     * Optional user-specified data passed to the `asdf_log_handler_t`
+     *
+     * This field is only meaningful if `asdf_log_cfg_t.handler` is passed a
+     * non-default, non-NULL value and is otherwise ignored (the default
+     * handler is always passed the effective log configuration instead).
+     *
+     * .. version-added:: 0.3
+     */
+    void *handler_userdata;
+    /** Reserved for future options (leave zeroed); keeps the ABI stable */
+    void *_reserved[4];
 } asdf_log_cfg_t;
 
 
@@ -209,6 +289,28 @@ ASDF_EXPORT void asdf_file_log(
 #else
 #define ASDF_LOG(file, level, ...) ((void)0)
 #endif
+
+
+/**
+ * The default stream-based log handler used for logging
+ *
+ * This is the log handler used when `asdf_log_cfg_t.handler` is not
+ * overridden, and one may assign it explicitly e.g. to restore the default.
+ *
+ * When libasdf uses it for a file, its ``userdata`` is always that file's
+ * effective log configuration.  It may also be called directly, for example
+ * from a custom handler that adds to the standard output rather than replacing
+ * it.  In that case the stream, fields and ``no_color`` are taken from the
+ * given configuration (with the same defaults as for a file), and whether to
+ * colorize is decided the same way as for a file.
+ *
+ * :param rec: The `asdf_log_rec_t *` for a single log message
+ * :param userdata: The `asdf_log_cfg_t *` to format and write the message by,
+ *   or ``NULL`` for all defaults
+ *
+ * .. version-added:: 0.3
+ */
+ASDF_EXPORT void asdf_log_default_handler(const asdf_log_rec_t *rec, void *userdata);
 
 ASDF_END_DECLS
 

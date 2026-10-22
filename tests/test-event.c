@@ -489,8 +489,9 @@ MU_TEST(basic_buffer_yaml) {
 
 MU_TEST(test_asdf_event_summary) {
     const char *filename = get_reference_file_path("1.6.0/basic.asdf");
-    log_capture_t cap = {0};
-    assert_true(log_capture_open(&cap));
+    // The golden file checks the default handler's formatted output
+    log_stream_t cap = {0};
+    assert_true(log_stream_open(&cap));
     asdf_log_cfg_t log_config = {
         .level = ASDF_LOG_TRACE, .fields = ASDF_LOG_FIELD_ALL ^ ASDF_LOG_FIELD_LINE,
         .stream = cap.stream, .no_color = true};
@@ -503,9 +504,9 @@ MU_TEST(test_asdf_event_summary) {
     asdf_parser_destroy(parser);
     char *expected = read_file(get_fixture_file_path("events/basic.log"), NULL);
     assert_not_null(expected);
-    assert_string_equal(log_capture_text(&cap), expected);
+    assert_string_equal(log_stream_text(&cap), expected);
     free(expected);
-    log_capture_close(&cap);
+    log_stream_close(&cap);
     return MUNIT_OK;
 }
 

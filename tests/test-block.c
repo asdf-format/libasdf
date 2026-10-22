@@ -254,6 +254,24 @@ MU_TEST(block_data_set_compressed) {
 }
 
 
+/* data_set_compressed must not read past the end of a compression name
+ * shorter than the header field */
+MU_TEST(block_data_set_compressed_short_name) {
+    uint8_t data[4] = {0};
+    /* Heap-allocated, so reading past its end is caught under ASan */
+    char *name = strdup("zz");
+    assert_not_null(name);
+
+    asdf_block_t *block = asdf_block_create(NULL, 0);
+    assert_not_null(block);
+    assert_int(asdf_block_data_set_compressed(block, data, sizeof(data), 8, name), ==, 0);
+    free(name);
+    assert_string_equal(asdf_block_compression(block), "zz");
+    asdf_block_close(block);
+    return MUNIT_OK;
+}
+
+
 MU_TEST_SUITE(
     block,
     MU_RUN_TEST(block_data),
@@ -261,7 +279,8 @@ MU_TEST_SUITE(
     MU_RUN_TEST(block_data_alloc_roundtrip),
     MU_RUN_TEST(block_create_destroy),
     MU_RUN_TEST(block_compress_on_write),
-    MU_RUN_TEST(block_data_set_compressed)
+    MU_RUN_TEST(block_data_set_compressed),
+    MU_RUN_TEST(block_data_set_compressed_short_name)
 );
 
 

@@ -435,6 +435,26 @@ MU_TEST(test_asdf_block_checksum_verify) {
 }
 
 
+/* Python asdf 5.3.0 and later checksum compressed blocks correctly, so the
+ * workaround for older versions must not be applied to their files */
+MU_TEST(test_asdf_block_checksum_verify_python_asdf_fixed) {
+#ifndef HAVE_MD5
+    return MUNIT_SKIP;
+#else
+    const char *filename = get_fixture_file_path("compressed-asdf-5.4.asdf");
+    asdf_file_t *file = asdf_open(filename, "r");
+    assert_not_null(file);
+    asdf_block_t *block = asdf_block_open(file, 0);
+    assert_not_null(block);
+    assert_string_equal(asdf_block_compression(block), "zlib");
+    assert_true(asdf_block_checksum_verify(block, NULL));
+    asdf_block_close(block);
+    asdf_close(file);
+    return MUNIT_OK;
+#endif
+}
+
+
 /* Append an uncompressed data block via the create/set/append API, returning
  * the new block's index (or -1 on failure) -- a thin stand-in for the old
  * append_data_block(file, data, size) used by these tests. */
@@ -952,6 +972,7 @@ MU_TEST_SUITE(
     MU_RUN_TEST(invalid_block_index),
     MU_RUN_TEST(test_asdf_block_checksum),
     MU_RUN_TEST(test_asdf_block_checksum_verify),
+    MU_RUN_TEST(test_asdf_block_checksum_verify_python_asdf_fixed),
     MU_RUN_TEST(test_asdf_block_append),
     MU_RUN_TEST(test_asdf_block_append_read_only),
     MU_RUN_TEST(write_block_no_index),

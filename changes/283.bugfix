@@ -1,0 +1,2 @@
+Fixed `asdf_block_data_set_compressed` reading past the end of a compression
+name shorter than the 4-byte header field.

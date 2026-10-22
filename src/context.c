@@ -34,6 +34,16 @@ asdf_context_t *asdf_context_create(const asdf_log_cfg_t *log_config) {
     ctx->log.stream = log_config->stream ? log_config->stream : stderr;
     // Resolved once here, so no_color in the context is the final decision
     ctx->log.no_color = !asdf_log_use_color(ctx->log.stream, log_config->no_color);
+
+    // The default handler's userdata is always this effective configuration;
+    // any userdata supplied alongside it is ignored
+    if (!log_config->handler || log_config->handler == asdf_log_default_handler) {
+        ctx->log.handler = asdf_log_default_handler;
+        ctx->log.handler_userdata = &ctx->log;
+    } else {
+        ctx->log.handler = log_config->handler;
+        ctx->log.handler_userdata = log_config->handler_userdata;
+    }
     return ctx;
 }
 

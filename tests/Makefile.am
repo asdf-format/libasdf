@@ -399,9 +399,12 @@ EXTRA_DIST += \
     fixtures/255-out.asdf \
     fixtures/255-padding-after-header.asdf \
     fixtures/255-padding-after-tree.asdf \
+    fixtures/alias-cycle.asdf \
+    fixtures/alias-expansion.asdf \
     fixtures/anchors.asdf \
     fixtures/byteorder.asdf \
     fixtures/compressed.asdf \
+    fixtures/compressed-asdf-5.4.asdf \
     fixtures/cube.asdf \
     fixtures/custom-tag-handle.asdf \
     fixtures/datatypes.asdf \
@@ -412,6 +415,8 @@ EXTRA_DIST += \
     fixtures/events/compressed.events.txt \
     fixtures/events/int.events.txt \
     fixtures/extension-metadata-with-package.asdf \
+    fixtures/info/alias-cycle.info.txt \
+    fixtures/info/alias-expansion.info.txt \
     fixtures/info/anchor.info.txt \
     fixtures/info/ascii.info.txt \
     fixtures/info/basic.info.txt \
@@ -437,6 +442,7 @@ EXTRA_DIST += \
     fixtures/ndarray-size-overflow.asdf \
     fixtures/ndarray-out.asdf \
     fixtures/numeric.asdf \
+    fixtures/offset.asdf \
     fixtures/parse-minimal.asdf \
     fixtures/parse-minimal-empty-tree.asdf \
     fixtures/parse-minimal-extra-comment.asdf \
@@ -445,6 +451,7 @@ EXTRA_DIST += \
     fixtures/roman_wcs.asdf \
     fixtures/scalars.asdf \
     fixtures/scalars-out.asdf \
+    fixtures/strides.asdf \
     fixtures/tagged-scalars.asdf \
     fixtures/test-write-file.asdf \
     fixtures/tiles.asdf \

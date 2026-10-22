@@ -129,6 +129,7 @@
     <elf-symbol name='asdf_is_uint8' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes'/>
     <elf-symbol name='asdf_library_set' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes'/>
     <elf-symbol name='asdf_library_set_version' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes'/>
+    <elf-symbol name='asdf_log_default_handler' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes'/>
     <elf-symbol name='asdf_mapping_copy' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes'/>
     <elf-symbol name='asdf_mapping_create' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes'/>
     <elf-symbol name='asdf_mapping_destroy' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes'/>
@@ -691,21 +692,24 @@
         <var-decl name='write_compressor' type-id='a1c28ca1' visibility='default'/>
       </data-member>
     </class-decl>
-    <class-decl name='asdf_config_t' size-in-bits='960' is-struct='yes' naming-typedef-id='478f3a46' visibility='default' id='1928dab5'>
+    <class-decl name='asdf_config_t' size-in-bits='2368' is-struct='yes' naming-typedef-id='478f3a46' visibility='default' id='1928dab5'>
       <data-member access='public' layout-offset-in-bits='0'>
         <var-decl name='parser' type-id='74fe1ce2' visibility='default'/>
       </data-member>
-      <data-member access='public' layout-offset-in-bits='128'>
+      <data-member access='public' layout-offset-in-bits='384'>
         <var-decl name='emitter' type-id='fb59bae5' visibility='default'/>
       </data-member>
-      <data-member access='public' layout-offset-in-bits='384'>
+      <data-member access='public' layout-offset-in-bits='896'>
         <var-decl name='log' type-id='d4fe8975' visibility='default'/>
       </data-member>
-      <data-member access='public' layout-offset-in-bits='640'>
+      <data-member access='public' layout-offset-in-bits='1536'>
         <var-decl name='decomp' type-id='e7f43f72' visibility='default'/>
       </data-member>
+      <data-member access='public' layout-offset-in-bits='2112'>
+        <var-decl name='_reserved' type-id='209ef23f' visibility='default'/>
+      </data-member>
     </class-decl>
-    <class-decl name='asdf_emitter' size-in-bits='576' is-struct='yes' visibility='default' id='76c0d0ce'>
+    <class-decl name='asdf_emitter' size-in-bits='832' is-struct='yes' visibility='default' id='76c0d0ce'>
       <data-member access='public' layout-offset-in-bits='0'>
         <var-decl name='base' type-id='e7c511c9' visibility='default'/>
       </data-member>
@@ -715,17 +719,17 @@
       <data-member access='public' layout-offset-in-bits='128'>
         <var-decl name='config' type-id='fb59bae5' visibility='default'/>
       </data-member>
-      <data-member access='public' layout-offset-in-bits='384'>
+      <data-member access='public' layout-offset-in-bits='640'>
         <var-decl name='state' type-id='c49ba51e' visibility='default'/>
       </data-member>
-      <data-member access='public' layout-offset-in-bits='448'>
+      <data-member access='public' layout-offset-in-bits='704'>
         <var-decl name='stream' type-id='8729897b' visibility='default'/>
       </data-member>
-      <data-member access='public' layout-offset-in-bits='512'>
+      <data-member access='public' layout-offset-in-bits='768'>
         <var-decl name='done' type-id='c894953d' visibility='default'/>
       </data-member>
     </class-decl>
-    <class-decl name='asdf_emitter_cfg' size-in-bits='256' is-struct='yes' visibility='default' id='2ba36a0f'>
+    <class-decl name='asdf_emitter_cfg' size-in-bits='512' is-struct='yes' visibility='default' id='2ba36a0f'>
       <data-member access='public' layout-offset-in-bits='0'>
         <var-decl name='flags' type-id='f95bbb0b' visibility='default'/>
       </data-member>
@@ -737,6 +741,9 @@
       </data-member>
       <data-member access='public' layout-offset-in-bits='192'>
         <var-decl name='array_storage' type-id='3df606a9' visibility='default'/>
+      </data-member>
+      <data-member access='public' layout-offset-in-bits='256'>
+        <var-decl name='_reserved' type-id='209ef23f' visibility='default'/>
       </data-member>
     </class-decl>
     <class-decl name='asdf_event' size-in-bits='128' is-struct='yes' visibility='default' id='52dc7648'>
@@ -804,7 +811,7 @@
         <var-decl name='software' type-id='28eb1375' visibility='default'/>
       </data-member>
     </class-decl>
-    <class-decl name='asdf_log_cfg_t' size-in-bits='256' is-struct='yes' naming-typedef-id='d4fe8975' visibility='default' id='6cf3b1e8'>
+    <class-decl name='asdf_log_cfg_t' size-in-bits='640' is-struct='yes' naming-typedef-id='d4fe8975' visibility='default' id='6cf3b1e8'>
       <data-member access='public' layout-offset-in-bits='0'>
         <var-decl name='stream' type-id='822cd80b' visibility='default'/>
       </data-member>
@@ -817,48 +824,74 @@
       <data-member access='public' layout-offset-in-bits='192'>
         <var-decl name='no_color' type-id='c894953d' visibility='default'/>
       </data-member>
+      <data-member access='public' layout-offset-in-bits='256'>
+        <var-decl name='handler' type-id='b7676147' visibility='default'/>
+      </data-member>
+      <data-member access='public' layout-offset-in-bits='320'>
+        <var-decl name='handler_userdata' type-id='eaa32e2f' visibility='default'/>
+      </data-member>
+      <data-member access='public' layout-offset-in-bits='384'>
+        <var-decl name='_reserved' type-id='209ef23f' visibility='default'/>
+      </data-member>
     </class-decl>
-    <class-decl name='asdf_parser' size-in-bits='1728' is-struct='yes' visibility='default' id='e3105b67'>
+    <class-decl name='asdf_log_rec_t' size-in-bits='320' is-struct='yes' naming-typedef-id='ddbb5195' visibility='default' id='044d6794'>
+      <data-member access='public' layout-offset-in-bits='0'>
+        <var-decl name='level' type-id='55972ccd' visibility='default'/>
+      </data-member>
+      <data-member access='public' layout-offset-in-bits='64'>
+        <var-decl name='package' type-id='80f4b756' visibility='default'/>
+      </data-member>
+      <data-member access='public' layout-offset-in-bits='128'>
+        <var-decl name='file' type-id='80f4b756' visibility='default'/>
+      </data-member>
+      <data-member access='public' layout-offset-in-bits='192'>
+        <var-decl name='lineno' type-id='95e97e5e' visibility='default'/>
+      </data-member>
+      <data-member access='public' layout-offset-in-bits='256'>
+        <var-decl name='msg' type-id='80f4b756' visibility='default'/>
+      </data-member>
+    </class-decl>
+    <class-decl name='asdf_parser' size-in-bits='1984' is-struct='yes' visibility='default' id='e3105b67'>
       <data-member access='public' layout-offset-in-bits='0'>
         <var-decl name='base' type-id='e7c511c9' visibility='default'/>
       </data-member>
       <data-member access='public' layout-offset-in-bits='64'>
         <var-decl name='config' type-id='74fe1ce2' visibility='default'/>
       </data-member>
-      <data-member access='public' layout-offset-in-bits='192'>
+      <data-member access='public' layout-offset-in-bits='448'>
         <var-decl name='state' type-id='3d30ee25' visibility='default'/>
       </data-member>
-      <data-member access='public' layout-offset-in-bits='256'>
+      <data-member access='public' layout-offset-in-bits='512'>
         <var-decl name='stream' type-id='8729897b' visibility='default'/>
       </data-member>
-      <data-member access='public' layout-offset-in-bits='320'>
+      <data-member access='public' layout-offset-in-bits='576'>
         <var-decl name='should_close' type-id='c894953d' visibility='default'/>
       </data-member>
-      <data-member access='public' layout-offset-in-bits='384'>
+      <data-member access='public' layout-offset-in-bits='640'>
         <var-decl name='event_freelist' type-id='38a08bb7' visibility='default'/>
       </data-member>
-      <data-member access='public' layout-offset-in-bits='448'>
+      <data-member access='public' layout-offset-in-bits='704'>
         <var-decl name='current_event_p' type-id='38a08bb7' visibility='default'/>
       </data-member>
-      <data-member access='public' layout-offset-in-bits='512'>
+      <data-member access='public' layout-offset-in-bits='768'>
         <var-decl name='asdf_version' type-id='10a19a1f' visibility='default'/>
       </data-member>
-      <data-member access='public' layout-offset-in-bits='576'>
+      <data-member access='public' layout-offset-in-bits='832'>
         <var-decl name='standard_version' type-id='10a19a1f' visibility='default'/>
       </data-member>
-      <data-member access='public' layout-offset-in-bits='640'>
+      <data-member access='public' layout-offset-in-bits='896'>
         <var-decl name='yaml_parser' type-id='50f212f8' visibility='default'/>
       </data-member>
-      <data-member access='public' layout-offset-in-bits='704'>
+      <data-member access='public' layout-offset-in-bits='960'>
         <var-decl name='yaml_diag_seen' type-id='b59d7dce' visibility='default'/>
       </data-member>
-      <data-member access='public' layout-offset-in-bits='768'>
+      <data-member access='public' layout-offset-in-bits='1024'>
         <var-decl name='tree' type-id='db93011d' visibility='default'/>
       </data-member>
-      <data-member access='public' layout-offset-in-bits='1088'>
+      <data-member access='public' layout-offset-in-bits='1344'>
         <var-decl name='block' type-id='10a80218' visibility='default'/>
       </data-member>
-      <data-member access='public' layout-offset-in-bits='1664'>
+      <data-member access='public' layout-offset-in-bits='1920'>
         <var-decl name='done' type-id='c894953d' visibility='default'/>
       </data-member>
     </class-decl>
@@ -879,12 +912,15 @@
         <var-decl name='found' type-id='b59d7dce' visibility='default'/>
       </data-member>
     </class-decl>
-    <class-decl name='asdf_parser_cfg' size-in-bits='128' is-struct='yes' visibility='default' id='e3afe8b6'>
+    <class-decl name='asdf_parser_cfg' size-in-bits='384' is-struct='yes' visibility='default' id='e3afe8b6'>
       <data-member access='public' layout-offset-in-bits='0'>
         <var-decl name='flags' type-id='b0d47526' visibility='default'/>
       </data-member>
       <data-member access='public' layout-offset-in-bits='64'>
         <var-decl name='log' type-id='4702ee2e' visibility='default'/>
+      </data-member>
+      <data-member access='public' layout-offset-in-bits='128'>
+        <var-decl name='_reserved' type-id='209ef23f' visibility='default'/>
       </data-member>
     </class-decl>
     <class-decl name='asdf_parser_tree_info' size-in-bits='320' is-struct='yes' visibility='default' id='a4e6c70d'>
@@ -1050,7 +1086,7 @@
         <var-decl name='tm_zone' type-id='80f4b756' visibility='default'/>
       </data-member>
     </class-decl>
-    <class-decl name='__anonymous_struct__1' size-in-bits='320' is-struct='yes' is-anonymous='yes' visibility='default' id='e7f43f72'>
+    <class-decl name='__anonymous_struct__1' size-in-bits='576' is-struct='yes' is-anonymous='yes' visibility='default' id='e7f43f72'>
       <data-member access='public' layout-offset-in-bits='0'>
         <var-decl name='mode' type-id='5aa91282' visibility='default'/>
       </data-member>
@@ -1065,6 +1101,9 @@
       </data-member>
       <data-member access='public' layout-offset-in-bits='256'>
         <var-decl name='tmp_dir' type-id='80f4b756' visibility='default'/>
+      </data-member>
+      <data-member access='public' layout-offset-in-bits='320'>
+        <var-decl name='_reserved' type-id='209ef23f' visibility='default'/>
       </data-member>
     </class-decl>
     <typedef-decl name='FILE' type-id='ec1ed955' id='aa12d1ba'/>
@@ -1095,7 +1134,9 @@
     <typedef-decl name='asdf_history_entry_t' type-id='d66aeb10' id='21187959'/>
     <typedef-decl name='asdf_log_cfg_t' type-id='6cf3b1e8' id='d4fe8975'/>
     <typedef-decl name='asdf_log_fields_t' type-id='9c313c2d' id='58678896'/>
+    <typedef-decl name='asdf_log_handler_t' type-id='96fe6596' id='b7676147'/>
     <typedef-decl name='asdf_log_level_t' type-id='0da4e011' id='55972ccd'/>
+    <typedef-decl name='asdf_log_rec_t' type-id='044d6794' id='ddbb5195'/>
     <typedef-decl name='asdf_parser_block_info_t' type-id='1cfb06ea' id='10a80218'/>
     <typedef-decl name='asdf_parser_cfg_t' type-id='e3afe8b6' id='74fe1ce2'/>
     <typedef-decl name='asdf_parser_optflags_t' type-id='9c313c2d' id='b0d47526'/>
@@ -1147,6 +1188,9 @@
     <type-decl name='unsigned int' size-in-bits='32' id='f0981eed'/>
     <type-decl name='unsigned long int' size-in-bits='64' id='f0981eeb'/>
     <type-decl name='unsigned short int' size-in-bits='16' id='f0981eec'/>
+    <array-type-def dimensions='1' type-id='eaa32e2f' id='209ef23f'>
+      <subrange length='4' lower-bound='0' upper-bound='3' type-id='f0981eeb' id='16fe7105'/>
+    </array-type-def>
     <pointer-type-def type-id='aa12d1ba' size-in-bits='64' id='822cd80b'/>
     <pointer-type-def type-id='ec1ed955' size-in-bits='64' id='dca988a5'/>
     <pointer-type-def type-id='74afb98b' size-in-bits='64' id='e5de7078'/>
@@ -1167,6 +1211,8 @@
     <pointer-type-def type-id='a84c031d' size-in-bits='64' id='26a90f95'/>
     <qualified-type-def type-id='3129e886' const='yes' id='27c83d96'/>
     <pointer-type-def type-id='27c83d96' size-in-bits='64' id='5c392ef4'/>
+    <qualified-type-def type-id='ddbb5195' const='yes' id='26ba3be5'/>
+    <pointer-type-def type-id='26ba3be5' size-in-bits='64' id='c62c26dd'/>
     <qualified-type-def type-id='d16e83d5' const='yes' id='7a096605'/>
     <pointer-type-def type-id='7a096605' size-in-bits='64' id='4bcbdbfd'/>
     <pointer-type-def type-id='4bcbdbfd' size-in-bits='64' id='28eb1375'/>
@@ -1181,6 +1227,7 @@
     <pointer-type-def type-id='b59d7dce' size-in-bits='64' id='78c01427'/>
     <pointer-type-def type-id='b96825af' size-in-bits='64' id='ae3e8ca6'/>
     <pointer-type-def type-id='002ac4a6' size-in-bits='64' id='cf536864'/>
+    <pointer-type-def type-id='660cdf24' size-in-bits='64' id='96fe6596'/>
     <pointer-type-def type-id='c5c76c9c' size-in-bits='64' id='b7f9d8e6'/>
     <pointer-type-def type-id='a4036571' size-in-bits='64' id='570f8c59'/>
     <pointer-type-def type-id='bb4788fa' size-in-bits='64' id='cecf4ea7'/>
@@ -1303,6 +1350,11 @@
     <typedef-decl name='asdf_block_info_vec' type-id='ed1c1e13' id='b45d19f4'/>
     <type-decl name='void' id='48b5725f'/>
     <pointer-type-def type-id='48b5725f' id='eaa32e2f'/>
+    <function-type size-in-bits='64' id='660cdf24'>
+      <parameter type-id='c62c26dd'/>
+      <parameter type-id='eaa32e2f'/>
+      <return type-id='48b5725f'/>
+    </function-type>
     <function-type size-in-bits='64' id='c5c76c9c'>
       <parameter type-id='eaa32e2f'/>
       <return type-id='48b5725f'/>
@@ -2850,6 +2902,11 @@
   <abi-instr address-size='64' path='src/log.c' language='LANG_C11'>
     <qualified-type-def type-id='befce77a' const='yes' id='dcedb0aa'/>
     <pointer-type-def type-id='dcedb0aa' size-in-bits='64' id='4a2cd980'/>
+    <function-decl name='asdf_log_default_handler' mangled-name='asdf_log_default_handler' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='asdf_log_default_handler'>
+      <parameter type-id='c62c26dd' name='rec'/>
+      <parameter type-id='eaa32e2f' name='userdata'/>
+      <return type-id='48b5725f'/>
+    </function-decl>
     <function-decl name='asdf_file_log' mangled-name='asdf_file_log' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='asdf_file_log'>
       <parameter type-id='4a2cd980' name='file'/>
       <parameter type-id='55972ccd' name='level'/>

@@ -168,15 +168,15 @@ static inline void mu_test_teardown(void *fixture) {
  * Those are used when declaring the test to munit in ``MU_RUN_TEST()``.
  */
 #define MU_TEST(name) \
-    MunitResult name(UNUSED(const MunitParameter params[]), UNUSED(fixtures *fixture)); \
-    void * name##_setup(UNUSED(const MunitParameter params[]), void *fixture) { \
+    static MunitResult name(UNUSED(const MunitParameter params[]), UNUSED(fixtures *fixture)); \
+    static void * name##_setup(UNUSED(const MunitParameter params[]), void *fixture) { \
         fixtures *fix = mu_test_init_fixtures((fixtures *)fixture, #name); \
         return fix; \
     } \
-    MunitResult name##_wrapper(const MunitParameter params[], void *fixture) { \
+    static MunitResult name##_wrapper(const MunitParameter params[], void *fixture) { \
         return name(params, fixture); \
     } \
-MunitResult name(UNUSED(const MunitParameter params[]), UNUSED(fixtures *fixture))
+static MunitResult name(UNUSED(const MunitParameter params[]), UNUSED(fixtures *fixture))
 
 
 #define __MU_RUN_TEST_DISPATCH(_1, _2, NAME, ...) NAME

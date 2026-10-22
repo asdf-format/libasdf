@@ -28,6 +28,20 @@
 #define COLOR(color, str) color str ANSI_RESET
 #define DIM(str) ANSI_DIM str ANSI_RESET
 
+// We don't support _WIN32 yet really but I have a branch where I'm working on
+// it so might as well supply its equivalents since they apparently exist, in
+// anticipation of that.
+#ifdef _WIN32
+#define flockfile _lock_file
+#define funlockfile _unlock_file
+#endif
+
+/*
+ * Size of the on-stack buffer log messages are formatted into; longer
+ * messages are formatted into a heap buffer instead
+ */
+#define ASDF_LOG_MSG_BUF_SIZE 512
+
 #define ASDF_LOG_LEVEL_ENV_VAR "ASDF_LOG_LEVEL"
 #define ASDF_LOG_COLOR_ENV_VAR "ASDF_LOG_COLOR"
 
@@ -107,34 +121,25 @@ bool asdf_log_use_color(FILE *stream, bool no_color) {
 }
 
 
-static void asdf_log_impl(
-    FILE *stream,
-    asdf_log_level_t level,
-    asdf_log_fields_t fields,
-    bool no_color,
-    const char *file,
-    int lineno,
-    const char *fmt,
-    va_list args) {
-    // Logging must not clobber errno for callers that log before reporting it
-    int saved_errno = errno;
-    bool color = false;
+/*
+ * Write a log record to ``stream`` in the standard format
+ *
+ * ``color`` is the final decision on whether to colorize; see
+ * `asdf_log_use_color`.  The whole line is written under the stream's lock so
+ * lines from different threads logging to the same stream do not interleave.
+ */
+static void asdf_log_write(
+    const asdf_log_rec_t *rec, FILE *stream, asdf_log_fields_t fields, bool color) {
     bool sep = false;
-
-    // Messages can only be logged at a real severity; this also keeps the
-    // level_names lookup in bounds
-    if (UNLIKELY(level < ASDF_LOG_TRACE || level >= ASDF_LOG_NUM_LEVELS))
-        return;
 
     // Don't allow logging "nothing" (logging should simply be disabled for
     // that); if fields is empty enable all fields
     fields = fields ? fields : ASDF_LOG_FIELD_ALL;
-
-#ifdef ASDF_LOG_COLOR
-    color = !no_color;
-#else
-    (void)no_color;
+#ifndef ASDF_LOG_COLOR
+    color = false;
 #endif
+
+    flockfile(stream);
 
     if (fields & ASDF_LOG_FIELD_LEVEL) {
 #ifdef ASDF_LOG_COLOR
@@ -142,11 +147,11 @@ static void asdf_log_impl(
             fprintf(
                 stream,
                 DIM("[") COLOR("%s", "%s") DIM("]"),
-                level_colors[level],
-                level_names[level]);
+                level_colors[rec->level],
+                level_names[rec->level]);
         else
 #endif
-            fprintf(stream, "[%-5s]", level_names[level]);
+            fprintf(stream, "[%-5s]", level_names[rec->level]);
 
         sep = true;
     }
@@ -159,13 +164,13 @@ static void asdf_log_impl(
             fputs(COLOR_DIM_GREY, stream);
 
         if (fields & ASDF_LOG_FIELD_PACKAGE)
-            fputs("(" PACKAGE_NAME ")", stream);
+            fprintf(stream, "(%s)", rec->package);
 
         if (fields & ASDF_LOG_FIELD_FILE)
-            fprintf(stream, "%s:", file);
+            fprintf(stream, "%s:", rec->file);
 
         if (fields & ASDF_LOG_FIELD_LINE)
-            fprintf(stream, "%d:", lineno);
+            fprintf(stream, "%d:", rec->lineno);
 
         if (color)
             fputs(ANSI_RESET, stream);
@@ -177,12 +182,97 @@ static void asdf_log_impl(
         if (sep)
             fputc(' ', stream);
 
-        // NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized)
-        vfprintf(stream, fmt, args);
+        fputs(rec->msg, stream);
     }
 
     fputc('\n', stream);
     fflush(stream);
+    funlockfile(stream);
+}
+
+
+void asdf_log_default_handler(const asdf_log_rec_t *rec, void *userdata) {
+    const asdf_log_cfg_t *cfg = userdata;
+    FILE *stream = (cfg && cfg->stream) ? cfg->stream : stderr;
+    asdf_log_fields_t fields = cfg ? cfg->fields : ASDF_LOG_FIELD_ALL;
+    int saved_errno = errno;
+
+    if (UNLIKELY(!rec || rec->level < ASDF_LOG_TRACE || rec->level >= ASDF_LOG_NUM_LEVELS))
+        return;
+
+    // Called directly with an arbitrary config, so the color decision has to
+    // be made here (the context's own config is resolved once up front and
+    // does not come through this path; see asdf_log_emit)
+    asdf_log_write(rec, stream, fields, asdf_log_use_color(stream, cfg ? cfg->no_color : false));
+    errno = saved_errno;
+}
+
+
+/*
+ * Format a log message and pass it to the handler of a resolved log config
+ * (one built by `asdf_context_create`)
+ *
+ * The record and the formatted message live on the stack (the message moves to
+ * the heap only if it does not fit in ASDF_LOG_MSG_BUF_SIZE), so nothing is
+ * shared between calls: concurrent logging from different threads, and
+ * handlers that themselves log, are both safe.
+ */
+static void asdf_log_emit(
+    const asdf_log_cfg_t *cfg,
+    asdf_log_level_t level,
+    const char *file,
+    int lineno,
+    const char *fmt,
+    va_list args) {
+    // Logging must not clobber errno for callers that log before reporting it
+    int saved_errno = errno;
+    char buf[ASDF_LOG_MSG_BUF_SIZE];
+    char *msg = buf;
+    va_list args_copy;
+    int len = 0;
+
+    // Messages can only be logged at a real severity; this also keeps the
+    // level_names lookup in bounds
+    if (UNLIKELY(level < ASDF_LOG_TRACE || level >= ASDF_LOG_NUM_LEVELS))
+        return;
+
+    va_copy(args_copy, args);
+    // NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized)
+    len = vsnprintf(buf, sizeof(buf), fmt, args);
+
+    if (UNLIKELY(len < 0)) {
+        va_end(args_copy);
+        errno = saved_errno;
+        return;
+    }
+
+    if (UNLIKELY((size_t)len >= sizeof(buf))) {
+        msg = malloc((size_t)len + 1);
+
+        // On allocation failure log the truncated message rather than nothing
+        if (msg)
+            vsnprintf(msg, (size_t)len + 1, fmt, args_copy);
+        else
+            msg = buf;
+    }
+
+    va_end(args_copy);
+
+    asdf_log_rec_t rec = {
+        .level = level, .package = PACKAGE_NAME, .file = file, .lineno = lineno, .msg = msg};
+
+    /* The default handler isn't called directly as it wraps behavior alread
+     * covered here like getting the color decision and saving errno; it's
+     * supplied rather so that users can wrap the default handler if they wish
+     * to */
+    if (cfg->handler == asdf_log_default_handler)
+        asdf_log_write(&rec, cfg->stream, cfg->fields, !cfg->no_color);
+    else
+        cfg->handler(&rec, cfg->handler_userdata);
+
+    if (msg != buf)
+        free(msg);
+
     errno = saved_errno;
 }
 
@@ -207,8 +297,7 @@ void asdf_context_log(
     // NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized)
     va_list args;
     va_start(args, fmt);
-    asdf_log_impl(
-        ctx->log.stream, level, ctx->log.fields, ctx->log.no_color, file, lineno, fmt, args);
+    asdf_log_emit(&ctx->log, level, file, lineno, fmt, args);
     va_end(args);
 }
 
@@ -232,8 +321,7 @@ void asdf_file_log(
         va_end(args);
         return;
     }
-    asdf_log_impl(
-        ctx->log.stream, level, ctx->log.fields, ctx->log.no_color, src_file, lineno, fmt, args);
+    asdf_log_emit(&ctx->log, level, src_file, lineno, fmt, args);
     va_end(args);
 }
 
@@ -242,16 +330,13 @@ void asdf_log_fallback(asdf_log_level_t level, const char *file, int lineno, con
     // Bug in clang-tidy: https://github.com/llvm/llvm-project/issues/40656
     // Should be fixed in newer versions though...
     // NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized)
+    asdf_log_cfg_t cfg = {
+        .stream = stderr,
+        .fields = ASDF_LOG_FIELD_ALL,
+        .no_color = !asdf_log_use_color(stderr, false),
+        .handler = asdf_log_default_handler};
     va_list args;
     va_start(args, fmt);
-    asdf_log_impl(
-        stderr,
-        level,
-        ASDF_LOG_FIELD_ALL,
-        !asdf_log_use_color(stderr, false),
-        file,
-        lineno,
-        fmt,
-        args);
+    asdf_log_emit(&cfg, level, file, lineno, fmt, args);
     va_end(args);
 }

@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.21)
 
 # Internal full package version
-set(PACKAGE_VERSION 0.2.1)
+set(PACKAGE_VERSION 0.2.2)
 
 # CMake-compatible project version
-set(PROJECT_VERSION 0.2.1)
+set(PROJECT_VERSION 0.2.2)
 
 set(PACKAGE_URL https://github.com/asdf-format/libasdf)
 set(PACKAGE_BUGREPORT https://github.com/asdf-format/libasdf/issues)
@@ -12,7 +12,7 @@ set(PACKAGE_BUGREPORT https://github.com/asdf-format/libasdf/issues)
 # Shared library interface version: see configure.ac and please keep
 # these in sync.
 set(PROJECT_SOVERSION 0)
-set(PROJECT_LIBVERSION 0.1.0)
+set(PROJECT_LIBVERSION 0.1.1)
 
 project(libasdf
     VERSION ${PROJECT_VERSION}

@@ -10,9 +10,11 @@
  * * All int and most float data types (other data types can be read but are
  *   not fully implemented)
  * * :c:member:`shape <asdf_ndarray_t.shape>`,
- *   :c:member:`byteorder <asdf_ndarray_t.byteorder>`, and
- *   :c:member:`offset <asdf_ndarray_t.offset>`
- * * :c:member:`strides <asdf_ndarray_t.strides>` are partially supported
+ *   :c:member:`byteorder <asdf_ndarray_t.byteorder>`,
+ *   :c:member:`offset <asdf_ndarray_t.offset>`, and
+ *   :c:member:`strides <asdf_ndarray_t.strides>` (strides are applied when
+ *   reading data with the ``asdf_ndarray_read_*`` functions, but not to the
+ *   raw pointer returned by `asdf_ndarray_data`)
  *
  * It can provide direct access to the raw data of an ndarray (via a
  * ``void *``); users must use
@@ -28,7 +30,6 @@
  * * Reading string datatypes (``ascii`` or ``ucs4``)
  * * Reading structured datatypes (the datatypes are parsed but there is are
  *   no APIs yet for interpreting structured array data)
- * * Reading arbitrarily strided data
  * * Masks are not parsed or used at all, whether simple mask values or mask
  *   arrays (though if present a warning is logged indicating lack of support)
  *
@@ -116,11 +117,23 @@ typedef struct {
     asdf_datatype_t datatype;
     /** The byteorder of the array data where applicable */
     asdf_byteorder_t byteorder;
-    /** Optional offset into the binary block where the array data begins */
+    /**
+     * Optional offset, in bytes, into the binary block where the array data
+     * begins; for compressed blocks this is an offset into the uncompressed
+     * data
+     */
     uint64_t offset;
     /**
-     * Optional strides to use when iterating/index array data (an array of
-     * size ``.ndim`` giving the stride for each dimension)
+     * Optional strides to use when iterating/indexing array data (an array of
+     * size ``.ndim`` giving the stride, in bytes, for each dimension)
+     *
+     * Strides may be negative, in which case elements along that dimension
+     * are at decreasing addresses from the start of the array data (at its
+     * :c:member:`offset <asdf_ndarray_t.offset>`).
+     *
+     * The ``asdf_ndarray_read_*`` functions apply the strides when reading
+     * data, but the pointer returned by `asdf_ndarray_data` is to the
+     * full block data and does not apply strides to its interpretation.
      */
     const int64_t *strides;
 
@@ -264,6 +277,11 @@ ASDF_DECLARE_EXTENSION(ndarray, asdf_ndarray_t);
  * use `asdf_ndarray_read_all` or the ``asdf_ndarray_read_tile_*``
  * functions to read it converted to a host datatype and native byte order.
  *
+ * If the array has a non-zero :c:member:`offset <asdf_ndarray_t.offset>`
+ * the returned pointer is to the start of the array's data at that offset
+ * into the (decompressed) block data, and the returned size is the number of
+ * bytes in the block from that point on.
+ *
  * The returned pointer is owned by ``ndarray`` and remains valid until the
  * ndarray (or its file) is destroyed; the caller must not free it.
  *
@@ -271,7 +289,8 @@ ASDF_DECLARE_EXTENSION(ndarray, asdf_ndarray_t);
  * :param size: If non-``NULL``, receives the size of the data in bytes
  * :return: A pointer to the (decompressed) data, or ``NULL`` on error -- for
  *   example if the array has no associated data block (such as an inline
- *   array) or if decompression failed
+ *   array), if decompression failed, or if the array's offset lies beyond
+ *   the end of its block data
  */
 ASDF_EXPORT const void *asdf_ndarray_data(asdf_ndarray_t *ndarray, size_t *size);
 
@@ -282,6 +301,11 @@ ASDF_EXPORT const void *asdf_ndarray_data(asdf_ndarray_t *ndarray, size_t *size)
  * For arrays stored in a compressed block this returns the still-compressed
  * bytes exactly as they appear in the file.  For uncompressed arrays it is
  * equivalent to `asdf_ndarray_data`.
+ *
+ * In particular, an array's :c:member:`offset <asdf_ndarray_t.offset>` is
+ * applied to the returned pointer and size for uncompressed arrays (just as
+ * in `asdf_ndarray_data`), but not for compressed arrays: the offset is into
+ * the uncompressed data, so the full compressed block data is returned.
  *
  * As with `asdf_ndarray_data`, the returned pointer is owned by ``ndarray``
  * and must not be freed by the caller.
