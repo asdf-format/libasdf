@@ -160,9 +160,8 @@ jobs:
             zlib1g-dev \
             libstatgrab-dev \
             llvm \
-            python3-sphinx \
             python3-clang
-          pip install furo hawkmoth towncrier
+          pip install furo hawkmoth towncrier 'sphinx>=9.0'
 
       - name: Set LD_LIBRARY_PATH
         run: echo "LD_LIBRARY_PATH=$(llvm-config --libdir):$LD_LIBRARY_PATH" >> $GITHUB_ENV
