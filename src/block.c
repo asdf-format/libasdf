@@ -18,6 +18,7 @@
 #include <md5.h>
 #endif
 
+#include "asdf/version.h"
 #include "block.h"
 #include "compat/endian.h" // IWYU pragma: keep
 #include "compression/compression.h"
@@ -855,14 +856,35 @@ const unsigned char *asdf_block_checksum(asdf_block_t *block) {
 }
 
 
-#define ASDF_PYTHON_CHECKSUM_BUG_MAJOR_VERSION 5
+/* Python asdf before 5.3.0 checksummed compressed blocks over their
+ * uncompressed data; see https://github.com/asdf-format/asdf/issues/2015 */
+#define ASDF_PYTHON_CHECKSUM_FIX_MAJOR_VERSION 5
+#define ASDF_PYTHON_CHECKSUM_FIX_MINOR_VERSION 3
 
 
-static inline bool asdf_library_has_checksum_bug(asdf_software_t *software) {
-    return (
-        strcmp(software->name, "asdf") == 0 &&
-        software->version->major <= ASDF_PYTHON_CHECKSUM_BUG_MAJOR_VERSION);
+static inline bool asdf_library_has_checksum_bug(const asdf_software_t *software) {
+    if (!software || !software->name || !software->version)
+        return false;
+
+    if (strcmp(software->name, "asdf") != 0)
+        return false;
+
+    const asdf_version_t *version = software->version;
+    return version->major < ASDF_PYTHON_CHECKSUM_FIX_MAJOR_VERSION ||
+           (version->major == ASDF_PYTHON_CHECKSUM_FIX_MAJOR_VERSION &&
+            version->minor < ASDF_PYTHON_CHECKSUM_FIX_MINOR_VERSION);
 }
+
+
+#ifdef HAVE_MD5
+static void asdf_block_md5(
+    const void *data, size_t size, unsigned char digest[ASDF_BLOCK_CHECKSUM_DIGEST_SIZE]) {
+    asdf_md5_ctx_t md5_ctx = {0};
+    asdf_md5_init(&md5_ctx);
+    asdf_md5_update(&md5_ctx, data, size);
+    asdf_md5_final(&md5_ctx, digest);
+}
+#endif
 
 
 bool asdf_block_checksum_verify(
@@ -877,47 +899,42 @@ bool asdf_block_checksum_verify(
 #else
     const asdf_block_header_t *header = &block->info.header;
     size_t size = 0;
-    asdf_md5_ctx_t md5_ctx = {0};
     unsigned char digest[ASDF_BLOCK_CHECKSUM_DIGEST_SIZE] = {0};
-    const void *data = NULL;
+    const void *data = asdf_block_data_raw(block, &size);
     asdf_meta_t *meta = NULL;
     asdf_file_t *file = block->file;
-
-    /* Python asdf has a bug that when it writes binary blocks it computes
-     * the checksum based on the uncompressed data, not the compressed data.
-     * In this case then we must use the decompresed data to compute the
-     * checksum.  This is slated to be fixed in a later version; for now
-     * the problem exists in all versions at least 5.x and below.
-     * See https://github.com/asdf-format/asdf/issues/2015 */
-    const char *comp = asdf_block_compression_orig(block);
-    if (comp && *comp != '\0') {
-        asdf_value_err_t err = asdf_get_meta(file, "", &meta);
-
-        if (ASDF_VALUE_OK == err && meta && asdf_library_has_checksum_bug(meta->asdf_library)) {
-            ASDF_LOG(
-                file,
-                ASDF_LOG_WARN,
-                "%s version %s has compressed data checksum bug; "
-                "the checksum will be verified against the uncompressed data",
-                meta->asdf_library->name,
-                meta->asdf_library->version->version);
-            data = asdf_block_data(block, &size);
-        } else {
-            data = asdf_block_data_raw(block, &size);
-        }
-
-        asdf_meta_destroy(meta);
-    } else {
-        data = asdf_block_data_raw(block, &size);
-    }
 
     if (!data)
         return false;
 
-    asdf_md5_init(&md5_ctx);
-    asdf_md5_update(&md5_ctx, data, size);
-    asdf_md5_final(&md5_ctx, digest);
+    asdf_block_md5(data, size, digest);
     bool valid = memcmp(header->checksum, digest, ASDF_BLOCK_CHECKSUM_DIGEST_SIZE) == 0;
+
+    /* Files written by affected versions of Python asdf carry the checksum of
+     * the uncompressed data, so only for those fall back to checking that */
+    const char *comp = asdf_block_compression_orig(block);
+
+    if (!valid && comp && *comp != '\0' && ASDF_VALUE_OK == asdf_get_meta(file, "", &meta) &&
+        meta && asdf_library_has_checksum_bug(meta->asdf_library)) {
+        data = asdf_block_data(block, &size);
+
+        if (data) {
+            asdf_block_md5(data, size, digest);
+            valid = memcmp(header->checksum, digest, ASDF_BLOCK_CHECKSUM_DIGEST_SIZE) == 0;
+        }
+
+        if (valid)
+            ASDF_LOG(
+                file,
+                ASDF_LOG_WARN,
+                "%s version %s has compressed data checksum bug; "
+                "the checksum was verified against the uncompressed data",
+                meta->asdf_library->name,
+                meta->asdf_library->version->version);
+            data = asdf_block_data(block, &size);
+    }
+
+    asdf_meta_destroy(meta);
 
     if (computed)
         memcpy(computed, digest, ASDF_BLOCK_CHECKSUM_DIGEST_SIZE);
