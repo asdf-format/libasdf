@@ -12,7 +12,7 @@ libasdf
     :alt: Documentation Status
 
 .. image:: https://anaconda.org/conda-forge/libasdf/badges/version.svg
-    :target: https://anaconda.org/channels/conda-forge/packages/libasdf
+    :target: https://anaconda.org/conda-forge/libasdf
     :alt: Conda Package
 
 .. image:: https://img.shields.io/badge/dynamic/regex?url=https%3A%2F%2Fraw.githubusercontent.com%2Fasdf-format%2Fhomebrew-tap%2Fmain%2FFormula%2Flibasdf.rb&search=releases%2Fdownload%2F%28%5B0-9%5D%5B0-9a-zA-Z.%5D%2A%29%2F&replace=%241&label=Homebrew%20Tap&color=orange
