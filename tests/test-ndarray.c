@@ -978,10 +978,8 @@ MU_TEST(ndarray_inline_warning_thresh) {
     asdf_ndarray_storage_set(&ndarray, ASDF_ARRAY_STORAGE_INLINE);
 
     log_capture_t cap = {0};
-    assert_true(log_capture_open(&cap));
-
     asdf_config_t config = {
-        .log = {.stream = cap.stream, .level = ASDF_LOG_WARN, .no_color = true},
+        .log = LOG_CAPTURE_CFG(&cap, ASDF_LOG_WARN),
         .emitter = {.inline_ndarray_warning_thresh = 99}
     };
     asdf_file_t *file = asdf_open_mem_ex(NULL, 0, &config);
@@ -996,9 +994,11 @@ MU_TEST(ndarray_inline_warning_thresh) {
     asdf_close(file);
     asdf_ndarray_data_dealloc(&ndarray);
 
-    /* Verify that the warning was written to the log */
-    assert_not_null(strstr(log_capture_text(&cap), "exceeding the threshold of 99"));
-    log_capture_close(&cap);
+    /* Verify that the warning was logged */
+    const asdf_log_rec_t *rec = log_capture_find(&cap, "exceeding the threshold of 99");
+    assert_not_null(rec);
+    assert_int(rec->level, ==, ASDF_LOG_WARN);
+    log_capture_clear(&cap);
     return MUNIT_OK;
 }
 

@@ -180,11 +180,10 @@ jobs:
             zlib1g-dev \
             libstatgrab-dev \
             llvm \
-            python3-sphinx \
             python3-clang
           # Don't use docs/requirements.txt here since we are trying with the
-          # system packages for sphinx and clang
-          pip install furo hawkmoth
+          # system packages for clang
+          pip install furo hawkmoth 'sphinx>=9.0'
 
       - name: Set LD_LIBRARY_PATH
         run: echo "LD_LIBRARY_PATH=$(llvm-config --libdir):$LD_LIBRARY_PATH" >> $GITHUB_ENV

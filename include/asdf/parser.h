@@ -43,6 +43,8 @@ typedef uint64_t asdf_parser_optflags_t;
 typedef struct asdf_parser_cfg {
     asdf_parser_optflags_t flags;
     asdf_log_cfg_t *log;
+    /** Reserved for future options (leave zeroed); keeps the ABI stable */
+    void *_reserved[4];
 } asdf_parser_cfg_t;
 
 

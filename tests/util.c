@@ -439,7 +439,53 @@ cleanup:
 }
 
 
-bool log_capture_open(log_capture_t *cap) {
+static char *strdup_or_null(const char *str) {
+    return str ? strdup(str) : NULL;
+}
+
+
+void log_capture_handler(const asdf_log_rec_t *rec, void *userdata) {
+    log_capture_t *cap = userdata;
+    asdf_log_rec_t *recs = realloc(cap->recs, (cap->count + 1) * sizeof(*recs));
+
+    if (!recs)
+        return;
+
+    cap->recs = recs;
+    recs[cap->count] = (asdf_log_rec_t){
+        .level = rec->level,
+        .package = strdup_or_null(rec->package),
+        .file = strdup_or_null(rec->file),
+        .lineno = rec->lineno,
+        .msg = strdup_or_null(rec->msg)};
+    cap->count++;
+}
+
+
+const asdf_log_rec_t *log_capture_find(const log_capture_t *cap, const char *substr) {
+    for (size_t idx = 0; idx < cap->count; idx++) {
+        if (cap->recs[idx].msg && strstr(cap->recs[idx].msg, substr))
+            return &cap->recs[idx];
+    }
+
+    return NULL;
+}
+
+
+void log_capture_clear(log_capture_t *cap) {
+    for (size_t idx = 0; idx < cap->count; idx++) {
+        free((void *)cap->recs[idx].package);
+        free((void *)cap->recs[idx].file);
+        free((void *)cap->recs[idx].msg);
+    }
+
+    free(cap->recs);
+    cap->recs = NULL;
+    cap->count = 0;
+}
+
+
+bool log_stream_open(log_stream_t *cap) {
     cap->buf = NULL;
     cap->size = 0;
     cap->stream = open_memstream(&cap->buf, &cap->size);
@@ -447,14 +493,14 @@ bool log_capture_open(log_capture_t *cap) {
 }
 
 
-const char *log_capture_text(log_capture_t *cap) {
+const char *log_stream_text(log_stream_t *cap) {
     // Deliberately not flushed here: libasdf flushes after every message, so
     // reading the buffer without flushing also checks that it does
     return cap->buf ? cap->buf : "";
 }
 
 
-void log_capture_close(log_capture_t *cap) {
+void log_stream_close(log_stream_t *cap) {
     if (cap->stream)
         fclose(cap->stream);
 
