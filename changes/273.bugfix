@@ -1,0 +1,9 @@
+Strides equal to the C-contiguous strides for an array's shape are ignored, and
+are no longer written out (previously strides were incorrectly treated as being
+in units of elements rather than bytes when deciding whether to write them).
+
+Strided arrays written with inline storage are written in C order.
+
+Also fixed a bug where ndarray datatype conversions did not properly accumulate
+the overflow flag across rows; that is, overflow was only reported if it
+occurred on the last row when reading an (N > 1)-D tile.
