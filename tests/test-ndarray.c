@@ -1810,6 +1810,27 @@ MU_TEST(ndarray_read_size_overflow) {
         ASDF_NDARRAY_ERR_OUT_OF_BOUNDS);
     assert_null(data);
     asdf_ndarray_destroy(ndarray);
+
+    /* Datatypes whose own element size overflows saturate the byte size too */
+    const char *datatype_overflows[] = {"field_shape", "field_sum", "ucs4"};
+
+    for (size_t idx = 0; idx < sizeof(datatype_overflows) / sizeof(datatype_overflows[0]); idx++) {
+        ndarray = NULL;
+        assert_int(asdf_get_ndarray(file, datatype_overflows[idx], &ndarray), ==, ASDF_VALUE_OK);
+        assert_not_null(ndarray);
+        assert_uint64(asdf_datatype_size(&ndarray->datatype), ==, UINT64_MAX);
+        assert_uint64(asdf_ndarray_nbytes(ndarray), ==, UINT64_MAX);
+        asdf_ndarray_destroy(ndarray);
+    }
+
+    /* A zero dimension still makes the array empty after an overflow */
+    ndarray = NULL;
+    assert_int(asdf_get_ndarray(file, "empty", &ndarray), ==, ASDF_VALUE_OK);
+    assert_not_null(ndarray);
+    assert_uint64(asdf_ndarray_size(ndarray), ==, 0);
+    assert_uint64(asdf_ndarray_nbytes(ndarray), ==, 0);
+    asdf_ndarray_destroy(ndarray);
+
     asdf_close(file);
     return MUNIT_OK;
 }

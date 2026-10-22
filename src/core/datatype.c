@@ -175,7 +175,7 @@ static asdf_value_err_t asdf_string_datatype_parse(
         datatype->type = ASDF_DATATYPE_ASCII;
     } else if (strcmp(type, "ucs4") == 0) {
         datatype->type = ASDF_DATATYPE_UCS4;
-        size *= 4;
+        size = asdf_uint64_mul_sat(size, 4);
     } else {
         warn_unsupported_datatype(&value->value);
     }
@@ -332,7 +332,7 @@ static asdf_value_err_t asdf_structured_datatype_field_parse(
             field->shape = shape.shape;
             // Multiply the size
             for (uint32_t dim = 0; dim < shape.ndim; dim++)
-                field->size *= shape.shape[dim];
+                field->size = asdf_uint64_mul_sat(field->size, shape.shape[dim]);
         }
     }
 
@@ -384,7 +384,7 @@ static asdf_value_err_t asdf_structured_datatype_parse(
         }
 
         field_idx++;
-        datatype->size += field->size;
+        datatype->size = asdf_uint64_add_sat(datatype->size, field->size);
     }
     return err;
 }
@@ -882,12 +882,13 @@ uint64_t asdf_datatype_size(asdf_datatype_t *datatype) {
         size = asdf_scalar_datatype_size(datatype->type);
     } else {
         for (uint32_t idx = 0; idx < datatype->nfields; idx++)
-            size += asdf_datatype_size((asdf_datatype_t *)&datatype->fields[idx]);
+            size = asdf_uint64_add_sat(
+                size, asdf_datatype_size((asdf_datatype_t *)&datatype->fields[idx]));
     }
 
     if (size && datatype->ndim > 0) {
         for (uint32_t idx = 0; idx < datatype->ndim; idx++)
-            size *= datatype->shape[idx];
+            size = asdf_uint64_mul_sat(size, datatype->shape[idx]);
     }
 
     datatype->size = size;
