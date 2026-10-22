@@ -28,11 +28,11 @@ Bugfix
   handled, should just wake the faulting thread and allow it to resume. Instead
   it fell through to attempting to copy the data again, resulting in an error
   (``EEXIST`` from ``ioctl``) causing the fault handler thread to exit. (`#274
-  <https://github.com/asdf-format/asdf/issues/274>`_)
+  <https://github.com/asdf-format/libasdf/issues/274>`_)
 - Fixed auto-selection of decompression mode.  Lazy decompression was only
   being used if explicitly requested and not as the default on supported
   platforms (i.e. Linux). (`#276
-  <https://github.com/asdf-format/asdf/issues/276>`_)
+  <https://github.com/asdf-format/libasdf/issues/276>`_)
 - Several fixes to logging:
 
   - Setting `asdf_log_cfg_t.level` to `ASDF_LOG_NONE` now disables logging.
@@ -90,7 +90,7 @@ Bugfix
 
   Strings that would otherwise be read back as another type (e.g. ``'yes'``,
   ``'123'``, ``'null'``) are now quoted when written, including in mapping
-  keys. (`#257 <https://github.com/asdf-format/asdf/issues/257>`_)
+  keys. (`#257 <https://github.com/asdf-format/libasdf/issues/257>`_)
 
 
 libasdf 0.2.0 (2026-09-15)
@@ -106,7 +106,7 @@ Feature
 
   Also adds convenience macros ``asdf_find`` and ``asdf_find_ex`` which are
   generic in the first argument (can be either a file or a value). (`#246
-  <https://github.com/asdf-format/asdf/issues/246>`_)
+  <https://github.com/asdf-format/libasdf/issues/246>`_)
 - Added ``asdf_free`` for releasing buffers that libasdf allocates on the
   caller's behalf: those returned by ``asdf_write_to_mem``,
   ``asdf_ndarray_read_all``, ``asdf_ndarray_read_tile_ndim`` and
@@ -117,7 +117,7 @@ Feature
   undefined where the library and the application link different C runtimes,
   and naming ``free()`` in the contract would prevent these functions from ever
   allocating differently. (`#250
-  <https://github.com/asdf-format/asdf/issues/250>`_)
+  <https://github.com/asdf-format/libasdf/issues/250>`_)
 
 
 Bugfix
@@ -138,7 +138,7 @@ Bugfix
 
   Also dropped unnecessary ``sys/`` header includes from the public headers
   (e.g. ``sys/time.h``) per #261. (`#251
-  <https://github.com/asdf-format/asdf/issues/251>`_)
+  <https://github.com/asdf-format/libasdf/issues/251>`_)
 - Corrected handling of special float values (.nan, .inf, etc.) in the YAML
   tree
 
@@ -148,16 +148,16 @@ Bugfix
 
   This corrects handling of these values in-line with what PyYAML does, as well
   as what the YAML core schema documents. (`#256
-  <https://github.com/asdf-format/asdf/issues/256>`_)
+  <https://github.com/asdf-format/libasdf/issues/256>`_)
 - ``-DUSE_STATGRAB=OFF`` now turns libstatgrab off.  The option was declared
   but never consulted, so the ``REQUIRED`` pkg-config check ran regardless and
   configure failed on platforms where libstatgrab is not packaged. (`#262
-  <https://github.com/asdf-format/asdf/issues/262>`_)
+  <https://github.com/asdf-format/libasdf/issues/262>`_)
 - Fix SONAME incompatibility between autotools and CMake builds.
 
   Ensure that these are correctly managed and add tooling and tests to help
   maintain a stable ABI between versions. (`#264
-  <https://github.com/asdf-format/asdf/issues/264>`_)
+  <https://github.com/asdf-format/libasdf/issues/264>`_)
 
 
 Documentation
@@ -168,7 +168,7 @@ Documentation
   building from source, and added a brief ``Versioning and stability`` section
   describing the version scheme, the API and ABI compatibility guarantees, and
   what is required for 1.0. (`#267
-  <https://github.com/asdf-format/asdf/issues/267>`_)
+  <https://github.com/asdf-format/libasdf/issues/267>`_)
 
 
 Misc
@@ -323,7 +323,7 @@ General
 - Reworked the iterator interfaces (``asdf_mapping_iter_t``,
   ``asdf_sequence_iter_t``, ``asdf_container_iter_t``, and
   ``asdf_find_iter_t``) to be simpler, more consistent, and better documented.
-  (`#73 <https://github.com/asdf-format/asdf/issues/73>`_)
+  (`#73 <https://github.com/asdf-format/libasdf/issues/73>`_)
 - The extension vtab's ``.dealloc`` method is renamed ``.deinit`` and no longer
   frees the extension object itself, only its (possibly nested) fields; a
   shallow object needs no ``.deinit`` at all.  ``asdf_<ext>_destroy()`` is
@@ -339,7 +339,7 @@ Feature
 -------
 
 - Basic support for reading YAML aliases. (`#35
-  <https://github.com/asdf-format/asdf/issues/35>`_)
+  <https://github.com/asdf-format/libasdf/issues/35>`_)
 - Extensions can now be registered for more than one tag, so a single extension
   can read multiple versions of the same schema.  ``ASDF_REGISTER_EXTENSION``
   takes one or more tags as its trailing arguments; the first tag listed is the
@@ -356,12 +356,12 @@ Feature
   ``ASDF_REGISTER_EXTENSION`` in place of the four individual methods.  The
   ``asdf_extension_vtab_t`` also reserves space for additional methods to be
   added in the future without breaking ABI compatibility. (`#42
-  <https://github.com/asdf-format/asdf/issues/42>`_)
+  <https://github.com/asdf-format/libasdf/issues/42>`_)
 - Support for inline ndarray data: inline data is parsed when reading the
   ndarray data (e.g. with `asdf_ndarray_data`) and can also be set to be
   written inline with `asdf_ndarray_storage_set(ndarray,
   ASDF_ARRAY_STORAGE_INLINE)`. (`#62
-  <https://github.com/asdf-format/asdf/issues/62>`_)
+  <https://github.com/asdf-format/libasdf/issues/62>`_)
 - Support for the ``stsci.edu/asdf/time/time`` schema via a new
   ``asdf/core/time.h`` API.  Time values can be read with ``asdf_get_time`` /
   ``asdf_value_as_time`` and written with ``asdf_set_time``, exposing an
@@ -371,9 +371,9 @@ Feature
 
   Files written with any of the ``time-1.0.0`` through ``time-1.4.0`` tags are
   read; newly written time values use ``time-1.4.0``. (`#91
-  <https://github.com/asdf-format/asdf/issues/91>`_)
+  <https://github.com/asdf-format/libasdf/issues/91>`_)
 - New ``asdf dd`` command in the command-line interface. (`#94
-  <https://github.com/asdf-format/asdf/issues/94>`_)
+  <https://github.com/asdf-format/libasdf/issues/94>`_)
 - Basic support for writing new ASDF files from scratch. Files can be opened
   for writing with ``asdf_open(filename, "w")`` (write mode).
 
@@ -382,17 +382,17 @@ Feature
 
   This is a "write-only" mode.  Updating existing ASDF files is not yet
   supported by this feature. (`#101
-  <https://github.com/asdf-format/asdf/issues/101>`_)
+  <https://github.com/asdf-format/libasdf/issues/101>`_)
 - ``asdf_open`` and ``asdf_open_ex`` are now macros that dispatch the correct
   file opening strategy depending on the arguments.  ``asdf_open(NULL)`` can be
   called to create a new file from scratch. (`#102
-  <https://github.com/asdf-format/asdf/issues/102>`_)
+  <https://github.com/asdf-format/libasdf/issues/102>`_)
 - ``asdf_set_<type>`` family of functions for setting scalar values in the ASDF
   tree when open in write mode. (`#104
-  <https://github.com/asdf-format/asdf/issues/104>`_)
+  <https://github.com/asdf-format/libasdf/issues/104>`_)
 - Optional support for binary block checksum writing on output and verification
   using ``asdf_block_checksum_verify`` (requires libbsd) (`#106
-  <https://github.com/asdf-format/asdf/issues/106>`_)
+  <https://github.com/asdf-format/libasdf/issues/106>`_)
 - Added new types asdf_mapping_t and asdf_sequence_t; functions that
   specifically work on mappings and sequences takes these types respectively,
   rather than generic asdf_value_t.
@@ -401,19 +401,19 @@ Feature
   though currently it's safe to cast an ``asdf_value_t *`` -> ``asdf_mapping_t
   *`` and vice-versa--same for sequences--so long as the value is checked to
   have the correct value type.  This should help reduce friction. (`#119
-  <https://github.com/asdf-format/asdf/issues/119>`_)
+  <https://github.com/asdf-format/libasdf/issues/119>`_)
 - Adds previously missing ``asdf_set_value`` function for setting a generic
   ``asdf_value_t`` to a given path in the file.  Adds ``asdf_value_of_<type>``
   functions for instantiating new ``asdf_value_t`` from an existing native
   value.  For example, ``asdf_value_of_uint8(file, 123)`` wraps the integer
   ``123`` in a generic ``asdf_value_t``. (`#122
-  <https://github.com/asdf-format/asdf/issues/122>`_)
+  <https://github.com/asdf-format/libasdf/issues/122>`_)
 - Initial support for serialization of custom extension objects.
 
   This updates ``ASDF_REGISTER_EXTENSION`` with a new argument for a serializer
   function that takes the extension's native object type and returns an
   ``asdf_value_t *`` for insertion into YAML tree. (`#130
-  <https://github.com/asdf-format/asdf/issues/130>`_)
+  <https://github.com/asdf-format/libasdf/issues/130>`_)
 - New functions for creating mapping and sequence collections:
 
   - ``asdf_mapping_create` and `asdf_sequence_create`` functions for creating
@@ -426,22 +426,22 @@ Feature
     for appending new values into new mappings or sequences respectively.
 
   These allow building YAML documents containing primitive YAML types. (`#132
-  <https://github.com/asdf-format/asdf/issues/132>`_)
+  <https://github.com/asdf-format/libasdf/issues/132>`_)
 - Support for serialization of the common core datatypes that are already
   supported by the library (including support for the new datatype-1.0.0 tag).
-  (`#137 <https://github.com/asdf-format/asdf/issues/137>`_)
+  (`#137 <https://github.com/asdf-format/libasdf/issues/137>`_)
 - ``asdf verify-checksums`` shell command for verifying binary block checksums.
-  (`#145 <https://github.com/asdf-format/asdf/issues/145>`_)
+  (`#145 <https://github.com/asdf-format/libasdf/issues/145>`_)
 - Basic support for setting compression mode on ndarrays (or raw binary blocks)
   and outputting compressed data. (`#153
-  <https://github.com/asdf-format/asdf/issues/153>`_)
+  <https://github.com/asdf-format/libasdf/issues/153>`_)
 - The extension interface exports an ``asdf_<extension_name>_copy()`` function
   containing the necessary machinery to make a deep copy of an object returned
   by an extension, along with an ``asdf_<extension_name>_copy_into()`` variant
   that copies into a caller-provided destination (rather than a freshly
   allocated object).  This is still a work-in-progress--e.g.,
   ``asdf_ndarray_copy`` has not yet been implemented. (`#157
-  <https://github.com/asdf-format/asdf/issues/157>`_)
+  <https://github.com/asdf-format/libasdf/issues/157>`_)
 - ndarray read improvements:
 
   - Added support for the float16 ndarray datatype when reading arrays and
@@ -454,7 +454,7 @@ Feature
     source datatype is wider than the destination datatype, resulting in buffer
     overflows.  Rather than resort to poorly-defined and possibly erroneous
     behavior, no data is transfered and `ASDF_NDARRAY_ERR_CONVERSION` is
-    returned. (`#214 <https://github.com/asdf-format/asdf/issues/214>`_)
+    returned. (`#214 <https://github.com/asdf-format/libasdf/issues/214>`_)
 - Added functions for reading a single ndarray element with datatype and byte
   order conversion: ``asdf_ndarray_read_at`` copies the element into a caller
   buffer, and the ``asdf_ndarray_read_<type>_at`` family returns it as a named
@@ -462,7 +462,7 @@ Feature
   pick the right one from the destination type.  These also read the element
   safely when the block data is not aligned for its type, which the pointer
   from ``asdf_ndarray_data`` may not be. (`#227
-  <https://github.com/asdf-format/asdf/issues/227>`_)
+  <https://github.com/asdf-format/libasdf/issues/227>`_)
 - Added `asdf_container_size()` to return the size of any container type
   (mapping or sequence).
 - Added `asdf_value_parent()` function for getting the parent value of an
@@ -474,12 +474,12 @@ Bugfix
 
 - Fix bug where signed integers were sometimes parsed as unsigned integers, and
   could result in an overflow error. (`#133
-  <https://github.com/asdf-format/asdf/issues/133>`_)
+  <https://github.com/asdf-format/libasdf/issues/133>`_)
 - Simplify parsing of floating point values in existing files to always assume
   double-precision floats; removing hacky attempts to assume intent in the
-  reperesentation. (`#134 <https://github.com/asdf-format/asdf/issues/134>`_)
+  reperesentation. (`#134 <https://github.com/asdf-format/libasdf/issues/134>`_)
 - Fixed ``--help`` output of the asdf CLI tool to show available sub-commands.
-  (`#173 <https://github.com/asdf-format/asdf/issues/173>`_)
+  (`#173 <https://github.com/asdf-format/libasdf/issues/173>`_)
 - Fixed minor bugs in parsing slightly pathlogical fields (empty files, padding
   between sections, etc.) (#141)
 - Improved error handling when opening a non-existent/invalid file for reading.
@@ -490,7 +490,7 @@ Documentation
 -------------
 
 - Corrected documentation on how path expressions work. (`#124
-  <https://github.com/asdf-format/asdf/issues/124>`_)
+  <https://github.com/asdf-format/libasdf/issues/124>`_)
 - General enhancements to the documentation:
 
   - Simpler, tutorial-driven examples
@@ -537,9 +537,9 @@ Feature
   can
   transparently decompress blocks sequentially on an as-needed basis (e.g. it's
   possible to read just the first few pages of a block without full
-  decompression). (`#37 <https://github.com/asdf-format/asdf/issues/37>`_)
+  decompression). (`#37 <https://github.com/asdf-format/libasdf/issues/37>`_)
 - Support for reading lz4 compressed block data as produced by the Python asdf.
-  (`#88 <https://github.com/asdf-format/asdf/issues/88>`_)
+  (`#88 <https://github.com/asdf-format/libasdf/issues/88>`_)
 
 
 Bugfix
@@ -547,7 +547,7 @@ Bugfix
 
 - Fix bug in correctly identifying the number of binary blocks when the block
   index is missing or corrupt. (`#93
-  <https://github.com/asdf-format/asdf/issues/93>`_)
+  <https://github.com/asdf-format/libasdf/issues/93>`_)
 - Fixed segfault when passing an unknown log level name to ASDF_LOG_LEVEL
 
 

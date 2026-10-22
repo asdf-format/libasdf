@@ -1,0 +1,2 @@
+Fixed incorrect links to issues in CHANGELOG.rst due to towncrier
+misconfiguration.
