@@ -10,4 +10,6 @@ fi
 
 "${srcdir}"/shell-test.sh info --blocks $@ \
   "${top_srcdir}"/asdf-standard/reference_files/1.6.0/*.asdf \
-  "${srcdir}"/fixtures/roman_l2_wcs.asdf
+  "${srcdir}"/fixtures/roman_l2_wcs.asdf \
+  "${srcdir}"/fixtures/alias-cycle.asdf \
+  "${srcdir}"/fixtures/alias-expansion.asdf
