@@ -321,7 +321,7 @@ ASDF_EXPORT const void *asdf_ndarray_data_raw(asdf_ndarray_t *ndarray, size_t *s
  *
  * :param ndarray: An `asdf_ndarray_t *`
  * :return: Total number of elements in the array (just the product of its
- *   shape)
+ *   shape), or ``UINT64_MAX`` if the product does not fit in 64 bits
  */
 ASDF_EXPORT uint64_t asdf_ndarray_size(const asdf_ndarray_t *ndarray);
 
@@ -331,7 +331,7 @@ ASDF_EXPORT uint64_t asdf_ndarray_size(const asdf_ndarray_t *ndarray);
  *
  * :param ndarray: An `asdf_ndarray_t *`
  * :return: The byte size of the ndarray (this is just its size times the
- *   datatype nbytes)
+ *   datatype nbytes), or ``UINT64_MAX`` if that does not fit in 64 bits
  */
 ASDF_EXPORT uint64_t asdf_ndarray_nbytes(const asdf_ndarray_t *ndarray);
 

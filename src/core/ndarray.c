@@ -1816,11 +1816,23 @@ uint64_t asdf_ndarray_size(const asdf_ndarray_t *ndarray) {
         return 0;
 
     uint64_t size = 1;
+    bool overflow = false;
 
-    for (uint32_t idx = 0; idx < ndarray->ndim; idx++)
-        size *= ndarray->shape[idx];
+    for (uint32_t idx = 0; idx < ndarray->ndim; idx++) {
+        uint64_t dim = ndarray->shape[idx];
 
-    return size;
+        // An empty dimension makes the whole array empty
+        if (dim == 0)
+            return 0;
+
+        if (size > UINT64_MAX / dim)
+            overflow = true;
+        else
+            size *= dim;
+    }
+
+    // Saturate rather than wrap, so that size checks against the result fail
+    return overflow ? UINT64_MAX : size;
 }
 
 
@@ -1830,7 +1842,12 @@ uint64_t asdf_ndarray_nbytes(const asdf_ndarray_t *ndarray) {
     if (UNLIKELY(size == 0))
         return size;
 
-    return size * asdf_datatype_size((asdf_datatype_t *)&ndarray->datatype);
+    uint64_t elsize = asdf_datatype_size((asdf_datatype_t *)&ndarray->datatype);
+
+    if (elsize > 0 && size > UINT64_MAX / elsize)
+        return UINT64_MAX;
+
+    return size * elsize;
 }
 
 
@@ -2106,7 +2123,7 @@ static inline bool asdf_ndarray_bounds_check(
     uint32_t ndim = ndarray->ndim;
 
     for (uint32_t idx = 0; idx < ndim; idx++) {
-        if (origin[idx] + shape[idx] > array_shape[idx])
+        if (shape[idx] > array_shape[idx] || origin[idx] > array_shape[idx] - shape[idx])
             return false;
     }
 

@@ -439,6 +439,7 @@ EXTRA_DIST += \
     fixtures/multiple_hdu.asdf \
     fixtures/nested.asdf \
     fixtures/ndarray-inline.asdf \
+    fixtures/ndarray-size-overflow.asdf \
     fixtures/ndarray-out.asdf \
     fixtures/numeric.asdf \
     fixtures/offset.asdf \
