@@ -50,8 +50,10 @@ static asdf_compressor_userdata_t *asdf_compressor_bzp2_init(
 
 
 static void asdf_compressor_bzp2_destroy(asdf_compressor_userdata_t *userdata) {
-    assert(userdata);
     asdf_compressor_bzp2_userdata_t *bzp2 = userdata;
+
+    if (!bzp2)
+        return;
 
     if (bzp2->info.status != ASDF_COMPRESSOR_UNINITIALIZED)
         BZ2_bzDecompressEnd(&bzp2->bz);

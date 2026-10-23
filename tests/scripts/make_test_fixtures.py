@@ -63,6 +63,30 @@ def make_compressed_asdf():
     return f
 
 
+LZ4_BLOCKS_SIZE = 10 * PAGE_SIZE + 123
+
+
+def make_lz4_blocks_asdf():
+    """
+    LZ4-compressed arrays split into many LZ4 blocks whose boundaries do not
+    line up with page boundaries.
+
+    ``small_blocks`` has blocks smaller than a page and ``large_blocks`` has
+    blocks larger than a page but not a multiple of it, so decompressing one
+    page (or chunk of pages) requires stitching together the end of one LZ4
+    block and the start of the next.  Neither array's size is a multiple of
+    the page size or of its block size, so the last page and last block are
+    both partial.
+    """
+    f = asdf.AsdfFile()
+    # Copy so that only the arrays' own data is written, not their bases
+    f['small_blocks'] = make_paged_array(num_pages=11)[:LZ4_BLOCKS_SIZE].copy()
+    f['large_blocks'] = make_paged_array(num_pages=11)[:LZ4_BLOCKS_SIZE].copy()
+    f.set_array_compression(f['small_blocks'], 'lz4', compression_block_size=1000)
+    f.set_array_compression(f['large_blocks'], 'lz4', compression_block_size=6000)
+    return f
+
+
 def make_cube_asdf():
     f = asdf.AsdfFile()
     f['cube'] = np.arange(10 ** 3, dtype=np.dtype('>u1')).reshape((10, 10, 10))
@@ -250,6 +274,7 @@ TEST_FILES = {
     'compressed.asdf': make_compressed_asdf,
     'cube.asdf': make_cube_asdf,
     'datatypes.asdf': make_datatypes_asdf,
+    'lz4-blocks.asdf': make_lz4_blocks_asdf,
     'multi-block.asdf': make_multi_block_asdf,
     'numeric.asdf': make_numeric_asdf,
     'offset.asdf': make_offset_asdf,

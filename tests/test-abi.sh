@@ -111,6 +111,16 @@ if [ ! -s "${tmp}" ]; then
   skip_or_die "abidw produced nothing for ${lib}"
 fi
 
+# Likewise a coverage build (--enable-code-coverage) links the gcov runtime
+# statically into the library, which exports its __gcov_* symbols plus
+# mangle_path.  The latter is a generic enough name that it is only dropped
+# alongside the __gcov_* symbols.
+if grep -q "<elf-symbol name='__gcov_" "${tmp}"; then
+  sed -e "/<elf-symbol name='__gcov_/d" \
+      -e "/<elf-symbol name='mangle_path'/d" "${tmp}" > "${tmp}.gcov" \
+    && mv "${tmp}.gcov" "${tmp}" || exit 1
+fi
+
 # Without debug info abidw sees only the symbol table: signature and struct
 # layout changes become invisible, and abidiff then reports "no change"
 # rather than "cannot tell".  Refusing to run is the only safe response, as
