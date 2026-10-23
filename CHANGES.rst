@@ -1,3 +1,103 @@
+libasdf 0.3.0 (2026-10-23)
+==========================
+
+General
+-------
+
+- This release breaks binary compatibility with 0.2.x; software linked against
+  an earlier version must be rebuilt.
+
+  This is due to `asdf_log_cfg_t` gaining some new fields.  Also added
+  additional reserved space in each config struct to avoid repeating this
+  problem too often in the future as new config options are added. (`#279
+  <https://github.com/asdf-format/libasdf/issues/279>`_)
+
+
+Feature
+-------
+
+- Added support for the ndarray ``offset`` property.  Arrays that are views at
+  an offset into a larger binary block (as commonly written by earlier versions
+  of the Python asdf library when saving views of a base array) are now read
+  correctly: ``asdf_ndarray_data`` returns a pointer to the start of the
+  array's data, and all the ``asdf_ndarray_read_*`` functions honor the offset.
+  For compressed blocks the offset is applied to the decompressed data.
+
+  Added support for the ndarray ``strides`` property.  The
+  ``asdf_ndarray_read_*`` functions now read arrays with arbitrary (including
+  negative) strides, such as transposed or sliced views of a base array, into
+  C-contiguous buffers.  The raw data  pointer returned by
+  ``asdf_ndarray_data`` does not apply strides. (`#273
+  <https://github.com/asdf-format/libasdf/issues/273>`_)
+- Structured logging handler: `asdf_log_cfg_t` gained new fields for supporting
+  custom log handlers.  Applications can now pass their own log handler to
+  libasdf to redirect the library's log messages to their own logging systems.
+
+  For the default (original) stream-based logger we also bracket its outputs
+  with ``flockfile``/``funlockfile`` to ensure log outputs are serialized.
+
+  This required a small ABI breakage as noted above.  Accepted on a practical
+  basis since no known software is using the logging config interface yet.
+  (`#279 <https://github.com/asdf-format/libasdf/issues/279>`_)
+
+
+Bugfix
+------
+
+- Fixed a possible crash when a compressed block's decompression fails during
+  initialization. (`#194 <https://github.com/asdf-format/libasdf/issues/194>`_)
+- Block checksums are no longer verified against the uncompressed data for
+  files written by Python asdf 5.3.0 and later, which fixed the compressed
+  block checksum bug the workaround is for; compressed blocks in such files
+  failed verification.  For older versions the checksum of the stored bytes is
+  now checked first, and the uncompressed data only if that fails. (`#258
+  <https://github.com/asdf-format/libasdf/issues/258>`_)
+- Strides equal to the C-contiguous strides for an array's shape are ignored,
+  and are no longer written out (previously strides were incorrectly treated as
+  being in units of elements rather than bytes when deciding whether to write
+  them).
+
+  Strided arrays written with inline storage are written in C order.
+
+  Also fixed a bug where ndarray datatype conversions did not properly
+  accumulate the overflow flag across rows; that is, overflow was only reported
+  if it occurred on the last row when reading an (N > 1)-D tile. (`#273
+  <https://github.com/asdf-format/libasdf/issues/273>`_)
+- Fixed a heap buffer overflow reading an ndarray whose shape's byte size
+  overflows 64 bits.  `asdf_ndarray_size` and `asdf_ndarray_nbytes` now return
+  ``UINT64_MAX`` rather than wrapping, so the read fails with
+  ``ASDF_NDARRAY_ERR_OUT_OF_BOUNDS``.  Tile reads whose origin plus shape
+  overflows are also out of bounds now. (`#281
+  <https://github.com/asdf-format/libasdf/issues/281>`_)
+- Fixed ``asdf info`` recursing until it overflowed the stack on a YAML alias
+  to one of its own ancestors; the repeated node is now marked ``(cycle)``.
+  Nested aliases that expand the tree exponentially are also no longer printed
+  without bound: once 1024 nodes have been repeated through aliases, further
+  aliased containers are shown collapsed as ``(...)``. (`#282
+  <https://github.com/asdf-format/libasdf/issues/282>`_)
+- Fixed `asdf_block_data_set_compressed` reading past the end of a compression
+  name shorter than the 4-byte header field. (`#283
+  <https://github.com/asdf-format/libasdf/issues/283>`_)
+- The byte size of a datatype (``asdf_datatype_size``) no longer wraps when a
+  string length, a structured field's ``shape``, or the sum of a structured
+  datatype's fields overflows 64 bits; it returns ``UINT64_MAX`` instead, as
+  ``asdf_ndarray_nbytes`` already does.  Reading an ndarray tile too large to
+  allocate now fails with ``ASDF_NDARRAY_ERR_OOM`` rather than allocating an
+  undersized buffer. (`#289
+  <https://github.com/asdf-format/libasdf/issues/289>`_)
+- Fixed a small memory leak in ``asdf_block_checksum_verify``.
+
+
+Documentation
+-------------
+
+- Fixed incorrect links to issues in CHANGES.rst due to towncrier
+  misconfiguration.
+
+  Also fixed broken conda-forge badge in README.rst (Anaconda has been
+  reshuffling their website a bit).
+
+
 libasdf 0.2.2 (2026-10-19)
 ==========================
 

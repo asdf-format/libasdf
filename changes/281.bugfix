@@ -1,5 +1,0 @@
-Fixed a heap buffer overflow reading an ndarray whose shape's byte size
-overflows 64 bits.  `asdf_ndarray_size` and `asdf_ndarray_nbytes` now return
-``UINT64_MAX`` rather than wrapping, so the read fails with
-``ASDF_NDARRAY_ERR_OUT_OF_BOUNDS``.  Tile reads whose origin plus shape
-overflows are also out of bounds now.

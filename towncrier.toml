@@ -1,6 +1,6 @@
 [tool.towncrier]
 name = "libasdf"
-version = "0.2.2"
+version = "0.3.0"
 directory = "changes"
 filename = "CHANGES.rst"
 issue_format = "`#{issue} <https://github.com/asdf-format/libasdf/issues/{issue}>`_"

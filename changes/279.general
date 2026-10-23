@@ -1,6 +1,0 @@
-This release breaks binary compatibility with 0.2.x; software linked against an
-earlier version must be rebuilt.
-
-This is due to `asdf_log_cfg_t` gaining some new fields.  Also added additional
-reserved space in each config struct to avoid repeating this problem too often
-in the future as new config options are added.

@@ -1,5 +1,0 @@
-Fixed ``asdf info`` recursing until it overflowed the stack on a YAML alias to
-one of its own ancestors; the repeated node is now marked ``(cycle)``.  Nested
-aliases that expand the tree exponentially are also no longer printed without
-bound: once 1024 nodes have been repeated through aliases, further aliased
-containers are shown collapsed as ``(...)``.

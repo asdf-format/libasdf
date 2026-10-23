@@ -1,6 +1,0 @@
-The byte size of a datatype (``asdf_datatype_size``) no longer wraps when a
-string length, a structured field's ``shape``, or the sum of a structured
-datatype's fields overflows 64 bits; it returns ``UINT64_MAX`` instead, as
-``asdf_ndarray_nbytes`` already does.  Reading an ndarray tile too large to
-allocate now fails with ``ASDF_NDARRAY_ERR_OOM`` rather than allocating an
-undersized buffer.

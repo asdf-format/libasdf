@@ -1,5 +1,0 @@
-Block checksums are no longer verified against the uncompressed data for
-files written by Python asdf 5.3.0 and later, which fixed the compressed block
-checksum bug the workaround is for; compressed blocks in such files failed
-verification.  For older versions the checksum of the stored bytes is now
-checked first, and the uncompressed data only if that fails.

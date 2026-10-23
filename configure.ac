@@ -1,6 +1,6 @@
 AC_PREREQ([2.69])
 AC_INIT(
-  [libasdf], [0.2.2],
+  [libasdf], [0.3.0],
   [https://github.com/asdf-format/libasdf/issues],
   [],
   [https://github.com/asdf-format/libasdf],
