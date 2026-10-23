@@ -3,7 +3,7 @@ name = "libasdf"
 version = "0.2.2"
 directory = "changes"
 filename = "CHANGES.rst"
-issue_format = "`#{issue} <https://github.com/asdf-format/asdf/issues/{issue}>`_"
+issue_format = "`#{issue} <https://github.com/asdf-format/libasdf/issues/{issue}>`_"
 wrap = true
 
 [[tool.towncrier.type]]

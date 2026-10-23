@@ -931,7 +931,6 @@ bool asdf_block_checksum_verify(
                 "the checksum was verified against the uncompressed data",
                 meta->asdf_library->name,
                 meta->asdf_library->version->version);
-            data = asdf_block_data(block, &size);
     }
 
     asdf_meta_destroy(meta);

@@ -1,0 +1,5 @@
+Fixed incorrect links to issues in CHANGELOG.rst due to towncrier
+misconfiguration.
+
+Also fixed broken conda-forge badge in README.rst (Anaconda has been
+reshuffling their website a bit).

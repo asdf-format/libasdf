@@ -1816,23 +1816,14 @@ uint64_t asdf_ndarray_size(const asdf_ndarray_t *ndarray) {
         return 0;
 
     uint64_t size = 1;
-    bool overflow = false;
 
-    for (uint32_t idx = 0; idx < ndarray->ndim; idx++) {
-        uint64_t dim = ndarray->shape[idx];
+    // Saturate rather than wrap, so that size checks against the result fail;
+    // an empty dimension still makes the whole array empty, even after an
+    // earlier overflow, since a saturated size times zero is zero
+    for (uint32_t idx = 0; idx < ndarray->ndim; idx++)
+        size = asdf_uint64_mul_sat(size, ndarray->shape[idx]);
 
-        // An empty dimension makes the whole array empty
-        if (dim == 0)
-            return 0;
-
-        if (size > UINT64_MAX / dim)
-            overflow = true;
-        else
-            size *= dim;
-    }
-
-    // Saturate rather than wrap, so that size checks against the result fail
-    return overflow ? UINT64_MAX : size;
+    return size;
 }
 
 
@@ -1842,12 +1833,7 @@ uint64_t asdf_ndarray_nbytes(const asdf_ndarray_t *ndarray) {
     if (UNLIKELY(size == 0))
         return size;
 
-    uint64_t elsize = asdf_datatype_size((asdf_datatype_t *)&ndarray->datatype);
-
-    if (elsize > 0 && size > UINT64_MAX / elsize)
-        return UINT64_MAX;
-
-    return size * elsize;
+    return asdf_uint64_mul_sat(size, asdf_datatype_size((asdf_datatype_t *)&ndarray->datatype));
 }
 
 
@@ -2189,13 +2175,6 @@ static asdf_ndarray_err_t asdf_ndarray_read_tile_impl(
     if (!asdf_ndarray_bounds_check(ndarray, origin, shape))
         return ASDF_NDARRAY_ERR_OUT_OF_BOUNDS;
 
-    size_t tile_nelems = ndim > 0 ? 1 : 0;
-
-    for (uint32_t dim = 0; dim < ndim; dim++) {
-        tile_nelems *= shape[dim];
-    }
-
-    size_t tile_size = dst_elsize * tile_nelems;
     size_t data_size = 0;
     const void *data = NULL;
 
@@ -2206,6 +2185,28 @@ static asdf_ndarray_err_t asdf_ndarray_read_tile_impl(
         if (err != ASDF_NDARRAY_OK)
             goto cleanup;
     }
+
+    size_t tile_nelems = ndim > 0 ? 1 : 0;
+
+    // The checks above only cover the source data, and the destination
+    // elements may be wider than the source's, so the tile's size has to be
+    // checked separately; a tile too large for size_t could never be allocated
+    // so don't even bother trying.
+    for (uint32_t dim = 0; dim < ndim; dim++) {
+        if (UNLIKELY(shape[dim] != 0 && tile_nelems > SIZE_MAX / shape[dim])) {
+            err = ASDF_NDARRAY_ERR_OOM;
+            goto cleanup;
+        }
+
+        tile_nelems *= shape[dim];
+    }
+
+    if (UNLIKELY(tile_nelems > SIZE_MAX / dst_elsize)) {
+        err = ASDF_NDARRAY_ERR_OOM;
+        goto cleanup;
+    }
+
+    size_t tile_size = dst_elsize * tile_nelems;
 
     // If the function is passed a null pointer, allocate memory for the tile ourselves
     // User is responsible for freeing it.

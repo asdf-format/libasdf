@@ -67,6 +67,31 @@
 #define LOAD_UNALIGNED(dst, src) memcpy(&(dst), (src), sizeof(dst))
 
 
+/*
+ * Saturating uint64_t arithmetic: return UINT64_MAX instead of wrapping
+ *
+ * Used for sizes computed from untrusted shapes, so that a size that does not
+ * fit in 64 bits fails any check against a real data size rather than wrapping
+ * to a small value that passes it.  Since a saturated operand stays saturated
+ * (except when multiplied by zero), a chain of these saturates if any step
+ * overflows.
+ */
+static inline uint64_t asdf_uint64_mul_sat(uint64_t lhs, uint64_t rhs) {
+    if (rhs != 0 && lhs > UINT64_MAX / rhs)
+        return UINT64_MAX;
+
+    return lhs * rhs;
+}
+
+
+static inline uint64_t asdf_uint64_add_sat(uint64_t lhs, uint64_t rhs) {
+    if (lhs > UINT64_MAX - rhs)
+        return UINT64_MAX;
+
+    return lhs + rhs;
+}
+
+
 ASDF_LOCAL size_t asdf_util_get_total_memory(void);
 
 
