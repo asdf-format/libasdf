@@ -71,8 +71,17 @@ fi
 #   exception below was added: conda-forge for _init/_fini, Homebrew for
 #   __bss_start/_edata/_end.
 #
+# - In a coverage build (--enable-code-coverage) the gcov runtime is linked
+#   statically into the library and exports its __gcov_* symbols, plus
+#   mangle_path; the latter is a generic enough name that it is only ignored
+#   alongside the __gcov_* symbols, so that it is still caught otherwise
+#
 # - Mach-O prefixes every C symbol with an underscore, hence the optional
 #   leading _ in the asdf_ pattern below
+if echo "${symbols}" | grep -qE '^_?__gcov_'; then
+  symbols=$(echo "${symbols}" | grep -vE '^_?(__gcov_|mangle_path$)')
+fi
+
 leaked=$(echo "${symbols}" \
   | sed -e '/^__odr_asan/d' \
   | grep -vE '^__(start|stop)_asan_globals' \
