@@ -52,6 +52,7 @@ endmacro()
 
 check_endian_decl(be64toh)
 check_endian_decl(be32toh)
+check_endian_decl(be16toh)
 check_endian_decl(htobe16)
 check_endian_decl(htobe32)
 check_endian_decl(htobe64)

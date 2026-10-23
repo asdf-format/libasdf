@@ -51,6 +51,16 @@
 #endif
 
 
+#if !HAVE_DECL_BE16TOH
+#if (defined(__APPLE__) && !defined(be16toh))
+#include <libkern/OSByteOrder.h>
+#define be16toh(x) OSSwapBigToHostInt16(x)
+#else
+#error be16toh not available
+#endif
+#endif
+
+
 #if !HAVE_DECL_HTOBE16
 #if (defined(__APPLE__) && !defined(htobe16))
 #include <libkern/OSByteOrder.h>

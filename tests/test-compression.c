@@ -15,6 +15,7 @@
 
 #include "asdf/core/ndarray.h"
 
+#include "compat/endian.h"
 #include "compression/compression.h"
 #include "config.h"
 #include "file.h"
@@ -1252,6 +1253,147 @@ MU_TEST(read_lz4_unaligned_blocks) {
 }
 
 
+/* Offsets into a binary block header, counted from the start of its magic */
+#define BLOCK_HEADER_SIZE_OFFSET 4
+#define BLOCK_USED_SIZE_OFFSET 22
+/* The block data follows the header, whose size excludes the magic and itself */
+#define BLOCK_HEADER_PREAMBLE_SIZE 6
+
+/** Bad LZ4 header tests cover several error handling cases */
+
+/**
+ * Ways of corrupting the LZ4 block headers in ``small_blocks`` of
+ * ``lz4-blocks.asdf``, with the error each should be reported with
+ *
+ * Except for ``first_header``, each corrupts the header of the second LZ4
+ * block, so that the first decompresses successfully and the failure is in
+ * moving on to the next one.  Each LZ4 header is a 4 byte big-endian size
+ * (of the rest of the LZ4 block, including the next field) followed by a 4
+ * byte little-endian decompressed size.
+ */
+static const struct {
+    const char *name;
+    const char *message;
+} lz4_corruptions[] = {
+    /* The block data ends partway through the first LZ4 header */
+    {"first_header", "could not read first LZ4 block header"},
+    /* The block data ends partway through the second LZ4 header */
+    {"truncated_header", "LZ4 compressed data ended before"},
+    /* A size too small to even cover the decompressed size field */
+    {"size_small", "zero-width LZ4 block"},
+    /* A size running past the end of the block data */
+    {"size_past_end", "exceeds the remaining compressed data"},
+    /* A decompressed size too large for the LZ4 API (over INT32_MAX) */
+    {"decomp_huge", "invalid decompressed size"},
+    /* Decompressed sizes one byte too small and too large */
+    {"decomp_short", "LZ4 block decompression failed"},
+    {"decomp_long", "but its header declares"},
+};
+
+
+static char *lz4_corruption_params[] = {
+    "first_header",
+    "truncated_header",
+    "size_small",
+    "size_past_end",
+    "decomp_huge",
+    "decomp_short",
+    "decomp_long",
+    NULL};
+static MunitParameterEnum lz4_corruption_test_params[] = {
+    {"corruption", lz4_corruption_params},
+    {NULL, NULL}
+};
+
+
+/**
+ * Reading LZ4-compressed data with a corrupt LZ4 block header fails cleanly
+ *
+ * The corruption is made to an in-memory copy of ``lz4-blocks.asdf`` (whose
+ * block checksums are not verified on read, so do not get in the way).  Only
+ * eager decompression is tested: lazy decompression goes through the same
+ * header handling, but reports failures from its page fault handler instead.
+ */
+MU_TEST(read_lz4_corrupt_header) {
+    const char *corruption = munit_parameters_get(params, "corruption");
+    const char *message = NULL;
+    size_t file_size = 0;
+    uint8_t *buf = (uint8_t *)read_file(get_fixture_file_path("lz4-blocks.asdf"), &file_size);
+    assert_not_null(buf);
+
+    for (size_t idx = 0; idx < ARRAY_SIZE(lz4_corruptions); idx++) {
+        if (strcmp(lz4_corruptions[idx].name, corruption) == 0)
+            message = lz4_corruptions[idx].message;
+    }
+
+    assert_not_null(message);
+
+    // small_blocks is source 0, so its block is the first after the tree
+    uint8_t *block = memmem(buf, file_size, "\xd3" "BLK", 4);
+    assert_not_null(block);
+    uint16_t header_size = 0;
+    uint32_t first_size = 0;
+    memcpy(&header_size, block + BLOCK_HEADER_SIZE_OFFSET, sizeof(header_size));
+    header_size = be16toh(header_size);
+    uint8_t *data = block + BLOCK_HEADER_PREAMBLE_SIZE + header_size;
+    memcpy(&first_size, data, sizeof(first_size));
+    uint8_t *second = data + sizeof(uint32_t) + be32toh(first_size);
+
+    // The new value of whichever field is corrupted (all are non-zero), already
+    // in the field's byte order
+    uint64_t used_size = 0;
+    uint32_t comp_size = 0;
+    uint32_t decomp_size = 0;
+
+    if (strcmp(corruption, "first_header") == 0)
+        used_size = htobe64(4);
+    else if (strcmp(corruption, "truncated_header") == 0)
+        used_size = htobe64((uint64_t)(second - data) + 4);
+    else if (strcmp(corruption, "size_small") == 0)
+        comp_size = htobe32(2);
+    else if (strcmp(corruption, "size_past_end") == 0)
+        comp_size = htobe32(INT32_MAX);
+    else if (strcmp(corruption, "decomp_huge") == 0)
+        decomp_size = htole32((uint32_t)INT32_MAX + 1);
+    else if (strcmp(corruption, "decomp_short") == 0)
+        decomp_size = htole32(999);
+    else if (strcmp(corruption, "decomp_long") == 0)
+        decomp_size = htole32(1001);
+
+    if (used_size)
+        memcpy(block + BLOCK_USED_SIZE_OFFSET, &used_size, sizeof(used_size));
+
+    if (comp_size)
+        memcpy(second, &comp_size, sizeof(comp_size));
+
+    if (decomp_size)
+        memcpy(second + sizeof(uint32_t), &decomp_size, sizeof(decomp_size));
+
+    log_capture_t cap = {0};
+    asdf_config_t config = {
+        .log = LOG_CAPTURE_CFG(&cap, ASDF_LOG_ERROR),
+        .decomp = {.mode = ASDF_BLOCK_DECOMP_MODE_EAGER}
+    };
+    asdf_file_t *file = asdf_open_mem_ex(buf, file_size, &config);
+    assert_not_null(file);
+    asdf_ndarray_t *ndarray = NULL;
+    assert_int(asdf_get_ndarray(file, "small_blocks", &ndarray), ==, ASDF_VALUE_OK);
+    assert_not_null(ndarray);
+
+    size_t size = 0;
+    assert_null(asdf_ndarray_data(ndarray, &size));
+#ifdef ASDF_LOG_ENABLED
+    assert_not_null(log_capture_find(&cap, message));
+#endif
+
+    asdf_ndarray_destroy(ndarray);
+    asdf_close(file);
+    log_capture_clear(&cap);
+    free(buf);
+    return MUNIT_OK;
+}
+
+
 /**
  * Re-emit an already-compressed block verbatim (no decompression/recompression)
  *
@@ -1779,6 +1921,7 @@ MU_TEST_SUITE(
     MU_RUN_TEST(read_compressed_block_repeated_access, comp_mode_test_params),
     MU_RUN_TEST(read_compressed_block_multi_chunk, comp_mode_test_params),
     MU_RUN_TEST(read_lz4_unaligned_blocks, mode_chunk_test_params),
+    MU_RUN_TEST(read_lz4_corrupt_header, lz4_corruption_test_params),
     MU_RUN_TEST(reemit_compressed_verbatim, comp_test_params),
     MU_RUN_TEST(recompress_block),
     MU_RUN_TEST(copy_compressed_block, comp_test_params),

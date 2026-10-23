@@ -40,6 +40,7 @@
 #cmakedefine HAVE_STRPTIME
 #cmakedefine01 HAVE_DECL_BE64TOH
 #cmakedefine01 HAVE_DECL_BE32TOH
+#cmakedefine01 HAVE_DECL_BE16TOH
 #cmakedefine01 HAVE_DECL_HTOBE16
 #cmakedefine01 HAVE_DECL_HTOBE32
 #cmakedefine01 HAVE_DECL_HTOBE64

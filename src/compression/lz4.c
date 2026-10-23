@@ -161,8 +161,11 @@ static asdf_compressor_userdata_t *asdf_compressor_lz4_init(
 
 
 static void asdf_compressor_lz4_destroy(asdf_compressor_userdata_t *userdata) {
-    assert(userdata);
     asdf_compressor_lz4_userdata_t *lz4 = userdata;
+
+    if (!lz4)
+        return;
+
     free(lz4->block.buf);
     free(lz4);
 }

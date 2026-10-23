@@ -1,0 +1,2 @@
+Fixed a possible crash when a compressed block's decompression fails during
+initialization.

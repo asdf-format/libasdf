@@ -798,7 +798,10 @@ void asdf_block_comp_close(asdf_block_t *block) {
     if (state->mode == ASDF_BLOCK_DECOMP_MODE_LAZY)
         asdf_block_decomp_lazy_shutdown(state);
 
-    if (state->compressor)
+    // Fixed: If userdata is NULL no need to call destroy on it
+    // The destructors should still guard against a NULL userdata
+    // as well, but it should be safe to cover that for any compressor here.
+    if (state->compressor && state->userdata)
         state->compressor->destroy(state->userdata);
 
     if (state->dest)

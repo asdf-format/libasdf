@@ -85,6 +85,7 @@ AC_HEADER_ASSERT # ./configure --disable-assert to define NDEBUG
 AC_CHECK_HEADER([stdlib.h])
 AX_CHECK_ENDIAN_DECL([be64toh])
 AX_CHECK_ENDIAN_DECL([be32toh])
+AX_CHECK_ENDIAN_DECL([be16toh])
 AX_CHECK_ENDIAN_DECL([htobe16])
 AX_CHECK_ENDIAN_DECL([htobe32])
 AX_CHECK_ENDIAN_DECL([htobe64])

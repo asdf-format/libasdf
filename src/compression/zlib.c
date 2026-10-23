@@ -54,8 +54,10 @@ static asdf_compressor_userdata_t *asdf_compressor_zlib_init(
 
 
 static void asdf_compressor_zlib_destroy(asdf_compressor_userdata_t *userdata) {
-    assert(userdata);
     asdf_compressor_zlib_userdata_t *zlib = userdata;
+
+    if (!zlib)
+        return;
 
     if (zlib->info.status != ASDF_COMPRESSOR_UNINITIALIZED)
         inflateEnd(&zlib->z);
