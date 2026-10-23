@@ -82,6 +82,13 @@ static MunitParameterEnum comp_mode_chunk_test_params[] = {
 };
 
 
+static MunitParameterEnum mode_chunk_test_params[] = {
+    {"mode", mode_params},
+    {"chunk", chunk_params},
+    {NULL, NULL}
+};
+
+
 static size_t chunk_size_from_param(const char *chunk) {
     if (strcmp(chunk, "default") == 0)
         return 0;
@@ -1183,6 +1190,69 @@ MU_TEST(read_compressed_block_multi_chunk) {
 
 
 /**
+ * Read LZ4-compressed arrays written by Python asdf with LZ4 block boundaries
+ * that do not line up with page boundaries
+ *
+ * In ``lz4-blocks.asdf``, ``small_blocks`` is split into 1000 byte LZ4 blocks
+ * (smaller than a page) and ``large_blocks`` into 6000 byte blocks (larger
+ * than a page, but not a multiple of one), so filling a page or chunk from
+ * either means continuing from partway through one LZ4 block into the next.
+ * libasdf itself writes 4 MB LZ4 blocks by default, a multiple of the page
+ * size, so this covers additional cases not covered by
+ * ``read_compressed_block_multi_chunk``.
+ */
+MU_TEST(read_lz4_unaligned_blocks) {
+    const char *filename = get_fixture_file_path("lz4-blocks.asdf");
+    const char *names[] = {"small_blocks", "large_blocks"};
+    const size_t page_size = 4096;
+    const size_t nelem = (10 * page_size) + 123;
+    asdf_config_t config = {
+        .decomp = {
+            .mode = decomp_mode_from_param(munit_parameters_get(params, "mode")),
+            .chunk_size = chunk_size_from_param(munit_parameters_get(params, "chunk"))
+        }
+    };
+    uint8_t *expected = malloc(nelem);
+
+    if (!expected)
+        return MUNIT_ERROR;
+
+    // Same paged pattern as compressed.asdf: each page starts with its page
+    // number, followed by a repeating 0-255 pattern
+    for (size_t idx = 0; idx < nelem; idx++) {
+        if (idx % page_size == 0)
+            expected[idx] = (idx / page_size) % 256;
+        else
+            expected[idx] = idx % 256;
+    }
+
+    asdf_file_t *file = asdf_open_file_ex(filename, "r", &config);
+    assert_not_null(file);
+
+    for (size_t idx = 0; idx < ARRAY_SIZE(names); idx++) {
+        asdf_ndarray_t *ndarray = NULL;
+        assert_int(asdf_get_ndarray(file, names[idx], &ndarray), ==, ASDF_VALUE_OK);
+        assert_not_null(ndarray);
+
+        size_t size = 0;
+        const uint8_t *data = asdf_ndarray_data(ndarray, &size);
+        assert_not_null(data);
+        assert_size(size, ==, nelem);
+        // In lazy mode, fault on the partial last page first, which has to
+        // decompress every chunk before it in a single fault
+        assert_uint8(data[nelem - 1], ==, expected[nelem - 1]);
+        assert_memory_equal(nelem, data, expected);
+        assert_null(asdf_error(file));
+        asdf_ndarray_destroy(ndarray);
+    }
+
+    asdf_close(file);
+    free(expected);
+    return MUNIT_OK;
+}
+
+
+/**
  * Re-emit an already-compressed block verbatim (no decompression/recompression)
  *
  * Regression test for the write path with opened blocks:
@@ -1708,6 +1778,7 @@ MU_TEST_SUITE(
     MU_RUN_TEST(decomp_mode_selection_to_file, comp_mode_test_params),
     MU_RUN_TEST(read_compressed_block_repeated_access, comp_mode_test_params),
     MU_RUN_TEST(read_compressed_block_multi_chunk, comp_mode_test_params),
+    MU_RUN_TEST(read_lz4_unaligned_blocks, mode_chunk_test_params),
     MU_RUN_TEST(reemit_compressed_verbatim, comp_test_params),
     MU_RUN_TEST(recompress_block),
     MU_RUN_TEST(copy_compressed_block, comp_test_params),
