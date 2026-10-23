@@ -1,1 +1,0 @@
-Fixed a small memory leak in `asdf_block_checksum_verify`.

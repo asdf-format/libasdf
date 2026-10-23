@@ -1,4 +1,4 @@
-Fixed incorrect links to issues in CHANGELOG.rst due to towncrier
+Fixed incorrect links to issues in CHANGES.rst due to towncrier
 misconfiguration.
 
 Also fixed broken conda-forge badge in README.rst (Anaconda has been
