@@ -150,6 +150,9 @@ extensions = [
     # Local; see docs/_ext/
     'index_grouping',
 ]
+linkcheck_request_headers = {
+    "Accept-Encoding": "gzip"
+}
 
 # -- Options for hawkmoth extension --------------------------------------------
 
