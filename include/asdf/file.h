@@ -710,7 +710,7 @@ ASDF_EXPORT bool asdf_is_null(asdf_file_t *file, const char *path);
  *
  * Big integers (greater than ``UINT64_MAX`` or less than ``INT64_MIN``) are
  * not supported--in fact the ASDF Standard expressly
- * `forbids <ASDF Numeric Literals>`_ writing them to ASDF files.  Nevertheless
+ * :ref:`forbids <asdf-standard:numeric-literals>` writing them to ASDF files.  Nevertheless
  * it could be supported in the future if the need arises.  In fact,
  * technically the ASDF Standard disallows integers greater than ``INT64_MAX``
  * but here we do allow unsigned integers up to ``UINT64_MAX``.
