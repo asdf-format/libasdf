@@ -144,7 +144,6 @@ jobs:
         uses: actions/checkout@v6
         with:
           submodules: true
-
       - name: Install documentation dependencies
         run: |
           sudo apt-get update
@@ -181,3 +180,5 @@ jobs:
 
       - name: Build Sphinx documentation
         run: make docs SPHINX_FLAGS=-W
+      - name: Check documentation links
+        run: make linkcheck-docs

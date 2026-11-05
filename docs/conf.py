@@ -150,6 +150,12 @@ extensions = [
     # Local; see docs/_ext/
     'index_grouping',
 ]
+linkcheck_request_headers = {
+    "*": {
+        # Needed because Cloudflare domains default to zstd which breaks on Github CI
+        "Accept-Encoding": "gzip"
+    }
+}
 
 # -- Options for hawkmoth extension --------------------------------------------
 

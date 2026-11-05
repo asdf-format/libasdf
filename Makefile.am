@@ -149,8 +149,11 @@ docs:
 
 distcheck-docs:
 	$(MAKE) docs SPHINX_FLAGS=-W
+
+linkcheck-docs:
+	$(SPHINXBUILD) $(SPHINX_FLAGS) -b linkcheck $(srcdir)/docs $(builddir)/docs/_build/linkcheck
 endif
-.PHONY: docs distcheck-docs
+.PHONY: docs distcheck-docs linkcheck-docs
 
 
 CMAKE_EXTRA_FLAGS=
