@@ -143,8 +143,12 @@ intersphinx_mapping = {
     'numpy': ('https://numpy.org/doc/stable/', None)
 }
 
+
+extlinks = {'asdf': ('https://www.asdf-format.org/projects/asdf/en/stable/%s', None)}
+
 extensions = [
     'sphinx.ext.intersphinx',
+    'sphinx.ext.extlinks',
     'sphinx.ext.todo',
     'hawkmoth',
     # Local; see docs/_ext/

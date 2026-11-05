@@ -78,9 +78,8 @@ ndarrays (N-dimension typed arrays)
 
 One of the most important and widely used types in ASDF is the **ndarray**.
 The concept originates from `NumPy`_, the Python library for efficient
-numerical computing with *n*-dimensional arrays.  In the
-:external:doc:`Python ASDF implementation <asdf/arrays>`, NumPy arrays are
-serialized under the tag
+numerical computing with *n*-dimensional arrays.  In the :asdf:`Python ASDF implementation <asdf/arrays/>`, 
+NumPy arrays are serialized under the tag
 :ref:`core/ndarray <stsci.edu/asdf/core/ndarray-1.1.0>`.
 Although the tag name and conventions come from Python, the underlying idea is
 language-independent: an ``ndarray`` represents a typed, multi-dimensional
