@@ -138,13 +138,16 @@ nitpick_ignore = [
 # Add intersphinx mappings
 # e.g. intersphinx_mapping["semantic_version"] = ("https://python-semanticversion.readthedocs.io/en/latest/", None)
 intersphinx_mapping = {
-    'asdf': ('https://www.asdf-format.org/projects/asdf/en/stable', None),
     'asdf-standard': ('https://www.asdf-format.org/projects/asdf-standard/en/latest/', None),
     'numpy': ('https://numpy.org/doc/stable/', None)
 }
 
+
+extlinks = {'asdf': ('https://www.asdf-format.org/projects/asdf/en/stable/%s', None)}
+
 extensions = [
     'sphinx.ext.intersphinx',
+    'sphinx.ext.extlinks',
     'sphinx.ext.todo',
     'hawkmoth',
     # Local; see docs/_ext/
