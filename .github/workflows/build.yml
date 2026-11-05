@@ -181,3 +181,5 @@ jobs:
 
       - name: Build Sphinx documentation
         run: make docs SPHINX_FLAGS=-W
+      - name: Check documentation links
+        run: make linkcheck-docs
