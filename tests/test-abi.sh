@@ -52,6 +52,7 @@ fi
 
 arch=$(uname -m 2>/dev/null || echo unknown)
 baseline="${top_srcdir}/abi/libasdf-${arch}.abi"
+suppressions="${top_srcdir}/abi/supp.abignore"
 
 for tool in abidw abidiff; do
   if ! command -v "${tool}" > /dev/null 2>&1; then
@@ -61,14 +62,6 @@ done
 
 version="$(abidw --version 2>/dev/null)"
 echo "$version"
-
-case "$(abidw --version 2>/dev/null)" in
-  *"2.4.0")
-    suppressions="${top_srcdir}/abi/supp-pre-2.5.abignore"
-    ;;
-  *)
-    suppressions="${top_srcdir}/abi/supp.abignore"
-esac
 
 # Locate the shared library.  The automake and CMake builds put it in
 # different places, and only ELF platforms are described by an abidw dump.
@@ -117,6 +110,7 @@ abs_top_srcdir=$(cd "${top_srcdir}" && pwd -P) || exit 1
 abidw --no-show-locs --no-comp-dir-path --no-corpus-path \
       --drop-private-types --headers-dir "${top_srcdir}/include" \
       --exported-interfaces-only --type-id-style hash \
+      --no-load-undefined-interfaces \
       --suppressions "${suppressions}" \
       "${lib}" 2>/dev/null \
   | sed -e "/<elf-symbol name='__odr_asan\./d" \
