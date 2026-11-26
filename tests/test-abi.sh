@@ -52,13 +52,23 @@ fi
 
 arch=$(uname -m 2>/dev/null || echo unknown)
 baseline="${top_srcdir}/abi/libasdf-${arch}.abi"
-suppressions="${top_srcdir}/abi/supp.abignore"
 
 for tool in abidw abidiff; do
   if ! command -v "${tool}" > /dev/null 2>&1; then
     skip_or_die "${tool} not available (install abigail-tools)"
   fi
 done
+
+version="$(abidw --version 2>/dev/null)"
+echo "$version"
+
+case "$(abidw --version 2>/dev/null)" in
+  *"2.4.0")
+    suppressions="${top_srcdir}/abi/supp-pre-2.5.abignore"
+    ;;
+  *)
+    suppressions="${top_srcdir}/abi/supp.abignore"
+esac
 
 # Locate the shared library.  The automake and CMake builds put it in
 # different places, and only ELF platforms are described by an abidw dump.

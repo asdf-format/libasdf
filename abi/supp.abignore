@@ -10,7 +10,4 @@
   name = _IO_FILE
   type_kind = struct
   drop = yes
-  # Newer versions of libabigail changed this to a more specialized
-  # label libabigail::OPAQUE_TYPE_LABEL but my version (2.4.0) does
-  # not have that yet, but spells it like this:
-  label = Artificial private types suppression specification
+  label = libabigail::OPAQUE_TYPE_LABEL
