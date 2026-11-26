@@ -52,6 +52,7 @@ fi
 
 arch=$(uname -m 2>/dev/null || echo unknown)
 baseline="${top_srcdir}/abi/libasdf-${arch}.abi"
+suppressions="${top_srcdir}/abi/supp.abignore"
 
 for tool in abidw abidiff; do
   if ! command -v "${tool}" > /dev/null 2>&1; then
@@ -88,9 +89,13 @@ trap 'rm -f "${tmp}"' EXIT HUP INT TERM
 #   --exported-interfaces-only           restrict to the dynamic symbol table
 #   --type-id-style hash                 content-derived type ids, so an
 #       inserted type does not renumber every entry after it
+#   --suppressions suppressions-file     path to the suppressions file to
+#       to use when generating and comparing ABI reports
+#
 # The sed strips AddressSanitizer's ODR-violation aliases (__odr_asan.<name>,
 # one per global) from the symbol table.  They are build instrumentation, not
-# ABI.
+# ABI.  TODO: Maybe these could also be excluded through the supppressions
+# file but I haven't tried it yet.
 #
 # It also makes each translation unit's path relative to the source root: the
 # path is whatever the compiler was given, which is absolute for an
@@ -102,6 +107,7 @@ abs_top_srcdir=$(cd "${top_srcdir}" && pwd -P) || exit 1
 abidw --no-show-locs --no-comp-dir-path --no-corpus-path \
       --drop-private-types --headers-dir "${top_srcdir}/include" \
       --exported-interfaces-only --type-id-style hash \
+      --suppressions "${suppressions}" \
       "${lib}" 2>/dev/null \
   | sed -e "/<elf-symbol name='__odr_asan\./d" \
         -e "s|\(<abi-instr [^>]*path='\)${abs_top_srcdir}/|\1|" \
