@@ -90,6 +90,7 @@ Resources
 
   changes
   development
+  fits
 
 
 See also

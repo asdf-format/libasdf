@@ -24,6 +24,7 @@ EXTRA_DIST = \
     changes.rst \
     development.rst \
     environment.yml \
+    fits.rst \
     index.rst \
     links.rst \
     usage/cli.rst \
