@@ -133,6 +133,9 @@ nitpick_ignore = [
     ('c:identifier', 'asdf_parser_cfg_t'),
     ('c:identifier', 'asdf_tag_t'),
     ('c:identifier', 'asdf_version_t'),
+
+# libasdf-gwcs identifiers that should be documented but aren't yet
+    ('c:identifier', 'asdf_value_is_gwcs'),
 ]
 
 # Add intersphinx mappings
@@ -140,6 +143,8 @@ nitpick_ignore = [
 intersphinx_mapping = {
     'asdf': ('https://www.asdf-format.org/projects/asdf/en/stable', None),
     'asdf-standard': ('https://www.asdf-format.org/projects/asdf-standard/en/latest/', None),
+    'asdf-website': ('https://www.asdf-format.org/en/latest/', None),
+    'libasdf-gwcs': ('https://libasdf-gwcs.readthedocs.io/en/latest/', None),
     'numpy': ('https://numpy.org/doc/stable/', None)
 }
 
@@ -237,6 +242,20 @@ pygments_dark_style = "monokai"
 latex_documents = [("index", project + ".tex", project + " Documentation", author, "manual")]
 
 latex_logo = "_static/images/logo-light-mode.png"
+
+# -- Additional extension options ----------------------------------------------
+
+# IMHO there should be an option on the Sphinx todo directive to override this
+# default; sometimes I think they are useful to show, other times not. For now
+# disable all.
+todo_include_todos = False
+
+# Another shortcoming of the todo extension: It's useful give the developer
+# *notice* of TODOs when building, but the warnings prevent builds that
+# otherwise treat warnings as errors (this is not meant to be a structural
+# warning impacting how the docs are rendered; it is an admonition (pun not
+# intended).
+# todo_emit_warnings = True
 
 
 # -- Local extensions ----------------------------------------------------------

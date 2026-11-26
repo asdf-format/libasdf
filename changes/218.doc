@@ -1,0 +1,4 @@
+Added a "libasdf for FITS developers" page to the documentation, comparing
+common CFITSIO operations with their libasdf equivalents and giving advice on
+designing general-purpose software that reads arrays, metadata and WCSs from
+ASDF files.
